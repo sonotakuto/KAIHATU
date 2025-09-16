@@ -1,0 +1,29 @@
+.background-color_white {
+	background-color: white;
+}
+
+.background-color_darkgray {
+	background-color: darkgray;
+}
+
+.font-size_message {
+	font-family: 'Noto Sans Mono CJK JP';
+	font-weight: bold;
+	font-size: 40px;
+}
+
+.font-size_30px {
+	font-size: 30px;
+}
+
+.font-size_50px {
+	font-size: 50px;
+}
+
+.border_solid {
+	border: 2px solid black;
+}
+
+.border_inset {
+	border: 2px inset darkgray;
+}
