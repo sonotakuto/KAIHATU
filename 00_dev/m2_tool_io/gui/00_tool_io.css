@@ -6,14 +6,49 @@
 	background-color: darkgray;
 }
 
-.font-size_message {
+.font-normal {
+	font-family: 'Noto Sans Mono CJK JP';
+}
+
+.font-bold {
 	font-family: 'Noto Sans Mono CJK JP';
 	font-weight: bold;
-	font-size: 40px;
+}
+
+.font-size_5px {
+	font-size: 5px;
+}
+
+.font-size_10px {
+	font-size: 10px;
+}
+
+.font-size_15px {
+	font-size: 15px;
+}
+
+.font-size_20px {
+	font-size: 20px;
+}
+
+.font-size_25px {
+	font-size: 25px;
 }
 
 .font-size_30px {
 	font-size: 30px;
+}
+
+.font-size_35px {
+	font-size: 35px;
+}
+
+.font-size_40px {
+	font-size: 40px;
+}
+
+.font-size_45px {
+	font-size: 45px;
 }
 
 .font-size_50px {
