@@ -6,12 +6,24 @@
 	background-color: darkgray;
 }
 
+.background-color_darkgray {
+	background-color: darkgray;
+}
+
+.color_black {
+	color: black;
+}
+
+.color_white {
+	color: white;
+}
+
 .font-normal {
-	font-family: 'Noto Sans Mono CJK JP';
+	font-family: 'Noto Sans CJK JP';
 }
 
 .font-bold {
-	font-family: 'Noto Sans Mono CJK JP';
+	font-family: 'Noto Sans CJK JP';
 	font-weight: bold;
 }
 
