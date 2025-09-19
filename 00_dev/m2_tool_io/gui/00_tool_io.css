@@ -74,3 +74,42 @@
 .border_inset {
 	border: 2px inset darkgray;
 }
+
+.radio {
+    opacity: 0;
+}
+
+.tree_style {
+	color: black;
+	font-size: 15px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: normal;
+	background: #E9EBF5;
+	border: 1px solid black;
+}
+
+.tree_style header button {
+	color: white;
+	font-size: 18px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: bold;
+	background: #4472C4;
+	border: 1px solid black;
+}
+
+.main_tree_size header button {
+	min-height: 59px;
+}
+
+.sub_tree_size header button {
+	min-height: 44px;
+}
+
+/*
+.view
+
+.view row:selected {
+    background-color: #3584e4;
+    color: white;
+}
+*/
