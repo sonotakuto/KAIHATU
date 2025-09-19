@@ -35,6 +35,10 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="halign">start</property>
+                <style>
+                  <class name="button"/>
+                  <class name="truebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -88,6 +92,10 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <style>
+                  <class name="button"/>
+                  <class name="falsebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -101,6 +109,10 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <style>
+                  <class name="button"/>
+                  <class name="falsebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -345,6 +357,10 @@ a</col>
                 <property name="receives_default">True</property>
                 <property name="halign">end</property>
                 <property name="margin_right">30</property>
+                <style>
+                  <class name="button"/>
+                  <class name="falsebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -363,6 +379,10 @@ a</col>
                 <property name="receives_default">True</property>
                 <property name="halign">start</property>
                 <property name="margin_left">30</property>
+                <style>
+                  <class name="button"/>
+                  <class name="truebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -374,6 +394,7 @@ a</col>
             <style>
               <class name="font-normal"/>
               <class name="font-size_30px"/>
+              <class name="button"/>
             </style>
           </object>
           <packing>
@@ -503,6 +524,9 @@ a</col>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <style>
+                          <class name="button"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -518,6 +542,9 @@ a</col>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <style>
+                          <class name="button"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -533,6 +560,9 @@ a</col>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <style>
+                          <class name="button"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -570,6 +600,10 @@ a</col>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="normalbutton"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -584,6 +618,9 @@ a</col>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <style>
+                      <class name="button"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1472,6 +1509,9 @@ message message message message message</property>
                     <child>
                       <placeholder/>
                     </child>
+                    <style>
+                      <class name="button"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1518,13 +1558,17 @@ message message message message message</property>
             <property name="spacing">110</property>
             <property name="layout_style">end</property>
             <child>
-              <object class="GtkButton" id="nextBtn">
-                <property name="label" translatable="yes">next</property>
+              <object class="GtkButton" id="trueBtn">
+                <property name="label" translatable="yes">ture</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <style>
+                  <class name="button"/>
+                  <class name="truebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1534,13 +1578,17 @@ message message message message message</property>
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="prevBtn">
-                <property name="label" translatable="yes">prev</property>
+              <object class="GtkButton" id="falseBtn">
+                <property name="label" translatable="yes">false</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <style>
+                  <class name="button"/>
+                  <class name="falsebutton"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">False</property>

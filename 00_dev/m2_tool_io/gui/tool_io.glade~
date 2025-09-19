@@ -542,7 +542,7 @@ a</col>
                     </child>
                     <style>
                       <class name="font-normal"/>
-                      <class name="font-size_20px"/>
+                      <class name="font-size_25px"/>
                     </style>
                   </object>
                   <packing>
