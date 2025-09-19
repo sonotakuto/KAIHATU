@@ -75,10 +75,6 @@
 	border: 2px inset darkgray;
 }
 
-.radio {
-    opacity: 0;
-}
-
 .tree_style {
 	color: black;
 	font-size: 15px;
@@ -102,14 +98,82 @@
 }
 
 .sub_tree_size header button {
-	min-height: 44px;
+	min-height: 39px;
 }
-
 /*
-.view
-
-.view row:selected {
-    background-color: #3584e4;
-    color: white;
+.view:checked {
+	background-color: #3584e4;
+	color: white;
 }
 */
+
+.button {
+	background-image: none;
+}
+.button:disabled {
+	background-color: #F2F2F2;
+	color: #C8C8C8;
+}
+.button:focus {
+	outline-color: #ff0000;
+	outline-style: solid;
+}
+
+.normalbutton {
+	background-color: white;
+	color: black;
+}
+.normalbutton:hover {
+	background-color: #F0F0F0;
+}
+.normalbutton:active {
+	background-color: #C8C8C8;
+}
+.normalbutton:checked {
+	background-color: #B4B4B4;
+	color: white;
+}
+
+.truebutton {
+	background-color: #F0C6AA;
+	color: black;
+}
+.truebutton:hover {
+	background-color: #ECB590;
+}
+.truebutton:active {
+	background-color: #E7A477;
+}
+.truebutton:checked {
+	background-color: #C55A11;
+	color: white;
+}
+
+.falsebutton {
+	background-color: #AAC5F0;
+	color: black;
+}
+.falsebutton:hover {
+	background-color: #90B3EC;
+}
+.falsebutton:active {
+	background-color: #77A2E7;
+}
+.falsebutton:checked {
+	background-color: #2E75B6;
+	color: white;
+}
+
+.logoutbutton {
+	background-color: red;
+	color: white;
+}
+.logoutbutton:hover {
+	background-color: #F00000;
+}
+.logoutbutton:active {
+	background-color: #E60000;
+}
+.logoutbutton:checked {
+	background-color: #C80000;
+}
