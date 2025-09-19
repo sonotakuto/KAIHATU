@@ -283,7 +283,6 @@
 	background-color: #E9EBF5;
 	border: 1px solid black;
 }
-
 .tree-style header button {
 	color: white;
 	font-size: 18px;
@@ -292,13 +291,14 @@
 	background-color: #4472C4;
 	border: 1px solid black;
 }
-.tree-style:disabled {
+
+.selectableTree-style:disabled {
 	background-color: #F2F2F2;
 }
-.tree-style:disabled header button {
+.selectableTree-style:disabled header button {
 	background-color: #A6A6A6;
 }
-.tree-style:selected {
+.selectableTree-style:selected {
 	background-color: #F4B183;
 }
 
@@ -323,7 +323,7 @@
 }
 
 .normalButton {
-	background-color: white;
+	background-color: #F4F3F1;
 	color: black;
 }
 .normalButton:hover {
