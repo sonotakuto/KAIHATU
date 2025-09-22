@@ -124,7 +124,7 @@
   </object>
   <object class="GtkDialog" id="confirmRegrindDialog1">
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">再研磨工具か確認</property>
+    <property name="title" translatable="yes">使用インサート枚数確認</property>
     <property name="resizable">False</property>
     <property name="window_position">center</property>
     <property name="type_hint">dialog</property>
@@ -284,7 +284,7 @@
     <property name="width_request">1300</property>
     <property name="height_request">750</property>
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">再研磨工具か確認</property>
+    <property name="title" translatable="yes">不正入出庫検出</property>
     <property name="resizable">False</property>
     <property name="window_position">center</property>
     <property name="type_hint">dialog</property>
