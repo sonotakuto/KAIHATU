@@ -1,15 +1,19 @@
 #pragma once
 #include <SimpleGtk>
+#include <map>
+#include <memory>
 
+// 修正点: `Window`ではなく`sg::Window`を使い、
+// ライブラリのクラスであることを明示します。
 #ifdef DECL
-    map<int, unique_ptr<Window>> win;
-    auto& loginWindow=win[1];
-    auto& settingWindow=win[2];
-    auto& mainWindow=win[3];
-    auto& dbWindow=win[4];
+    // グローバル変数の定義
+    std::map<int, std::unique_ptr<sg::Window>> win;
+    auto& loginWindow         = win[1];
+    auto& mainWindow          = win[3];
+    auto& confirmInsertDialog = win[5]; 
 #else
-    extern unique_ptr<LoginWindow>& loginWindow;
-    extern unique_ptr<SettingWindow>& settingWindow;
-    extern unique_ptr<MainWindow>& mainWindow;
-    extern unique_ptr<DbWindow>& dbWindow;
+    // 外部参照宣言
+    extern std::unique_ptr<sg::Window>& loginWindow;
+    extern std::unique_ptr<sg::Window>& mainWindow;
+    extern std::unique_ptr<sg::Window>& confirmInsertDialog;
 #endif
