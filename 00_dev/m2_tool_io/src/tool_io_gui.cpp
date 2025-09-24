@@ -76,7 +76,7 @@ MainWindow::MainWindow() :
 	//=========================================================================
 	// 初期状態の設定
 	//=========================================================================
-	set_mode(RETRIEVE);
+	set_mode(GuiMode::RETRIEVE);
 
 	//=========================================================================
 	// イベントハンドラの登録
@@ -109,7 +109,7 @@ void MainWindow::retrieveToggleButton_on_toggled() {
 	// このボタンに対する操作は、常に「取り出し」モードへの設定を試みる
 	// これにより、ユーザーがアクティブなこのボタンを押してオフにしようとしても、
 	// set_modeが再度このボタンをオンにし、状態が維持される
-	set_mode(RETRIEVE);
+	set_mode(GuiMode::RETRIEVE);
 }
 
 /**
@@ -119,7 +119,7 @@ void MainWindow::storeToggleButton_on_toggled() {
 	if (storeToggleButton.get_active()) {
 		// ボタンがオンにされた場合：パスワード認証を行う
 		if (authenticate_with_password()) {
-			set_mode(STORE);
+			set_mode(GuiMode::STORE);
 		} else {
 			// 認証失敗/キャンセル：現在のモード(m_gui_mode)に戻す
 			set_mode(m_gui_mode);
@@ -137,7 +137,7 @@ void MainWindow::reconcileToggleButton_on_toggled() {
 	if (reconcileToggleButton.get_active()) {
 		// ボタンがオンにされた場合：パスワード認証を行う
 		if (authenticate_with_password()) {
-			set_mode(RECONCILE);
+			set_mode(GuiMode::RECONCILE);
 		} else {
 			// 認証失敗/キャンセル：現在のモード(m_gui_mode)に戻す
 			set_mode(m_gui_mode);
@@ -191,19 +191,19 @@ void MainWindow::set_mode(GuiMode mode) {
 
 	// 2. トグルボタンの状態を排他的に更新
 	//    プログラムによる変更なので、イベントが連鎖しないように注意は不要
-	retrieveToggleButton.set_active(mode == RETRIEVE);
-	storeToggleButton.set_active(mode == STORE);
-	reconcileToggleButton.set_active(mode == RECONCILE);
+	retrieveToggleButton.set_active(mode == GuiMode::RETRIEVE);
+	storeToggleButton.set_active(mode == GuiMode::STORE);
+	reconcileToggleButton.set_active(mode == GuiMode::RECONCILE);
 
 	// 3. モードに応じて表示する操作パネルを切り替え
 	switch (mode) {
-		case RETRIEVE:
+		case GuiMode::RETRIEVE:
 			operationStack.set_visible_child_name("retrieveOperationPage");
 			break;
-		case STORE:
+		case GuiMode::STORE:
 			operationStack.set_visible_child_name("storeOperationPage");
 			break;
-		case RECONCILE:
+		case GuiMode::RECONCILE:
 			operationStack.set_visible_child_name("reconcileOperationPage");
 			break;
 	}

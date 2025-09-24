@@ -21,7 +21,7 @@ struct MainWindow : public sg::Window {
 	 * @enum GuiMode
 	 * @brief 現在の操作モードを定義する列挙型。
 	 */
-	enum GuiMode {
+	enum class GuiMode {
 		RETRIEVE,  // 取り出しモード
 		STORE,     // 補充モード
 		RECONCILE  // 棚卸しモード
