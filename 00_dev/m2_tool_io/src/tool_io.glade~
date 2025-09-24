@@ -2,7 +2,7 @@
 <!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <!-- interface-css-provider-path 00_tool_io.css -->
+  <!-- interface-css-provider-path tool_io.css -->
   <object class="GtkDialog" id="confirmInsertCountDialog">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">再研磨工具か確認</property>
@@ -767,7 +767,6 @@ a</col>
         <property name="can_focus">False</property>
         <property name="halign">center</property>
         <property name="valign">center</property>
-        <property name="margin_bottom">10</property>
         <property name="orientation">vertical</property>
         <property name="spacing">20</property>
         <child>
@@ -782,9 +781,11 @@ a</col>
                 <property name="spacing">20</property>
                 <child>
                   <object class="GtkLabel" id="dateTimeLabel">
+                    <property name="width_request">240</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">YYYY / MM / DD   HH : MM</property>
+                    <property name="xalign">0</property>
                     <style>
                       <class name="font-normal"/>
                       <class name="font-size_20px"/>

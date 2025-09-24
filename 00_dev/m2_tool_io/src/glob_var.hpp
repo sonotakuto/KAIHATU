@@ -1,18 +1,13 @@
+/**
+ * @file glob_var.hpp
+ * @brief 複数ファイルで共通して使用するグローバル変数を定義するヘッダファイル
+ */
 #pragma once
-
 #include "./includes.hpp"
 
-// global変数を一括で実体とextern宣言する。
-// include元で_GLOB_VARが定義されていれば実体宣言、定義されていなければ外部宣言となる。
+// 定義方法のサンプル
+// inline int sample_value = 100;
 
-// 初期化子が必要なクラスは以下で直接宣言
-#ifdef _GLOB_VAR
-#define GLOBAL
-//std::vector<bool> sample{false, true};
-#else
-#define GLOBAL extern
-//extern std::vector<bool> sample;
-#endif
-
-//GLOBAL int sumple;
-GLOBAL std::unique_ptr<OdbcSession> g_db_session;
+// --- グローバル変数 ---
+// アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
+inline std::unique_ptr<MainWindow> mainWindow;

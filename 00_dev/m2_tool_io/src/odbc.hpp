@@ -1,6 +1,6 @@
 /**
  * @file odbc.hpp
- * @brief ODBC接続をC++のクラスでラップし、RAIIパターンで安全にリソース管理を行うためのヘッダーファイル。
+ * @brief ODBC接続をC++のクラスでラップし、RAIIパターンで安全にリソース管理を行うためのヘッダファイル。
  * @details OdbcConnection, OdbcStatement, OdbcSessionの3クラスを提供します。
  */
 #pragma once
@@ -17,6 +17,8 @@
 #include <memory>   // std::unique_ptr, std::make_unique
 #include <utility>  // std::move
 #include <sqlext.h> // ODBCのコアヘッダー
+
+namespace odbc{
 
 //============================================
 // 例外クラス
@@ -123,12 +125,35 @@ struct OdbcSession {
 		: connection(std::move(conn)) {}
 
 	/**
-	 * @brief このセッションに新しい名前付きステートメントを追加します。
+	 * @brief このセッションに新しい名前付きステートメントを追加または取得します。
 	 * @param name このステートメントを識別するためのユニークな名前。
+	 * @param overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。デフォルトはfalse（上書きしない）。
+	 * @return OdbcStatement& 作成された、または既存のステートメントへの参照。
 	 */
-	void add_statement(const std::string& name) {
-		if (connection) {
-			statements[name] = std::make_unique<OdbcStatement>(*connection);
+	OdbcStatement& add_statement(const std::string& name, bool overwrite = false) {
+		if (!connection) {
+			throw std::runtime_error("Cannot add statement: OdbcConnection is null.");
+		}
+
+		// 1. 指定された名前のステートメントが既に存在するか探す
+		auto it = statements.find(name);
+
+		// 2. ステートメントが存在する場合
+		if (it != statements.end()) {
+			// 2a. 上書きが要求されていれば、古いものを破棄して新しいものに置き換える
+			if (overwrite) {
+				it->second = std::make_unique<OdbcStatement>(*connection);
+			}
+			// 2b. (上書きしたかどうかにかかわらず) 存在するステートメントへの参照を返す
+			return *it->second;
+		}
+		// 3. ステートメントが存在しない場合
+		else {
+			// 3a. 新しく作成し、マップに追加する
+			auto& new_stmt_ptr = statements[name] = std::make_unique<OdbcStatement>(*connection);
+			// 3b. 新しく作成したステートメントへの参照を返す
+			return *new_stmt_ptr;
 		}
 	}
 };
+} // namespace odbc
