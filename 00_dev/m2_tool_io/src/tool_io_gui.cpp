@@ -5,14 +5,6 @@
 #include "./includes.hpp"
 #include "./SimpleGtk_extension.hpp"
 
-typedef enum{
-	retrieve,
-	store,
-	reconcile
-} t_gui_mode;
-
-static t_gui_mode gui_mode = retrieve;
-
 /**
  * MainWindowのコンストラクタ実装
  */
@@ -84,8 +76,7 @@ MainWindow::MainWindow() :
 	//=========================================================================
 	// 初期状態の設定
 	//=========================================================================
-	update_toggle_buttons(&retrieveToggleButton);
-	operationStack.set_visible_child_name("retrieveOperationPage");
+	set_mode(RETRIEVE);
 
 	//=========================================================================
 	// イベントハンドラの登録
@@ -115,37 +106,27 @@ bool MainWindow::on_timeout() {
  * @brief retrieveToggleButton の "toggled" シグナルに対応するハンドラ。
  */
 void MainWindow::retrieveToggleButton_on_toggled() {
-	if (m_isProgrammaticallyChangingToggle) return; // プログラムによる変更は無視
-
-	if (retrieveToggleButton.get_active()) {
-		// ボタンがオンになった場合、排他制御を実行
-		update_toggle_buttons(&retrieveToggleButton);
-		operationStack.set_visible_child_name("retrieveOperationPage");
-	} else {
-		// ユーザーがアクティブなボタンを直接オフにしようとした場合、それを防ぐ
-		update_toggle_buttons(&retrieveToggleButton);
-	}
+	// このボタンに対する操作は、常に「取り出し」モードへの設定を試みる
+	// これにより、ユーザーがアクティブなこのボタンを押してオフにしようとしても、
+	// set_modeが再度このボタンをオンにし、状態が維持される
+	set_mode(RETRIEVE);
 }
 
 /**
  * @brief storeToggleButton の "toggled" シグナルに対応するハンドラ。
  */
 void MainWindow::storeToggleButton_on_toggled() {
-	if (m_isProgrammaticallyChangingToggle) return; // プログラムによる変更は無視
-
 	if (storeToggleButton.get_active()) {
-		// ボタンがオンになった場合、パスワード認証を実行
+		// ボタンがオンにされた場合：パスワード認証を行う
 		if (authenticate_with_password()) {
-			// 認証成功：排他制御を実行し、画面を切り替え
-			update_toggle_buttons(&storeToggleButton);
-			operationStack.set_visible_child_name("storeOperationPage");
+			set_mode(STORE);
 		} else {
-			// 認証失敗/キャンセル：「取り出し」モードに戻す
-			update_toggle_buttons(&retrieveToggleButton);
+			// 認証失敗/キャンセル：現在のモード(m_gui_mode)に戻す
+			set_mode(m_gui_mode);
 		}
 	} else {
-		// ユーザーがアクティブなボタンを直接オフにしようとした場合、それを防ぐ
-		update_toggle_buttons(&storeToggleButton);
+		// ボタンがオフにされた場合：現在のモードを再設定してオフ化を防ぐ
+		set_mode(m_gui_mode);
 	}
 }
 
@@ -153,21 +134,17 @@ void MainWindow::storeToggleButton_on_toggled() {
  * @brief reconcileToggleButton の "toggled" シグナルに対応するハンドラ。
  */
 void MainWindow::reconcileToggleButton_on_toggled() {
-	if (m_isProgrammaticallyChangingToggle) return; // プログラムによる変更は無視
-
 	if (reconcileToggleButton.get_active()) {
-			// ボタンがオンになった場合、パスワード認証を実行
+		// ボタンがオンにされた場合：パスワード認証を行う
 		if (authenticate_with_password()) {
-			// 認証成功：排他制御を実行し、画面を切り替え
-			update_toggle_buttons(&reconcileToggleButton);
-			operationStack.set_visible_child_name("reconcileOperationPage");
+			set_mode(RECONCILE);
 		} else {
-			// 認証失敗/キャンセル：「取り出し」モードに戻す
-			update_toggle_buttons(&retrieveToggleButton);
+			// 認証失敗/キャンセル：現在のモード(m_gui_mode)に戻す
+			set_mode(m_gui_mode);
 		}
 	} else {
-		// ユーザーがアクティブなボタンを直接オフにしようとした場合、それを防ぐ
-		update_toggle_buttons(&reconcileToggleButton);
+		// ボタンがオフにされた場合：現在のモードを再設定してオフ化を防ぐ
+		set_mode(m_gui_mode);
 	}
 }
 
@@ -206,6 +183,33 @@ void MainWindow::nextButton_on_clicked() {
 //=============================================================================
 
 /**
+ * @brief アプリケーションの操作モードを設定するヘルパー関数
+ */
+void MainWindow::set_mode(GuiMode mode) {
+	// 1. メンバ変数を更新
+	m_gui_mode = mode;
+
+	// 2. トグルボタンの状態を排他的に更新
+	//    プログラムによる変更なので、イベントが連鎖しないように注意は不要
+	retrieveToggleButton.set_active(mode == RETRIEVE);
+	storeToggleButton.set_active(mode == STORE);
+	reconcileToggleButton.set_active(mode == RECONCILE);
+
+	// 3. モードに応じて表示する操作パネルを切り替え
+	switch (mode) {
+		case RETRIEVE:
+			operationStack.set_visible_child_name("retrieveOperationPage");
+			break;
+		case STORE:
+			operationStack.set_visible_child_name("storeOperationPage");
+			break;
+		case RECONCILE:
+			operationStack.set_visible_child_name("reconcileOperationPage");
+			break;
+	}
+}
+
+/**
  * @brief パスワード認証ダイアログのヘルパー関数
  */
 bool MainWindow::authenticate_with_password() {
@@ -234,21 +238,4 @@ bool MainWindow::authenticate_with_password() {
 	// キャンセルボタンが押されたか、ダイアログが閉じられた場合
 	fmt::print("認証キャンセル\n");
 	return false;
-}
-
-/**
- * @brief モード切替トグルボタンの排他制御ヘルパー関数
- */
-void MainWindow::update_toggle_buttons(tool_io::ToggleButton* active_button) {
-	// これからプログラムで状態を変更することをフラグで示す
-	m_isProgrammaticallyChangingToggle = true;
-
-	// 全てのボタンの状態を一度更新する
-	// active_buttonだけをtrueに、他はfalseにする
-	retrieveToggleButton.set_active(&retrieveToggleButton == active_button);
-	storeToggleButton.set_active(&storeToggleButton == active_button);
-	reconcileToggleButton.set_active(&reconcileToggleButton == active_button);
-
-	// プログラムによる変更が完了したことをフラグで示す
-	m_isProgrammaticallyChangingToggle = false;
 }
