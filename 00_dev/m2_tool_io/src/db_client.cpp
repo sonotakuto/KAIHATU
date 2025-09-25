@@ -10,7 +10,7 @@ using namespace odbc;
 static std::unique_ptr<OdbcSession> db_session;
 
 /**
- * @brief OdbcStatementをリトライ処理付きで安全に作成するヘルパー関数
+ * @brief OdbcStatementをリトライ処理付きで安全に作成するヘルパー関数。
  * @return OdbcStatementを保持するoptional。失敗した場合はnullopt。
  */
 static optional<OdbcStatement> create_statement_with_retry() {

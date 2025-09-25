@@ -1,6 +1,6 @@
 /**
  * @file includes.hpp
- * @brief パラメータをまとめて定義するヘッダファイル
+ * @brief パラメータをまとめて定義するヘッダファイル。
  */
 #pragma once
 

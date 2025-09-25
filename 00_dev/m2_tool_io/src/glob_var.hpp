@@ -1,6 +1,6 @@
 /**
  * @file glob_var.hpp
- * @brief 複数ファイルで共通して使用するグローバル変数を定義するヘッダファイル
+ * @brief 複数ファイルで共通して使用するグローバル変数を定義するヘッダファイル。
  */
 #pragma once
 #include "./includes.hpp"
