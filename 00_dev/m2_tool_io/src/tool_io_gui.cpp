@@ -560,7 +560,7 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		"retrieveOperationPage", "table3column",
 		// --- 状態の「振る舞い」を定義 ---
-		[](MainWindow* thiz){ thiz->table3column1stBox.set_visible(false);/* TODO: テーブルをクリアするなどの初期化処理 */ },
+		[](MainWindow* thiz){ /* TODO: テーブルをクリアするなどの初期化処理 */ },
 		nullptr,
 		nullptr
 	}));
