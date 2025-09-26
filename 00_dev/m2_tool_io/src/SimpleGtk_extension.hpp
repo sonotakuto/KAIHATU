@@ -13,48 +13,45 @@
 namespace tool_io {
 
 /**
- * @class TreeView
- * @brief sg::TreeViewを拡張し、有効/無効と表示/非表示を切り替える機能を追加したクラス。
+ * @class Dialog
+ * @brief sg::Dialogを拡張し、"show"シグナルハンドラを追加したクラス。
+ * @details "show"シグナルは、ダイアログが表示された直後に発生します。
  */
-class TreeView : public sg::TreeView {
+class Dialog : public sg::Dialog {
 public:
-	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
+	// 基底クラスのコンストラクタを継承
+	using sg::Dialog::Dialog;
 
-	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
-	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	// "show"シグナルハンドラを定義するマクロ
+	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
 };
 
 /**
- * @class ToggleButton
- * @brief GtkToggleButtonのラッパークラス。オン/オフの状態を持つボタンを提供します。
- * @details sg::Buttonを継承し、アクティブ状態の取得/設定やtoggledシグナルの機能を追加します。
+ * @class Box
+ * @brief GtkBoxのラッパークラス。ウィジェットを水平または垂直に配置するためのコンテナです。
+ * @details sg::Containerを継承し、ウィジェットのパッキング（追加）機能などを提供します。
  */
-class ToggleButton : public sg::Button {
+class Box : public sg::Container {
 public:
 	// コンストラクタ
-	ToggleButton(Glade& glade, const char* id) : Button(glade, id) {}
-	virtual ~ToggleButton() = default;
+	Box(Glade& glade, const char* id) : Container(glade, id) {}
+	virtual ~Box() = default;
 
 	// コピーは禁止
-	ToggleButton(const ToggleButton&) = delete;
-	ToggleButton& operator=(const ToggleButton&) = delete;
+	Box(const Box&) = delete;
+	Box& operator=(const Box&) = delete;
 	// ムーブは許可
-	ToggleButton(ToggleButton&& other) noexcept : Button(std::move(other)) {}
-	ToggleButton& operator=(ToggleButton&& other) noexcept {
-		Button::operator=(std::move(other));
+	Box(Box&& other) noexcept : Container(std::move(other)) {}
+	Box& operator=(Box&& other) noexcept {
+		Container::operator=(std::move(other));
 		return *this;
 	}
 
-	// GtkToggleButton*へのキャスト演算子
-	operator GtkToggleButton*() const { return GTK_TOGGLE_BUTTON(this->object); }
+	// GtkBox*へのキャスト演算子
+	operator GtkBox*() const { return GTK_BOX(this->object); }
 
-	// メソッド
-	DEFINE_METHOD_WITH_ARGS(toggle_button, set_active, void, (bool is_active), is_active)
-	DEFINE_METHOD(toggle_button, get_active, bool)
-
-	// シグナル
-	DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
+	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
 };
 
 /**
@@ -87,28 +84,15 @@ public:
 };
 
 /**
- * @class Box
- * @brief GtkBoxのラッパークラス。ウィジェットを水平または垂直に配置するためのコンテナです。
- * @details sg::Containerを継承し、ウィジェットのパッキング（追加）機能などを提供します。
+ * @class Button
+ * @brief sg::Buttonを拡張し、表示/非表示を切り替える機能を追加したクラス。
  */
-class Box : public sg::Container {
+class Button : public sg::Button {
 public:
-	// コンストラクタ
-	Box(Glade& glade, const char* id) : Container(glade, id) {}
-	virtual ~Box() = default;
+	using sg::Button::Button; // 基底クラスのコンストラクタを継承
 
-	// コピーは禁止
-	Box(const Box&) = delete;
-	Box& operator=(const Box&) = delete;
-	// ムーブは許可
-	Box(Box&& other) noexcept : Container(std::move(other)) {}
-	Box& operator=(Box&& other) noexcept {
-		Container::operator=(std::move(other));
-		return *this;
-	}
-
-	// GtkBox*へのキャスト演算子
-	operator GtkBox*() const { return GTK_BOX(this->object); }
+	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
 };
 
 /**
@@ -126,17 +110,52 @@ public:
 };
 
 /**
- * @class Dialog
- * @brief sg::Dialogを拡張し、"show"シグナルハンドラを追加したクラス。
- * @details "show"シグナルは、ダイアログが表示された直後に発生します。
+ * @class ToggleButton
+ * @brief GtkToggleButtonのラッパークラス。オン/オフの状態を持つボタンを提供します。
+ * @details sg::Buttonを継承し、アクティブ状態の取得/設定やtoggledシグナルの機能を追加します。
  */
-class Dialog : public sg::Dialog {
+class ToggleButton : public tool_io::Button {
 public:
-	// 基底クラスのコンストラクタを継承
-	using sg::Dialog::Dialog;
+	// コンストラクタ
+	ToggleButton(Glade& glade, const char* id) : Button(glade, id) {}
+	virtual ~ToggleButton() = default;
 
-	// "show"シグナルハンドラを定義するマクロ
-	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
+	// コピーは禁止
+	ToggleButton(const ToggleButton&) = delete;
+	ToggleButton& operator=(const ToggleButton&) = delete;
+	// ムーブは許可
+	ToggleButton(ToggleButton&& other) noexcept : Button(std::move(other)) {}
+	ToggleButton& operator=(ToggleButton&& other) noexcept {
+		Button::operator=(std::move(other));
+		return *this;
+	}
+
+	// GtkToggleButton*へのキャスト演算子
+	operator GtkToggleButton*() const { return GTK_TOGGLE_BUTTON(this->object); }
+
+	// メソッド
+	DEFINE_METHOD_WITH_ARGS(toggle_button, set_active, void, (bool is_active), is_active)
+	DEFINE_METHOD(toggle_button, get_active, bool)
+
+	// シグナル
+	DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
+};
+
+/**
+ * @class Switch
+ * @brief GtkSwitchのラッパークラス。オン/オフを切り替えるスイッチを提供します。
+ */
+class Switch : public sg::Widget {
+public:
+	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
+	operator GtkSwitch*() const { return GTK_SWITCH(this->object); }
+
+	// メソッド
+	DEFINE_METHOD(switch, get_active, bool)
+	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
+
+	// シグナル (状態が変更されたときに発生)
+	DEFINE_SIGNAL_HANDLER("state-set", state_set, Switch, GtkSwitch* self, bool state)
 };
 
 /**
@@ -157,19 +176,28 @@ public:
 };
 
 /**
- * @class Switch
- * @brief GtkSwitchのラッパークラス。オン/オフを切り替えるスイッチを提供します。
+ * @class Label
+ * @brief sg::Labelを拡張し、表示/非表示を切り替える機能を追加したクラス。
  */
-class Switch : public sg::Widget {
+class Label : public sg::Label {
 public:
-	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
-	operator GtkSwitch*() const { return GTK_SWITCH(this->object); }
+	using sg::Label::Label; // 基底クラスのコンストラクタを継承
 
-	// メソッド
-	DEFINE_METHOD(switch, get_active, bool)
-	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
-
-	// シグナル (状態が変更されたときに発生)
-	DEFINE_SIGNAL_HANDLER("state-set", state_set, Switch, GtkSwitch* self, bool state)
+	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
 };
+
+/**
+ * @class TreeView
+ * @brief sg::TreeViewを拡張し、有効/無効と表示/非表示を切り替える機能を追加したクラス。
+ */
+class TreeView : public sg::TreeView {
+public:
+	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
+
+	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+};
+
 } // namespace tool_io

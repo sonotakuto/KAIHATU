@@ -190,6 +190,9 @@
         </child>
       </object>
     </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
   </object>
   <object class="GtkDialog" id="confirmRegrindDialog">
     <property name="can_focus">False</property>
@@ -322,6 +325,9 @@
         </child>
       </object>
     </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
   </object>
   <object class="GtkListStore" id="liststore2column1st">
     <columns>
@@ -611,6 +617,9 @@ a</col>
         </child>
       </object>
     </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
   </object>
   <object class="GtkDialog" id="passwordEntryDialog">
     <property name="can_focus">False</property>
@@ -733,6 +742,9 @@ a</col>
         </child>
       </object>
     </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
   </object>
   <object class="GtkListStore" id="reconcileToolTypeFilterListstore">
     <columns>
@@ -1378,6 +1390,9 @@ a</col>
         </child>
       </object>
     </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
   </object>
   <object class="GtkListStore" id="storingToolListstore">
     <columns>
@@ -1911,9 +1926,8 @@ message message message message message</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">11</property>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="table3column1stBox">
                         <property name="width_request">626</property>
-                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2041,9 +2055,8 @@ message message message message message</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="table3column2ndtable3column2ndBox">
                         <property name="width_request">626</property>
-                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2171,9 +2184,8 @@ message message message message message</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="table3column3rdBox">
                         <property name="width_request">626</property>
-                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2311,9 +2323,8 @@ message message message message message</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="table2column1stBox">
                         <property name="width_request">945</property>
-                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2441,9 +2452,8 @@ message message message message message</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="table2column2ndBox">
                         <property name="width_request">945</property>
-                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2738,7 +2748,7 @@ message message message message message</property>
       </object>
     </child>
     <style>
-      <class name="background-color_white"/>
+      <class name="background-color_normal"/>
     </style>
   </object>
   <object class="GtkDialog" id="warningDialog">
@@ -2831,5 +2841,8 @@ warning warning warning</property>
         </child>
       </object>
     </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
   </object>
 </interface>
