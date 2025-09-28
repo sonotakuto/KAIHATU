@@ -259,7 +259,7 @@ MainWindow::MainWindow() :
 
 	// --- 3列表示テーブルのボックス (1) ---
 	m_widget_states.insert(make_pair(&table3column1stBox, WidgetStateUpdater{
-		{nullopt, nullopt, true},
+		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table3column1stBox.set_visible(state.is_visible.value());
 		}
@@ -267,7 +267,7 @@ MainWindow::MainWindow() :
 
 	// --- 3列表示テーブルのボックス (2) ---
 	m_widget_states.insert(make_pair(&table3column2ndBox, WidgetStateUpdater{
-		{nullopt, nullopt, true},
+		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table3column2ndBox.set_visible(state.is_visible.value());
 		}
@@ -275,7 +275,7 @@ MainWindow::MainWindow() :
 
 	// --- 3列表示テーブルのボックス (3) ---
 	m_widget_states.insert(make_pair(&table3column3rdBox, WidgetStateUpdater{
-		{nullopt, nullopt, true},
+		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table3column3rdBox.set_visible(state.is_visible.value());
 		}
@@ -283,7 +283,7 @@ MainWindow::MainWindow() :
 
 		// --- 2列表示テーブルのボックス (1) ---
 	m_widget_states.insert(make_pair(&table2column1stBox, WidgetStateUpdater{
-		{nullopt, nullopt, true},
+		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table2column1stBox.set_visible(state.is_visible.value());
 		}
@@ -291,7 +291,7 @@ MainWindow::MainWindow() :
 
 	// --- 2列表示テーブルのボックス (2) ---
 	m_widget_states.insert(make_pair(&table2column2ndBox, WidgetStateUpdater{
-		{nullopt, nullopt, true},
+		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table2column2ndBox.set_visible(state.is_visible.value());
 		}
