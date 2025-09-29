@@ -9,5 +9,9 @@
 // inline int sample_value = 100;
 
 // --- グローバル変数 ---
-// アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
+/// @brief ログイン中のユーザー情報を保持する構造体。
+inline std::optional<UserInfo> g_logged_in_user_info = std::nullopt;
+/// @brief パスワード認証が成功したかどうかのフラグ。
+inline bool g_password_authenticated = false;
+/// @brief アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
 inline std::unique_ptr<MainWindow> mainWindow;

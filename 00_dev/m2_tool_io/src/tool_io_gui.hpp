@@ -14,7 +14,7 @@
  * @brief アプリケーションのメインウィンドウクラス。
  * @details GladeファイルからUI定義を読み込み、ウィジェットの管理とイベント処理を担当します。
  */
-struct MainWindow : public sg::Window {
+struct MainWindow : public tool_io::Window {
 public:
 	//=========================================================================
 	// 公開メンバ定数 (enum) と 型定義 (struct)
@@ -65,10 +65,10 @@ public:
 		STORE_CONTAINER_RETRIEVED,				// コンテナ搬出完了
 		STORE_READY_FOR_READING,				// 実際に補充を行う(インサート以外) - 工具読み取り前
 		STORE_READING_TOOL_QR,					// 実際に補充を行う(インサート以外) - 工具読み取り中
-		STORE_READ_COMPLETE,					// 実際に補充を行う(インサート以外) - 工具読み取り後
+		STORE_READ_COMPLETED,					// 実際に補充を行う(インサート以外) - 工具読み取り後
 		STORE_INSERT_READY_FOR_READING,			// 実際に補充を行う(インサート) - 工具読み取り前
 		STORE_INSERT_READING_TOOL_QR,			// 実際に補充を行う(インサート) - 工具読み取り中
-		STORE_INSERT_READ_COMPLETE,				// 実際に補充を行う(インサート) - 工具読み取り後
+		STORE_INSERT_READ_COMPLETED,				// 実際に補充を行う(インサート) - 工具読み取り後
 
 		/// 棚卸しモード
 		RECONCILE,	// 移行用
@@ -301,6 +301,12 @@ public:
 	tool_io::Button nextButton;
 	/// @brief 現在のページ番号を表示するラベル (ID: pageNumberLabel)
 	tool_io::Label pageNumberLabel;
+	/// @brief QRコード受付UIを格納するボックス (ID: qrCodeEntryBox)
+	tool_io::Box qrCodeEntryBox;
+	/// @brief 「QRコード受付：」のラベル (ID: qrCodeEntryLabel)
+	tool_io::Label qrCodeEntryLabel;
+	/// @brief QRコードを入力するエントリ (ID: qrCodeEntry)
+	tool_io::Entry qrCodeEntry;
 	/// @brief 肯定的なアクション（次へ, 確定など）を行うボタン (ID: trueButton)
 	tool_io::Button trueButton;
 	/// @brief 否定的なアクション（キャンセルなど）を行うボタン (ID: falseButton)
@@ -418,6 +424,22 @@ private:
 	}
 
 	/**
+	 * @brief ウィジェットの状態を更新するヘルパー関数。
+	 * @param widget 更新対象のウィジェット。
+	 * @param state 適用する状態 (WidgetState)。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 */
+	void update_widget_state(sg::Widget* widget, WidgetState state);
+
+	/**
+	 * @brief テーブルの状態を更新するヘルパー関数。
+	 * @param table 更新対象のテーブルウィジェット。
+	 * @param state 適用する状態 (TableState)。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 */
+	void update_table_state(tool_io::TreeView* table, TableState state);
+
+	/**
 	 * @brief アプリケーションの操作モードを設定します。
 	 * @param mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 * @details この関数がモードに対応する全てのUI状態（モード変数、ボタン排他、画面表示）を更新します。
@@ -439,6 +461,11 @@ private:
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
 	//=========================================================================
+
+	/**
+	 * @brief ウィンドウが初回表示されたときに一度だけ呼び出されるハンドラ
+	 */
+	void on_window_show();
 
 	/**
 	 * @brief set_timeoutで設定された間隔ごとに呼び出されるタイマーハンドラ。
@@ -475,6 +502,12 @@ private:
 	 * @details ログアウト確認ダイアログを表示する。
 	 */
 	void logoutButton_on_clicked();
+
+	/**
+	 * @brief userIdEntry の "activate" シグナルに対応するハンドラ。
+	 * @details ユーザーIDの入力が完了したときに呼び出され、ユーザー認証を試みる。
+	 */
+	void userIdEntry_on_activate();
 
 	/**
 	 * @brief prevButton の "clicked" シグナルに対応するハンドラ。
@@ -519,8 +552,27 @@ private:
 	void passwordCancelButton_on_clicked();
 
 	//=========================================================================
+	// プライベートメンバ関数 (状態毎の関数)
+	//=========================================================================
+
+	/// @brief WAITING_FOR_USER_LOGIN 状態に入ったときの処理
+	void on_enter_waiting_for_user_login();
+
+	// --- 取り出しモードの状態遷移関数 ---
+	// TODO: 取り出しモードの状態遷移関数をここに追加
+
+	// --- 補充モードの状態遷移関数 ---
+	// TODO: 補充モードの状態遷移関数をここに追加
+
+	// --- 棚卸しモードの状態遷移関数 ---
+	// TODO: 棚卸しモードの状態遷移関数をここに追加
+
+	//=========================================================================
 	// プライベートメンバ変数 (状態管理用)
 	//=========================================================================
+
+	/// @brief ウィンドウが初回表示かどうかを判定するフラグ
+	bool m_is_first_show;
 
 	/**
 	 * @brief プログラムが内部的にトグルボタンの状態を変更しているかを示すフラグ。

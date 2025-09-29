@@ -12,10 +12,12 @@ bool db_connect(void);
 
 void db_disconnect(void);
 
-void user_authenticate(void);
+bool user_authenticate(int user_id);
 
-void save_history(void);
+bool save_history(void);
 
-void get_tool_data(void);
+std::optional<ToolIndividualInfo> get_tool_data(int basic_tool_id);
 
-void get_tooling_list(void);
+std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id);
+
+std::optional<ToolingListInfo> get_tooling_list(int line_id);

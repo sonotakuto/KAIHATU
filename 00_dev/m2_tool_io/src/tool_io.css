@@ -10,6 +10,10 @@
 	background-color: darkgray;
 }
 
+.background-image_none {
+	background-image: none;
+}
+
 .color_black {
 	color: black;
 }
@@ -424,4 +428,10 @@
 .reconcileButton:checked {
 	background-color: #5C8E3A;
 	color: white;
+}
+
+.entry {
+	background-image: none;
+	background-color: white;
+	color: black;
 }
