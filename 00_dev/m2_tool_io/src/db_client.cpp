@@ -4,6 +4,10 @@
  */
 #include "./odbc.hpp"
 #include "./includes.hpp"
+
+#include "parameters.hpp"
+#include "db_client.hpp"
+
 using namespace odbc;
 
 // データベースへの接続を管理するクラスをまとめた構造体へのポインタ
@@ -95,6 +99,7 @@ void get_tool_data(void) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 }
+
 
 void get_tooling_list(void) {
 	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
