@@ -1477,7 +1477,8 @@ a</col>
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
@@ -1496,7 +1497,8 @@ a</col>
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
@@ -1556,7 +1558,8 @@ a</col>
                     <property name="label" translatable="yes">かな/漢字</property>
                     <property name="width_request">200</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <style>
                       <class name="button"/>
@@ -1657,6 +1660,20 @@ message message message message message</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">pageNone</property>
+                    <property name="title" translatable="yes">pageNone</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkGrid">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
@@ -1730,6 +1747,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">retrieveOperationPage</property>
                     <property name="title" translatable="yes">retrieveOperationPage</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
                 <child>
@@ -1828,7 +1846,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">storeOperationPage</property>
                     <property name="title" translatable="yes">storeOperationPage</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
                 <child>
@@ -1851,7 +1869,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">reconcileOperationPage</property>
                     <property name="title" translatable="yes">reconcileOperationPage</property>
-                    <property name="position">2</property>
+                    <property name="position">3</property>
                   </packing>
                 </child>
                 <child>
@@ -1901,7 +1919,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">reconcileInfoPage</property>
                     <property name="title" translatable="yes">reconcileInfoPage</property>
-                    <property name="position">3</property>
+                    <property name="position">4</property>
                   </packing>
                 </child>
               </object>
@@ -1930,6 +1948,20 @@ message message message message message</property>
                 <property name="height_request">735</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">pageNone</property>
+                    <property name="title" translatable="yes">pageNone</property>
+                  </packing>
+                </child>
                 <child>
                   <object class="GtkBox">
                     <property name="visible">True</property>
@@ -2326,6 +2358,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">table3column</property>
                     <property name="title" translatable="yes">table3column</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
                 <child>
@@ -2594,7 +2627,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">table2column</property>
                     <property name="title" translatable="yes">table2column</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>

@@ -6,31 +6,78 @@
 #include "./SimpleGtk_extension.hpp"
 
 //=============================================================================
-// MainWindowのメンバクラスの関数
+// MainWindowのメンバクラスに関する関数
 //=============================================================================
 
-void MainWindow::WidgetState::merge(const WidgetState& other) {
-	if (other.text.has_value()) {
-		this->text = other.text;
-	}
-	if (other.is_sensitive.has_value()) {
-		this->is_sensitive = other.is_sensitive;
-	}
-	if (other.is_visible.has_value()) {
-		this->is_visible = other.is_visible;
-	}
+// --- UiText ---
+
+bool operator==(const MainWindow::UiText& lhs, const MainWindow::UiText& rhs) {
+	// 漢字とかなの両方のテキストが一致する場合にtrueを返す
+	return lhs.kanji == rhs.kanji && lhs.kana == rhs.kana;
 }
 
-void MainWindow::TableState::merge(const TableState& other) {
-	if (other.column_headers.has_value()) {
-		this->column_headers = other.column_headers;
+bool operator!=(const MainWindow::UiText& lhs, const MainWindow::UiText& rhs) {
+	return !(lhs == rhs);
+}
+
+// --- WidgetState ---
+
+bool operator==(const MainWindow::WidgetState& lhs, const MainWindow::WidgetState& rhs) {
+	// 全てのoptionalメンバーが一致する場合にtrueを返す
+	return lhs.text == rhs.text &&
+			lhs.is_sensitive == rhs.is_sensitive &&
+			lhs.is_visible == rhs.is_visible;
+}
+
+bool operator!=(const MainWindow::WidgetState& lhs, const MainWindow::WidgetState& rhs) {
+	return !(lhs == rhs);
+}
+
+bool MainWindow::WidgetState::merge(const WidgetState& other) {
+	bool changed = false;
+	if (*this != other) {
+		if (other.text.has_value()) {
+			this->text = other.text;
+		}
+		if (other.is_sensitive.has_value()) {
+			this->is_sensitive = other.is_sensitive;
+		}
+		if (other.is_visible.has_value()) {
+			this->is_visible = other.is_visible;
+		}
+		changed = true;
 	}
-	if (other.is_sensitive.has_value()) {
-		this->is_sensitive = other.is_sensitive;
+	return changed;
+}
+
+// --- TableState ---
+
+bool operator==(const MainWindow::TableState& lhs, const MainWindow::TableState& rhs) {
+	// 全てのoptionalメンバーが一致する場合にtrueを返す
+	return lhs.column_headers == rhs.column_headers &&
+			lhs.is_sensitive == rhs.is_sensitive &&
+			lhs.is_visible == rhs.is_visible;
+}
+
+bool operator!=(const MainWindow::TableState& lhs, const MainWindow::TableState& rhs) {
+	return !(lhs == rhs);
+}
+
+bool MainWindow::TableState::merge(const TableState& other) {
+	bool changed = false;
+	if (*this != other) {
+		if (other.column_headers.has_value()) {
+			this->column_headers = other.column_headers;
+		}
+		if (other.is_sensitive.has_value()) {
+			this->is_sensitive = other.is_sensitive;
+		}
+		if (other.is_visible.has_value()) {
+			this->is_visible = other.is_visible;
+		}
+		changed = true;
 	}
-	if (other.is_visible.has_value()) {
-		this->is_visible = other.is_visible;
-	}
+	return changed;
 }
 
 /**
@@ -79,8 +126,8 @@ MainWindow::MainWindow() :
 	qrCodeEntryBox(glade, "qrCodeEntryBox"),
 	qrCodeEntryLabel(glade, "qrCodeEntryLabel"),
 	qrCodeEntry(glade, "qrCodeEntry"),
-	trueButton(glade, "trueButton"),
 	falseButton(glade, "falseButton"),
+	trueButton(glade, "trueButton"),
 	// ダイアログの親
 	confirmInsertCountDialog(glade, "confirmInsertCountDialog"),
 	confirmRegrindDialog(glade, "confirmRegrindDialog"),
@@ -138,6 +185,10 @@ MainWindow::MainWindow() :
 
 	// 1. Gladeファイルの "storeWindow" の定義からウィンドウを初期化
 	this->init(glade, "storeWindow");
+	storingToolListstore = storingToolTable.get_model();
+	liststore2column1st = table2column1st.get_model();
+	liststore2column2nd = table2column2nd.get_model();
+
 	// 2. ウィンドウの閉じるボタンでアプリケーションが終了するように設定
 	this->setDefaultCloseOperation(Window::DESTROY);
 
@@ -155,8 +206,11 @@ MainWindow::MainWindow() :
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
 	prevButton.on_clicked([this]() { this->prevButton_on_clicked(); });
 	nextButton.on_clicked([this]() { this->nextButton_on_clicked(); });
-	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
+	qrCodeEntry.on_activate([this]() { this->qrCodeEntry_on_activate(); });
 	falseButton.on_clicked([this]() { this->falseButton_on_clicked(); });
+	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
+	logoutNoButton.on_clicked([this]() { this->logoutNoButton_on_clicked(); });
+	logoutYesButton.on_clicked([this]() { this->logoutYesButton_on_clicked(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
 	passwordCancelButton.on_clicked([this]() { this->passwordCancelButton_on_clicked(); });
 	passwordEnterButton.on_clicked([this]() { this->passwordEnterButton_on_clicked(); });
@@ -168,7 +222,7 @@ MainWindow::MainWindow() :
 
 	// --- 「取り出し」トグルボタン ---
 	m_widget_states.insert(make_pair(&retrieveToggleButton, WidgetStateUpdater{
-		{UiText{"取り出し", "とりだし"}, true, true},
+		{UiText{"取り出し", "とりだし"}, false, true},
 		[this](const WidgetState& state){
 			this->retrieveToggleButton.set_label(get_display_text(state.text.value()).c_str());
 			this->retrieveToggleButton.set_sensitive(state.is_sensitive.value());
@@ -178,7 +232,7 @@ MainWindow::MainWindow() :
 
 	// --- 「補充」トグルボタン ---
 	m_widget_states.insert(make_pair(&storeToggleButton, WidgetStateUpdater{
-		{UiText{"補充", "ほじゅう"}, true, true},
+		{UiText{"補充", "ほじゅう"}, false, true},
 		[this](const WidgetState& state){
 			this->storeToggleButton.set_label(get_display_text(state.text.value()).c_str());
 			this->storeToggleButton.set_sensitive(state.is_sensitive.value());
@@ -188,7 +242,7 @@ MainWindow::MainWindow() :
 
 	// --- 「棚卸し」トグルボタン ---
 	m_widget_states.insert(make_pair(&reconcileToggleButton, WidgetStateUpdater{
-		{UiText{"棚卸し", "たなおろし"}, true, true},
+		{UiText{"棚卸し", "たなおろし"}, false, true},
 		[this](const WidgetState& state){
 			this->reconcileToggleButton.set_label(get_display_text(state.text.value()).c_str());
 			this->reconcileToggleButton.set_sensitive(state.is_sensitive.value());
@@ -208,7 +262,7 @@ MainWindow::MainWindow() :
 
 	// --- 「ログアウト」ボタン ---
 	m_widget_states.insert(make_pair(&logoutButton, WidgetStateUpdater{
-		{UiText{"ログアウト", "ログアウト"}, true, true},
+		{UiText{"ログアウト", "ログアウト"}, false, true},
 		[this](const WidgetState& state){
 			this->logoutButton.set_label(get_display_text(state.text.value()).c_str());
 			this->logoutButton.set_sensitive(state.is_sensitive.value());
@@ -218,7 +272,7 @@ MainWindow::MainWindow() :
 
 	// --- ユーザーIDエントリ ---
 	m_widget_states.insert(make_pair(&userIdEntry, WidgetStateUpdater{
-		{UiText{"ユーザーID", "ユーザーID"}, true, true},
+		{UiText{"", ""}, true, true},
 		[this](const WidgetState& state){
 			this->userIdEntry.set_text(get_display_text(state.text.value()).c_str());
 			this->userIdEntry.set_sensitive(state.is_sensitive.value());
@@ -331,20 +385,20 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- true/falseボタン（ラベルは動的に変わるため空） ---
-	m_widget_states.insert(make_pair(&trueButton, WidgetStateUpdater{
-		{UiText{"", ""}, true, true},
-		[this](const WidgetState& state){
-			this->trueButton.set_label(get_display_text(state.text.value()).c_str());
-			this->trueButton.set_sensitive(state.is_sensitive.value());
-			this->trueButton.set_visible(state.is_visible.value());
-		}
-	}));
 	m_widget_states.insert(make_pair(&falseButton, WidgetStateUpdater{
 		{UiText{"", ""}, true, true},
 		[this](const WidgetState& state){
 			this->falseButton.set_label(get_display_text(state.text.value()).c_str());
 			this->falseButton.set_sensitive(state.is_sensitive.value());
 			this->falseButton.set_visible(state.is_visible.value());
+		}
+	}));
+	m_widget_states.insert(make_pair(&trueButton, WidgetStateUpdater{
+		{UiText{"", ""}, true, true},
+		[this](const WidgetState& state){
+			this->trueButton.set_label(get_display_text(state.text.value()).c_str());
+			this->trueButton.set_sensitive(state.is_sensitive.value());
+			this->trueButton.set_visible(state.is_visible.value());
 		}
 	}));
 
@@ -555,11 +609,17 @@ MainWindow::MainWindow() :
 	// アプリケーション状態とウィジェット設定を紐付けるマップの構築
 	//=========================================================================
 
+	// --- 状態：ユーザーログイン待ち - 移行 ---
+	g_app_state_configs.insert(make_pair(AppState::NONE, WidgetStateConfig{
+		.on_enter_state = [](MainWindow* thiz){ thiz->set_app_state(AppState::WAITING_FOR_USER_LOGIN); }
+	}));
+
 	// --- 状態：ユーザーログイン待ち ---
 	g_app_state_configs.insert(make_pair(AppState::WAITING_FOR_USER_LOGIN, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		{
-			{ {&userIdEntry}, {.is_sensitive = true, .is_visible = true} },
+			{ {&retrieveToggleButton, &storeToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false, .is_visible = true}},
+			{ {&userIdEntry}, {UiText{"", ""}, true, true} },
 			{ {&messageLabel}, {UiText{"名札のQRコードを\nQRコードリーダーにかざしてください", "なふだの QRコードを\nQRコードリーダーに かざしてください"}, true, true} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
@@ -569,9 +629,9 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		"pageNone", "pageNone", // 初期ページ
 		// --- 状態の「振る舞い」を定義 ---
-		[](MainWindow* thiz){ gtk_widget_grab_focus(GTK_WIDGET(thiz->passwordEntry.object)); },
-		nullptr, // Trueボタンアクション
-		nullptr  // Falseボタンアクション
+		[](MainWindow* thiz){ thiz->on_enter_waiting_for_user_login(); },
+		nullptr, // Falseボタンアクション
+		nullptr  // Trueボタンアクション
 	}));
 
 	// --- 状態：取り出し - 移行 ---
@@ -649,7 +709,6 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"補充する工具のQRコードを\nQRコードリーダーにかざしてください", "ほじゅうする こうぐの QRコードを\nQRコードリーダーに かざしてください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
@@ -657,11 +716,10 @@ MainWindow::MainWindow() :
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName = "storeOperationPage",
-		.tableStackPageName = "table2column",
+		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: テーブルをクリアするなどの初期化処理 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_waiting_for_tool_qr(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_waiting_for_tool_qr(); }
 	}));
 
 	// --- 状態：補充 - 読み取った工具の確認 ---
@@ -669,17 +727,18 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"補充する工具に間違いがなければ\n「搬出」を押してください", "ほじゅうする こうぐに まちがいが なければ\n「はんしゅつ」を おしてください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} },
-			{ {&falseButton}, {UiText{"キャンセル", "きゃんせる"}, true, true} }
+			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} }
 		},
 		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: 読み取った工具情報をテーブルに表示する */ },
-		.on_true_button_clicked		= [](MainWindow* thiz){ /* TODO: 搬出処理を開始し、次の状態へ */ },
-		.on_false_button_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); } // 前の状態に戻る
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_confirming_selection(); },
+		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }, // 前の状態に戻る
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_confirming_selection(); }
 	}));
 
 	// --- 状態：補充 - コンテナ搬出待ち ---
@@ -687,16 +746,17 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = false} },
+			{ {&table2column1stBox}, {.is_visible = true} },
+			{ {&table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: 搬出完了まで待機 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieving(); }
 	}));
 
 	// --- 状態：補充 - コンテナ搬出完了 ---
@@ -704,16 +764,17 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = false} },
+			{ {&table2column1stBox}, {.is_visible = true} },
+			{ {&table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: コンテナ取り出し完了まで待機 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieved(); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う(インサート以外) - 工具読み取り前 ---
@@ -721,16 +782,25 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
+			{ {&table2column1st, &table2column2nd}, {
+				.column_headers = std::vector<UiText>{
+					{"ID", "ID"},
+					{"分類", "ぶんるい"},
+					{"メーカー", "メーカー"},
+					{"型番", "かたばん"},
+					{"材質", "ざいしつ"},
+					{"再研磨\n  回数", "さいけんま\n  かいすう"}
+				}, .is_sensitive = false
+			} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: QRコード読み取り処理を開始 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_ready_for_reading(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う(インサート以外) - 工具読み取り中 ---
@@ -739,25 +809,28 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: 再研磨工具かの確認処理 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_reading_tool_qr(); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う(インサート以外) - 工具読み取り後 ---
 	g_app_state_configs.insert(make_pair(AppState::STORE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら こんてなを もどして\nとびらを しめてください"}, true, true} },
+			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}, true, true} },
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
 			{ {&trueButton}, {UiText{"続ける", "つづける"}, true, true} },
 			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, true, true} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: 読み取り後の処理 */ },
-		.on_true_button_clicked		= [](MainWindow* thiz){ /* TODO: 続けるボタンがクリックされた時の処理 */ },
-		.on_false_button_clicked	= [](MainWindow* thiz){ /* TODO: 終了ボタンがクリックされた時の処理 */ }
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_read_completed(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); },
+		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_read_completed(); },
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_read_completed(); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う(インサート) - 工具読み取り前 ---
@@ -765,16 +838,15 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: QRコード読み取り処理を開始 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_insert_ready_for_reading(); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う(インサート) - 工具読み取り中 ---
@@ -784,24 +856,24 @@ MainWindow::MainWindow() :
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} }
 		},
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: 再研磨工具かの確認処理 */ },
-		.on_true_button_clicked		= nullptr,
-		.on_false_button_clicked	= nullptr
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_insert_reading_tool_qr(); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う(インサート) - 工具読み取り後 ---
 	g_app_state_configs.insert(make_pair(AppState::STORE_INSERT_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら こんてなを もどして\nとびらを しめてください"}, true, true} },
+			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}, true, true} },
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
 			{ {&trueButton}, {UiText{"続ける", "つづける"}, true, true} },
 			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, true, true} }
 		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ /* TODO: 読み取り後の処理 */ },
-		.on_true_button_clicked		= [](MainWindow* thiz){ /* TODO: 続けるボタンがクリックされた時の処理 */ },
-		.on_false_button_clicked	= [](MainWindow* thiz){ /* TODO: 終了ボタンがクリックされた時の処理 */ }
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_insert_read_completed(); },
+		.on_falseButton_clicked		= [](MainWindow* thiz){ /* TODO: 終了ボタンがクリックされた時の処理 */ },
+		.on_trueButton_clicked		= [](MainWindow* thiz){ /* TODO: 続けるボタンがクリックされた時の処理 */ }
 	}));
 
 	// --- 状態：棚卸し - 移行 ---
@@ -838,12 +910,6 @@ MainWindow::MainWindow() :
 	}));
 
 	// TODO: 他のすべての状態(RETRIEVE_WAITING_FOR_CONTAINERなど)もここに追加していく
-
-	//=========================================================================
-	// 初期状態の設定
-	//=========================================================================
-	set_mode(GuiMode::RETRIEVE);	// 最初は取り出しモード
-	set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 }
 
 //=============================================================================
@@ -893,23 +959,27 @@ void MainWindow::set_app_state(AppState state) {
 void MainWindow::update_widget_state(sg::Widget* widget, WidgetState state) {
 	// m_widget_statesから現在のWidgetStateUpdaterのコピーを取得
 	auto updater = m_widget_states.at(widget);
+
 	// stateメンバーだけを新しい状態に更新
-	updater.state.merge(state);
-	// 更新したWidgetStateUpdaterをマップに書き戻す
-	m_widget_states.insert_or_assign(widget, updater);
+	if (updater.state.merge(state)) {
+		// 変更があった場合、更新したWidgetStateUpdaterをマップに書き戻す
+		m_widget_states.insert_or_assign(widget, updater);
+	}
 }
 
 void MainWindow::update_table_state(tool_io::TreeView* table, TableState state) {
 	// m_table_statesから現在のTableStateのコピーを取得
 	auto current_state = m_table_states.at(table);
+
 	// stateメンバーだけを新しい状態に更新
-	current_state.merge(state);
-	// 更新したTableStateをマップに書き戻す
-	m_table_states.insert_or_assign(table, current_state);
+	if (current_state.merge(state)) {
+		// 変更があった場合、更新したTableStateをマップに書き戻す
+		m_table_states.insert_or_assign(table, current_state);
+	}
 }
 
 void MainWindow::set_mode(GuiMode mode) {
-	if (mode != m_gui_mode && mode != GuiMode::RETRIEVE) {
+	if (mode != m_gui_mode && (mode == GuiMode::STORE || mode == GuiMode::RECONCILE)) {
 		// モードが変わる場合のみ認証を行う
 		if (!authenticate_with_password()) {
 			// 認証失敗またはキャンセルされた場合、モード変更を中止
@@ -935,6 +1005,10 @@ void MainWindow::set_mode(GuiMode mode) {
 
 	// 3. モードに応じて表示する操作パネルを切り替え
 	switch (mode) {
+	case GuiMode::NONE:
+		fmt::print("ログイン待ちモード\n");
+		set_app_state(AppState::NONE);
+		break;
 	case GuiMode::RETRIEVE:
 		fmt::print("取り出しモード\n");
 		set_app_state(AppState::RETRIEVE);
@@ -1034,8 +1108,10 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 
 void MainWindow::on_window_show() {
 	if (m_is_first_show) {
-		// 初回表示の時だけ、UI全体を初期状態に合わせて完全に再描画する
+		// 初回表示の時だけ、UI全体を初期状態に合わせて完全に再描画し、初期設定を行う
 		refresh_ui(true);
+		set_mode(GuiMode::NONE);	// 最初は取り出しモード
+		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 		m_is_first_show = false; // フラグを倒して次回以降は実行しない
 	}
 }
@@ -1096,7 +1172,7 @@ void MainWindow::logoutButton_on_clicked() {
 	fmt::print("ログアウトボタンがクリックされました\n");
 	if (logoutDialog.run(this) == GTK_RESPONSE_YES) {
 		fmt::print("ログアウトします\n");
-		// TODO: 実際のログアウト処理を記述
+		set_mode(GuiMode::NONE);
 	} else {
 		fmt::print("ログアウトはキャンセルされました\n");
 	}
@@ -1143,6 +1219,7 @@ void MainWindow::userIdEntry_on_activate() {
 			set_mode(GuiMode::RECONCILE);
 		} else {
 			// どの権限もなければ認証画面に戻る
+			set_mode(GuiMode::NONE);
 		}
 	} else {
 		fmt::print("ユーザー認証失敗\n");
@@ -1160,14 +1237,14 @@ void MainWindow::nextButton_on_clicked() {
 	// TODO: テーブルのページを更新する処理
 }
 
-void MainWindow::trueButton_on_clicked() {
+void MainWindow::qrCodeEntry_on_activate() {
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
-		if (state_config.on_true_button_clicked) {
-			state_config.on_true_button_clicked(this);
+		if (state_config.on_qrCodeEntry_activate) {
+			state_config.on_qrCodeEntry_activate(this);
 		}
 	} catch (const std::out_of_range& e) {
-		fmt::print("Error: 未定義の状態でTrueボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
+		fmt::print("Error: 未定義の状態でqrCodeEntryでEnterが押されました (AppState={})\n", static_cast<int>(m_app_state));
 		// 例外を無視して処理を続行
 	}
 }
@@ -1175,13 +1252,33 @@ void MainWindow::trueButton_on_clicked() {
 void MainWindow::falseButton_on_clicked() {
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
-		if (state_config.on_false_button_clicked) {
-			state_config.on_false_button_clicked(this);
+		if (state_config.on_falseButton_clicked) {
+			state_config.on_falseButton_clicked(this);
 		}
 	} catch (const std::out_of_range& e) {
 		fmt::print("Error: 未定義の状態でFalseボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
 		// 例外を無視して処理を続行
 	}
+}
+
+void MainWindow::trueButton_on_clicked() {
+	try {
+		auto state_config = g_app_state_configs.at(m_app_state);
+		if (state_config.on_trueButton_clicked) {
+			state_config.on_trueButton_clicked(this);
+		}
+	} catch (const std::out_of_range& e) {
+		fmt::print("Error: 未定義の状態でTrueボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
+		// 例外を無視して処理を続行
+	}
+}
+
+void MainWindow::logoutNoButton_on_clicked() {
+	gtk_dialog_response(GTK_DIALOG(this->logoutDialog.object), GTK_RESPONSE_NO);
+}
+
+void MainWindow::logoutYesButton_on_clicked() {
+	gtk_dialog_response(GTK_DIALOG(this->logoutDialog.object), GTK_RESPONSE_YES);
 }
 
 void MainWindow::passwordEntryDialog_on_show() {
@@ -1201,4 +1298,64 @@ void MainWindow::passwordEnterButton_on_clicked() {
 	// これにより、dialog.run()が GTK_RESPONSE_CANCEL を返して終了する
 	fmt::print("[確定]\n");
 	gtk_dialog_response(GTK_DIALOG(this->passwordEntryDialog.object), GTK_RESPONSE_OK);
+}
+
+//=========================================================================
+// 状態毎の関数 実装
+//=========================================================================
+
+void MainWindow::on_enter_waiting_for_user_login() {
+	gtk_widget_grab_focus(GTK_WIDGET(this->userIdEntry.object));
+}
+
+void MainWindow::on_enter_store_waiting_for_tool_qr() {
+	storingToolListstore.clear();
+}
+
+void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
+	ToolBasicInfo basic_info;
+	auto individual_info = get_tool_data(stoi(std::string(qrCodeEntry.get_text())));
+
+	if (!individual_info.has_value()) {
+
+	}
+}
+
+void MainWindow::on_enter_store_confirming_selection() {
+}
+
+void MainWindow::on_trueButton_store_confirming_selection() {
+}
+
+void MainWindow::on_enter_store_container_retrieving() {
+}
+
+void MainWindow::on_enter_store_container_retrieved() {
+}
+
+void MainWindow::on_enter_store_ready_for_reading() {
+}
+
+void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
+}
+
+void MainWindow::on_enter_store_reading_tool_qr() {
+}
+
+void MainWindow::on_enter_store_read_completed() {
+}
+
+void MainWindow::on_falseButton_store_read_completed() {
+}
+
+void MainWindow::on_trueButton_store_read_completed() {
+}
+
+void MainWindow::on_enter_store_insert_ready_for_reading() {
+}
+
+void MainWindow::on_enter_store_insert_reading_tool_qr() {
+}
+
+void MainWindow::on_enter_store_insert_read_completed() {
 }
