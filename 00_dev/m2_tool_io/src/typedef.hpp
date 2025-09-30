@@ -34,7 +34,7 @@ struct ToolBasicInfo {
 	/// @brief 基本情報ID (主キー)
 	int basic_tool_id;
 	/// @brief 工具分類
-	std::string classification;
+	std::string class_name;
 	/// @brief 型番
 	std::string tool_name;
 	/// @brief メーカー名

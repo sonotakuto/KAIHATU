@@ -736,9 +736,8 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_confirming_selection(); },
-		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }, // 前の状態に戻る
-		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_confirming_selection(); }
+		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); },	// 前の状態に戻る
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_CONTAINER_RETRIEVING); }	// コンテナ搬出処理へ
 	}));
 
 	// --- 状態：補充 - コンテナ搬出待ち ---
@@ -1310,21 +1309,35 @@ void MainWindow::on_enter_waiting_for_user_login() {
 
 void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	storingToolListstore.clear();
+	storingToolListstore.append(0, "", 1, "", 2, "", 3, "", -1);
+	qrCodeEntry.set_text("");
+	gtk_widget_grab_focus(GTK_WIDGET(this->qrCodeEntry.object));
 }
 
 void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 	ToolBasicInfo basic_info;
-	auto individual_info = get_tool_data(stoi(std::string(qrCodeEntry.get_text())));
+	std::string text(qrCodeEntry.get_text());
+	fmt::print("補充モード - 工具QRコード入力: '{}'\n", text);
+	auto individual_info = get_tool_data(stoi(text));
 
 	if (!individual_info.has_value()) {
-
+		basic_info = individual_info.value().basic_info;
+		storingToolListstore.clear();
+		storingToolListstore.append(
+			0, basic_info.class_name.c_str(),
+			1, basic_info.maker.c_str(),
+			2, basic_info.tool_name.c_str(),
+			3, basic_info.material.c_str(),
+			-1
+		);
+		set_app_state(AppState::STORE_CONFIRMING_SELECTION);
+	} else {
+		// TODO: 該当データが無い場合の処理
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
+		});
+		refresh_ui(false); // ラベルのテキストを更新
 	}
-}
-
-void MainWindow::on_enter_store_confirming_selection() {
-}
-
-void MainWindow::on_trueButton_store_confirming_selection() {
 }
 
 void MainWindow::on_enter_store_container_retrieving() {

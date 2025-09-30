@@ -1,0 +1,437 @@
+.background-color_normal {
+	background-color: white;
+}
+
+.background-color_white {
+	background-color: white;
+}
+
+.background-color_darkgray {
+	background-color: darkgray;
+}
+
+.background-image_none {
+	background-image: none;
+}
+
+.color_black {
+	color: black;
+}
+
+.color_white {
+	color: white;
+}
+
+.font-normal {
+	font-family: 'Noto Sans CJK JP';
+}
+
+.font-bold {
+	font-family: 'Noto Sans CJK JP';
+	font-weight: bold;
+}
+
+.font-size_5px {
+	font-size: 5px;
+}
+
+.font-size_10px {
+	font-size: 10px;
+}
+
+.font-size_15px {
+	font-size: 15px;
+}
+
+.font-size_20px {
+	font-size: 20px;
+}
+
+.font-size_25px {
+	font-size: 25px;
+}
+
+.font-size_30px {
+	font-size: 30px;
+}
+
+.font-size_35px {
+	font-size: 35px;
+}
+
+.font-size_40px {
+	font-size: 40px;
+}
+
+.font-size_45px {
+	font-size: 45px;
+}
+
+.font-size_50px {
+	font-size: 50px;
+}
+
+.font-size_55px {
+    font-size: 55px;
+}
+
+.font-size_60px {
+    font-size: 60px;
+}
+
+.font-size_65px {
+    font-size: 65px;
+}
+
+.font-size_70px {
+    font-size: 70px;
+}
+
+.font-size_75px {
+    font-size: 75px;
+}
+
+.font-size_80px {
+    font-size: 80px;
+}
+
+.font-size_85px {
+    font-size: 85px;
+}
+
+.font-size_90px {
+    font-size: 90px;
+}
+
+.font-size_95px {
+    font-size: 95px;
+}
+
+.font-size_100px {
+    font-size: 100px;
+}
+
+.font-size_105px {
+    font-size: 105px;
+}
+
+.font-size_110px {
+    font-size: 110px;
+}
+
+.font-size_115px {
+    font-size: 115px;
+}
+
+.font-size_120px {
+    font-size: 120px;
+}
+
+.font-size_125px {
+    font-size: 125px;
+}
+
+.font-size_130px {
+    font-size: 130px;
+}
+
+.font-size_135px {
+    font-size: 135px;
+}
+
+.font-size_140px {
+    font-size: 140px;
+}
+
+.font-size_145px {
+    font-size: 145px;
+}
+
+.font-size_150px {
+    font-size: 150px;
+}
+
+.font-size_155px {
+    font-size: 155px;
+}
+
+.font-size_160px {
+    font-size: 160px;
+}
+
+.font-size_165px {
+    font-size: 165px;
+}
+
+.font-size_170px {
+    font-size: 170px;
+}
+
+.font-size_175px {
+    font-size: 175px;
+}
+
+.font-size_180px {
+    font-size: 180px;
+}
+
+.font-size_185px {
+    font-size: 185px;
+}
+
+.font-size_190px {
+    font-size: 190px;
+}
+
+.font-size_195px {
+    font-size: 195px;
+}
+
+.font-size_200px {
+    font-size: 200px;
+}
+
+.font-size_205px {
+    font-size: 205px;
+}
+
+.font-size_210px {
+    font-size: 210px;
+}
+
+.font-size_215px {
+    font-size: 215px;
+}
+
+.font-size_220px {
+    font-size: 220px;
+}
+
+.font-size_225px {
+    font-size: 225px;
+}
+
+.font-size_230px {
+    font-size: 230px;
+}
+
+.font-size_235px {
+    font-size: 235px;
+}
+
+.font-size_240px {
+    font-size: 240px;
+}
+
+.font-size_245px {
+    font-size: 245px;
+}
+
+.font-size_250px {
+    font-size: 250px;
+}
+
+.font-size_255px {
+    font-size: 255px;
+}
+
+.font-size_260px {
+    font-size: 260px;
+}
+
+.font-size_265px {
+    font-size: 265px;
+}
+
+.font-size_270px {
+    font-size: 270px;
+}
+
+.font-size_275px {
+    font-size: 275px;
+}
+
+.font-size_280px {
+    font-size: 280px;
+}
+
+.font-size_285px {
+    font-size: 285px;
+}
+
+.font-size_290px {
+    font-size: 290px;
+}
+
+.font-size_295px {
+    font-size: 295px;
+}
+
+.font-size_300px {
+    font-size: 300px;
+}
+
+.border_solid {
+	border: 2px solid black;
+}
+
+.border_inset {
+	border: 2px inset darkgray;
+}
+
+.tree-style {
+	color: black;
+	font-size: 15px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: normal;
+	background-color: #E9EBF5;
+	border: 1px solid black;
+}
+.tree-style header button {
+	color: white;
+	font-size: 18px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: bold;
+	background-color: #4472C4;
+	border: 1px solid black;
+}
+
+.selectableTree-style:disabled {
+	background-color: #F2F2F2;
+}
+.selectableTree-style:disabled header button {
+	background-color: #A6A6A6;
+}
+.selectableTree-style:selected {
+	background-color: #F4B183;
+}
+
+.tree-headerSize_39px header button {
+	min-height: 39px;
+}
+
+.tree-headerSize_59px header button {
+	min-height: 59px;
+}
+
+.button {
+	background-image: none;
+}
+.button:disabled {
+	background-color: #F2F2F2;
+	color: #C8C8C8;
+}
+.button:focus {
+	outline-color: #3584E4;
+	outline-style: solid;
+}
+
+.normalButton {
+	background-color: #F4F3F1;
+	color: black;
+}
+.normalButton:hover {
+	background-color: #F0F0F0;
+}
+.normalButton:active {
+	background-color: #C8C8C8;
+}
+.normalButton:checked {
+	background-color: #B4B4B4;
+	color: white;
+}
+
+.trueButton {
+	background-color: #F0C6AA;
+	color: black;
+}
+.trueButton:hover {
+	background-color: #ECB590;
+}
+.trueButton:active {
+	background-color: #E7A477;
+}
+.trueButton:checked {
+	background-color: #C55A11;
+	color: white;
+}
+
+.falseButton {
+	background-color: #AAC5F0;
+	color: black;
+}
+.falseButton:hover {
+	background-color: #90B3EC;
+}
+.falseButton:active {
+	background-color: #77A2E7;
+}
+.falseButton:checked {
+	background-color: #2E75B6;
+	color: white;
+}
+
+.logoutButton {
+	background-color: red;
+	color: white;
+}
+.logoutButton:hover {
+	background-color: #F00000;
+}
+.logoutButton:active {
+	background-color: #E60000;
+}
+.logoutButton:checked {
+	background-color: #C80000;
+}
+
+.retrieveButton {
+	background-color: #D7E7F5;
+	color: black;
+}
+.retrieveButton:hover {
+	background-color: #AFCEEB;
+}
+.retrieveButton:active {
+	background-color: #87B6E1;
+}
+.retrieveButton:checked {
+	background-color: #2867A0;
+	color: white;
+}
+
+.storeButton {
+	background-color: #FBE2D1;
+	color: black;
+}
+.storeButton:hover {
+	background-color: #F7C5A3;
+}
+.storeButton:active {
+	background-color: #F3A875;
+}
+.storeButton:checked {
+	background-color: #B85410;
+	color: white;
+}
+
+.reconcileButton {
+	background-color: #E3F1DB;
+	color: black;
+}
+.reconcileButton:hover {
+	background-color: #C7E3B7;
+}
+.reconcileButton:active {
+	background-color: #ABD593;
+}
+.reconcileButton:checked {
+	background-color: #5C8E3A;
+	color: white;
+}
+
+.entry {
+	background-image: none;
+	background-color: white;
+	color: black;
+}

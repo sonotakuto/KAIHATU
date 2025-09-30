@@ -583,11 +583,6 @@ private:
 	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の qrCodeEntry.on_activate の処理
 	void on_qrCodeEntry_store_waiting_for_tool_qr();
 
-	/// @brief STORE_CONFIRMING_SELECTION 状態に入ったときの処理
-	void on_enter_store_confirming_selection();
-	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の trueButton.on_clicked の処理
-	void on_trueButton_store_confirming_selection();
-
 	/// @brief STORE_CONTAINER_RETRIEVING 状態に入ったときの処理
 	void on_enter_store_container_retrieving();
 
