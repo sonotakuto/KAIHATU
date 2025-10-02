@@ -1591,7 +1591,6 @@ message message message message message</property>
                                 <property name="wrap_width">90</property>
                               </object>
                               <attributes>
-                                <attribute name="cell-background-rgba">4</attribute>
                                 <attribute name="text">0</attribute>
                               </attributes>
                             </child>
@@ -1607,7 +1606,6 @@ message message message message message</property>
                                 <property name="wrap_width">185</property>
                               </object>
                               <attributes>
-                                <attribute name="cell-background-rgba">4</attribute>
                                 <attribute name="text">1</attribute>
                               </attributes>
                             </child>
@@ -1623,7 +1621,6 @@ message message message message message</property>
                                 <property name="wrap_width">416</property>
                               </object>
                               <attributes>
-                                <attribute name="cell-background-rgba">4</attribute>
                                 <attribute name="text">2</attribute>
                               </attributes>
                             </child>
@@ -1639,7 +1636,6 @@ message message message message message</property>
                                 <property name="wrap_width">90</property>
                               </object>
                               <attributes>
-                                <attribute name="cell-background-rgba">4</attribute>
                                 <attribute name="text">3</attribute>
                               </attributes>
                             </child>
