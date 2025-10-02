@@ -647,6 +647,7 @@ private:
 	 * @details アプリケーションの全状態の「見た目」と「振る舞い」をここで一元管理します。
 	 */
 	std::map<AppState, WidgetStateConfig> g_app_state_configs;
+
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

@@ -71,6 +71,8 @@ public:
 	operator GtkBox*() const { return GTK_BOX(this->object); }
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(box, pack_start, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
+	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 
 	// プロパティ
 	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
@@ -245,6 +247,7 @@ public:
 
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
+	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
 
 	// プロパティ
 	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
@@ -270,6 +273,8 @@ protected:
 	std::vector<RowStruct> m_data_model;
 	/// @brief RowStructからGtkListStoreの行データに変換するためのセッター関数。
 	std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> m_row_setter;
+
+	using size_type = typename std::vector<RowStruct>::size_type;
 
 	/**
 	 * @brief sg::ListStore へのポインタを取得します。
@@ -307,7 +312,7 @@ protected:
 	 */
 	void set_row_to_store(GtkTreeIter* iter, const RowStruct& row_data) {
 		if (m_row_setter) {
-			m_row_setter(this->get_gtk_store(), iter, row_data);
+			m_row_setter(get_gtk_store(), iter, row_data);
 		}
 	}
 
@@ -346,49 +351,163 @@ protected:
 	/**
 	 * @brief 末尾に単一の行を追加します。
 	 * @param row_data 追加する行のデータ。
+	 * @return bool 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	void append(const RowStruct& row_data) {
+	bool append(const RowStruct& row_data) {
+		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
+			return false; // 失敗: 行数がintの最大値を超える
+		}
 		m_data_model.push_back(row_data);
 		GtkTreeIter iter;
 		gtk_list_store_append(get_gtk_store(), &iter);
 		set_row_to_store(&iter, row_data);
+		return true; // 成功
+	}
+
+	/**
+	 * @brief 末尾に複数の行をまとめて追加します。
+	 * @param rows 追加する行データのvector。
+	 */
+	bool append(const std::vector<RowStruct>& rows) {
+		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) {
+			return false; // 失敗: 行数がintの最大値を超える
+		}
+		for (const auto& row : rows) {
+			append(row); // 単行appendをループで呼び出す
+		}
+		return true; // 成功
 	}
 
 	/**
 	 * @brief 指定した位置に単一の行を挿入します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * @param position 0から始まる挿入位置のインデックス。
 	 * @param row_data 挿入する行のデータ。
+	 * @return bool 指定された位置通りに挿入できればtrue、位置が丸められた場合はfalse。
 	 */
-	void insert(int position, const RowStruct& row_data) {
+	bool insert(size_type position, const RowStruct& row_data) {
+		size_type original_position = position;
+		bool position_was_clamped = false;
+
+		if (position > m_data_model.size()) {
+			position = m_data_model.size();
+		}
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
+			return false; // 失敗: 行数がintの最大値を超える
+		}
+
+		// 要求された位置と、実際の挿入位置が違うか判定
+		if (position != original_position) {
+			position_was_clamped = true;
+		}
+
 		m_data_model.insert(m_data_model.begin() + position, row_data);
 		GtkTreeIter iter;
 		gtk_list_store_insert(get_gtk_store(), &iter, position);
 		set_row_to_store(&iter, row_data);
+
+		return !position_was_clamped;
+	}
+
+	/**
+	 * @brief 指定した位置に複数の行をまとめて挿入します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param position 0から始まる挿入位置のインデックス。
+	 * @param rows 挿入する行データのvector。
+	 * @return bool 指定された開始位置が有効であればtrue、丸められた場合はfalse。
+	 */
+	bool insert(size_type position, const std::vector<RowStruct>& rows) {
+		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) {
+			return false; // 失敗: 行数がintの最大値を超える
+		}
+		// 開始位置が有効範囲内([0, size()])にあるかチェック
+		bool position_was_valid = (position <= size());
+
+		int current_pos = position;
+		for (const auto& row : rows) {
+			// 単行insertは自動で位置を丸めてくれる
+			insert(current_pos++, row);
+		}
+		return position_was_valid;
 	}
 
 	/**
 	 * @brief 指定した位置の行を削除します。
 	 * @param position 削除位置のインデックス。
+	 * @return bool 削除に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
-	void erase(int position) {
+	bool erase(size_type position) {
+		if (position >= m_data_model.size()) {
+			return false; // 失敗: インデックスが範囲外
+		}
+
 		m_data_model.erase(m_data_model.begin() + position);
 		GtkTreeIter iter;
-		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, NULL, position)) {
+		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
 			gtk_list_store_remove(get_gtk_store(), &iter);
 		}
+
+		return true; // 成功
+	}
+
+	/**
+	 * @brief 指定した複数の位置の行をまとめて削除します。
+	 * @param positions 削除する行のインデックスのvector。
+	 * @return bool 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
+	 */
+	bool erase(std::vector<size_type> positions) {
+		// ★ 先に全てのインデックスが有効かチェック
+		for (size_type pos : positions) {
+			if (pos >= size()) {
+				return false; // 一つでも無効なインデックスがあれば失敗
+			}
+		}
+
+		std::sort(positions.rbegin(), positions.rend());
+		for (int pos : positions) {
+			erase(pos);
+		}
+		return true; // 全て成功
 	}
 
 	/**
 	 * @brief 指定した位置の行を上書きします。
 	 * @param position 上書き位置のインデックス。
 	 * @param row_data 新しい行データ。
+	 * @return bool 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
-	void update(int position, const RowStruct& row_data) {
+	bool update(size_type position, const RowStruct& row_data) {
+		if (position >= m_data_model.size()) {
+			return false; // 失敗: インデックスが範囲外
+		}
+
 		m_data_model[position] = row_data;
 		GtkTreeIter iter;
-		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, NULL, position)) {
+		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
 			set_row_to_store(&iter, row_data);
 		}
+
+		return true; // 成功
+	}
+
+	/**
+	 * @brief 指定した複数の位置の行をまとめて上書きします。
+	 * @param updates 上書きする位置のインデックスと、新しい行データのmap。
+	 * @return bool 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
+	 */
+	bool update(const std::map<size_type, RowStruct>& updates) {
+		// ★ 先に全てのインデックスが有効かチェック
+		for (const auto& [pos, row_data] : updates) {
+			if (pos >= size()) {
+				return false; // 一つでも無効なインデックスがあれば失敗
+			}
+		}
+
+		for (const auto& [pos, row_data] : updates) {
+			update(pos, row_data);
+		}
+		return true; // 全て成功
 	}
 
 	/**
@@ -396,12 +515,15 @@ protected:
 	 * @param position 0から始まる取得位置のインデックス。
 	 * @return const RowStruct& 行データへのconst参照。
 	 */
-	const RowStruct& get_row(int position) const {
+	const RowStruct& get_row(size_type position) const {
 		return m_data_model.at(position);
 	}
 
-	/// @brief C++モデル内の現在の行数を返します。
-	size_t size() const {
+	/**
+	 * @brief C++モデル内の現在の行数を返します。
+	 * @return size_t 現在の行数。
+	 */
+	size_type size() const {
 		return m_data_model.size();
 	}
 
@@ -449,11 +571,6 @@ private:
 	tool_io::TreeView& m_tree_view;
 
 public:
-	using ListStoreModelBase<RowStruct>::append;
-	using ListStoreModelBase<RowStruct>::insert;
-	using ListStoreModelBase<RowStruct>::erase;
-	using ListStoreModelBase<RowStruct>::update;
-
 	/**
 	 * @brief TreeViewListStoreModelのコンストラクタ。
 	 * @param tree_view 管理対象のTreeViewウィジェット。
@@ -499,60 +616,6 @@ public:
 			return this->get_row(index);
 		}
 		return std::nullopt;
-	}
-
-	// --- パフォーマンスを考慮した複数行操作（Freeze/Thawパターン） ---
-
-	/**
-	 * @brief 末尾に複数の行をまとめて追加します。UIの更新は一度だけ行われます。
-	 * @param rows 追加する行データのvector。
-	 */
-	void append(const std::vector<RowStruct>& rows) {
-		m_tree_view.set_model(nullptr);	// Freeze: UI更新を停止
-		for (const auto& row : rows) {
-			this->ListStoreModelBase<RowStruct>::append(row);	// 基底の単行追加を呼び出し
-		}
-		m_tree_view.set_model(this->get_gtk_model());	// Thaw: UIを一度に更新
-	}
-
-	/**
-	 * @brief 指定した位置に複数の行をまとめて挿入します。UIの更新は一度だけ行われます。
-	 * @param position 0から始まる挿入位置のインデックス。
-	 * @param rows 挿入する行データのvector。
-	 */
-	void insert(int position, const std::vector<RowStruct>& rows) {
-		m_tree_view.set_model(nullptr);	// Freeze: UI更新を停止
-		int current_pos = position;
-		for (const auto& row : rows) {
-			// 基底クラスのメソッドを明確に呼び出す
-			this->ListStoreModelBase<RowStruct>::insert(current_pos++, row);
-		}
-		m_tree_view.set_model(this->get_gtk_model());	// Thaw: UIを一度に更新
-	}
-
-	/**
-	 * @brief 指定した複数の位置の行をまとめて削除します。
-	 * @param positions 削除する行のインデックスのvector。
-	 */
-	void erase(std::vector<int> positions) {
-		std::sort(positions.rbegin(), positions.rend()); // 逆順ソート
-		m_tree_view.set_model(nullptr);	// Freeze: UI更新を停止
-		for (int pos : positions) {
-			this->ListStoreModelBase<RowStruct>::erase(pos);
-		}
-		m_tree_view.set_model(this->get_gtk_model());	// Thaw: UIを一度に更新
-	}
-
-	/**
-	 * @brief 指定した複数の位置の行をまとめて上書きします。
-	 * @param updates 上書きする位置のインデックスと、新しい行データのmap。
-	 */
-	void update(const std::map<int, RowStruct>& updates) {
-		m_tree_view.set_model(nullptr);	// Freeze: UI更新を停止
-		for (const auto& [pos, row_data] : updates) {
-			this->ListStoreModelBase<RowStruct>::update(pos, row_data);
-		}
-		m_tree_view.set_model(this->get_gtk_model());	// Thaw: UIを一度に更新
 	}
 };
 } // namespace tool_io

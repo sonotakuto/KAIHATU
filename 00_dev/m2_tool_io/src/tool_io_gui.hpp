@@ -253,8 +253,8 @@ public:
 	tool_io::Entry programEntry;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	tool_io::TreeView storingToolTable;
-	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア (ID: storingToolListstore)
-	sg::ListStore storingToolListstore;
+	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア
+	tool_io::TreeViewListStoreModel<ToolBasicInfo> storingToolListstore;
 	/// @brief (棚卸し時) 絞り込みダイアログを開くボタン (ID: filterButton)
 	tool_io::Button filterButton;
 	/// @brief (棚卸し時) 「コンテナ番号：」のラベル (ID: containerLabel)
@@ -269,26 +269,32 @@ public:
 	tool_io::Box table3column1stBox;
 	/// @brief 3列表示テーブル (1) (ID: table3column1st)
 	tool_io::TreeView table3column1st;
+	/// @brief 3列表示テーブルのリストストア (1)
+	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column1st;
 	/// @brief 3列表示テーブルのボックス (2) (ID: table3column2ndBox)
 	tool_io::Box table3column2ndBox;
 	/// @brief 3列表示テーブル (2) (ID: table3column2nd)
 	tool_io::TreeView table3column2nd;
+	/// @brief 3列表示テーブルのリストストア (2)
+	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column2nd;
 	/// @brief 3列表示テーブルのボックス (3) (ID: table3column3rdBox)
 	tool_io::Box table3column3rdBox;
 	/// @brief 3列表示テーブル (3) (ID: table3column3rd)
 	tool_io::TreeView table3column3rd;
+	/// @brief 3列表示テーブルのリストストア (3)
+	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column3rd;
 	/// @brief 2列表示テーブルのボックス (1) (ID: table2column1stBox)
 	tool_io::Box table2column1stBox;
 	/// @brief 2列表示テーブル (1) (ID: table2column1st)
 	tool_io::TreeView table2column1st;
-	/// @brief 2列表示テーブルのリストストア (1) (ID: liststore2column1st)
-	sg::ListStore liststore2column1st;
+	/// @brief 2列表示テーブルのリストストア (1)
+	tool_io::TreeViewListStoreModel<MainTableData> Liststore2column1st;
 	/// @brief 2列表示テーブルのボックス (2) (ID: table2column2ndBox)
 	tool_io::Box table2column2ndBox;
 	/// @brief 2列表示テーブル (2) (ID: table2column2nd)
 	tool_io::TreeView table2column2nd;
-	/// @brief 2列表示テーブルのリストストア (1) (ID: liststore2column2nd)
-	sg::ListStore liststore2column2nd;
+	/// @brief 2列表示テーブルのリストストア (2)
+	tool_io::TreeViewListStoreModel<MainTableData> Liststore2column2nd;
 
 	// --- フッター部 ---
 	/// @brief テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox)
@@ -647,6 +653,7 @@ private:
 	 * @details アプリケーションの全状態の「見た目」と「振る舞い」をここで一元管理します。
 	 */
 	std::map<AppState, WidgetStateConfig> g_app_state_configs;
+
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

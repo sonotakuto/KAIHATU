@@ -192,6 +192,7 @@ MainWindow::MainWindow() :
 	m_gui_mode(GuiMode::RETRIEVE),
 	m_app_state(AppState::WAITING_FOR_USER_LOGIN),
 	m_text_mode(TextMode::KANJI)
+
 {
 	// --- コンストラクタ本体 ---
 
@@ -1117,9 +1118,10 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 void MainWindow::on_window_show() {
 	if (m_is_first_show) {
 		// 初回表示の時だけ、UI全体を初期状態に合わせて完全に再描画し、初期設定を行う
-		refresh_ui(true);
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
+		refresh_ui(true);
+
 		m_is_first_show = false; // フラグを倒して次回以降は実行しない
 	}
 }

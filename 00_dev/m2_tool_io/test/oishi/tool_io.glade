@@ -2208,9 +2208,7 @@ message message message message message</property>
                           <object class="GtkTreeView" id="table2column1st">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="reorderable">True</property>
                             <property name="search_column">0</property>
-                            <property name="hover_selection">True</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
                             </child>

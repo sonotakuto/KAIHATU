@@ -103,6 +103,18 @@ MainWindow::MainWindow() :
 	programLabel(glade, "programLabel"),
 	programEntry(glade, "programEntry"),
 	storingToolTable(glade, "storingToolTable"),
+	storingToolListstore(
+		storingToolTable,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING },
+		[](GtkListStore* store, GtkTreeIter* iter, const ToolBasicInfo& row) {
+			gtk_list_store_set(store, iter,
+				0, row.class_name.c_str(),
+				1, row.maker.c_str(),
+				2, row.tool_name.c_str(),
+				3, row.material.c_str(),
+				-1);
+		}
+	),
 	filterButton(glade, "filterButton"),
 	containerLabel(glade, "containerLabel"),
 	containerEntry(glade, "containerEntry"),
@@ -110,14 +122,94 @@ MainWindow::MainWindow() :
 	table_stack(glade, "table_stack"),
 	table3column1stBox(glade, "table3column1stBox"),
 	table3column1st(glade, "table3column1st"),
+	Liststore3column1st(
+		table3column1st,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+			gtk_list_store_set(store, iter,
+				0, row.data_columns[0].c_str(),
+				1, row.data_columns[1].c_str(),
+				2, row.data_columns[2].c_str(),
+				3, row.data_columns[3].c_str(),
+				4, row.data_columns[4].c_str(),
+				5, row.data_columns[5].c_str(),
+				6, &row.bgcolor_0to4,
+				7, &row.bgcolor_5,
+				-1);
+		}
+	),
 	table3column2ndBox(glade, "table3column2ndBox"),
 	table3column2nd(glade, "table3column2nd"),
+	Liststore3column2nd(
+		table3column2nd,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+			gtk_list_store_set(store, iter,
+				0, row.data_columns[0].c_str(),
+				1, row.data_columns[1].c_str(),
+				2, row.data_columns[2].c_str(),
+				3, row.data_columns[3].c_str(),
+				4, row.data_columns[4].c_str(),
+				5, row.data_columns[5].c_str(),
+				6, &row.bgcolor_0to4,
+				7, &row.bgcolor_5,
+				-1);
+		}
+	),
 	table3column3rdBox(glade, "table3column3rdBox"),
 	table3column3rd(glade, "table3column3rd"),
+	Liststore3column3rd(
+		table3column3rd,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+			gtk_list_store_set(store, iter,
+				0, row.data_columns[0].c_str(),
+				1, row.data_columns[1].c_str(),
+				2, row.data_columns[2].c_str(),
+				3, row.data_columns[3].c_str(),
+				4, row.data_columns[4].c_str(),
+				5, row.data_columns[5].c_str(),
+				6, &row.bgcolor_0to4,
+				7, &row.bgcolor_5,
+				-1);
+		}
+	),
 	table2column1stBox(glade, "table2column1stBox"),
 	table2column1st(glade, "table2column1st"),
+	Liststore2column1st(
+		table2column1st,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+			gtk_list_store_set(store, iter,
+				0, row.data_columns[0].c_str(),
+				1, row.data_columns[1].c_str(),
+				2, row.data_columns[2].c_str(),
+				3, row.data_columns[3].c_str(),
+				4, row.data_columns[4].c_str(),
+				5, row.data_columns[5].c_str(),
+				6, &row.bgcolor_0to4,
+				7, &row.bgcolor_5,
+				-1);
+		}
+	),
 	table2column2ndBox(glade, "table2column2ndBox"),
 	table2column2nd(glade, "table2column2nd"),
+	Liststore2column2nd(
+		table2column2nd,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+			gtk_list_store_set(store, iter,
+				0, row.data_columns[0].c_str(),
+				1, row.data_columns[1].c_str(),
+				2, row.data_columns[2].c_str(),
+				3, row.data_columns[3].c_str(),
+				4, row.data_columns[4].c_str(),
+				5, row.data_columns[5].c_str(),
+				6, &row.bgcolor_0to4,
+				7, &row.bgcolor_5,
+				-1);
+		}
+	),
 	// フッター部
 	paginationBox(glade, "paginationBox"),
 	prevButton(glade, "prevButton"),
@@ -185,9 +277,6 @@ MainWindow::MainWindow() :
 
 	// 1. Gladeファイルの "storeWindow" の定義からウィンドウを初期化
 	this->init(glade, "storeWindow");
-	storingToolListstore = storingToolTable.get_model();
-	liststore2column1st = table2column1st.get_model();
-	liststore2column2nd = table2column2nd.get_model();
 
 	// 2. ウィンドウの閉じるボタンでアプリケーションが終了するように設定
 	this->setDefaultCloseOperation(Window::DESTROY);
@@ -745,15 +834,13 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}, true, true} },
-			{ {&table2column1stBox}, {.is_visible = true} },
-			{ {&table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName = "table2column",
+		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieving(); }
 	}));
@@ -763,15 +850,13 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
-			{ {&table2column1stBox}, {.is_visible = true} },
-			{ {&table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName = "table2column",
+		.tableStackPageName = "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieved(); }
 	}));
@@ -792,7 +877,7 @@ MainWindow::MainWindow() :
 					{"型番", "かたばん"},
 					{"材質", "ざいしつ"},
 					{"再研磨\n  回数", "さいけんま\n  かいすう"}
-				}, .is_sensitive = false
+				}, .is_sensitive = true
 			} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
@@ -1108,9 +1193,15 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 void MainWindow::on_window_show() {
 	if (m_is_first_show) {
 		// 初回表示の時だけ、UI全体を初期状態に合わせて完全に再描画し、初期設定を行う
-		refresh_ui(true);
+		storingToolTable.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table2column1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table2column2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table3column1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table3column2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table3column3rd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
+		refresh_ui(true);
 		m_is_first_show = false; // フラグを倒して次回以降は実行しない
 	}
 }
@@ -1309,7 +1400,7 @@ void MainWindow::on_enter_waiting_for_user_login() {
 
 void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	storingToolListstore.clear();
-	storingToolListstore.append(0, "", 1, "", 2, "", 3, "", -1);
+	storingToolListstore.append(ToolBasicInfo{});
 	qrCodeEntry.set_text("");
 	gtk_widget_grab_focus(GTK_WIDGET(this->qrCodeEntry.object));
 }
@@ -1320,16 +1411,9 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 	fmt::print("補充モード - 工具QRコード入力: '{}'\n", text);
 	auto individual_info = get_tool_data(stoi(text));
 
-	if (!individual_info.has_value()) {
+	if (individual_info.has_value()) {
 		basic_info = individual_info.value().basic_info;
-		storingToolListstore.clear();
-		storingToolListstore.append(
-			0, basic_info.class_name.c_str(),
-			1, basic_info.maker.c_str(),
-			2, basic_info.tool_name.c_str(),
-			3, basic_info.material.c_str(),
-			-1
-		);
+		storingToolListstore.update(0, basic_info);
 		set_app_state(AppState::STORE_CONFIRMING_SELECTION);
 	} else {
 		// TODO: 該当データが無い場合の処理
@@ -1341,15 +1425,54 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 }
 
 void MainWindow::on_enter_store_container_retrieving() {
+	// TODO: コンテナ搬出処理を実装
+	// 現在はダミーで3秒待ってから次の状態に遷移する
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
 }
 
 void MainWindow::on_enter_store_container_retrieved() {
+	// TODO: 扉を開けるまで待機する処理を実装
+	// 現在はダミーで3秒待ってから次の状態に遷移する
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	set_app_state(AppState::STORE_READY_FOR_READING);
+
 }
 
 void MainWindow::on_enter_store_ready_for_reading() {
+	Liststore2column1st.clear();
+	Liststore2column2nd.clear();
+	qrCodeEntry.set_text("");
+	gtk_widget_grab_focus(GTK_WIDGET(this->qrCodeEntry.object));
 }
 
 void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
+	ToolBasicInfo basic_info;
+	std::string text(qrCodeEntry.get_text());
+	auto individual_info = get_tool_data(stoi(text));
+
+	if (individual_info.has_value()) {
+		Liststore2column1st.append(MainTableData{
+			.id = individual_info.value().id,
+			.data_columns = {
+				to_string(individual_info.value().id),
+				individual_info.value().basic_info.class_name,
+				individual_info.value().basic_info.maker,
+				individual_info.value().basic_info.tool_name,
+				individual_info.value().basic_info.material,
+				to_string(individual_info.value().regrind_count.value())
+			}//,
+//			.bgcolor_0to4 = {1.0, 0.8, 0.8, 1.0},
+//			.bgcolor_5 = {1.0, 1.0, 0.6, 1.0}
+		});
+		set_app_state(AppState::STORE_READ_COMPLETED);
+	} else {
+		// TODO: 該当データが無い場合の処理
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
+		});
+		refresh_ui(false); // ラベルのテキストを更新
+	}
 }
 
 void MainWindow::on_enter_store_reading_tool_qr() {
