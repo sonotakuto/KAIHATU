@@ -14,7 +14,7 @@
  * @brief アプリケーションのメインウィンドウクラス。
  * @details GladeファイルからUI定義を読み込み、ウィジェットの管理とイベント処理を担当します。
  */
-struct MainWindow : public sg::Window {
+struct MainWindow : public tool_io::Window {
 public:
 	//=========================================================================
 	// 公開メンバ定数 (enum) と 型定義 (struct)
@@ -24,23 +24,10 @@ public:
 	 * @brief 現在の操作モードを定義する列挙型。
 	 */
 	enum class GuiMode {
+		NONE,		// 初期状態
 		RETRIEVE,	// 取り出しモード
 		STORE,		// 補充モード
 		RECONCILE	// 棚卸しモード
-	};
-
-	/**
-	 * @enum StaticWidgetId
-	 * @brief 状態に依存しない静的なUI要素を識別するためのID。
-	 */
-	enum class StaticWidgetId {
-		// モード切替ボタン
-		RetrieveToggleButton,
-		StoreToggleButton,
-		ReconcileToggleButton,
-		// ダイアログ内のラベルなど
-		ConfirmInsertCountLabel,
-		// TODO: 他に必要なウィジェットIDをここに追加
 	};
 
 	/**
@@ -49,7 +36,8 @@ public:
 	 */
 	enum class AppState {
 		/// ユーザーログイン待ち
-		WAITING_FOR_USER_LOGIN,
+		NONE,		// 移行用
+		WAITING_FOR_USER_LOGIN,	// ユーザーQRコードの読み取り待ち
 
 		/// 取り出しモード
 		RETRIEVE,	// 移行用
@@ -59,16 +47,16 @@ public:
 
 		/// 補充モード
 		STORE,		// 移行用
-		STORE_WAITING_FOR_TOOL_QR,				// 補充する工具のQRコード読み取り待ち
-		STORE_CONFIRMING_SELECTION,				// 読み取った工具の確認
-		STORE_CONTAINER_RETRIEVING,				// コンテナ搬出待ち
-		STORE_CONTAINER_RETRIEVED,				// コンテナ搬出完了
-		STORE_READY_FOR_READING,				// 実際に補充を行う(インサート以外) - 工具読み取り前
-		STORE_READING_TOOL_QR,					// 実際に補充を行う(インサート以外) - 工具読み取り中
-		STORE_READ_COMPLETE,					// 実際に補充を行う(インサート以外) - 工具読み取り後
-		STORE_INSERT_READY_FOR_READING,			// 実際に補充を行う(インサート) - 工具読み取り前
-		STORE_INSERT_READING_TOOL_QR,			// 実際に補充を行う(インサート) - 工具読み取り中
-		STORE_INSERT_READ_COMPLETE,				// 実際に補充を行う(インサート) - 工具読み取り後
+		STORE_WAITING_FOR_TOOL_QR,		// 補充する工具のQRコード読み取り待ち
+		STORE_CONFIRMING_SELECTION,		// 読み取った工具の確認
+		STORE_CONTAINER_RETRIEVING,		// コンテナ搬出待ち
+		STORE_CONTAINER_RETRIEVED,		// コンテナ搬出完了
+		STORE_READY_FOR_READING,		// 実際に補充を行う(インサート以外) - 工具読み取り前
+		STORE_READING_TOOL_QR,			// 実際に補充を行う(インサート以外) - 工具読み取り中
+		STORE_READ_COMPLETED,			// 実際に補充を行う(インサート以外) - 工具読み取り後
+		STORE_INSERT_READY_FOR_READING,	// 実際に補充を行う(インサート) - 工具読み取り前
+		STORE_INSERT_READING_TOOL_QR,	// 実際に補充を行う(インサート) - 工具読み取り中
+		STORE_INSERT_READ_COMPLETED,	// 実際に補充を行う(インサート) - 工具読み取り後
 
 		/// 棚卸しモード
 		RECONCILE,	// 移行用
@@ -114,8 +102,9 @@ public:
 		/**
 		 * @brief 他のWidgetStateの値でこのインスタンスを更新する。
 		 * @param other 更新に使用するWidgetStateインスタンス。
+		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
 		 */
-		void merge(const WidgetState& other);
+		bool merge(const WidgetState& other);
 	};
 
 	/**
@@ -137,8 +126,9 @@ public:
 		/**
 		 * @brief 他のTableStateの値でこのインスタンスを更新する。
 		 * @param other 更新に使用するTableStateインスタンス。
+		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
 		 */
-		void merge(const TableState& other);
+		bool merge(const TableState& other);
 	};
 
 	/**
@@ -197,10 +187,12 @@ public:
 
 		/// @brief 状態遷移直後に実行するアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_enter_state = nullptr;
-		/// @brief Trueボタンがクリックされたときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*)> on_true_button_clicked = nullptr;
-		/// @brief Falseボタンがクリックされたときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*)> on_false_button_clicked = nullptr;
+		/// @brief qrCodeEntry がクリックされたときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*)> on_qrCodeEntry_activate = nullptr;
+		/// @brief falseButton がクリックされたときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*)> on_falseButton_clicked = nullptr;
+		/// @brief trueButton がクリックされたときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*)> on_trueButton_clicked = nullptr;
 	};
 
 	//=========================================================================
@@ -261,6 +253,8 @@ public:
 	tool_io::Entry programEntry;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	tool_io::TreeView storingToolTable;
+	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア (ID: storingToolListstore)
+	sg::ListStore storingToolListstore;
 	/// @brief (棚卸し時) 絞り込みダイアログを開くボタン (ID: filterButton)
 	tool_io::Button filterButton;
 	/// @brief (棚卸し時) 「コンテナ番号：」のラベル (ID: containerLabel)
@@ -287,10 +281,14 @@ public:
 	tool_io::Box table2column1stBox;
 	/// @brief 2列表示テーブル (1) (ID: table2column1st)
 	tool_io::TreeView table2column1st;
+	/// @brief 2列表示テーブルのリストストア (1) (ID: liststore2column1st)
+	sg::ListStore liststore2column1st;
 	/// @brief 2列表示テーブルのボックス (2) (ID: table2column2ndBox)
 	tool_io::Box table2column2ndBox;
 	/// @brief 2列表示テーブル (2) (ID: table2column2nd)
 	tool_io::TreeView table2column2nd;
+	/// @brief 2列表示テーブルのリストストア (1) (ID: liststore2column2nd)
+	sg::ListStore liststore2column2nd;
 
 	// --- フッター部 ---
 	/// @brief テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox)
@@ -301,10 +299,16 @@ public:
 	tool_io::Button nextButton;
 	/// @brief 現在のページ番号を表示するラベル (ID: pageNumberLabel)
 	tool_io::Label pageNumberLabel;
-	/// @brief 肯定的なアクション（次へ, 確定など）を行うボタン (ID: trueButton)
-	tool_io::Button trueButton;
+	/// @brief QRコード受付UIを格納するボックス (ID: qrCodeEntryBox)
+	tool_io::Box qrCodeEntryBox;
+	/// @brief 「QRコード受付：」のラベル (ID: qrCodeEntryLabel)
+	tool_io::Label qrCodeEntryLabel;
+	/// @brief QRコードを入力するエントリ (ID: qrCodeEntry)
+	tool_io::Entry qrCodeEntry;
 	/// @brief 否定的なアクション（キャンセルなど）を行うボタン (ID: falseButton)
 	tool_io::Button falseButton;
+	/// @brief 肯定的なアクション（次へ, 確定など）を行うボタン (ID: trueButton)
+	tool_io::Button trueButton;
 
 	// --- ダイアログの親ウィジェット ---
 	/// @brief インサート枚数確認ダイアログ (ID: confirmInsertCountDialog)
@@ -418,6 +422,22 @@ private:
 	}
 
 	/**
+	 * @brief ウィジェットの状態を更新するヘルパー関数。
+	 * @param widget 更新対象のウィジェット。
+	 * @param state 適用する状態 (WidgetState)。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 */
+	void update_widget_state(sg::Widget* widget, WidgetState state);
+
+	/**
+	 * @brief テーブルの状態を更新するヘルパー関数。
+	 * @param table 更新対象のテーブルウィジェット。
+	 * @param state 適用する状態 (TableState)。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 */
+	void update_table_state(tool_io::TreeView* table, TableState state);
+
+	/**
 	 * @brief アプリケーションの操作モードを設定します。
 	 * @param mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 * @details この関数がモードに対応する全てのUI状態（モード変数、ボタン排他、画面表示）を更新します。
@@ -439,6 +459,11 @@ private:
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
 	//=========================================================================
+
+	/**
+	 * @brief ウィンドウが初回表示されたときに一度だけ呼び出されるハンドラ
+	 */
+	void on_window_show();
 
 	/**
 	 * @brief set_timeoutで設定された間隔ごとに呼び出されるタイマーハンドラ。
@@ -477,6 +502,12 @@ private:
 	void logoutButton_on_clicked();
 
 	/**
+	 * @brief userIdEntry の "activate" シグナルに対応するハンドラ。
+	 * @details ユーザーIDの入力が完了したときに呼び出され、ユーザー認証を試みる。
+	 */
+	void userIdEntry_on_activate();
+
+	/**
 	 * @brief prevButton の "clicked" シグナルに対応するハンドラ。
 	 * @details 前のページに移動する。
 	 */
@@ -489,16 +520,34 @@ private:
 	void nextButton_on_clicked();
 
 	/**
-	 * @brief trueButton の "clicked" シグナルに対応するハンドラ。
+	 * @brief qrCodeEntry の "activate" シグナルに対応するハンドラ。
 	 * @details 現在の状態に応じたコールバックを実行する。
 	 */
-	void trueButton_on_clicked();
+	void qrCodeEntry_on_activate();
 
 	/**
 	 * @brief falseButton の "clicked" シグナルに対応するハンドラ。
 	 * @details 現在の状態に応じたコールバックを実行する。
 	 */
 	void falseButton_on_clicked();
+
+	/**
+	 * @brief trueButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 現在の状態に応じたコールバックを実行する。
+	 */
+	void trueButton_on_clicked();
+
+	/**
+	 * @brief logoutNoButton の "clicked" シグナルに対応するハンドラ。
+	 * @details logoutDialog で GTK_RESPONSE_NO を返す。
+	 */
+	void logoutNoButton_on_clicked();
+
+	/**
+	 * @brief logoutYesButton の "clicked" シグナルに対応するハンドラ。
+	 * @details logoutDialog で GTK_RESPONSE_YES を返す。
+	 */
+	void logoutYesButton_on_clicked();
 
 	/**
 	 * @brief passwordEntryDialog の "show" シグナルに対応するハンドラ。
@@ -519,8 +568,65 @@ private:
 	void passwordCancelButton_on_clicked();
 
 	//=========================================================================
+	// プライベートメンバ関数 (状態毎の関数)
+	//=========================================================================
+
+	/// @brief WAITING_FOR_USER_LOGIN 状態に入ったときの処理
+	void on_enter_waiting_for_user_login();
+
+	// --- 取り出しモードの状態遷移関数 ---
+	// TODO: 取り出しモードの状態遷移関数をここに追加
+
+	// --- 補充モードの状態遷移関数 ---
+	/// @brief STORE_WAITING_FOR_TOOL_QR 状態に入ったときの処理
+	void on_enter_store_waiting_for_tool_qr();
+	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の qrCodeEntry.on_activate の処理
+	void on_qrCodeEntry_store_waiting_for_tool_qr();
+
+	/// @brief STORE_CONFIRMING_SELECTION 状態に入ったときの処理
+	void on_enter_store_confirming_selection();
+	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の trueButton.on_clicked の処理
+	void on_trueButton_store_confirming_selection();
+
+	/// @brief STORE_CONTAINER_RETRIEVING 状態に入ったときの処理
+	void on_enter_store_container_retrieving();
+
+	/// @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理
+	void on_enter_store_container_retrieved();
+
+	/// @brief STORE_READY_FOR_READING 状態に入ったときの処理
+	void on_enter_store_ready_for_reading();
+	/// @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	void on_qrCodeEntry_store_ready_for_reading();
+
+	/// @brief STORE_READING_TOOL_QR 状態に入ったときの処理
+	void on_enter_store_reading_tool_qr();
+
+	/// @brief STORE_READ_COMPLETED 状態に入ったときの処理
+	void on_enter_store_read_completed();
+	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の falseButton.on_clicked の処理
+	void on_falseButton_store_read_completed();
+	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の trueButton.on_clicked の処理
+	void on_trueButton_store_read_completed();
+
+	/// @brief STORE_INSERT_READY_FOR_READING 状態に入ったときの処理
+	void on_enter_store_insert_ready_for_reading();
+
+	/// @brief STORE_INSERT_READING_TOOL_QR 状態に入ったときの処理
+	void on_enter_store_insert_reading_tool_qr();
+
+	/// @brief STORE_INSERT_READ_COMPLETED 状態に入ったときの処理
+	void on_enter_store_insert_read_completed();
+
+	// --- 棚卸しモードの状態遷移関数 ---
+	// TODO: 棚卸しモードの状態遷移関数をここに追加
+
+	//=========================================================================
 	// プライベートメンバ変数 (状態管理用)
 	//=========================================================================
+
+	/// @brief ウィンドウが初回表示かどうかを判定するフラグ
+	bool m_is_first_show;
 
 	/**
 	 * @brief プログラムが内部的にトグルボタンの状態を変更しているかを示すフラグ。
@@ -547,3 +653,15 @@ private:
 	 */
 	std::map<AppState, WidgetStateConfig> g_app_state_configs;
 };
+
+// MainWindow::UiTextの比較演算子 (宣言)
+bool operator==(const MainWindow::UiText& lhs, const MainWindow::UiText& rhs);
+bool operator!=(const MainWindow::UiText& lhs, const MainWindow::UiText& rhs);
+
+// MainWindow::WidgetStateの比較演算子 (宣言)
+bool operator==(const MainWindow::WidgetState& lhs, const MainWindow::WidgetState& rhs);
+bool operator!=(const MainWindow::WidgetState& lhs, const MainWindow::WidgetState& rhs);
+
+// MainWindow::TableStateの比較演算子 (宣言)
+bool operator==(const MainWindow::TableState& lhs, const MainWindow::TableState& rhs);
+bool operator!=(const MainWindow::TableState& lhs, const MainWindow::TableState& rhs);

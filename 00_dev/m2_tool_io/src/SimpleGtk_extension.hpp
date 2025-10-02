@@ -13,8 +13,20 @@
 namespace tool_io {
 
 /**
+ * @class Window
+ * @brief sg::Windowを拡張し、機能を追加したクラス。
+ */
+class Window : public sg::Window {
+public:
+	using sg::Window::Window; // 基底クラスのコンストラクタを継承
+
+	// "show"シグナルハンドラを定義するマクロ
+	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWindow* self)
+};
+
+/**
  * @class Dialog
- * @brief sg::Dialogを拡張し、"show"シグナルハンドラを追加したクラス。
+ * @brief sg::Dialogを拡張し、機能を追加したクラス。
  * @details "show"シグナルは、ダイアログが表示された直後に発生します。
  */
 class Dialog : public sg::Dialog {
@@ -78,6 +90,9 @@ public:
 	// GtkStack*へのキャスト演算子
 	operator GtkStack*() const { return GTK_STACK(this->object); }
 
+	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(stack, set_visible_child_name, void, (const char* name), name)
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
@@ -85,7 +100,7 @@ public:
 
 /**
  * @class Button
- * @brief sg::Buttonを拡張し、表示/非表示を切り替える機能を追加したクラス。
+ * @brief sg::Buttonを拡張し、機能を追加したクラス。
  */
 class Button : public sg::Button {
 public:
@@ -97,14 +112,17 @@ public:
 
 /**
  * @class Entry
- * @brief sg::Entryを拡張し、"activate"シグナルハンドラを追加したクラス。
- * @details "activate"シグナルは、Entry内でEnterキーが押された時に発生します。
+ * @brief sg::Entryを拡張し、機能を追加したクラス。
  */
 class Entry : public sg::Entry {
 public:
 	// 基底クラスのコンストラクタを継承
 	using sg::Entry::Entry;
 
+	// "sensitive"プロパティのゲッターとセッター(set_sensitive/get_sensitive)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
+	// "visible"プロパティのゲッターとセッター(set_visible/get_visible)を定義する
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
 	// "activate"シグナルハンドラを定義するマクロ
 	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
 };
@@ -177,7 +195,7 @@ public:
 
 /**
  * @class Label
- * @brief sg::Labelを拡張し、表示/非表示を切り替える機能を追加したクラス。
+ * @brief sg::Labelを拡張し、機能を追加したクラス。
  */
 class Label : public sg::Label {
 public:
@@ -189,7 +207,7 @@ public:
 
 /**
  * @class TreeView
- * @brief sg::TreeViewを拡張し、有効/無効と表示/非表示を切り替える機能を追加したクラス。
+ * @brief sg::TreeViewを拡張し、機能を追加したクラス。
  */
 class TreeView : public sg::TreeView {
 public:
