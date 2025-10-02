@@ -1,20 +1,17 @@
+/**
+ * @file glob_var.hpp
+ * @brief 複数ファイルで共通して使用するグローバル変数を定義するヘッダファイル。
+ */
 #pragma once
-#include <memory> // unique_ptrのために必要
+#include "./includes.hpp"
 
-// ■■■■ 課題 (コンパイルエラー修正) ここから修正 ■■■■
+// 定義方法のサンプル
+// inline int sample_value = 100;
 
-// クラスの完全な定義は不要なため、前方宣言に切り替える
-class MainWindow;
-class DbClient;
-class ToolHandling;
-
-// unique_ptr を前方宣言された型で使うための typedef
-using MainWindow_ptr = std::unique_ptr<MainWindow>;
-using DbClient_ptr = std::unique_ptr<DbClient>;
-using ToolHandling_ptr = std::unique_ptr<ToolHandling>;
-
-extern MainWindow_ptr main_window;
-extern DbClient_ptr db_client;
-extern ToolHandling_ptr tool_handling;
-
-// ■■■■ 課題 (コンパイルエラー修正) ここまで修正 ■■■■
+// --- グローバル変数 ---
+/// @brief ログイン中のユーザー情報を保持する構造体。
+inline std::optional<UserInfo> g_logged_in_user_info = std::nullopt;
+/// @brief パスワード認証が成功したかどうかのフラグ。
+inline bool g_password_authenticated = false;
+/// @brief アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
+inline std::unique_ptr<MainWindow> mainWindow;

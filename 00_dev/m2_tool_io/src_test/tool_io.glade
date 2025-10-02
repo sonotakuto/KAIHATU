@@ -34,7 +34,8 @@
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">center</property>
                 <style>
@@ -116,7 +117,8 @@
                     <property name="width_request">80</property>
                     <property name="height_request">80</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <property name="halign">center</property>
                     <property name="relief">none</property>
@@ -143,6 +145,7 @@
                     <property name="shadow_type">etched-out</property>
                     <style>
                       <class name="font-size_30px"/>
+                      <class name="entry"/>
                     </style>
                   </object>
                   <packing>
@@ -157,7 +160,8 @@
                     <property name="width_request">80</property>
                     <property name="height_request">80</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <property name="halign">center</property>
                     <property name="relief">none</property>
@@ -223,7 +227,8 @@
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">start</property>
                 <style>
@@ -282,7 +287,8 @@
               <object class="GtkToggleButton" id="notRegrindButton">
                 <property name="label" translatable="yes">いいえ</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <style>
                   <class name="button"/>
@@ -299,7 +305,8 @@
               <object class="GtkToggleButton" id="regrindButton">
                 <property name="label" translatable="yes">はい</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <style>
                   <class name="button"/>
@@ -518,125 +525,6 @@ a</col>
       <column type="gchararray"/>
     </columns>
   </object>
-  <object class="GtkListStore" id="tool_list_store">
-    <columns>
-      <column type="gchararray"/> <column type="gchararray"/> <column type="gchararray"/>
-      <column type="gchararray"/> <column type="gchararray"/> <column type="gint"/>
-    </columns>
-  </object>
-  <object class="GtkWindow" id="main_window">
-    <property name="width_request">1024</property>
-    <property name="height_request">560</property>
-    <property name="can_focus">False</property>
-    <property name="title" translatable="yes">工具入出庫システム</property>
-    <property name="resizable">False</property>
-    <property name="window_position">center</property>
-    <child>
-      <object class="GtkFixed">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        
-        <child>
-          <object class="GtkButton" id="retrieval_button">
-            <property name="label" translatable="yes">取り出し</property>
-            <property name="width_request">200</property> <property name="height_request">100</property>
-            <property name="visible">True</property> <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <style><class name="font-size-large"/></style>
-          </object>
-          <packing><property name="x">50</property><property name="y">50</property></packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="replenishment_button">
-            <property name="label" translatable="yes">補充</property>
-            <property name="width_request">200</property> <property name="height_request">100</property>
-            <property name="visible">True</property> <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <style><class name="font-size-large"/></style>
-          </object>
-          <packing><property name="x">50</property><property name="y">200</property></packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="inventory_check_button">
-            <property name="label" translatable="yes">棚卸し</property>
-            <property name="width_request">200</property> <property name="height_request">100</property>
-            <property name="visible">True</property> <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <style><class name="font-size-large"/></style>
-          </object>
-          <packing><property name="x">50</property><property name="y">350</property></packing>
-        </child>
-
-        <child>
-          <object class="GtkLabel" id="qr_scan_prompt_label">
-            <property name="width_request">800</property> <property name="height_request">200</property>
-            <property name="visible">False</property> <property name="can_focus">False</property>
-            <property name="label" translatable="yes">プログラム割当一覧表のQRコードを
-QRコードリーダーにかざしてください</property>
-            <property name="justify">center</property>
-            <style><class name="font-size-xx-large"/></style>
-          </object>
-          <packing><property name="x">112</property><property name="y">100</property></packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="simulate_scan_button">
-            <property name="label" translatable="yes">スキャン実行 (開発用)</property>
-            <property name="width_request">400</property> <property name="height_request">80</property>
-            <property name="visible">False</property> <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <style><class name="font-size-large"/></style>
-          </object>
-          <packing><property name="x">312</property><property name="y">350</property></packing>
-        </child>
-
-        <child>
-          <object class="GtkScrolledWindow" id="tool_list_scrolled_window">
-            <property name="width_request">924</property> <property name="height_request">380</property>
-            <property name="visible">False</property> <property name="can_focus">True</property>
-            <property name="shadow_type">in</property>
-            <child>
-              <object class="GtkTreeView" id="tool_list_treeview">
-                <property name="visible">True</property> <property name="can_focus">True</property>
-                <property name="model">tool_list_store</property>
-                <child internal-child="selection"><object class="GtkTreeSelection"/></child>
-              </object>
-            </child>
-          </object>
-          <packing><property name="x">50</property><property name="y">70</property></packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="line_label">
-            <property name="width_request">300</property> <property name="height_request">40</property>
-            <property name="visible">False</property> <property name="can_focus">False</property>
-            <property name="label" translatable="yes">ライン番号：</property>
-            <property name="xalign">0</property>
-            <style><class name="font-size-medium"/></style>
-          </object>
-          <packing><property name="x">50</property><property name="y">20</property></packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="program_label">
-            <property name="width_request">300</property> <property name="height_request">40</property>
-            <property name="visible">False</property> <property name="can_focus">False</property>
-            <property name="label" translatable="yes">プログラム番号：</property>
-            <property name="xalign">0</property>
-            <style><class name="font-size-medium"/></style>
-          </object>
-          <packing><property name="x">360</property><property name="y">20</property></packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="back_button">
-            <property name="label" translatable="yes">戻る</property>
-            <property name="width_request">120</property> <property name="height_request">60</property>
-            <property name="visible">False</property> <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <style><class name="font-size-large"/></style>
-          </object>
-          <packing><property name="x">50</property><property name="y">470</property></packing>
-        </child>
-        </object>
-    </child>
-  </object>
   <object class="GtkDialog" id="logoutDialog">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">パスワードを入力</property>
@@ -666,7 +554,8 @@ QRコードリーダーにかざしてください</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">end</property>
                 <property name="margin_right">30</property>
@@ -688,7 +577,8 @@ QRコードリーダーにかざしてください</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">start</property>
                 <property name="margin_left">30</property>
@@ -770,7 +660,8 @@ QRコードリーダーにかざしてください</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">end</property>
                 <property name="margin_right">30</property>
@@ -792,7 +683,8 @@ QRコードリーダーにかざしてください</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">start</property>
                 <property name="margin_left">30</property>
@@ -851,6 +743,7 @@ QRコードリーダーにかざしてください</property>
             <style>
               <class name="font-normal"/>
               <class name="font-size_30px"/>
+              <class name="entry"/>
             </style>
           </object>
           <packing>
@@ -907,7 +800,8 @@ QRコードリーダーにかざしてください</property>
                 <property name="width_request">250</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">end</property>
                 <property name="margin_right">300</property>
@@ -929,7 +823,8 @@ QRコードリーダーにかざしてください</property>
                 <property name="width_request">220</property>
                 <property name="height_request">60</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">start</property>
                 <property name="margin_left">300</property>
@@ -989,6 +884,7 @@ QRコードリーダーにかざしてください</property>
                 <property name="height_request">50</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="halign">start</property>
                 <property name="model">reconcileToolTypeFilterListstore</property>
                 <property name="active">0</property>
@@ -1051,7 +947,7 @@ QRコードリーダーにかざしてください</property>
                     <property name="width_request">70</property>
                     <property name="height_request">35</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
                     <property name="halign">start</property>
                     <property name="valign">center</property>
                     <property name="margin_top">5</property>
@@ -1092,7 +988,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1119,6 +1016,7 @@ QRコードリーダーにかざしてください</property>
                             <property name="shadow_type">etched-out</property>
                             <style>
                               <class name="font-size_30px"/>
+                              <class name="entry"/>
                             </style>
                           </object>
                           <packing>
@@ -1133,7 +1031,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1184,7 +1083,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1211,6 +1111,7 @@ QRコードリーダーにかざしてください</property>
                             <property name="shadow_type">etched-out</property>
                             <style>
                               <class name="font-size_30px"/>
+                              <class name="entry"/>
                             </style>
                           </object>
                           <packing>
@@ -1225,7 +1126,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1309,7 +1211,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1336,6 +1239,7 @@ QRコードリーダーにかざしてください</property>
                             <property name="shadow_type">etched-out</property>
                             <style>
                               <class name="font-size_30px"/>
+                              <class name="entry"/>
                             </style>
                           </object>
                           <packing>
@@ -1350,7 +1254,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1401,7 +1306,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1428,6 +1334,7 @@ QRコードリーダーにかざしてください</property>
                             <property name="shadow_type">etched-out</property>
                             <style>
                               <class name="font-size_30px"/>
+                              <class name="entry"/>
                             </style>
                           </object>
                           <packing>
@@ -1442,7 +1349,8 @@ QRコードリーダーにかざしてください</property>
                             <property name="width_request">80</property>
                             <property name="height_request">80</property>
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
                             <property name="receives_default">True</property>
                             <property name="halign">center</property>
                             <property name="relief">none</property>
@@ -1587,14 +1495,20 @@ QRコードリーダーにかざしてください</property>
                     <child>
                       <object class="GtkToggleButton" id="retrieveToggleButton">
                         <property name="label" translatable="yes">取り出し</property>
+                        <property name="use_action_appearance">True</property>
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
                           <class name="retrieveButton"/>
+                          <class name="border_3px"/>
+                          <class name="br_10px"/>
+                          <class name="border_solid"/>
+                          <class name="font-bold"/>
                         </style>
                       </object>
                       <packing>
@@ -1609,11 +1523,16 @@ QRコードリーダーにかざしてください</property>
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
                           <class name="storeButton"/>
+                          <class name="border_3px"/>
+                          <class name="br_10px"/>
+                          <class name="border_solid"/>
+                          <class name="font-bold"/>
                         </style>
                       </object>
                       <packing>
@@ -1628,11 +1547,16 @@ QRコードリーダーにかざしてください</property>
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
                           <class name="reconcileButton"/>
+                          <class name="border_3px"/>
+                          <class name="br_10px"/>
+                          <class name="border_solid"/>
+                          <class name="font-bold"/>
                         </style>
                       </object>
                       <packing>
@@ -1669,7 +1593,8 @@ QRコードリーダーにかざしてください</property>
                     <property name="label" translatable="yes">かな/漢字</property>
                     <property name="width_request">200</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <style>
                       <class name="button"/>
@@ -1687,7 +1612,8 @@ QRコードリーダーにかざしてください</property>
                     <property name="label" translatable="yes">ログアウト</property>
                     <property name="width_request">200</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <style>
                       <class name="button"/>
@@ -1704,9 +1630,13 @@ QRコードリーダーにかざしてください</property>
                   <object class="GtkEntry" id="userIdEntry">
                     <property name="width_request">200</property>
                     <property name="visible">True</property>
+                    <property name="sensitive">False</property>
                     <property name="can_focus">True</property>
                     <property name="text" translatable="yes">aaa</property>
                     <property name="shadow_type">etched-out</property>
+                    <style>
+                      <class name="entry"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1765,6 +1695,20 @@ message message message message message</property>
                 <property name="width_request">945</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">pageNone</property>
+                    <property name="title" translatable="yes">pageNone</property>
+                  </packing>
+                </child>
                 <child>
                   <object class="GtkGrid">
                     <property name="visible">True</property>
@@ -1839,6 +1783,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">retrieveOperationPage</property>
                     <property name="title" translatable="yes">retrieveOperationPage</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
                 <child>
@@ -1937,7 +1882,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">storeOperationPage</property>
                     <property name="title" translatable="yes">storeOperationPage</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
                 <child>
@@ -1946,7 +1891,8 @@ message message message message message</property>
                     <property name="width_request">200</property>
                     <property name="height_request">50</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <property name="halign">end</property>
                     <property name="valign">end</property>
@@ -1960,7 +1906,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">reconcileOperationPage</property>
                     <property name="title" translatable="yes">reconcileOperationPage</property>
-                    <property name="position">2</property>
+                    <property name="position">3</property>
                   </packing>
                 </child>
                 <child>
@@ -2010,7 +1956,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">reconcileInfoPage</property>
                     <property name="title" translatable="yes">reconcileInfoPage</property>
-                    <property name="position">3</property>
+                    <property name="position">4</property>
                   </packing>
                 </child>
               </object>
@@ -2039,6 +1985,289 @@ message message message message message</property>
                 <property name="height_request">735</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">pageNone</property>
+                    <property name="title" translatable="yes">pageNone</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkBox" id="table2column1stBox">
+                        <property name="width_request">945</property>
+                        <property name="can_focus">False</property>
+                        <property name="valign">start</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkTreeView" id="table2column1st">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="model">liststore2column1st</property>
+                            <property name="search_column">0</property>
+                            <child internal-child="selection">
+                              <object class="GtkTreeSelection"/>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">90</property>
+                                <property name="title" translatable="yes">column_0</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="height">58</property>
+                                    <property name="alignment">right</property>
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">0</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">90</property>
+                                <property name="title" translatable="yes">分類</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">90</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">1</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">150</property>
+                                <property name="title" translatable="yes">メーカー</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">185</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">2</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">361</property>
+                                <property name="title" translatable="yes">型番</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">416</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">3</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">90</property>
+                                <property name="title" translatable="yes">材質</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">90</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">4</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">160</property>
+                                <property name="title" translatable="yes">column_6</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">90</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">5</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <style>
+                              <class name="tree-style"/>
+                              <class name="selectableTree-style"/>
+                              <class name="tree-headerSize_59px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <style>
+                          <class name="border_solid"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="table2column2ndBox">
+                        <property name="width_request">945</property>
+                        <property name="can_focus">False</property>
+                        <property name="valign">start</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkTreeView" id="table2column2nd">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="model">liststore2column2nd</property>
+                            <property name="search_column">0</property>
+                            <child internal-child="selection">
+                              <object class="GtkTreeSelection"/>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">90</property>
+                                <property name="title" translatable="yes">column_0</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="height">58</property>
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">0</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">90</property>
+                                <property name="title" translatable="yes">分類</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">90</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">1</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">150</property>
+                                <property name="title" translatable="yes">メーカー</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">185</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">2</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">361</property>
+                                <property name="title" translatable="yes">型番</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">416</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">3</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">90</property>
+                                <property name="title" translatable="yes">材質</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">90</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">4</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">160</property>
+                                <property name="title" translatable="yes">column_6</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">90</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">5</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <style>
+                              <class name="tree-style"/>
+                              <class name="selectableTree-style"/>
+                              <class name="tree-headerSize_59px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <style>
+                          <class name="border_solid"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack_type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">table2column</property>
+                    <property name="title" translatable="yes">table2column</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
                 <child>
                   <object class="GtkBox">
                     <property name="visible">True</property>
@@ -2435,275 +2664,7 @@ message message message message message</property>
                   <packing>
                     <property name="name">table3column</property>
                     <property name="title" translatable="yes">table3column</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkBox">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <child>
-                      <object class="GtkBox" id="table2column1stBox">
-                        <property name="width_request">945</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">start</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkTreeView" id="table2column1st">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="model">liststore2column1st</property>
-                            <property name="search_column">0</property>
-                            <child internal-child="selection">
-                              <object class="GtkTreeSelection"/>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">90</property>
-                                <property name="title" translatable="yes">column_0</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="height">58</property>
-                                    <property name="alignment">right</property>
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">0</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">90</property>
-                                <property name="title" translatable="yes">分類</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">90</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">1</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">150</property>
-                                <property name="title" translatable="yes">メーカー</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">185</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">2</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">361</property>
-                                <property name="title" translatable="yes">型番</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">416</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">3</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">90</property>
-                                <property name="title" translatable="yes">材質</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">90</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">4</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">160</property>
-                                <property name="title" translatable="yes">column_6</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">90</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">5</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <style>
-                              <class name="tree-style"/>
-                              <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="border_solid"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="table2column2ndBox">
-                        <property name="width_request">945</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">start</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkTreeView" id="table2column2nd">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="model">liststore2column2nd</property>
-                            <property name="search_column">0</property>
-                            <child internal-child="selection">
-                              <object class="GtkTreeSelection"/>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">90</property>
-                                <property name="title" translatable="yes">column_0</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="height">58</property>
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">0</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">90</property>
-                                <property name="title" translatable="yes">分類</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">90</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">1</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">150</property>
-                                <property name="title" translatable="yes">メーカー</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">185</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">2</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">361</property>
-                                <property name="title" translatable="yes">型番</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">416</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">3</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">90</property>
-                                <property name="title" translatable="yes">材質</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">90</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">4</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">160</property>
-                                <property name="title" translatable="yes">column_6</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">90</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">5</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <style>
-                              <class name="tree-style"/>
-                              <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="border_solid"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="pack_type">end</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="name">table2column</property>
-                    <property name="title" translatable="yes">table2column</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>
@@ -2729,8 +2690,10 @@ message message message message message</property>
                     <child>
                       <object class="GtkButton" id="prevButton">
                         <property name="label" translatable="yes">◀</property>
+                        <property name="width_request">80</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
@@ -2746,8 +2709,10 @@ message message message message message</property>
                     <child>
                       <object class="GtkButton" id="nextButton">
                         <property name="label" translatable="yes">▶</property>
+                        <property name="width_request">80</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
                           <class name="button"/>
@@ -2780,6 +2745,7 @@ message message message message message</property>
                     <property name="label" translatable="yes">ページ  1 / n</property>
                     <property name="justify">center</property>
                     <property name="ellipsize">middle</property>
+                    <property name="xalign">1</property>
                     <style>
                       <class name="font-bold"/>
                       <class name="font-size_30px"/>
@@ -2808,42 +2774,110 @@ message message message message message</property>
           </packing>
         </child>
         <child>
-          <object class="GtkButtonBox">
+          <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="spacing">110</property>
-            <property name="layout_style">end</property>
             <child>
-              <object class="GtkButton" id="falseButton">
-                <property name="label" translatable="yes">false</property>
-                <property name="width_request">200</property>
-                <property name="height_request">60</property>
+              <object class="GtkBox" id="qrCodeEntryBox">
+                <property name="height_request">50</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">start</property>
+                <property name="valign">center</property>
+                <child>
+                  <object class="GtkLabel" id="qrCodeEntryLabel">
+                    <property name="width_request">195</property>
+                    <property name="height_request">50</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">QRコード受付：</property>
+                    <property name="xalign">0</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="qrCodeEntry">
+                    <property name="width_request">200</property>
+                    <property name="height_request">50</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="valign">center</property>
+                    <property name="text" translatable="yes">aaaaa</property>
+                    <property name="shadow_type">etched-out</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
                 <style>
-                  <class name="button"/>
-                  <class name="falseButton"/>
+                  <class name="font-normal"/>
+                  <class name="font-size_25px"/>
                 </style>
               </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="pack_type">end</property>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="trueButton">
-                <property name="label" translatable="yes">ture</property>
-                <property name="width_request">200</property>
-                <property name="height_request">60</property>
+              <object class="GtkButtonBox">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">end</property>
+                <property name="spacing">110</property>
+                <property name="layout_style">end</property>
+                <child>
+                  <object class="GtkButton" id="falseButton">
+                    <property name="label" translatable="yes">false</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="trueButton">
+                    <property name="label" translatable="yes">ture</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="trueButton"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
                 <style>
-                  <class name="button"/>
-                  <class name="trueButton"/>
+                  <class name="font-normal"/>
+                  <class name="font-size_30px"/>
                 </style>
               </object>
               <packing>
@@ -2853,10 +2887,6 @@ message message message message message</property>
                 <property name="position">1</property>
               </packing>
             </child>
-            <style>
-              <class name="font-normal"/>
-              <class name="font-size_30px"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>

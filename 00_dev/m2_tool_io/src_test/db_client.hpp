@@ -1,37 +1,23 @@
+/**
+ * @file db_client.hpp
+ * @brief データベースにアクセスするための関数をまとめたヘッダファイル。
+ */
 #pragma once
-#include "includes.hpp"
 
-class MainWindow : public Window
-{
-public:
-    Glade glade;
-    // (既存のウィジェット変数は省略)
-    Button retrieval_button, replenishment_button, inventory_check_button;
+#include <SimpleGtk>
+#include "./typedef.hpp"
+#include "./parameters.hpp"
 
-    // ■■■■ 課題 (ダミー動作) ここから追加 ■■■■
-    // QRスキャン画面
-    Label qr_scan_prompt_label;
-    Button simulate_scan_button;
+bool db_connect(void);
 
-    // 工具選択画面
-    ScrolledWindow tool_list_scrolled_window;
-    TreeView tool_list_treeview;
-    ListStore tool_list_store;
-    Label line_label;
-    Label program_label;
-    Button back_button;
-    // (ページ操作ボタンなども同様に追加)
-    // ■■■■ 課題 (ダミー動作) ここまで追加 ■■■■
+void db_disconnect(void);
 
-    // (ページ状態管理変数は省略)
+bool user_authenticate(int user_id);
 
-    MainWindow();
-    void show_initial_menu();
-    void show_qr_scan_page(); // QRスキャン画面表示用のメソッド
-    void show_page_tool_selection(const ToolingList& tooling_list);
+bool save_history(void);
 
-private:
-    // (既存のメソッドは省略)
-    void on_simulate_scan_button_clicked(); // 仮ボタンのハンドラ
-    void on_back_button_clicked(); // 戻るボタンのハンドラ
-};
+std::optional<ToolIndividualInfo> get_tool_data(int basic_tool_id);
+
+std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id);
+
+std::optional<ToolingListInfo> get_tooling_list(int line_id);

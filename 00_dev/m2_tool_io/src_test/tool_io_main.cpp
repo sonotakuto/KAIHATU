@@ -1,31 +1,31 @@
-#include "glob_var.hpp"
-
-// インスタンスを生成するために、ここで完全なクラス定義をインクルードする
-#include "tool_io_gui.hpp"
-#include "db_client.hpp"
-#include "tool_handling.hpp"
-
-MainWindow_ptr main_window;
-DbClient_ptr db_client;
-ToolHandling_ptr tool_handling;
+/**
+ * @file tool_io_main.cpp
+ * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
+ */
+#include "./includes.hpp"
 
 int main(int argc, char *argv[])
 {
-    Application app;
+	// アプリケーションオブジェクトの生成
+	Application app;
 
-    app.on_activate([&]
-                    {
-        // ■■■■ 課題 (CSS適用) ここから追加 ■■■■
-        // CSSファイルを読み込み、アプリケーション全体にスタイルを適用する
-        load_css("tool_io.css");
-        // ■■■■ 課題 (CSS適用) ここまで追加 ■■■■
+	// activateハンドラ: アプリケーション起動時に一度だけ呼ばれる
+	app.on_activate([&app]{
+		// 1. CSSファイルを読み込む
+		load_css("tool_io.css");
 
-        db_client = make_unique<DbClient>();
-        main_window = make_unique<MainWindow>();
-        tool_handling = make_unique<ToolHandling>();
+		// 2. メインウィンドウを生成
+		// 設計図(m2-1-1)の「GUIとスレッドを起動する」に相当 [cite: 195]
+		mainWindow = make_unique<MainWindow>();
 
-        main_window->set_application(app);
-        main_window->show_all(); });
+		// 3. アプリケーションにウィンドウを登録する
+		mainWindow->set_application(app);
 
-    return app.run(argc, argv);
+		// 4. ウィンドウを表示する
+		mainWindow->show_all();
+	});
+
+	// メッセージループを開始
+	// この関数内でイベントの待受が行われ、終了するまで制御は戻らない
+	return app.run(argc, argv);
 }

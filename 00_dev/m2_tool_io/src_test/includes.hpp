@@ -1,13 +1,17 @@
+/**
+ * @file includes.hpp
+ * @brief 複数の実装ファイルで共通してインクルードするヘッダファイルをまとめたヘッダファイル。
+ */
 #pragma once
+
+// glob_var.hpp以外の全てのヘッダファイルをインクルードする
 #include <SimpleGtk>
-#include <memory>
-#include <optional>
+#include "./typedef.hpp"
+#include "./parameters.hpp"
+#include "./db_client.hpp"
+#include "./tool_io_gui.hpp"
 
-// ■■■■ 課題 (コンパイルエラー修正) ここから修正 ■■■■
-// #include "glob_var.hpp" // 循環参照の原因となるため削除
-// ■■■■ 課題 (コンパイルエラー修正) ここまで修正 ■■■■
+using namespace tool_io;
 
-#include "parameters.hpp"
-#include "typedef.hpp"
-#include "SimpleGtk_extension.hpp"
-#include "tracked_map.hpp"
+// 最後にglob_var.hppをインクルード
+#include "./glob_var.hpp"
