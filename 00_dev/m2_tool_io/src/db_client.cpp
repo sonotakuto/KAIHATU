@@ -4,6 +4,10 @@
  */
 #include "./odbc.hpp"
 #include "./includes.hpp"
+
+#include "parameters.hpp"
+#include "db_client.hpp"
+
 using namespace odbc;
 
 // データベースへの接続を管理するクラスをまとめた構造体へのポインタ

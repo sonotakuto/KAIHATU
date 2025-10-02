@@ -282,7 +282,7 @@ MainWindow::MainWindow() :
 
 	// --- 「ライン番号」ラベル ---
 	m_widget_states.insert(make_pair(&lineLabel, WidgetStateUpdater{
-		{UiText{"ライン番号：", "らいんばんごう："}, true, true},
+		{UiText{"ライン番号：", "ラインばんごう："}, true, true},
 		[this](const WidgetState& state){
 			this->lineLabel.set_label(get_display_text(state.text.value()).c_str());
 			// ラベルのsensitiveは通常操作しない
@@ -292,7 +292,7 @@ MainWindow::MainWindow() :
 
 	// --- 「プログラム番号」ラベル ---
 	m_widget_states.insert(make_pair(&programLabel, WidgetStateUpdater{
-		{UiText{"プログラム番号：", "ぷろぐらむばんごう："}, true, true},
+		{UiText{"プログラム番号：", "プログラムばんごう："}, true, true},
 		[this](const WidgetState& state){
 			this->programLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->programLabel.set_visible(state.is_visible.value());
@@ -311,7 +311,7 @@ MainWindow::MainWindow() :
 
 	// --- 「コンテナ番号」ラベル ---
 	m_widget_states.insert(make_pair(&containerLabel, WidgetStateUpdater{
-		{UiText{"コンテナ番号：", "こんてなばんごう："}, true, true},
+		{UiText{"コンテナ番号：", "コンテナばんごう："}, true, true},
 		[this](const WidgetState& state){
 			this->containerLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->containerLabel.set_visible(state.is_visible.value());
@@ -404,7 +404,7 @@ MainWindow::MainWindow() :
 
 	// --- インサート枚数確認ダイアログ ---
 	m_widget_states.insert(make_pair(&confirmInsertCountLabel, WidgetStateUpdater{
-		{UiText{"使用するインサートの枚数を\n入力してください", "しようする いんさーとの まいすうを\nにゅうりょく してください"}, true, true},
+		{UiText{"使用するインサートの枚数を\n入力してください", "しようする インサートの まいすうを\nにゅうりょく してください"}, true, true},
 		[this](const WidgetState& state){
 			this->confirmInsertCountLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->confirmInsertCountLabel.set_visible(state.is_visible.value());
@@ -472,14 +472,14 @@ MainWindow::MainWindow() :
 
 	// --- パスワード入力ダイアログ ---
 	m_widget_states.insert(make_pair(&passwordEntryLabel, WidgetStateUpdater{
-		{UiText{"パスワードを\n入力してください", "ぱすわーどを\nにゅうりょく してください"}, true, true},
+		{UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"}, true, true},
 		[this](const WidgetState& state){
 			this->passwordEntryLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->passwordEntryLabel.set_visible(state.is_visible.value());
 		}
 	}));
 	m_widget_states.insert(make_pair(&passwordCancelButton, WidgetStateUpdater{
-		{UiText{"キャンセル", "きゃんせる"}, true, true},
+		{UiText{"キャンセル", "キャンセル"}, true, true},
 		[this](const WidgetState& state){
 			this->passwordCancelButton.set_label(get_display_text(state.text.value()).c_str());
 			this->passwordCancelButton.set_sensitive(state.is_sensitive.value());
@@ -519,7 +519,7 @@ MainWindow::MainWindow() :
 		}
 	}));
 	m_widget_states.insert(make_pair(&reconcileFilterResetButton, WidgetStateUpdater{
-		{UiText{"期間リセット", "きかんりせっと"}, true, true},
+		{UiText{"期間リセット", "きかんリセット"}, true, true},
 		[this](const WidgetState& state){
 			this->reconcileFilterResetButton.set_label(get_display_text(state.text.value()).c_str());
 			this->reconcileFilterResetButton.set_sensitive(state.is_sensitive.value());
@@ -685,7 +685,7 @@ MainWindow::MainWindow() :
 			{ {&table2column1stBox}, {.is_visible = true} },
 			{ {&table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} },
-			{ {&falseButton}, {UiText{"キャンセル", "きゃんせる"}, true, true} }
+			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} }
 		},
 		{
 			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} },
@@ -884,14 +884,14 @@ MainWindow::MainWindow() :
 	g_app_state_configs.insert(make_pair(AppState::RECONCILE_WAITING_FOR_TOOL_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		{
-			{ {&messageLabel}, {UiText{"棚卸しを行うコンテナを選択してください", "たなおろしをおこなうこんてなをせんたくしてください"}, true, true} },
+			{ {&messageLabel}, {UiText{"棚卸しを行うコンテナを選択してください", "たなおろしをおこなうコンテナをせんたくしてください"}, true, true} },
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
 		{
 			{ {&table2column1st, &table2column2nd}, {
 				.column_headers = std::vector<UiText>{
-					{"コンテナ\n  番号", "こんてな\nばんごう"},
+					{"コンテナ\n  番号", "コンテナ\nばんごう"},
 					{"分類", "ぶんるい"},
 					{"メーカー", "メーカー"},
 					{"型番", "かたばん"},
