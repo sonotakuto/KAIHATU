@@ -144,7 +144,7 @@ std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id) {
 
 	return ToolBasicInfo{
 		.basic_tool_id = basic_tool_id,
-		.classification = "ドリル",
+		.class_name = "ドリル",
 		.tool_name = "D-1234",
 		.maker = "工具メーカー",
 		.material = "超硬",
