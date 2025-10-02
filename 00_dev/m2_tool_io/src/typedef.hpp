@@ -17,7 +17,7 @@ struct MainTableData {
 	/// @brief 背景色 (0～4列目)
 	GdkRGBA bgcolor_0to4{0.914, 0.922, 0.961, 1.0};
 	/// @brief 背景色 (5列目)
-	GdkRGBA bgcolor_5{0, 0.914, 0.922, 0.961};
+	GdkRGBA bgcolor_5{0.914, 0.922, 0.961, 1.0};
 };
 
 /**

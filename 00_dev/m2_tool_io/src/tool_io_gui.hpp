@@ -76,6 +76,16 @@ public:
 	};
 
 	/**
+	 * @enum PaginationAction
+	 * @brief ページネーションUIの操作内容を定義する列挙型。
+	 */
+	enum class PaginationAction {
+		UPDATE_UI_ONLY, // ページは変更せず、UIの表示（ボタンの有効/無効など）だけを更新
+		GO_TO_PREV,     // 前のページへ移動
+		GO_TO_NEXT      // 次のページへ移動
+	};
+
+	/**
 	 * @struct UiText
 	 * @brief UI要素の かな/漢字 両方のテキストを定義する構造体。
 	 */
@@ -283,6 +293,8 @@ public:
 	tool_io::TreeView table3column3rd;
 	/// @brief 3列表示テーブルのリストストア (3)
 	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column3rd;
+	/// @brief 3列表示テーブルのページ操作可能なリストストア
+	tool_io::PaginatedListStoreModel<MainTableData> Liststore3columnAll;
 	/// @brief 2列表示テーブルのボックス (1) (ID: table2column1stBox)
 	tool_io::Box table2column1stBox;
 	/// @brief 2列表示テーブル (1) (ID: table2column1st)
@@ -295,6 +307,8 @@ public:
 	tool_io::TreeView table2column2nd;
 	/// @brief 2列表示テーブルのリストストア (2)
 	tool_io::TreeViewListStoreModel<MainTableData> Liststore2column2nd;
+	/// @brief 2列表示テーブルのページ操作可能なリストストア
+	tool_io::PaginatedListStoreModel<MainTableData> Liststore2columnAll;
 
 	// --- フッター部 ---
 	/// @brief テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox)
@@ -442,6 +456,12 @@ private:
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
 	 */
 	void update_table_state(tool_io::TreeView* table, TableState state);
+
+	/**
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
+	 * @param action 実行したい操作の種類。
+	 */
+	void update_and_handle_pagination(PaginationAction action);
 
 	/**
 	 * @brief アプリケーションの操作モードを設定します。
@@ -639,6 +659,8 @@ private:
 	GuiMode m_gui_mode;
 	/// @brief 現在の状態を保持するメンバ変数。
 	AppState m_app_state;
+	/// @brief インサートかどうかで分岐する必要がある場合に使用するフラグ。
+	bool m_is_insert_operation;
 	/// @brief 現在のテキストモード(かな/漢字)を保持するメンバ変数。
 	TextMode m_text_mode;
 

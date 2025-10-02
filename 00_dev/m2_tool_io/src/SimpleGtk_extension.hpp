@@ -267,6 +267,10 @@ public:
  */
 template<typename RowStruct>
 class ListStoreModelBase {
+public:
+	/// @brief インデックスやサイズを表すための型エイリアス
+	using size_type = typename std::vector<RowStruct>::size_type;
+
 protected:
 	/// @brief (View) SimpleGtkでラップされたGtkListStoreの所有権を持つポインタ。
 	std::unique_ptr<sg::ListStore> m_list_store_ptr;
@@ -274,8 +278,6 @@ protected:
 	std::vector<RowStruct> m_data_model;
 	/// @brief RowStructからGtkListStoreの行データに変換するためのセッター関数。
 	std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> m_row_setter;
-
-	using size_type = typename std::vector<RowStruct>::size_type;
 
 	/**
 	 * @brief sg::ListStore へのポインタを取得します。
@@ -352,7 +354,7 @@ protected:
 	/**
 	 * @brief 末尾に単一の行を追加します。
 	 * @param row_data 追加する行のデータ。
-	 * @return bool 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const RowStruct& row_data) {
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
@@ -368,6 +370,7 @@ protected:
 	/**
 	 * @brief 末尾に複数の行をまとめて追加します。
 	 * @param rows 追加する行データのvector。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const std::vector<RowStruct>& rows) {
 		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) {
@@ -382,19 +385,20 @@ protected:
 	/**
 	 * @brief 指定した位置に単一の行を挿入します。
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param position 0から始まる挿入位置のインデックス。
 	 * @param row_data 挿入する行のデータ。
-	 * @return bool 指定された位置通りに挿入できればtrue、位置が丸められた場合はfalse。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type position, const RowStruct& row_data) {
 		size_type original_position = position;
 		bool position_was_clamped = false;
 
-		if (position > m_data_model.size()) {
-			position = m_data_model.size();
-		}
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
+		}
+		if (position > m_data_model.size()) {
+			position = m_data_model.size();
 		}
 
 		// 要求された位置と、実際の挿入位置が違うか判定
@@ -416,7 +420,7 @@ protected:
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param position 0から始まる挿入位置のインデックス。
 	 * @param rows 挿入する行データのvector。
-	 * @return bool 指定された開始位置が有効であればtrue、丸められた場合はfalse。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type position, const std::vector<RowStruct>& rows) {
 		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) {
@@ -425,7 +429,7 @@ protected:
 		// 開始位置が有効範囲内([0, size()])にあるかチェック
 		bool position_was_valid = (position <= size());
 
-		int current_pos = position;
+		size_type current_pos = position;
 		for (const auto& row : rows) {
 			// 単行insertは自動で位置を丸めてくれる
 			insert(current_pos++, row);
@@ -436,7 +440,7 @@ protected:
 	/**
 	 * @brief 指定した位置の行を削除します。
 	 * @param position 削除位置のインデックス。
-	 * @return bool 削除に成功すればtrue、インデックスが無効な場合はfalse。
+	 * @return 削除に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool erase(size_type position) {
 		if (position >= m_data_model.size()) {
@@ -455,7 +459,7 @@ protected:
 	/**
 	 * @brief 指定した複数の位置の行をまとめて削除します。
 	 * @param positions 削除する行のインデックスのvector。
-	 * @return bool 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
+	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool erase(std::vector<size_type> positions) {
 		// ★ 先に全てのインデックスが有効かチェック
@@ -466,7 +470,7 @@ protected:
 		}
 
 		std::sort(positions.rbegin(), positions.rend());
-		for (int pos : positions) {
+		for (size_type pos : positions) {
 			erase(pos);
 		}
 		return true; // 全て成功
@@ -476,7 +480,7 @@ protected:
 	 * @brief 指定した位置の行を上書きします。
 	 * @param position 上書き位置のインデックス。
 	 * @param row_data 新しい行データ。
-	 * @return bool 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool update(size_type position, const RowStruct& row_data) {
 		if (position >= m_data_model.size()) {
@@ -495,7 +499,7 @@ protected:
 	/**
 	 * @brief 指定した複数の位置の行をまとめて上書きします。
 	 * @param updates 上書きする位置のインデックスと、新しい行データのmap。
-	 * @return bool 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
+	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool update(const std::map<size_type, RowStruct>& updates) {
 		// ★ 先に全てのインデックスが有効かチェック
@@ -514,15 +518,23 @@ protected:
 	/**
 	 * @brief 指定した位置の行データを取得します。
 	 * @param position 0から始まる取得位置のインデックス。
-	 * @return const RowStruct& 行データへのconst参照。
+	 * @return 行データへのconst参照。
 	 */
 	const RowStruct& get_row(size_type position) const {
 		return m_data_model.at(position);
 	}
 
 	/**
+	 * @brief C++モデル内の全ての行データを取得します。
+	 * @return 全ての行データを含むvectorのコピー。
+	 */
+	std::vector<RowStruct> get_all_rows() const {
+		return m_data_model;
+	}
+
+	/**
 	 * @brief C++モデル内の現在の行数を返します。
-	 * @return size_t 現在の行数。
+	 * @return 現在の行数。
 	 */
 	size_type size() const {
 		return m_data_model.size();
@@ -531,10 +543,10 @@ protected:
 	/**
 	 * @brief 条件に一致する全ての行のインデックスを検索します。
 	 * @param predicate 検索条件となる述語関数。
-	 * @return std::vector<int> 条件に一致した行のインデックスのリスト。
+	 * @return 条件に一致した行のインデックスのリスト。
 	 */
-	std::vector<int> find_indices(std::function<bool(const RowStruct&)> predicate) const {
-		std::vector<int> found_indices;
+	std::vector<size_type> find_indices(std::function<bool(const RowStruct&)> predicate) const {
+		std::vector<size_type> found_indices;
 		for (size_t i = 0; i < m_data_model.size(); ++i) {
 			if (predicate(m_data_model[i])) {
 				found_indices.push_back(i);
@@ -544,14 +556,72 @@ protected:
 	}
 
 	/**
+	 * @brief 条件に一致する全ての行データを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した行データのリスト。
+	 */
+	std::vector<RowStruct> find_rows(std::function<bool(const RowStruct&)> predicate) const {
+		std::vector<RowStruct> found_rows;
+		for (const auto& row : m_data_model) {
+			if (predicate(row)) {
+				found_rows.push_back(row);
+			}
+		}
+		return found_rows;
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行のインデックスと行データのペアを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した行のインデックスと行データのペアのリスト。
+	 */
+	std::vector<std::pair<size_type, RowStruct>> find_indices_and_rows(std::function<bool(const RowStruct&)> predicate) const {
+		std::vector<std::pair<size_type, RowStruct>> found_pairs;
+		for (size_t i = 0; i < m_data_model.size(); ++i) {
+			if (predicate(m_data_model[i])) {
+				found_pairs.emplace_back(i, m_data_model[i]);
+			}
+		}
+		return found_pairs;
+	}
+
+	/**
 	 * @brief 条件に一致する最初の行のインデックスを検索します。
 	 * @param predicate 検索条件となる述語関数。
-	 * @return std::optional<int> 条件に一致した最初の行のインデックス。
+	 * @return 条件に一致した最初の行のインデックス。
 	 */
-	std::optional<int> find_first_index(std::function<bool(const RowStruct&)> predicate) const {
+	std::optional<size_type> find_first_index(std::function<bool(const RowStruct&)> predicate) const {
 		for (size_t i = 0; i < m_data_model.size(); ++i) {
 			if (predicate(m_data_model[i])) {
 				return i;
+			}
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行データを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した最初の行データ。
+	 */
+	std::optional<RowStruct> find_first_row(std::function<bool(const RowStruct&)> predicate) const {
+		for (const auto& row : m_data_model) {
+			if (predicate(row)) {
+				return row;
+			}
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行のインデックスと行データのペアを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した最初の行のインデックスと行データのペア。
+	 */
+	std::optional<std::pair<size_type, RowStruct>> find_first_index_and_row(std::function<bool(const RowStruct&)> predicate) const {
+		for (size_t i = 0; i < m_data_model.size(); ++i) {
+			if (predicate(m_data_model[i])) {
+				return std::make_pair(i, m_data_model[i]);
 			}
 		}
 		return std::nullopt;
@@ -593,28 +663,491 @@ public:
 
 	/**
 	 * @brief 現在TreeViewで選択されている行のインデックスを取得します。
-	 * @return int 選択されている行のインデックス。何も選択されていない場合は-1。
+	 * @return 選択されている行のインデックス。なければ空のoptional。
 	 */
-	int get_selected_index() const {
+	std::optional<size_type> get_selected_index() const {
 		sg::TreeSelection selection = m_tree_view.get_selection();
 		GtkTreeIter iter;
 		if (gtk_tree_selection_get_selected(selection, nullptr, &iter)) {
 			GtkTreePath* path = gtk_tree_model_get_path(this->get_gtk_model(), &iter);
+			if (!path) {
+				return std::nullopt;
+			}
 			int index = gtk_tree_path_get_indices(path)[0];
 			gtk_tree_path_free(path);
 			return index;
 		}
-		return -1;
+		return std::nullopt;
 	}
 
 	/**
 	 * @brief 現在選択されている行のデータをC++モデルから取得します。
-	 * @return std::optional<RowStruct> 選択されていれば行データ、なければ空のoptional。
+	 * @return 選択されていれば行データ、なければ空のoptional。
 	 */
 	std::optional<RowStruct> get_selected_row() const {
-		int index = get_selected_index();
-		if (index >= 0) {
-			return this->get_row(index);
+		auto index_opt = get_selected_index();
+		if (index_opt.has_value()) {
+			return this->get_row(index_opt.value());
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のインデックスと行データのペアを取得します。
+	 * @return 選択されていればインデックスと行データのペア、なければ空のoptional。
+	 */
+	std::optional<std::pair<size_type, RowStruct>> get_selected_index_and_row() const {
+		auto index_opt = get_selected_index();
+		if (index_opt.has_value()) {
+			return std::make_pair(index_opt.value(), this->get_row(index_opt.value()));
+		}
+		return std::nullopt;
+	}
+};
+
+/**
+ * @class PaginatedListStoreModel
+ * @brief 複数のTreeViewListStoreModelを1ページとして扱い、ページネーション機能を提供するクラス。
+ * @details 全データ(マスターデータ)を内部に保持し、データ操作とページ表示を完全にカプセル化します。
+ * @tparam RowStruct 1行分のデータを表現する構造体の型。
+ */
+template<typename RowStruct>
+class PaginatedListStoreModel {
+public:
+	using size_type = typename std::vector<RowStruct>::size_type;
+
+private:
+	/// @brief (Model) 全てのページのマスターデータ
+	std::vector<RowStruct> m_master_data;
+	/// @brief 1つのTreeViewが表示できる最大行数
+	size_t m_rows_per_view;
+	/// @brief 1ページに含まれるTreeViewListStoreModelのリスト
+	std::vector<TreeViewListStoreModel<RowStruct>*> m_page_models;
+	/// @brief 現在表示中のページ番号 (0から始まるインデックス)
+	int m_current_page_index;
+
+	/**
+	 * @brief 指定されたページのデータを各TreeViewに表示する内部関数。
+	 * @param page_index 表示するページのインデックス (0から始まる)。
+	 */
+	void display_page(int page_index) {
+		// 全ての管理下モデルをクリア
+		for (auto* model : m_page_models) {
+			model->clear();
+		}
+
+		// 1ページあたりが表示できる合計行数
+		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+		// 表示を開始するマスターデータのインデックス
+		size_t start_index = page_index * total_rows_per_page;
+
+		// マスターデータから現在のページに表示すべき部分を切り出して表示
+		for (size_t i = 0; i < total_rows_per_page; ++i) {
+			size_t master_index = start_index + i;
+			if (master_index >= m_master_data.size()) break;
+
+			// どのTreeViewに表示するかを計算
+			int view_index = i / m_rows_per_view;
+			m_page_models[view_index]->append(m_master_data[master_index]);
+		}
+		m_current_page_index = page_index;
+	}
+
+public:
+	/**
+	 * @brief コンストラクタ
+	 * @param rows_per_view 1つのTreeViewが保持できる最大行数。
+	 */
+	PaginatedListStoreModel(size_t rows_per_view)
+		: m_rows_per_view(rows_per_view), m_current_page_index(0) {}
+
+	/**
+	 * @brief このページネーション管理に追加するTreeViewListStoreModelを登録します。
+	 * @param model 管理対象のモデルへのポインタ。
+	 */
+	void add_model(TreeViewListStoreModel<RowStruct>* model) {
+		m_page_models.push_back(model);
+	}
+
+	/**
+	 * @brief 複数のTreeViewListStoreModelを一括で登録します。
+	 * @param models 管理対象のモデルへのポインタのvector。
+	 */
+	void add_model(const std::vector<TreeViewListStoreModel<RowStruct>*>& models) {
+		for (auto* model : models) {
+			add_model(model);
+		}
+	}
+
+	/**
+	 * @brief 登録されている全てのTreeViewListStoreModelをクリアします。
+	 * @details マスターデータが空のときのみクリアを許可します。
+	 * @return クリアに成功した場合はtrue、マスターデータが空でない場合はfalse。
+	 */
+	bool clear_models() {
+		// マスターデータが空のときのみクリアを許可
+		if (!m_master_data.empty()) return false;
+		m_page_models.clear();
+		return true;
+	}
+
+	/**
+	 * @brief 全てのページの元となるマスターデータをセットします。
+	 * @details この関数を呼び出すと、データがセットされ、最初のページが表示されます。
+	 * @param all_data 全てのデータを含むvector。
+	 */
+	void set_master_data(const std::vector<RowStruct>& all_data) {
+		m_master_data = all_data;
+		display_page(0);
+	}
+
+	/**
+	 * @brief 次のページへ切り替えます。
+	 * @return 次のページが存在し、切り替えに成功した場合はtrue。
+	 */
+	bool next_page() {
+		if (has_next_page()) {
+			display_page(m_current_page_index + 1);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @brief 前のページへ切り替えます。
+	 * @return 前のページが存在し、切り替えに成功した場合はtrue。
+	 */
+	bool prev_page() {
+		if (has_prev_page()) {
+			display_page(m_current_page_index - 1);
+			return true;
+		}
+		return false;
+	}
+
+	// --- 状態取得関数 ---
+
+	/**
+	 * @brief 現在の総ページ数を取得します。
+	 * @return 総ページ数 (1から始まる)。
+	 */
+	int get_total_pages() const {
+		if (m_master_data.empty()) return 1;
+		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+		if (total_rows_per_page == 0) return 1;
+		return (m_master_data.size() + total_rows_per_page - 1) / total_rows_per_page;
+	}
+
+	/**
+	 * @brief 現在表示中のページ番号を取得します (1から始まる)。
+	 * @return 現在のページ番号。
+	 */
+	int get_current_page() const {
+		return m_current_page_index + 1;
+	}
+
+	/**
+	 * @brief 次のページが存在するかを返します。
+	 * @return 次のページが存在する場合はtrue。
+	 */
+	bool has_next_page() const {
+		return m_current_page_index < (get_total_pages() - 1);
+	}
+
+	/**
+	 * @brief 前のページが存在するかを返します。
+	 * @return 前のページが存在する場合はtrue。
+	 */
+	bool has_prev_page() const {
+		return m_current_page_index > 0;
+	}
+
+	// --- データ操作・検索メソッド ---
+
+	/// @brief マスターデータと表示中の全データをクリアします。
+	void clear() {
+		m_master_data.clear();
+		display_page(0); // 0ページ目を表示（空になる）
+	}
+
+	/**
+	 * @brief マスターデータの末尾に単一の行を追加し、UIを更新します。
+	 * @param row_data 追加する行のデータ。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	bool append(const RowStruct& row_data) {
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
+		m_master_data.push_back(row_data);
+		display_page(m_current_page_index);
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの末尾に複数の行をまとめて追加し、UIを更新します。
+	 * @param rows 追加する行データのvector。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	bool append(const std::vector<RowStruct>& rows) {
+		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) return false;
+		m_master_data.insert(m_master_data.end(), rows.begin(), rows.end());
+		display_page(m_current_page_index);
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスに行を挿入し、UIを更新します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param global_position 挿入位置のグローバルインデックス。
+	 * @param row_data 挿入する行のデータ。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool insert(size_type position, const RowStruct& row_data) {
+		size_type original_position = position;
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
+
+		if (position > m_master_data.size()) position = m_master_data.size();
+
+		m_master_data.insert(m_master_data.begin() + position, row_data);
+		display_page(m_current_page_index);
+		return position == original_position;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスに複数の行をまとめて挿入し、UIを更新します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param global_position 挿入位置のグローバルインデックス。
+	 * @param rows 挿入する行データのvector。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool insert(size_type position, const std::vector<RowStruct>& rows) {
+		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) return false;
+		bool position_was_valid = (position <= size());
+
+		if (position > size()) position = size();
+
+		m_master_data.insert(m_master_data.begin() + position, rows.begin(), rows.end());
+		display_page(m_current_page_index);
+		return position_was_valid;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスの行を削除し、UIを更新します。
+	 * @param global_position 削除する行のグローバルインデックス。
+	 * @return 削除に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool erase(size_type position) {
+		if (position >= size()) return false;
+		m_master_data.erase(m_master_data.begin() + position);
+
+		if (m_current_page_index >= get_total_pages() && m_current_page_index > 0) {
+			m_current_page_index--;
+		}
+		display_page(m_current_page_index);
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて削除します。
+	 * @param positions 削除する行のグローバルインデックスのリスト。
+	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
+	 */
+	bool erase(std::vector<size_type> positions) {
+		for (size_type pos : positions) {
+			if (pos >= size()) return false;
+		}
+		std::sort(positions.rbegin(), positions.rend());
+		for (size_type pos : positions) {
+			m_master_data.erase(m_master_data.begin() + pos);
+		}
+		if (m_current_page_index >= get_total_pages() && m_current_page_index > 0) {
+			m_current_page_index = get_total_pages() - 1;
+		}
+		display_page(m_current_page_index);
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスの行を上書きし、UIを更新します。
+	 * @param global_position 上書きする行のグローバルインデックス。
+	 * @param row_data 新しい行データ。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(size_type position, const RowStruct& row_data) {
+		if (position >= size()) return false;
+		m_master_data[position] = row_data;
+		display_page(m_current_page_index);
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて上書きします。
+	 * @param updates 上書きする行のグローバルインデックスと新しい行データのmap。
+	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
+	 */
+	bool update(const std::map<size_type, RowStruct>& updates) {
+		for (const auto& [pos, row_data] : updates) {
+			if (pos >= size()) return false;
+		}
+		for (const auto& [pos, row_data] : updates) {
+			m_master_data[pos] = row_data;
+		}
+		display_page(m_current_page_index);
+		return true;
+	}
+
+	/**
+	 * @brief 指定したグローバルインデックスの行データをマスターデータから取得します。
+	 * @param global_position 取得する行のグローバルインデックス。
+	 * @return 行データへのconst参照。
+	 */
+	const RowStruct& get_row(size_type global_position) const {
+		return m_master_data.at(global_position);
+	}
+
+	/**
+	 * @brief マスターデータ内の全ての行データを取得します。
+	 * @return 全ての行データを含むvectorのコピー。
+	 */
+	std::vector<RowStruct> get_all_rows() const {
+		return m_master_data;
+	}
+
+	/// @brief マスターデータ内の現在の行数を返します。
+	size_type size() const {
+		return m_master_data.size();
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行のグローバルインデックスを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した行のグローバルインデックスのリスト。
+	 */
+	std::vector<size_type> find_indices(std::function<bool(const RowStruct&)> predicate) const {
+		std::vector<size_type> found_indices;
+		for (size_t i = 0; i < m_master_data.size(); ++i) {
+			if (predicate(m_master_data[i])) {
+				found_indices.push_back(i);
+			}
+		}
+		return found_indices;
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行データを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した行データのリスト。
+	 */
+	std::vector<RowStruct> find_rows(std::function<bool(const RowStruct&)> predicate) const {
+		std::vector<RowStruct> found_rows;
+		for (const auto& row : m_master_data) {
+			if (predicate(row)) {
+				found_rows.push_back(row);
+			}
+		}
+		return found_rows;
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行のグローバルインデックスと行データのペアを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した行のグローバルインデックスと行データのペアのリスト。
+	 */
+	std::vector<std::pair<size_type, RowStruct>> find_indices_and_rows(std::function<bool(const RowStruct&)> predicate) const {
+		std::vector<std::pair<size_type, RowStruct>> found_pairs;
+		for (size_type i = 0; i < m_master_data.size(); ++i) {
+			if (predicate(m_master_data[i])) {
+				found_pairs.emplace_back(i, m_master_data[i]);
+			}
+		}
+		return found_pairs;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行のグローバルインデックスを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した最初の行のグローバルインデックス。
+	 */
+	std::optional<size_type> find_first_index(std::function<bool(const RowStruct&)> predicate) const {
+		for (size_type i = 0; i < m_master_data.size(); ++i) {
+			if (predicate(m_master_data[i])) {
+				return i;
+			}
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行データを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した最初の行データ。
+	 */
+	std::optional<RowStruct> find_first_row(std::function<bool(const RowStruct&)> predicate) const {
+		for (const auto& row : m_master_data) {
+			if (predicate(row)) {
+				return row;
+			}
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行のグローバルインデックスと行データのペアを検索します。
+	 * @param predicate 検索条件となる述語関数。
+	 * @return 条件に一致した最初のグローバルインデックスと行データのペア。
+	 */
+	std::optional<std::pair<size_type, RowStruct>> find_first_index_and_row(std::function<bool(const RowStruct&)> predicate) const {
+		for (size_type i = 0; i < m_master_data.size(); ++i) {
+			if (predicate(m_master_data[i])) {
+				return std::make_pair(i, m_master_data[i]);
+			}
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在表示されているページで選択されている行のグローバルインデックスを取得します。
+	 * @return 選択されていればグローバルインデックス、なければ空のoptional。
+	 */
+	std::optional<size_type> get_selected_index() const {
+		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+		size_t page_start_index = m_current_page_index * total_rows_per_page;
+
+		// 管理している全てのTreeViewをチェック
+		for (size_t i = 0; i < m_page_models.size(); ++i) {
+			auto local_index_opt = m_page_models[i]->get_selected_index();
+			if (local_index_opt.has_value()) {
+				int local_index = local_index_opt.value();
+				// TreeView内での開始インデックスを計算
+				size_t view_start_index = i * m_rows_per_view;
+				// グローバルインデックスを計算して返す
+				return page_start_index + view_start_index + local_index;
+			}
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のデータをマスターデータから取得します。
+	 * @return 選択されていれば行データ、なければ空のoptional。
+	 */
+	std::optional<RowStruct> get_selected_row() const {
+		auto index_opt = get_selected_index();
+		if (index_opt.has_value()) {
+			return get_row(index_opt.value());
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のグローバルインデックスと行データのペアを取得します。
+	 * @return 選択されていればグローバルインデックスと行データのペア、なければ空のoptional。
+	 */
+	std::optional<std::pair<size_type, RowStruct>> get_selected_index_and_row() const {
+		auto index_opt = get_selected_index();
+		if (index_opt.has_value()) {
+			return std::make_pair(index_opt.value(), get_row(index_opt.value()));
 		}
 		return std::nullopt;
 	}
