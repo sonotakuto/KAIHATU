@@ -1033,7 +1033,7 @@ bool MainWindow::authenticate_with_password() {
 	if (!g_password_authenticated) {
 		// パスワード認証が成功するか、キャンセルされるまで繰り返す
 		update_widget_state(&passwordEntryLabel, WidgetState{
-			.text = UiText{"パスワードを\n入力してください", "ぱすわーどを\nにゅうりょく してください"}
+			.text = UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"}
 		});
 		refresh_ui(false); // ラベルのテキストを更新
 		do {
@@ -1049,7 +1049,7 @@ bool MainWindow::authenticate_with_password() {
 				} else {
 					fmt::print("認証失敗：パスワードが違います\n");
 					update_widget_state(&passwordEntryLabel, WidgetState{
-						.text = UiText{"パスワードが違います\nもう一度入力してください", "ぱすわーどが ちがいます\nもういちど にゅうりょく してください"}
+						.text = UiText{"パスワードが違います\nもう一度入力してください", "パスワードが ちがいます\nもういちど にゅうりょく してください"}
 					});
 					refresh_ui(false); // ラベルのテキストを更新
 				}

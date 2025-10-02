@@ -1495,6 +1495,7 @@ a</col>
                     <child>
                       <object class="GtkToggleButton" id="retrieveToggleButton">
                         <property name="label" translatable="yes">取り出し</property>
+                        <property name="use_action_appearance">True</property>
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
@@ -1504,6 +1505,10 @@ a</col>
                         <style>
                           <class name="button"/>
                           <class name="retrieveButton"/>
+                          <class name="border_6px"/>
+                          <class name="br_10px"/>
+                          <class name="border_solid"/>
+                          <class name="font-bold"/>
                         </style>
                       </object>
                       <packing>
@@ -1524,6 +1529,10 @@ a</col>
                         <style>
                           <class name="button"/>
                           <class name="storeButton"/>
+                          <class name="border_6px"/>
+                          <class name="br_10px"/>
+                          <class name="border_solid"/>
+                          <class name="font-bold"/>
                         </style>
                       </object>
                       <packing>
@@ -1544,6 +1553,10 @@ a</col>
                         <style>
                           <class name="button"/>
                           <class name="reconcileButton"/>
+                          <class name="border_6px"/>
+                          <class name="br_10px"/>
+                          <class name="border_solid"/>
+                          <class name="font-bold"/>
                         </style>
                       </object>
                       <packing>

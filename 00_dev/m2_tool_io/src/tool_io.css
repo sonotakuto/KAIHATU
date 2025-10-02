@@ -276,8 +276,50 @@
 }
 
 .border_inset {
-	border: 2px inset darkgray;
+	border: 2px inset black;
 }
+
+/* --- ここから追加 --- */
+
+/* 枠線の太さ (border-width) */
+.border_1px { border-width: 1px; }
+.border_2px { border-width: 2px; }
+.border_3px { border-width: 3px; }
+.border_4px { border-width: 4px; }
+.border_5px { border-width: 5px; }
+.border_6px { border-width: 6px; }
+.border_7px { border-width: 7px; }
+.border_8px { border-width: 8px; }
+.border_9px { border-width: 9px; }
+.border_10px { border-width: 10px; }
+.border_11px { border-width: 11px; }
+.border_12px { border-width: 12px; }
+.border_13px { border-width: 13px; }
+.border_14px { border-width: 14px; }
+.border_15px { border-width: 15px; }
+
+/* 枠線の角丸 (border-radius) */
+.br_0px { border-radius: 0px; }
+.br_2px { border-radius: 2px; }
+.br_4px { border-radius: 4px; }
+.br_5px { border-radius: 5px; }
+.br_6px { border-radius: 6px; }
+.br_8px { border-radius: 8px; }
+.br_10px { border-radius: 10px; }
+.br_12px { border-radius: 12px; }
+.br_15px { border-radius: 15px; }
+.br_20px { border-radius: 20px; }
+.br_25px { border-radius: 25px; }
+.br_30px { border-radius: 30px; }
+
+/* 用途別の角丸 */
+.rounded-sm { border-radius: 4px; }
+.rounded-md { border-radius: 8px; }
+.rounded-lg { border-radius: 16px; }
+.rounded-full { border-radius: 9999px; }
+.rounded-circle { border-radius: 50%; }
+
+/* --- ここまで追加 --- */
 
 .tree-style {
 	color: black;
@@ -320,6 +362,7 @@
 .button:disabled {
 	background-color: #F2F2F2;
 	color: #C8C8C8;
+	border-color: #C8C8C8;
 }
 .button:focus {
 	outline-color: #3584E4;
@@ -386,48 +429,51 @@
 }
 
 .retrieveButton {
-	background-color: #D7E7F5;
+	background-color: #ffffff;
 	color: black;
 }
 .retrieveButton:hover {
-	background-color: #AFCEEB;
+	background-color: #ffffff;
 }
 .retrieveButton:active {
-	background-color: #87B6E1;
+	background-color: #ffffff;
 }
 .retrieveButton:checked {
 	background-color: #2867A0;
 	color: white;
+	border-color: #2867A0;
 }
 
 .storeButton {
-	background-color: #FBE2D1;
+	background-color: #ffffff;
 	color: black;
 }
 .storeButton:hover {
-	background-color: #F7C5A3;
+	background-color: #ffffff;
 }
 .storeButton:active {
-	background-color: #F3A875;
+	background-color: #ffffff;
 }
 .storeButton:checked {
 	background-color: #B85410;
 	color: white;
+	border-color: #B85410;
 }
 
 .reconcileButton {
-	background-color: #E3F1DB;
+	background-color: #ffffff;
 	color: black;
 }
 .reconcileButton:hover {
-	background-color: #C7E3B7;
+	background-color: #ffffff;
 }
 .reconcileButton:active {
-	background-color: #ABD593;
+	background-color: #ffffff;
 }
 .reconcileButton:checked {
 	background-color: #5C8E3A;
 	color: white;
+	border-color: #5C8E3A;
 }
 
 .entry {
