@@ -102,3 +102,10 @@ struct ToolingListInfo {
 	/// @brief ツーリングリストに含まれる工具のリスト
 	std::vector<ToolingListItem> items{};
 };
+
+struct BoxInfo {
+	/// @brief ボックスID (主キー)
+	int box_id{};
+	/// @brief 基本工具情報
+	ToolBasicInfo item{};
+};

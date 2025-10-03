@@ -83,7 +83,7 @@ bool user_authenticate(int user_id) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 */
-	fmt::print("[DB Stub] user_authenticate called with user_id = {}\n", user_id);
+	DEV_PRINT("[DB Stub] user_authenticate called with user_id = {}\n", user_id);
 
 	g_logged_in_user_info = UserInfo{
 		.user_id = user_id,
@@ -105,7 +105,7 @@ bool save_history(void) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 */
-	fmt::print("[DB Stub] save_history called.\n");
+	DEV_PRINT("[DB Stub] save_history called.\n");
 	return true; // TODO: 一時的に常に成功させる
 }
 
@@ -118,7 +118,7 @@ std::optional<ToolIndividualInfo> get_tool_data(int id) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 */
-	fmt::print("[DB Stub] get_tool_data called with id = {}\n", id);
+	DEV_PRINT("[DB Stub] get_tool_data called with id = {}\n", id);
 
 	return ToolIndividualInfo{
 		.id = id,
@@ -137,7 +137,7 @@ std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 */
-	fmt::print("[DB Stub] get_basic_tool_data called with basic_tool_id = {}\n", basic_tool_id);
+	DEV_PRINT("[DB Stub] get_basic_tool_data called with basic_tool_id = {}\n", basic_tool_id);
 
 	return ToolBasicInfo{
 		.basic_tool_id = basic_tool_id,
@@ -158,7 +158,7 @@ std::optional<ToolingListInfo> get_tooling_list(int line_id) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 */
-	fmt::print("[DB Stub] get_tooling_list called with line_id = {}\n", line_id);
+	DEV_PRINT("[DB Stub] get_tooling_list called with line_id = {}\n", line_id);
 
 	return ToolingListInfo{
 		.line_id = line_id,

@@ -18,8 +18,11 @@ constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_UNREAD	= {0.914, 0.922, 0.961, 1.0};	/
 
 // static parameters
 //#define STATIC_SAMPLE 0	// 説明
-#define ODBC_DSN "odbc_test"	// ODBCのDSN名
-#define ODBC_USER "pi"			// ODBCのユーザー名
-#define ODBC_PASS "pipasswd"	// ODBCのパスワード
+#define ODBC_DSN	"odbc_test"	// ODBCのDSN名
+#define ODBC_USER	"pi"		// ODBCのユーザー名
+#define ODBC_PASS	"pipasswd"	// ODBCのパスワード
+
+#define TRACKER_HOST	"localhost"	// 工具追跡システムのホスト名
+#define TRACKER_PORT	10000		// 工具追跡システムのポート番号
 
 #define DISPLAY_ROWS_PER_COLUMN 11	// 表1列あたりの表示行数

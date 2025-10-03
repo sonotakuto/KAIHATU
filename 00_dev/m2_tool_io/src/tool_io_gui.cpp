@@ -250,6 +250,8 @@ MainWindow::MainWindow() :
 
 	this->set_timeout(100);
 
+	this->fullscreen();	// フルスクリーンで表示
+
 	this->liststore3columnAll.add_model({&liststore3column1st, &liststore3column2nd, &liststore3column3rd});
 	this->liststore2columnAll.add_model({&liststore2column1st, &liststore2column2nd});
 
@@ -947,19 +949,19 @@ MainWindow::MainWindow() :
 	g_app_state_configs.insert(make_pair(AppState::RECONCILE, WidgetStateConfig{
 		.on_enter_state = [](MainWindow* thiz){
 			thiz->reset_variables();
-			thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_TOOL_SELECTION);
+			thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION);
 		}
 	}));
 
 	// --- 状態：棚卸し - 工具選択待ち ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE_WAITING_FOR_TOOL_SELECTION, WidgetStateConfig{
+	g_app_state_configs.insert(make_pair(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
-		{
-			{ {&messageLabel}, {UiText{"棚卸しを行うコンテナを選択してください", "たなおろしをおこなうコンテナをせんたくしてください"}, true, true} },
+		.widget_states = {
+			{ {&messageLabel}, {UiText{"棚卸しを行うコンテナを選択してください", "たなおろしを おこなう コンテナを\nせんたく してください"}, true, true} },
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
-		{
+		.table_states = {
 			{ {&table2column1st, &table2column2nd}, {
 				.column_headers = std::vector<UiText>{
 					{"コンテナ\n  番号", "コンテナ\nばんごう"},
@@ -972,12 +974,12 @@ MainWindow::MainWindow() :
 			} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		"reconcileOperationPage", "table2column",
+		.operationStackPageName = "reconcileOperationPage", .tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		[](MainWindow* thiz){ /* TODO: DBから取得したコンテナリストをテーブルに表示する */ },
-		nullptr,
-		nullptr
+		.on_enter_state				= [](MainWindow* thiz){ /* TODO: DBから取得したコンテナリストをテーブルに表示する */ }
 	}));
+
+
 
 	// TODO: 他のすべての状態(RETRIEVE_WAITING_FOR_CONTAINERなど)もここに追加していく
 }
@@ -1112,19 +1114,19 @@ void MainWindow::set_mode(GuiMode mode) {
 	// 3. モードに応じて表示する操作パネルを切り替え
 	switch (mode) {
 	case GuiMode::NONE:
-		fmt::print("ログイン待ちモード\n");
+		DEV_PRINT("ログイン待ちモード\n");
 		set_app_state(AppState::NONE);
 		break;
 	case GuiMode::RETRIEVE:
-		fmt::print("取り出しモード\n");
+		DEV_PRINT("取り出しモード\n");
 		set_app_state(AppState::RETRIEVE);
 		break;
 	case GuiMode::STORE:
-		fmt::print("補充モード\n");
+		DEV_PRINT("補充モード\n");
 		set_app_state(AppState::STORE);
 		break;
 	case GuiMode::RECONCILE:
-		fmt::print("棚卸しモード\n");
+		DEV_PRINT("棚卸しモード\n");
 		set_app_state(AppState::RECONCILE);
 		break;
 	}
@@ -1140,7 +1142,7 @@ void MainWindow::main_ListStore_setter(GtkListStore* store, GtkTreeIter* iter, c
 			: MainWindow::g_table_row_colors.at(row.cell_state_5)
 		);
 	} catch (const std::out_of_range& e) {
-		fmt::print("Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state_0to4));
+		DEV_PRINT("Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state_0to4));
 		throw; // 再スローして呼び出し元で処理させる
 	}
 	gtk_list_store_set(store, iter,
@@ -1214,12 +1216,12 @@ bool MainWindow::authenticate_with_password() {
 			if (response == GTK_RESPONSE_OK) {
 				// TODO: ここで実際のパスワード検証ロジックを実装します
 				// 今回はダミーとして "1234" を正しいパスワードとします
-				fmt::print("認証開始\n");
+				DEV_PRINT("認証開始\n");
 				if (std::string(passwordEntry.get_text()) == "1234") {
-					fmt::print("認証成功\n");
+					DEV_PRINT("認証成功\n");
 					g_password_authenticated = true;
 				} else {
-					fmt::print("認証失敗：パスワードが違います\n");
+					DEV_PRINT("認証失敗：パスワードが違います\n");
 					update_widget_state(&passwordEntryLabel, WidgetState{
 						.text = UiText{"パスワードが違います\nもう一度入力してください", "ぱすわーどが ちがいます\nもういちど にゅうりょく してください"}
 					});
@@ -1228,7 +1230,7 @@ bool MainWindow::authenticate_with_password() {
 			} else if (response == GTK_RESPONSE_CANCEL || response == GTK_RESPONSE_DELETE_EVENT) {
 				// キャンセルボタンが押されたか、ダイアログが閉じられた場合
 				g_password_authenticated = false;
-				fmt::print("認証キャンセル\n");
+				DEV_PRINT("認証キャンセル\n");
 			}
 		} while (response == GTK_RESPONSE_OK && !g_password_authenticated);
 
@@ -1286,9 +1288,9 @@ bool MainWindow::on_timeout() {
 }
 
 void MainWindow::retrieveToggleButton_on_toggled() {
-	fmt::print("[取り出し]\n");
+	DEV_PRINT("[取り出し]\n");
 	if (m_isProgrammaticallyChangingToggle) {
-		fmt::print("無視\n");
+		DEV_PRINT("無視\n");
 		return;	// プログラムによる変更は無視
 	}
 
@@ -1299,9 +1301,9 @@ void MainWindow::retrieveToggleButton_on_toggled() {
 }
 
 void MainWindow::storeToggleButton_on_toggled() {
-	fmt::print("[補充]\n");
+	DEV_PRINT("[補充]\n");
 	if (m_isProgrammaticallyChangingToggle) {
-		fmt::print("無視\n");
+		DEV_PRINT("無視\n");
 		return;	// プログラムによる変更は無視
 	}
 
@@ -1312,9 +1314,9 @@ void MainWindow::storeToggleButton_on_toggled() {
 }
 
 void MainWindow::reconcileToggleButton_on_toggled() {
-	fmt::print("[棚卸し]\n");
+	DEV_PRINT("[棚卸し]\n");
 	if (m_isProgrammaticallyChangingToggle) {
-		fmt::print("無視\n");
+		DEV_PRINT("無視\n");
 		return;	// プログラムによる変更は無視
 	}
 
@@ -1330,20 +1332,20 @@ void MainWindow::kanaKanjiButton_on_clicked() {
 }
 
 void MainWindow::logoutButton_on_clicked() {
-	fmt::print("ログアウトボタンがクリックされました\n");
+	DEV_PRINT("ログアウトボタンがクリックされました\n");
 	if (logoutDialog.run(this) == GTK_RESPONSE_YES) {
-		fmt::print("ログアウトします\n");
+		DEV_PRINT("ログアウトします\n");
 		set_mode(GuiMode::NONE);
 	} else {
-		fmt::print("ログアウトはキャンセルされました\n");
+		DEV_PRINT("ログアウトはキャンセルされました\n");
 	}
 }
 
 void MainWindow::userIdEntry_on_activate() {
-	fmt::print("ユーザーIDエントリでEnterキーが押されました\n");
+	DEV_PRINT("ユーザーIDエントリでEnterキーが押されました\n");
 
 	if (user_authenticate(stoi(std::string(userIdEntry.get_text())))) {
-		fmt::print("ユーザー認証成功\n");
+		DEV_PRINT("ユーザー認証成功\n");
 
 		// 権限に応じてトグルボタンの操作可否を設定
 		// 取り出しトグルボタン
@@ -1383,7 +1385,7 @@ void MainWindow::userIdEntry_on_activate() {
 			set_mode(GuiMode::NONE);
 		}
 	} else {
-		fmt::print("ユーザー認証失敗\n");
+		DEV_PRINT("ユーザー認証失敗\n");
 		// TODO: エラーメッセージを表示する処理
 	}
 }
@@ -1395,18 +1397,18 @@ void MainWindow::mainTableSelection_on_changed(){
 			state_config.on_mainTableSelection_changed(this);
 		}
 	} catch (const std::out_of_range& e) {
-		fmt::print("Error: 未定義の状態でmainTableの選択が変更されました (AppState={})\n", static_cast<int>(m_app_state));
+		DEV_PRINT("Error: 未定義の状態でmainTableの選択が変更されました (AppState={})\n", static_cast<int>(m_app_state));
 		// 例外を無視して処理を続行
 	}
 }
 
 void MainWindow::prevButton_on_clicked() {
-	fmt::print("前のページへ\n");
+	DEV_PRINT("前のページへ\n");
 	update_and_handle_pagination(PaginationAction::GO_TO_PREV);
 }
 
 void MainWindow::nextButton_on_clicked() {
-	fmt::print("次のページへ\n");
+	DEV_PRINT("次のページへ\n");
 	update_and_handle_pagination(PaginationAction::GO_TO_NEXT);
 }
 
@@ -1417,7 +1419,7 @@ void MainWindow::qrCodeEntry_on_activate() {
 			state_config.on_qrCodeEntry_activate(this);
 		}
 	} catch (const std::out_of_range& e) {
-		fmt::print("Error: 未定義の状態でqrCodeEntryでEnterが押されました (AppState={})\n", static_cast<int>(m_app_state));
+		DEV_PRINT("Error: 未定義の状態でqrCodeEntryでEnterが押されました (AppState={})\n", static_cast<int>(m_app_state));
 		// 例外を無視して処理を続行
 	}
 	qrCodeEntry.set_text("");
@@ -1430,7 +1432,7 @@ void MainWindow::falseButton_on_clicked() {
 			state_config.on_falseButton_clicked(this);
 		}
 	} catch (const std::out_of_range& e) {
-		fmt::print("Error: 未定義の状態でFalseボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
+		DEV_PRINT("Error: 未定義の状態でFalseボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
 		// 例外を無視して処理を続行
 	}
 }
@@ -1442,7 +1444,7 @@ void MainWindow::trueButton_on_clicked() {
 			state_config.on_trueButton_clicked(this);
 		}
 	} catch (const std::out_of_range& e) {
-		fmt::print("Error: 未定義の状態でTrueボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
+		DEV_PRINT("Error: 未定義の状態でTrueボタンがクリックされました (AppState={})\n", static_cast<int>(m_app_state));
 		// 例外を無視して処理を続行
 	}
 }
@@ -1463,14 +1465,14 @@ void MainWindow::passwordEntryDialog_on_show() {
 void MainWindow::passwordCancelButton_on_clicked() {
 	// passwdEntryDialogに対して、GTK_RESPONSE_OK (-5) の応答シグナルを送信する
 	// これにより、dialog.run()が GTK_RESPONSE_OK を返して終了する
-	fmt::print("[キャンセル]\n");
+	DEV_PRINT("[キャンセル]\n");
 	gtk_dialog_response(GTK_DIALOG(this->passwordEntryDialog.object), GTK_RESPONSE_CANCEL);
 }
 
 void MainWindow::passwordEnterButton_on_clicked() {
 	// passwdEntryDialogに対して、GTK_RESPONSE_CANCEL (-6) の応答シグナルを送信する
 	// これにより、dialog.run()が GTK_RESPONSE_CANCEL を返して終了する
-	fmt::print("[確定]\n");
+	DEV_PRINT("[確定]\n");
 	gtk_dialog_response(GTK_DIALOG(this->passwordEntryDialog.object), GTK_RESPONSE_OK);
 }
 
@@ -1517,7 +1519,7 @@ void MainWindow::on_enter_store_waiting_for_tool_qr() {
 void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 	ToolBasicInfo basic_info;
 	std::string text(qrCodeEntry.get_text());
-	fmt::print("補充モード - 工具QRコード入力: '{}'\n", text);
+	DEV_PRINT("補充モード - 工具QRコード入力: '{}'\n", text);
 	auto individual_info = get_tool_data(stoi(text));
 
 	if (individual_info.has_value()) {

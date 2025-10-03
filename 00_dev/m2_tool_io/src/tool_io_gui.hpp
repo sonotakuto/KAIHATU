@@ -58,7 +58,15 @@ public:
 
 		/// 棚卸しモード
 		RECONCILE,	// 移行用
-		RECONCILE_WAITING_FOR_TOOL_SELECTION	// TODO: 説明を書く
+		RECONCILE_WAITING_FOR_CONTAINER_SELECTION,	// コンテナ選択待ち
+		RECONCILE_CONFIRMING_SELECTION,				// 選択したコンテナの確認
+		RECONCILE_CONTAINER_RETRIEVING,				// コンテナ搬出待ち
+		RECONCILE_CONTAINER_RETRIEVED,				// コンテナ搬出完了
+		RECONCILE_READY_FOR_READING,				// 実際に棚卸しを行う(インサート以外) - 工具読み取り前
+		RECONCILE_READ_COMPLETED,					// 実際に棚卸しを行う(インサート以外) - 工具読み取り後
+		RECONCILE_INSERT_READY_FOR_READING,			// 実際に棚卸しを行う(インサート) - 工具読み取り前
+		RECONCILE_INSERT_READ_COMPLETED,			// 実際に棚卸しを行う(インサート) - 工具読み取り後
+
 		// TODO: 他のモードの状態もここに追加
 	};
 

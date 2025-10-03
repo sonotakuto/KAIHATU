@@ -21,6 +21,7 @@ public:
 	using sg::Window::Window; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_METHOD(window, fullscreen, void)
 
 	// プロパティ
 
@@ -238,6 +239,45 @@ public:
 };
 
 /**
+ * @class ListStore
+ * @brief sg::ListStoreを拡張し、機能を追加したクラス。
+ */
+class ListStore : public sg::ListStore {
+public:
+	using sg::ListStore::ListStore; // 基底クラスのコンストラクタを継承
+
+	using sg::ListStore::append;
+
+	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
+
+	// メソッド
+	DEFINE_METHOD_WITH_ARGS(list_store, remove, gboolean, (GtkTreeIter *iter), iter)
+	DEFINE_METHOD_WITH_ARGS(list_store, insert, void, (GtkTreeIter *iter, gint position), iter, position)
+	DEFINE_METHOD_WITH_ARGS(list_store, append, void, (GtkTreeIter *iter), iter)
+	DEFINE_METHOD_WITH_ARGS(tree_model, iter_nth_child, gboolean, (GtkTreeIter  *iter, GtkTreeIter *parent, gint n), iter, parent, n)
+
+	// プロパティ
+
+	// シグナル
+};
+
+/**
+ * @class TreeSelection
+ * @brief sg::TreeSelectionを拡張し、機能を追加したクラス。
+ */
+class TreeSelection : public sg::TreeSelection {
+public:
+	using sg::TreeSelection::TreeSelection; // 基底クラスのコンストラクタを継承
+
+
+	// メソッド
+
+	// プロパティ
+
+	// シグナル
+};
+
+/**
  * @class TreeView
  * @brief sg::TreeViewを拡張し、機能を追加したクラス。
  */
@@ -273,23 +313,23 @@ public:
 
 protected:
 	/// @brief (View) SimpleGtkでラップされたGtkListStoreの所有権を持つポインタ。
-	std::unique_ptr<sg::ListStore> m_list_store_ptr;
+	std::unique_ptr<tool_io::ListStore> m_list_store_ptr;
 	/// @brief (Model) C++側のデータ本体。アプリケーションロジックの「信頼できる唯一の情報源」。
 	std::vector<RowStruct> m_data_model;
 	/// @brief RowStructからGtkListStoreの行データに変換するためのセッター関数。
 	std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> m_row_setter;
 
 	/**
-	 * @brief sg::ListStore へのポインタを取得します。
+	 * @brief tool_io::ListStore へのポインタを取得します。
 	 * @details ComboBox や TreeView にモデルとして設定する際に使用します。
-	 * @return 内部で管理している sg::ListStore へのポインタ。
+	 * @return 内部で管理している tool_io::ListStore へのポインタ。
 	 */
-	sg::ListStore* get_sg_store() const { return m_list_store_ptr.get(); }
+	tool_io::ListStore* get_sg_store() const { return m_list_store_ptr.get(); }
 
 	/**
 	 * @brief 内部のListStoreをGtkListStore*として取得するヘルパー関数。
 	 * @details 複雑なキャストをこの関数内に隠蔽します。
-	 * @return 内部で管理している sg::ListStore から取得した GtkListStore へのポインタ。
+	 * @return 内部で管理している tool_io::ListStore から取得した GtkListStore へのポインタ。
 	 */
 	GtkListStore* get_gtk_store() const {
 		if (!m_list_store_ptr) return nullptr;
@@ -300,12 +340,12 @@ protected:
 	/**
 	 * @brief 内部のListStoreをGtkTreeModel*として取得するヘルパー関数。
 	 * @details 複雑なキャストをこの関数内に隠蔽します。
-	 * @return 内部で管理している sg::ListStore から取得した GtkTreeModel へのポインタ。
+	 * @return 内部で管理している tool_io::ListStore から取得した GtkTreeModel へのポインタ。
 	 */
 	GtkTreeModel* get_gtk_model() const {
 		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
-		return GTK_TREE_MODEL(get_gtk_store());
+		return (GtkTreeModel*)(*m_list_store_ptr);
 	}
 
 	/**
@@ -333,7 +373,7 @@ protected:
 		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
 		GtkListStore* new_gtk_store = gtk_list_store_newv(column_types.size(), (GType*)column_types.data());
 		// 生成したGtkListStoreをSimpleGtkラッパーでラップし、unique_ptrで所有権を管理します。
-		m_list_store_ptr = std::make_unique<sg::ListStore>(new_gtk_store);
+		m_list_store_ptr = std::make_unique<tool_io::ListStore>(new_gtk_store);
 	}
 
 	/**
@@ -362,7 +402,7 @@ protected:
 		}
 		m_data_model.push_back(row_data);
 		GtkTreeIter iter;
-		gtk_list_store_append(get_gtk_store(), &iter);
+		get_sg_store()->append(&iter);
 		set_row_to_store(&iter, row_data);
 		return true; // 成功
 	}
@@ -408,7 +448,8 @@ protected:
 
 		m_data_model.insert(m_data_model.begin() + position, row_data);
 		GtkTreeIter iter;
-		gtk_list_store_insert(get_gtk_store(), &iter, position);
+		get_sg_store()->insert(&iter, position);
+//		gtk_list_store_insert(get_gtk_store(), &iter, position);
 		set_row_to_store(&iter, row_data);
 
 		return !position_was_clamped;
@@ -449,10 +490,14 @@ protected:
 
 		m_data_model.erase(m_data_model.begin() + position);
 		GtkTreeIter iter;
+/*
 		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
 			gtk_list_store_remove(get_gtk_store(), &iter);
 		}
-
+*/
+		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+			get_sg_store()->remove(&iter);
+		}
 		return true; // 成功
 	}
 
@@ -489,7 +534,8 @@ protected:
 
 		m_data_model[position] = row_data;
 		GtkTreeIter iter;
-		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
+//		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
+		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
 			set_row_to_store(&iter, row_data);
 		}
 
