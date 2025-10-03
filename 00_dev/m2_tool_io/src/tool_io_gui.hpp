@@ -52,10 +52,8 @@ public:
 		STORE_CONTAINER_RETRIEVING,		// コンテナ搬出待ち
 		STORE_CONTAINER_RETRIEVED,		// コンテナ搬出完了
 		STORE_READY_FOR_READING,		// 実際に補充を行う(インサート以外) - 工具読み取り前
-		STORE_READING_TOOL_QR,			// 実際に補充を行う(インサート以外) - 工具読み取り中
 		STORE_READ_COMPLETED,			// 実際に補充を行う(インサート以外) - 工具読み取り後
 		STORE_INSERT_READY_FOR_READING,	// 実際に補充を行う(インサート) - 工具読み取り前
-		STORE_INSERT_READING_TOOL_QR,	// 実際に補充を行う(インサート) - 工具読み取り中
 		STORE_INSERT_READ_COMPLETED,	// 実際に補充を行う(インサート) - 工具読み取り後
 
 		/// 棚卸しモード
@@ -83,6 +81,36 @@ public:
 		UPDATE_UI_ONLY, // ページは変更せず、UIの表示（ボタンの有効/無効など）だけを更新
 		GO_TO_PREV,     // 前のページへ移動
 		GO_TO_NEXT      // 次のページへ移動
+	};
+
+	/**
+	 * @enum TableCellState
+	 * @brief テーブルのセルの状態を定義する列挙型。
+	 */
+	enum class TableCellState {
+		NONE,		// 変更なし
+		NORMAL,		// 通常状態
+		HIGHLIGHT,	// 強調表示
+		FADED,		// 薄く表示
+		SELECTED,	// 選択状態
+		RECONCILE_MATCH,	// 棚卸しで一致した行
+		RECONCILE_MISMATCH,	// 棚卸しで不一致の行
+		RECONCILE_UNREAD	// 棚卸しで読み取りされなかった行
+	};
+
+	/**
+	 * @struct MainTableData
+	 * @brief メインテーブルの1行分のデータを保持する構造体。
+	 */
+	struct MainTableData {
+		/// @brief ID
+		int id{};
+		/// @brief 各列のデータ (6列固定)
+		std::array<std::string, 6> data_columns{};
+		/// @brief セルの状態 (0～4列目)
+		TableCellState cell_state_0to4 = TableCellState::NORMAL;
+		/// @brief セルの状態 (5列目)
+		TableCellState cell_state_5 = TableCellState::NONE;
 	};
 
 	/**
@@ -197,7 +225,9 @@ public:
 
 		/// @brief 状態遷移直後に実行するアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_enter_state = nullptr;
-		/// @brief qrCodeEntry がクリックされたときのアクション (nullptrなら何もしない)
+		/// @brief いずれかのメインテーブルの選択が変更されたときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*)> on_mainTableSelection_changed = nullptr;
+		/// @brief qrCodeEntry で Enter が押されたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_qrCodeEntry_activate = nullptr;
 		/// @brief falseButton がクリックされたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_falseButton_clicked = nullptr;
@@ -218,12 +248,6 @@ public:
 	//=========================================================================
 	// 公開メンバ関数
 	//=========================================================================
-	/**
-	 * @brief アプリケーションの状態を更新し、UI（メッセージ、ボタン等）を再描画します。
-	 * @param state 新しいアプリケーションの状態。
-	 * @details 状態遷移の唯一の窓口となる関数です。
-	 */
-	void set_app_state(AppState state);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -279,36 +303,46 @@ public:
 	tool_io::Box table3column1stBox;
 	/// @brief 3列表示テーブル (1) (ID: table3column1st)
 	tool_io::TreeView table3column1st;
+	/// @brief 3列表示テーブルの Selection オブジェクト (1)
+	sg::TreeSelection table3column1stSelection;
 	/// @brief 3列表示テーブルのリストストア (1)
-	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column1st;
+	tool_io::TreeViewListStoreModel<MainTableData> liststore3column1st;
 	/// @brief 3列表示テーブルのボックス (2) (ID: table3column2ndBox)
 	tool_io::Box table3column2ndBox;
 	/// @brief 3列表示テーブル (2) (ID: table3column2nd)
 	tool_io::TreeView table3column2nd;
+	/// @brief 3列表示テーブルの Selection オブジェクト (2)
+	sg::TreeSelection table3column2ndSelection;
 	/// @brief 3列表示テーブルのリストストア (2)
-	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column2nd;
+	tool_io::TreeViewListStoreModel<MainTableData> liststore3column2nd;
 	/// @brief 3列表示テーブルのボックス (3) (ID: table3column3rdBox)
 	tool_io::Box table3column3rdBox;
 	/// @brief 3列表示テーブル (3) (ID: table3column3rd)
 	tool_io::TreeView table3column3rd;
+	/// @brief 3列表示テーブルの Selection オブジェクト (3)
+	sg::TreeSelection table3column3rdSelection;
 	/// @brief 3列表示テーブルのリストストア (3)
-	tool_io::TreeViewListStoreModel<MainTableData> Liststore3column3rd;
+	tool_io::TreeViewListStoreModel<MainTableData> liststore3column3rd;
 	/// @brief 3列表示テーブルのページ操作可能なリストストア
-	tool_io::PaginatedListStoreModel<MainTableData> Liststore3columnAll;
+	tool_io::PaginatedListStoreModel<MainTableData> liststore3columnAll;
 	/// @brief 2列表示テーブルのボックス (1) (ID: table2column1stBox)
 	tool_io::Box table2column1stBox;
 	/// @brief 2列表示テーブル (1) (ID: table2column1st)
 	tool_io::TreeView table2column1st;
+	/// @brief 2列表示テーブルの Selection オブジェクト (1)
+	sg::TreeSelection table2column1stSelection;
 	/// @brief 2列表示テーブルのリストストア (1)
-	tool_io::TreeViewListStoreModel<MainTableData> Liststore2column1st;
+	tool_io::TreeViewListStoreModel<MainTableData> liststore2column1st;
 	/// @brief 2列表示テーブルのボックス (2) (ID: table2column2ndBox)
 	tool_io::Box table2column2ndBox;
 	/// @brief 2列表示テーブル (2) (ID: table2column2nd)
 	tool_io::TreeView table2column2nd;
+	/// @brief 2列表示テーブルの Selection オブジェクト (2)
+	sg::TreeSelection table2column2ndSelection;
 	/// @brief 2列表示テーブルのリストストア (2)
-	tool_io::TreeViewListStoreModel<MainTableData> Liststore2column2nd;
+	tool_io::TreeViewListStoreModel<MainTableData> liststore2column2nd;
 	/// @brief 2列表示テーブルのページ操作可能なリストストア
-	tool_io::PaginatedListStoreModel<MainTableData> Liststore2columnAll;
+	tool_io::PaginatedListStoreModel<MainTableData> liststore2columnAll;
 
 	// --- フッター部 ---
 	/// @brief テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox)
@@ -333,8 +367,8 @@ public:
 	// --- ダイアログの親ウィジェット ---
 	/// @brief インサート枚数確認ダイアログ (ID: confirmInsertCountDialog)
 	tool_io::Dialog confirmInsertCountDialog;
-	/// @brief 再研磨確認ダイアログ (ID: confirmRegrindDialog)
-	tool_io::Dialog confirmRegrindDialog;
+	/// @brief 再研磨確認ダイアログ (ID: confirmRegroundDialog)
+	tool_io::Dialog confirmRegroundDialog;
 	/// @brief ログアウト確認ダイアログ (ID: logoutDialog)
 	tool_io::Dialog logoutDialog;
 	/// @brief パスワード入力ダイアログ (ID: passwordEntryDialog)
@@ -357,14 +391,14 @@ public:
 	tool_io::Button insertCountOkButton;
 
 	// --- 再研磨確認ダイアログ内のウィジェット ---
-	/// @brief ダイアログのメインメッセージラベル (ID: confirmRegrindLabel)
-	tool_io::Label confirmRegrindLabel;
-	/// @brief 「いいえ」トグルボタン (ID: notRegrindButton)
-	tool_io::ToggleButton notRegrindButton;
-	/// @brief 「はい」トグルボタン (ID: regrindButton)
-	tool_io::ToggleButton regrindButton;
-	/// @brief 「OK」ボタン (ID: confirmRegrindOkButton)
-	tool_io::Button confirmRegrindOkButton;
+	/// @brief ダイアログのメインメッセージラベル (ID: confirmRegroundLabel)
+	tool_io::Label confirmRegroundLabel;
+	/// @brief 「いいえ」トグルボタン (ID: notRegroundButton)
+	tool_io::ToggleButton notRegroundButton;
+	/// @brief 「はい」トグルボタン (ID: regroundButton)
+	tool_io::ToggleButton regroundButton;
+	/// @brief 「OK」ボタン (ID: confirmRegroundOkButton)
+	tool_io::Button confirmRegroundOkButton;
 
 	// --- ログアウト確認ダイアログ内のウィジェット ---
 	/// @brief 「いいえ」ボタン (ID: logoutNoButton)
@@ -442,6 +476,12 @@ private:
 	}
 
 	/**
+	 * @brief 状態管理用の変数を初期状態にリセットする変数。
+	 * @details アプリケーションの初期化やログアウト時に呼び出されます。
+	 */
+	void reset_variables();
+
+	/**
 	 * @brief ウィジェットの状態を更新するヘルパー関数。
 	 * @param widget 更新対象のウィジェット。
 	 * @param state 適用する状態 (WidgetState)。
@@ -458,10 +498,17 @@ private:
 	void update_table_state(tool_io::TreeView* table, TableState state);
 
 	/**
-	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
-	 * @param action 実行したい操作の種類。
+	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
+	 * @param force_redraw_all trueなら全ウィジェットを、falseなら変更があったウィジェットのみを更新。
 	 */
-	void update_and_handle_pagination(PaginationAction action);
+	void refresh_ui(bool force_redraw_all = false);
+
+	/**
+	 * @brief アプリケーションの状態を更新し、UI（メッセージ、ボタン等）を再描画します。
+	 * @param state 新しいアプリケーションの状態。
+	 * @details 状態遷移の唯一の窓口となる関数です。
+	 */
+	void set_app_state(AppState state);
 
 	/**
 	 * @brief アプリケーションの操作モードを設定します。
@@ -471,16 +518,36 @@ private:
 	void set_mode(GuiMode mode);
 
 	/**
+	 * @brief MainTableData構造体の内容をGtkListStoreに設定するセッター関数。
+	 * @param store 更新対象のGtkListStore。
+	 * @param iter 更新する行のイテレータ。
+	 * @param row 設定するMainTableData構造体。
+	 */
+	void main_ListStore_setter(GtkListStore* store, GtkTreeIter* iter, const MainTableData& row);
+
+	/**
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
+	 * @param action 実行したい操作の種類。
+	 */
+	void update_and_handle_pagination(PaginationAction action);
+
+	/**
 	 * @brief パスワード認証ダイアログを表示し、認証を行います。
-	 * @return bool 認証に成功した場合はtrue、失敗またはキャンセルの場合はfalseを返します。
+	 * @return 認証に成功した場合はtrue、失敗またはキャンセルの場合はfalseを返します。
 	 */
 	bool authenticate_with_password();
 
 	/**
-	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
-	 * @param force_redraw_all trueなら全ウィジェットを、falseなら変更があったウィジェットのみを更新。
+	 * @brief 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
+	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
-	void refresh_ui(bool force_redraw_all = false);
+	bool confirm_if_reground();
+
+	/**
+	 * @brief 補充履歴を保存します。
+	 * @details 補充モードで補充が完了した際に呼び出されます。
+	 */
+	void save_store_history();
 
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
@@ -488,12 +555,13 @@ private:
 
 	/**
 	 * @brief ウィンドウが初回表示されたときに一度だけ呼び出されるハンドラ
+	 * @details ウィンドウの初期化を行う。
 	 */
 	void on_window_show();
 
 	/**
 	 * @brief set_timeoutで設定された間隔ごとに呼び出されるタイマーハンドラ。
-	 * @return bool trueを返すとタイマーが継続し、falseを返すと停止します。
+	 * @return trueを返すとタイマーが継続し、falseを返すと停止します。
 	 */
 	bool on_timeout() override;
 
@@ -532,6 +600,12 @@ private:
 	 * @details ユーザーIDの入力が完了したときに呼び出され、ユーザー認証を試みる。
 	 */
 	void userIdEntry_on_activate();
+
+	/**
+	 * @brief メインテーブルの Selection オブジェクトの "changed" シグナルに対応するハンドラ。
+	 * @details メインテーブルの選択が変更されたときに呼び出される。現在の状態に応じたコールバックを実行する。
+	 */
+	void mainTableSelection_on_changed();
 
 	/**
 	 * @brief prevButton の "clicked" シグナルに対応するハンドラ。
@@ -592,6 +666,24 @@ private:
 	 * @details パスワード入力をキャンセルする。
 	 */
 	void passwordCancelButton_on_clicked();
+
+	/**
+	 * @brief regroundButton の "toggled" シグナルに対応するハンドラ。
+	 * @details 「はい」が選択された状態への切り替えを試みる。
+	 */
+	void regroundButton_on_toggled();
+
+	/**
+	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。
+	 * @details 「いいえ」が選択された状態への切り替えを試みる。
+	 */
+	void notRegroundButton_on_toggled();
+
+	/**
+	 * @brief confirmRegroundOkButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 選択を確定し、confirmRegroundDialog で GTK_RESPONSE_OK を返す。
+	 */
+	void confirmRegroundOkButton_on_clicked();
 
 	//=========================================================================
 	// プライベートメンバ関数 (状態毎の関数)
@@ -676,6 +768,8 @@ private:
 	 */
 	std::map<AppState, WidgetStateConfig> g_app_state_configs;
 
+	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
+	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

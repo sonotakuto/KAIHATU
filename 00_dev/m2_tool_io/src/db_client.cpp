@@ -124,7 +124,7 @@ std::optional<ToolIndividualInfo> get_tool_data(int id) {
 		.id = id,
 		.basic_info = get_basic_tool_data(id).value(),
 		.condition = ToolCondition::USABLE,
-		.regrind_count = 2,
+		.reground_count = 2,
 		.insert_count = 5
 	};
 }

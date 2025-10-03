@@ -637,6 +637,8 @@ protected:
  */
 template<typename RowStruct>
 class TreeViewListStoreModel : public ListStoreModelBase<RowStruct> {
+public:
+	using size_type = typename ListStoreModelBase<RowStruct>::size_type;
 private:
 	/// @brief このモデルが関連付けられているTreeViewウィジェット。
 	tool_io::TreeView& m_tree_view;
@@ -726,6 +728,7 @@ private:
 	/// @brief 現在表示中のページ番号 (0から始まるインデックス)
 	int m_current_page_index;
 
+public:
 	/**
 	 * @brief 指定されたページのデータを各TreeViewに表示する内部関数。
 	 * @param page_index 表示するページのインデックス (0から始まる)。
@@ -753,7 +756,6 @@ private:
 		m_current_page_index = page_index;
 	}
 
-public:
 	/**
 	 * @brief コンストラクタ
 	 * @param rows_per_view 1つのTreeViewが保持できる最大行数。
@@ -864,33 +866,44 @@ public:
 
 	// --- データ操作・検索メソッド ---
 
-	/// @brief マスターデータと表示中の全データをクリアします。
-	void clear() {
+	/**
+	 * @brief マスターデータと表示中の全データをクリアします。
+	 * @param update_display 画面を更新するかどうか
+	 */
+	void clear(bool update_display = true) {
 		m_master_data.clear();
-		display_page(0); // 0ページ目を表示（空になる）
+		if (update_display) {
+			display_page(0); // 0ページ目を表示（空になる）
+		}
 	}
 
 	/**
 	 * @brief マスターデータの末尾に単一の行を追加し、UIを更新します。
 	 * @param row_data 追加する行のデータ。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	bool append(const RowStruct& row_data) {
+	bool append(const RowStruct& row_data, bool update_display = true) {
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
 		m_master_data.push_back(row_data);
-		display_page(m_current_page_index);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
 		return true;
 	}
 
 	/**
 	 * @brief マスターデータの末尾に複数の行をまとめて追加し、UIを更新します。
 	 * @param rows 追加する行データのvector。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	bool append(const std::vector<RowStruct>& rows) {
+	bool append(const std::vector<RowStruct>& rows, bool update_display = true) {
 		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) return false;
 		m_master_data.insert(m_master_data.end(), rows.begin(), rows.end());
-		display_page(m_current_page_index);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
 		return true;
 	}
 
@@ -900,17 +913,20 @@ public:
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param global_position 挿入位置のグローバルインデックス。
 	 * @param row_data 挿入する行のデータ。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool insert(size_type position, const RowStruct& row_data) {
-		size_type original_position = position;
+	bool insert(size_type global_position, const RowStruct& row_data, bool update_display = true) {
+		size_type original_position = global_position;
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
 
-		if (position > m_master_data.size()) position = m_master_data.size();
+		if (global_position > m_master_data.size()) global_position = m_master_data.size();
 
-		m_master_data.insert(m_master_data.begin() + position, row_data);
-		display_page(m_current_page_index);
-		return position == original_position;
+		m_master_data.insert(m_master_data.begin() + global_position, row_data);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+		return global_position == original_position;
 	}
 
 	/**
@@ -919,81 +935,111 @@ public:
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param global_position 挿入位置のグローバルインデックス。
 	 * @param rows 挿入する行データのvector。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool insert(size_type position, const std::vector<RowStruct>& rows) {
+	bool insert(size_type global_position, const std::vector<RowStruct>& rows, bool update_display = true) {
 		if (size() + rows.size() > (size_type)(std::numeric_limits<int>::max())) return false;
-		bool position_was_valid = (position <= size());
+		bool position_was_valid = (global_position <= size());
 
-		if (position > size()) position = size();
+		if (global_position > size()) global_position = size();
 
-		m_master_data.insert(m_master_data.begin() + position, rows.begin(), rows.end());
-		display_page(m_current_page_index);
+		m_master_data.insert(m_master_data.begin() + global_position, rows.begin(), rows.end());
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
 		return position_was_valid;
 	}
 
 	/**
 	 * @brief マスターデータの指定したグローバルインデックスの行を削除し、UIを更新します。
 	 * @param global_position 削除する行のグローバルインデックス。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 削除に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
-	bool erase(size_type position) {
-		if (position >= size()) return false;
-		m_master_data.erase(m_master_data.begin() + position);
+	bool erase(size_type global_position, bool update_display = true) {
+		if (global_position >= size()) return false;
+		m_master_data.erase(m_master_data.begin() + global_position);
 
 		if (m_current_page_index >= get_total_pages() && m_current_page_index > 0) {
 			m_current_page_index--;
 		}
-		display_page(m_current_page_index);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
 		return true;
 	}
 
 	/**
 	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて削除します。
-	 * @param positions 削除する行のグローバルインデックスのリスト。
+	 * @param global_positions 削除する行のグローバルインデックスのリスト。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
-	bool erase(std::vector<size_type> positions) {
-		for (size_type pos : positions) {
+	bool erase(std::vector<size_type> global_positions, bool update_display = true) {
+		for (size_type pos : global_positions) {
 			if (pos >= size()) return false;
 		}
-		std::sort(positions.rbegin(), positions.rend());
-		for (size_type pos : positions) {
+		std::sort(global_positions.rbegin(), global_positions.rend());
+		for (size_type pos : global_positions) {
 			m_master_data.erase(m_master_data.begin() + pos);
 		}
 		if (m_current_page_index >= get_total_pages() && m_current_page_index > 0) {
 			m_current_page_index = get_total_pages() - 1;
 		}
-		display_page(m_current_page_index);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
 		return true;
 	}
 
 	/**
 	 * @brief マスターデータの指定したグローバルインデックスの行を上書きし、UIを更新します。
+	 * @details 変更対象の行が現在表示中のページにあれば、その行だけを再描画します。
 	 * @param global_position 上書きする行のグローバルインデックス。
 	 * @param row_data 新しい行データ。
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
-	bool update(size_type position, const RowStruct& row_data) {
-		if (position >= size()) return false;
-		m_master_data[position] = row_data;
-		display_page(m_current_page_index);
+	bool update(size_type global_position, const RowStruct& row_data) {
+		if (global_position >= size()) return false;
+
+		// 1. マスターデータを更新
+		m_master_data[global_position] = row_data;
+
+		// 2. 更新した行が現在表示中のページにあるか判定
+		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+		size_t page_start_index = m_current_page_index * total_rows_per_page;
+		size_t page_end_index = page_start_index + total_rows_per_page;
+
+		if (global_position >= page_start_index && global_position < page_end_index) {
+			// 3. 表示中の場合、ローカルインデックスを計算してピンポイントで更新
+			size_t local_position_on_page = global_position - page_start_index;
+			int view_index = local_position_on_page / m_rows_per_view;
+			int local_row_index = local_position_on_page % m_rows_per_view;
+
+			// 対象のTreeViewListStoreModelのupdateを呼び出す
+			m_page_models[view_index]->update(local_row_index, row_data);
+		}
+
 		return true;
 	}
 
 	/**
 	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて上書きします。
 	 * @param updates 上書きする行のグローバルインデックスと新しい行データのmap。
+	 * @param update_display 画面を更新するかどうか
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
-	bool update(const std::map<size_type, RowStruct>& updates) {
+	bool update(const std::map<size_type, RowStruct>& updates, bool update_display = true) {
 		for (const auto& [pos, row_data] : updates) {
 			if (pos >= size()) return false;
 		}
 		for (const auto& [pos, row_data] : updates) {
 			m_master_data[pos] = row_data;
 		}
-		display_page(m_current_page_index);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
 		return true;
 	}
 

@@ -9,17 +9,6 @@
 
 //typedef int sample;
 
-struct MainTableData {
-	/// @brief ID
-	int id{};
-	/// @brief 各列のデータ (6列固定)
-	std::array<std::string, 6> data_columns{};
-	/// @brief 背景色 (0～4列目)
-	GdkRGBA bgcolor_0to4{0.914, 0.922, 0.961, 1.0};
-	/// @brief 背景色 (5列目)
-	GdkRGBA bgcolor_5{0.914, 0.922, 0.961, 1.0};
-};
-
 /**
  * @struct UserInfo
  * @brief ユーザー情報を保持する構造体
@@ -81,7 +70,7 @@ struct ToolIndividualInfo {
 	/// @brief 工具の状態
 	ToolCondition condition{};
 	/// @brief 再研磨回数
-	std::optional<int> regrind_count{};
+	std::optional<int> reground_count{};
 	/// @brief ケース内インサート個数
 	std::optional<int> insert_count{};
 	/// @brief QRコード文字列
