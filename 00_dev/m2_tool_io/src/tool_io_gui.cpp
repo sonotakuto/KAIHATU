@@ -1003,7 +1003,7 @@ void MainWindow::update_widget_state(sg::Widget* widget, WidgetState state) {
 	}
 }
 
-void MainWindow::update_table_state(tool_io::TreeView* table, TableState state) {
+void MainWindow::update_table_state(sgex::TreeView* table, TableState state) {
 	// m_table_statesから現在のTableStateのコピーを取得
 	auto current_state = m_table_states.at(table);
 
@@ -1164,7 +1164,7 @@ void MainWindow::update_and_handle_pagination(PaginationAction action) {
 	const auto& page_name = state_config.tableStackPageName;
 
 	// 2. ページ名に応じて、操作対象となるページネーションモデルを選択
-	tool_io::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
+	sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
 	if (page_name == "table3column") {
 		active_paginator = &liststore3columnAll;
 	} else if (page_name == "table2column") {

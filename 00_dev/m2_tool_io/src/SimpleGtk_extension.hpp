@@ -1,16 +1,16 @@
 /**
  * @file SimpleGtk_extension.hpp
- * @brief SimpleGtkを拡張する、gtkのラッパークラスをまとめたヘッダファイル。
+ * @brief SimpleGtk を拡張する、gtkのラッパークラスをまとめたヘッダファイル。
  * @details ToggleButton, Stack, Boxの3クラスを提供します。
  */
 #pragma once
 #include <SimpleGtk> // インストール済みのSimpleGtkライブラリをインクルード
 
 /**
- * @namespace tool_io
- * @brief この「工具入出庫システム」プロジェクト固有のウィジェットやクラスを格納する名前空間。
+ * @namespace sgex
+ * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
  */
-namespace tool_io {
+namespace sgex {
 
 /**
  * @class Window
@@ -155,7 +155,7 @@ public:
  * @brief GtkToggleButtonのラッパークラス。オン/オフの状態を持つボタンを提供します。
  * @details sg::Buttonを継承し、アクティブ状態の取得/設定やtoggledシグナルの機能を追加します。
  */
-class ToggleButton : public tool_io::Button {
+class ToggleButton : public sgex::Button {
 public:
 	// コンストラクタ
 	ToggleButton(Glade& glade, const char* id) : Button(glade, id) {}
@@ -251,10 +251,61 @@ public:
 	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(tree_model, get_path, GtkTreePath*, (GtkTreeIter  *iter), iter)
+	DEFINE_METHOD_WITH_ARGS(tree_model, iter_nth_child, gboolean, (GtkTreeIter  *iter, GtkTreeIter *parent, gint n), iter, parent, n)
 	DEFINE_METHOD_WITH_ARGS(list_store, remove, gboolean, (GtkTreeIter *iter), iter)
 	DEFINE_METHOD_WITH_ARGS(list_store, insert, void, (GtkTreeIter *iter, gint position), iter, position)
 	DEFINE_METHOD_WITH_ARGS(list_store, append, void, (GtkTreeIter *iter), iter)
-	DEFINE_METHOD_WITH_ARGS(tree_model, iter_nth_child, gboolean, (GtkTreeIter  *iter, GtkTreeIter *parent, gint n), iter, parent, n)
+
+	// プロパティ
+
+	// シグナル
+};
+
+/**
+ * @class TreePath
+ * @brief GtkTreePathを管理するRAIIラッパークラス。
+ * @details オブジェクトが破棄される際に自動的にgtk_tree_path_free()を呼び出します。
+ */
+class TreePath {
+private:
+	GtkTreePath* m_path;
+
+public:
+	// GtkTreePath*からオブジェクトを構築
+	TreePath(GtkTreePath* path) : m_path(path) {}
+
+	// デストラクタでメモリを自動解放
+	~TreePath() {
+		if (m_path) {
+			gtk_tree_path_free(m_path);
+		}
+	}
+
+	// コピーを禁止
+	TreePath(const TreePath&) = delete;
+	TreePath& operator=(const TreePath&) = delete;
+
+	// ムーブを許可
+	TreePath(TreePath&& other) noexcept : m_path(other.m_path) {
+		other.m_path = nullptr; // 所有権を移動
+	}
+	TreePath& operator=(TreePath&& other) noexcept {
+		if (this != &other) {
+			if (m_path) gtk_tree_path_free(m_path);
+			m_path = other.m_path;
+			other.m_path = nullptr;
+		}
+		return *this;
+	}
+
+	// GtkTreePath*へのキャスト演算子
+	operator GtkTreePath*() const {
+		return m_path;
+	}
+
+	// メソッド
+	DEFINE_METHOD(tree_path, get_indices, gint*)
 
 	// プロパティ
 
@@ -269,8 +320,8 @@ class TreeSelection : public sg::TreeSelection {
 public:
 	using sg::TreeSelection::TreeSelection; // 基底クラスのコンストラクタを継承
 
-
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(tree_selection, get_selected, gboolean, (GtkTreeModel **model, GtkTreeIter *iter), model, iter)
 
 	// プロパティ
 
@@ -313,34 +364,35 @@ public:
 
 protected:
 	/// @brief (View) SimpleGtkでラップされたGtkListStoreの所有権を持つポインタ。
-	std::unique_ptr<tool_io::ListStore> m_list_store_ptr;
+	std::unique_ptr<sgex::ListStore> m_list_store_ptr;
 	/// @brief (Model) C++側のデータ本体。アプリケーションロジックの「信頼できる唯一の情報源」。
 	std::vector<RowStruct> m_data_model;
 	/// @brief RowStructからGtkListStoreの行データに変換するためのセッター関数。
 	std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> m_row_setter;
 
 	/**
-	 * @brief tool_io::ListStore へのポインタを取得します。
+	 * @brief sgex::ListStore へのポインタを取得します。
 	 * @details ComboBox や TreeView にモデルとして設定する際に使用します。
-	 * @return 内部で管理している tool_io::ListStore へのポインタ。
+	 * @return 内部で管理している sgex::ListStore へのポインタ。
 	 */
-	tool_io::ListStore* get_sg_store() const { return m_list_store_ptr.get(); }
+	sgex::ListStore* get_sg_store() const { return m_list_store_ptr.get(); }
 
 	/**
 	 * @brief 内部のListStoreをGtkListStore*として取得するヘルパー関数。
 	 * @details 複雑なキャストをこの関数内に隠蔽します。
-	 * @return 内部で管理している tool_io::ListStore から取得した GtkListStore へのポインタ。
+	 * @return 内部で管理している sgex::ListStore から取得した GtkListStore へのポインタ。
 	 */
 	GtkListStore* get_gtk_store() const {
 		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
+//		return GTK_TREE_MODEL(get_gtk_store());
 		return (GtkListStore*)(*m_list_store_ptr);
 	}
 
 	/**
 	 * @brief 内部のListStoreをGtkTreeModel*として取得するヘルパー関数。
 	 * @details 複雑なキャストをこの関数内に隠蔽します。
-	 * @return 内部で管理している tool_io::ListStore から取得した GtkTreeModel へのポインタ。
+	 * @return 内部で管理している sgex::ListStore から取得した GtkTreeModel へのポインタ。
 	 */
 	GtkTreeModel* get_gtk_model() const {
 		if (!m_list_store_ptr) return nullptr;
@@ -373,7 +425,7 @@ protected:
 		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
 		GtkListStore* new_gtk_store = gtk_list_store_newv(column_types.size(), (GType*)column_types.data());
 		// 生成したGtkListStoreをSimpleGtkラッパーでラップし、unique_ptrで所有権を管理します。
-		m_list_store_ptr = std::make_unique<tool_io::ListStore>(new_gtk_store);
+		m_list_store_ptr = std::make_unique<sgex::ListStore>(new_gtk_store);
 	}
 
 	/**
@@ -687,7 +739,7 @@ public:
 	using size_type = typename ListStoreModelBase<RowStruct>::size_type;
 private:
 	/// @brief このモデルが関連付けられているTreeViewウィジェット。
-	tool_io::TreeView& m_tree_view;
+	sgex::TreeView& m_tree_view;
 
 public:
 	/**
@@ -697,7 +749,7 @@ public:
 	 * @param row_setter RowStructのデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	TreeViewListStoreModel(
-		tool_io::TreeView& tree_view,
+		sgex::TreeView& tree_view,
 		const std::vector<GType>& column_types,
 		std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> row_setter
 	) : ListStoreModelBase<RowStruct>(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
@@ -714,15 +766,18 @@ public:
 	 * @return 選択されている行のインデックス。なければ空のoptional。
 	 */
 	std::optional<size_type> get_selected_index() const {
-		sg::TreeSelection selection = m_tree_view.get_selection();
+		sgex::TreeSelection selection = m_tree_view.get_selection();
 		GtkTreeIter iter;
-		if (gtk_tree_selection_get_selected(selection, nullptr, &iter)) {
-			GtkTreePath* path = gtk_tree_model_get_path(this->get_gtk_model(), &iter);
+//		if (gtk_tree_selection_get_selected(selection, nullptr, &iter)) {
+		if (selection.get_selected(nullptr, &iter)) {
+//			GtkTreePath* path = gtk_tree_model_get_path(this->get_gtk_model(), &iter);
+			sgex::TreePath path = this->get_sg_store()->get_path(&iter);
 			if (!path) {
 				return std::nullopt;
 			}
-			int index = gtk_tree_path_get_indices(path)[0];
-			gtk_tree_path_free(path);
+//			int index = gtk_tree_path_get_indices(path)[0];
+			int index = path->get_indices()[0];
+//			gtk_tree_path_free(path);
 			return index;
 		}
 		return std::nullopt;
@@ -1244,4 +1299,4 @@ public:
 		return std::nullopt;
 	}
 };
-} // namespace tool_io
+} // namespace sgex
