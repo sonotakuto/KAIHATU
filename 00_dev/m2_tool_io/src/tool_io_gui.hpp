@@ -527,11 +527,11 @@ private:
 
 	/**
 	 * @brief MainTableData構造体の内容をGtkListStoreに設定するセッター関数。
-	 * @param store 更新対象のGtkListStore。
+	 * @param store 更新対象の sgex::ListStore。
 	 * @param iter 更新する行のイテレータ。
-	 * @param row 設定するMainTableData構造体。
+	 * @param row 設定する MainTableData 構造体。
 	 */
-	void main_ListStore_setter(GtkListStore* store, GtkTreeIter* iter, const MainTableData& row);
+	void main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
@@ -766,6 +766,15 @@ private:
 
 	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
 	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
+
+	// TODO: テスト用
+	// --- ヘルパー関数 ---
+	/// @brief ListStoreModelの次のテストを実行します。
+	void run_next_liststore_test();
+
+	// --- メンバ変数 ---
+	/// @brief ListStoreModelのテストステップを管理するカウンタ。
+	int m_test_step;
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

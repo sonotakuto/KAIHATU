@@ -121,13 +121,13 @@ MainWindow::MainWindow() :
 	storingToolListstore(
 		storingToolTable,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING },
-		[](GtkListStore* store, GtkTreeIter* iter, const ToolBasicInfo& row) {
-			gtk_list_store_set(store, iter,
+		[](sgex::ListStore* store, GtkTreeIter* iter, const ToolBasicInfo& row) {
+			store->set(iter,
 				0, row.class_name.c_str(),
 				1, row.maker.c_str(),
 				2, row.tool_name.c_str(),
-				3, row.material.c_str(),
-				-1);
+				3, row.material.c_str()
+			);
 		}
 	),
 	filterButton(glade, "filterButton"),
@@ -141,7 +141,7 @@ MainWindow::MainWindow() :
 	liststore3column1st(
 		table3column1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table3column2ndBox(glade, "table3column2ndBox"),
 	table3column2nd(glade, "table3column2nd"),
@@ -149,7 +149,7 @@ MainWindow::MainWindow() :
 	liststore3column2nd(
 		table3column2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table3column3rdBox(glade, "table3column3rdBox"),
 	table3column3rd(glade, "table3column3rd"),
@@ -157,7 +157,7 @@ MainWindow::MainWindow() :
 	liststore3column3rd(
 		table3column3rd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	liststore3columnAll(DISPLAY_ROWS_PER_COLUMN),
 	table2column1stBox(glade, "table2column1stBox"),
@@ -166,7 +166,7 @@ MainWindow::MainWindow() :
 	liststore2column1st(
 		table2column1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table2column2ndBox(glade, "table2column2ndBox"),
 	table2column2nd(glade, "table2column2nd"),
@@ -174,7 +174,7 @@ MainWindow::MainWindow() :
 	liststore2column2nd(
 		table2column2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	liststore2columnAll(DISPLAY_ROWS_PER_COLUMN),
 	// フッター部
@@ -239,6 +239,7 @@ MainWindow::MainWindow() :
 	m_gui_mode(GuiMode::RETRIEVE),
 	m_app_state(AppState::WAITING_FOR_USER_LOGIN),
 	m_text_mode(TextMode::KANJI)
+	,m_test_step(0) // TODO: テスト用
 {
 	// --- コンストラクタ本体 ---
 
@@ -274,7 +275,7 @@ MainWindow::MainWindow() :
 	nextButton.on_clicked([this]() { this->nextButton_on_clicked(); });
 	qrCodeEntry.on_activate([this]() { this->qrCodeEntry_on_activate(); });
 	falseButton.on_clicked([this]() { this->falseButton_on_clicked(); });
-	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
+//	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
 	logoutNoButton.on_clicked([this]() { this->logoutNoButton_on_clicked(); });
 	logoutYesButton.on_clicked([this]() { this->logoutYesButton_on_clicked(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
@@ -284,6 +285,8 @@ MainWindow::MainWindow() :
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundOkButton_on_clicked(); });
+
+	trueButton.on_clicked([this]() { this->run_next_liststore_test(); });	// TODO: テスト用
 
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
@@ -1132,7 +1135,7 @@ void MainWindow::set_mode(GuiMode mode) {
 	}
 }
 
-void MainWindow::main_ListStore_setter(GtkListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) {
 	GdkRGBA bgcolor_0to4;
 	GdkRGBA bgcolor_5;
 	try {
@@ -1145,7 +1148,7 @@ void MainWindow::main_ListStore_setter(GtkListStore* store, GtkTreeIter* iter, c
 		DEV_PRINT("Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state_0to4));
 		throw; // 再スローして呼び出し元で処理させる
 	}
-	gtk_list_store_set(store, iter,
+	store->set(iter,
 		0, row.data_columns[0].c_str(),
 		1, row.data_columns[1].c_str(),
 		2, row.data_columns[2].c_str(),
@@ -1153,8 +1156,7 @@ void MainWindow::main_ListStore_setter(GtkListStore* store, GtkTreeIter* iter, c
 		4, row.data_columns[4].c_str(),
 		5, row.data_columns[5].c_str(),
 		6, &bgcolor_0to4,
-		7, &bgcolor_5,
-		-1
+		7, &bgcolor_5
 	);
 }
 
@@ -1272,10 +1274,24 @@ void MainWindow::on_window_show() {
 		table3column1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
 		table3column2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
 		table3column3rd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+
+		/* TODO: テスト用
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 		refresh_ui(true);
 		m_is_first_show = false; // フラグを倒して次回以降は実行しない
+		/*/
+		storingToolTable.set_sensitive(true);
+		storingToolTable.set_visible(true);
+		trueButton.set_label("Run Test");
+		trueButton.set_sensitive(true);
+		trueButton.set_visible(true);
+		falseButton.set_visible(false);
+		messageLabel.set_text("下部の 'Run Test' ボタンを押して、\nListStoreModelのテストを開始します。");
+		operationStack.set_visible_child_name("storeOperationPage");
+		table_stack.set_visible(false);
+		m_is_first_show = false; // フラグを倒して次回以降は実行しない
+		//*/
 	}
 }
 
@@ -1620,4 +1636,147 @@ void MainWindow::on_falseButton_store_read_completed() {
 void MainWindow::on_trueButton_store_read_completed() {
 	save_store_history();
 	set_app_state(AppState::STORE);
+}
+
+/**
+ * @brief trueButtonが押されるたびにListStoreModelの各機能を順にテストする関数。
+ */
+void MainWindow::run_next_liststore_test() {
+	fmt::print("\n--- Running Test Step {} ---\n", m_test_step);
+
+	switch (m_test_step) {
+		case 0:
+			messageLabel.set_text("Test 0: \nclear() と \n複数行append()");
+			fmt::print("Action: Clearing model and appending 3 rows.\n");
+			storingToolListstore.clear();
+			storingToolListstore.append({
+				{1, "ドリル", "ADF-2D", "OSG", "超硬"},
+				{2, "エンドミル", "M-CEC2", "YAMATO", "超硬"},
+				{3, "インサート", "TPMT", "タンガロイ", "T515"}
+			});
+			break;
+
+		case 1:
+			messageLabel.set_text("Test 1: \n単行append()");
+			fmt::print("Action: Appending 1 row at the end.\n");
+			storingToolListstore.append({4, "リーマー", "OVRS", "大見工業", "超硬"});
+			break;
+
+		case 2:
+			messageLabel.set_text("Test 2: \n単行insert()");
+			fmt::print("Action: Inserting 1 row at position 1.\n");
+			storingToolListstore.insert(1, {5, "タップ", "A-TAP", "OSG", "Vコーティング"});
+			break;
+
+		case 3:
+			messageLabel.set_text("Test 3: \n複数行insert()");
+			fmt::print("Action: Inserting 2 rows at position 3.\n");
+			storingToolListstore.insert(3, {
+				{6, "レンチ", "M5", "KTC", "鋼"},
+				{7, "スパナ", "DS", "TONE", "鋼"}
+			});
+			break;
+
+		case 4:
+			messageLabel.set_text("Test 4: \nget_row() と size()");
+			fmt::print("Action: Getting data from row 2. Total size: {}\n", storingToolListstore.size());
+			if (storingToolListstore.size() > 2) {
+				ToolBasicInfo item = storingToolListstore.get_row(2);
+				fmt::print("  -> Data at row 2: ID={}, Name={}\n", item.basic_tool_id, item.tool_name);
+			}
+			break;
+
+		case 5:
+			messageLabel.set_text("Test 5: \n選択行を取得します。\n表からいずれかの行を選択して、\n次のテストに進んでください。");
+			fmt::print("Action: Please select a row in the TreeView and click next.\n");
+			break; // 次のクリックを待つ
+
+		case 6:
+			messageLabel.set_text("Test 6: \nget_selected_index() と \nget_selected_row()");
+			fmt::print("Action: Getting selected row...\n");
+			{
+				auto selected_row = storingToolListstore.get_selected_row();
+				if (selected_row.has_value()) {
+					fmt::print("  -> Selected row index: {}\n", storingToolListstore.get_selected_index().value_or(-1));
+					fmt::print("  -> Selected item data: ID={}, Name={}\n", selected_row->basic_tool_id, selected_row->tool_name);
+				} else {
+					fmt::print("  -> No row selected.\n");
+				}
+			}
+			break;
+
+		case 7:
+			messageLabel.set_text("Test 7: \n単行update()");
+			fmt::print("Action: Updating row 0.\n");
+			storingToolListstore.update(0, {1, "新型ドリル", "ADF-3D", "OSG", "EgiAsコート"});
+			break;
+
+		case 8:
+			messageLabel.set_text("Test 8: \n複数行update()");
+			fmt::print("Action: Updating rows 2 and 4.\n");
+			storingToolListstore.update({
+				{2, {3, "新型インサート", "タンガロイ", "TPMT-NEW", "PVD"}},
+				{4, {5, "新型タップ", "A-TAP-DRL", "OSG", "TiN"}}
+			});
+			break;
+
+		case 9:
+			messageLabel.set_text("Test 9: \n選択行を削除します。\n表からいずれかの行を選択して、\n次のテストに進んでください。");
+			fmt::print("Action: Please select a row to erase and click next.\n");
+			break; // 次のクリックを待つ
+
+		case 10:
+			messageLabel.set_text("Test 10: \n単行erase()");
+			fmt::print("Action: Erasing selected row...\n");
+			{
+				auto index_to_erase = storingToolListstore.get_selected_index();
+				if (index_to_erase.has_value()) {
+					storingToolListstore.erase(index_to_erase.value());
+					fmt::print("  -> Erased row at index {}.\n", index_to_erase.value());
+				} else {
+					fmt::print("  -> No row selected to erase.\n");
+				}
+			}
+			break;
+
+		case 11:
+			messageLabel.set_text("Test 11: \n複数行erase()");
+			fmt::print("Action: Erasing rows 0 and 2 (if they exist).\n");
+			storingToolListstore.erase({0, 2});
+			break;
+
+		case 12:
+			messageLabel.set_text("Test 12: \nfind_indices() と \nfind_first_index()");
+			fmt::print("Action: Finding all items from 'OSG'.\n");
+			{
+				auto indices = storingToolListstore.find_indices([](const ToolBasicInfo& item){ return item.maker == "OSG"; });
+				fmt::print("  -> Found {} items from 'OSG' at indices: ", indices.size());
+				for(int i : indices) fmt::print("{} ", i);
+				fmt::print("\n");
+
+				fmt::print("Action: Finding first item with ID 3.\n");
+				auto first_index = storingToolListstore.find_first_index([](const ToolBasicInfo& item){ return item.basic_tool_id == 3; });
+				if (first_index.has_value()) {
+					fmt::print("  -> Found item with ID 3 at index {}.\n", first_index.value());
+				} else {
+					fmt::print("  -> Item with ID 3 not found.\n");
+				}
+			}
+			break;
+
+		case 13:
+			messageLabel.set_text("Test 13: \nclear()");
+			fmt::print("Action: Clearing all rows.\n");
+			storingToolListstore.clear();
+			break;
+
+		default:
+			messageLabel.set_text("テスト完了。\n最初からやり直します。");
+			fmt::print("All tests finished. Resetting.\n");
+			m_test_step = -1; // 次のクリックでcase 0 になるように
+			break;
+	}
+
+	m_test_step++;
+	trueButton.set_label(fmt::format("Run Test {}", m_test_step).c_str());
 }

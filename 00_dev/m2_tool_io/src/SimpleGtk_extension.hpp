@@ -246,8 +246,6 @@ class ListStore : public sg::ListStore {
 public:
 	using sg::ListStore::ListStore; // 基底クラスのコンストラクタを継承
 
-	using sg::ListStore::append;
-
 	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
 
 	// メソッド
@@ -256,6 +254,26 @@ public:
 	DEFINE_METHOD_WITH_ARGS(list_store, remove, gboolean, (GtkTreeIter *iter), iter)
 	DEFINE_METHOD_WITH_ARGS(list_store, insert, void, (GtkTreeIter *iter, gint position), iter, position)
 	DEFINE_METHOD_WITH_ARGS(list_store, append, void, (GtkTreeIter *iter), iter)
+
+	/**
+	 * @brief gtk_list_store_set の可変長テンプレートラッパー
+	 * @details ラッパー内で args... の末尾に -1 を自動で付与するため、呼び出し側で末尾の -1 は不要
+	 * @param iter 更新する行のイテレータ
+	 * @param args GtkListStore に設定する列インデックスと値のペアの可変長引数
+	 */
+	template<typename... Args>
+	void set(GtkTreeIter* iter, Args... args) {
+		gtk_list_store_set((GtkListStore*)(*this), iter, args..., -1);
+	}
+
+	/**
+	 * @brief sg::ListStore::append の可変長テンプレートラッパー
+	 * @details ラッパー内で args... の末尾に -1 を自動で付与するため、呼び出し側で末尾の -1 は不要
+	 */
+	template<typename... Args>
+	void append(Args... args) {
+		sg::ListStore::append(args..., -1);
+	}
 
 	// プロパティ
 
@@ -271,6 +289,9 @@ class TreePath {
 private:
 	GtkTreePath* m_path;
 
+	// メソッド
+	DEFINE_METHOD(tree_path, free, void)
+
 public:
 	// GtkTreePath*からオブジェクトを構築
 	TreePath(GtkTreePath* path) : m_path(path) {}
@@ -278,7 +299,7 @@ public:
 	// デストラクタでメモリを自動解放
 	~TreePath() {
 		if (m_path) {
-			gtk_tree_path_free(m_path);
+			free();
 		}
 	}
 
@@ -292,7 +313,7 @@ public:
 	}
 	TreePath& operator=(TreePath&& other) noexcept {
 		if (this != &other) {
-			if (m_path) gtk_tree_path_free(m_path);
+			if (m_path) free();
 			m_path = other.m_path;
 			other.m_path = nullptr;
 		}
@@ -368,7 +389,7 @@ protected:
 	/// @brief (Model) C++側のデータ本体。アプリケーションロジックの「信頼できる唯一の情報源」。
 	std::vector<RowStruct> m_data_model;
 	/// @brief RowStructからGtkListStoreの行データに変換するためのセッター関数。
-	std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> m_row_setter;
+	std::function<void(sgex::ListStore*, GtkTreeIter*, const RowStruct&)> m_row_setter;
 
 	/**
 	 * @brief sgex::ListStore へのポインタを取得します。
@@ -385,7 +406,6 @@ protected:
 	GtkListStore* get_gtk_store() const {
 		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
-//		return GTK_TREE_MODEL(get_gtk_store());
 		return (GtkListStore*)(*m_list_store_ptr);
 	}
 
@@ -407,7 +427,7 @@ protected:
 	 */
 	void set_row_to_store(GtkTreeIter* iter, const RowStruct& row_data) {
 		if (m_row_setter) {
-			m_row_setter(get_gtk_store(), iter, row_data);
+			m_row_setter(get_sg_store(), iter, row_data);
 		}
 	}
 
@@ -419,7 +439,7 @@ protected:
 	 */
 	ListStoreModelBase(
 		const std::vector<GType>& column_types,
-		std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> row_setter
+		std::function<void(sgex::ListStore*, GtkTreeIter*, const RowStruct&)> row_setter
 	) : m_row_setter(row_setter)
 	{
 		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
@@ -501,7 +521,6 @@ protected:
 		m_data_model.insert(m_data_model.begin() + position, row_data);
 		GtkTreeIter iter;
 		get_sg_store()->insert(&iter, position);
-//		gtk_list_store_insert(get_gtk_store(), &iter, position);
 		set_row_to_store(&iter, row_data);
 
 		return !position_was_clamped;
@@ -542,11 +561,6 @@ protected:
 
 		m_data_model.erase(m_data_model.begin() + position);
 		GtkTreeIter iter;
-/*
-		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
-			gtk_list_store_remove(get_gtk_store(), &iter);
-		}
-*/
 		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
 			get_sg_store()->remove(&iter);
 		}
@@ -586,7 +600,6 @@ protected:
 
 		m_data_model[position] = row_data;
 		GtkTreeIter iter;
-//		if (gtk_tree_model_iter_nth_child(get_gtk_model(), &iter, nullptr, position)) {
 		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
 			set_row_to_store(&iter, row_data);
 		}
@@ -751,7 +764,7 @@ public:
 	TreeViewListStoreModel(
 		sgex::TreeView& tree_view,
 		const std::vector<GType>& column_types,
-		std::function<void(GtkListStore*, GtkTreeIter*, const RowStruct&)> row_setter
+		std::function<void(sgex::ListStore*, GtkTreeIter*, const RowStruct&)> row_setter
 	) : ListStoreModelBase<RowStruct>(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
 		m_tree_view(tree_view)
 	{
@@ -766,18 +779,14 @@ public:
 	 * @return 選択されている行のインデックス。なければ空のoptional。
 	 */
 	std::optional<size_type> get_selected_index() const {
-		sgex::TreeSelection selection = m_tree_view.get_selection();
+		sgex::TreeSelection selection(m_tree_view.get_selection());
 		GtkTreeIter iter;
-//		if (gtk_tree_selection_get_selected(selection, nullptr, &iter)) {
 		if (selection.get_selected(nullptr, &iter)) {
-//			GtkTreePath* path = gtk_tree_model_get_path(this->get_gtk_model(), &iter);
-			sgex::TreePath path = this->get_sg_store()->get_path(&iter);
+			sgex::TreePath path(this->get_sg_store()->get_path(&iter));
 			if (!path) {
 				return std::nullopt;
 			}
-//			int index = gtk_tree_path_get_indices(path)[0];
-			int index = path->get_indices()[0];
-//			gtk_tree_path_free(path);
+			int index = path.get_indices()[0];
 			return index;
 		}
 		return std::nullopt;
