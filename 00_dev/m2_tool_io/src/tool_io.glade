@@ -198,7 +198,7 @@
       <class name="background-color_normal"/>
     </style>
   </object>
-  <object class="GtkDialog" id="confirmRegrindDialog">
+  <object class="GtkDialog" id="confirmRegroundDialog">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">再研磨工具か確認</property>
     <property name="resizable">False</property>
@@ -222,7 +222,7 @@
             <property name="can_focus">False</property>
             <property name="layout_style">center</property>
             <child>
-              <object class="GtkButton" id="confirmRegrindOkButton">
+              <object class="GtkButton" id="confirmRegroundOkButton">
                 <property name="label" translatable="yes">OK</property>
                 <property name="width_request">200</property>
                 <property name="height_request">60</property>
@@ -255,7 +255,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkLabel" id="confirmRegrindLabel">
+          <object class="GtkLabel" id="confirmRegroundLabel">
             <property name="height_request">90</property>
             <property name="visible">True</property>
             <property name="can_focus">False</property>
@@ -284,7 +284,7 @@
             <property name="homogeneous">True</property>
             <property name="layout_style">expand</property>
             <child>
-              <object class="GtkToggleButton" id="notRegrindButton">
+              <object class="GtkToggleButton" id="notRegroundButton">
                 <property name="label" translatable="yes">いいえ</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
@@ -302,7 +302,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="regrindButton">
+              <object class="GtkToggleButton" id="regroundButton">
                 <property name="label" translatable="yes">はい</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
@@ -1910,7 +1910,7 @@ message message message message message</property>
                             <style>
                               <class name="tree-style"/>
                               <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
+                              <class name="tree-headerSize_58px"/>
                             </style>
                           </object>
                           <packing>
@@ -2045,7 +2045,7 @@ message message message message message</property>
                             <style>
                               <class name="tree-style"/>
                               <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
+                              <class name="tree-headerSize_58px"/>
                             </style>
                           </object>
                           <packing>
@@ -2180,7 +2180,7 @@ message message message message message</property>
                             <style>
                               <class name="tree-style"/>
                               <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
+                              <class name="tree-headerSize_58px"/>
                             </style>
                           </object>
                           <packing>
@@ -2326,7 +2326,7 @@ message message message message message</property>
                             <style>
                               <class name="tree-style"/>
                               <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
+                              <class name="tree-headerSize_58px"/>
                             </style>
                           </object>
                           <packing>
@@ -2460,7 +2460,7 @@ message message message message message</property>
                             <style>
                               <class name="tree-style"/>
                               <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
+                              <class name="tree-headerSize_58px"/>
                             </style>
                           </object>
                           <packing>
