@@ -336,195 +336,6 @@
       <class name="background-color_normal"/>
     </style>
   </object>
-  <object class="GtkListStore" id="liststore2column1st">
-    <columns>
-      <!-- column-name column_0 -->
-      <column type="gchararray"/>
-      <!-- column-name column_1 -->
-      <column type="gchararray"/>
-      <!-- column-name column_2 -->
-      <column type="gchararray"/>
-      <!-- column-name column_3 -->
-      <column type="gchararray"/>
-      <!-- column-name column_4 -->
-      <column type="gchararray"/>
-      <!-- column-name column_5 -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">10000</col>
-        <col id="1" translatable="yes">dorill</col>
-        <col id="2" translatable="yes">tanngaroy</col>
-        <col id="3" translatable="yes">ABC</col>
-        <col id="4" translatable="yes">AH120</col>
-        <col id="5" translatable="yes">5</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">2</col>
-        <col id="1" translatable="yes">a
-a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">3</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">CPM-TPT 2.5P PT1/8 2 Rcキョウユウ</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">4</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">5</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">6</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">7</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">8</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">9</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">10</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">11</col>
-        <col id="1" translatable="yes">a</col>
-        <col id="2" translatable="yes">b</col>
-        <col id="3" translatable="yes">c</col>
-        <col id="4" translatable="yes">d</col>
-        <col id="5" translatable="yes">e</col>
-      </row>
-    </data>
-  </object>
-  <object class="GtkListStore" id="liststore2column2nd">
-    <columns>
-      <!-- column-name column_0 -->
-      <column type="gchararray"/>
-      <!-- column-name column_1 -->
-      <column type="gchararray"/>
-      <!-- column-name column_2 -->
-      <column type="gchararray"/>
-      <!-- column-name column_3 -->
-      <column type="gchararray"/>
-      <!-- column-name column_4 -->
-      <column type="gchararray"/>
-      <!-- column-name column_6 -->
-      <column type="gchararray"/>
-    </columns>
-  </object>
-  <object class="GtkListStore" id="liststore3column1st">
-    <columns>
-      <!-- column-name column_0 -->
-      <column type="gchararray"/>
-      <!-- column-name column_1 -->
-      <column type="gchararray"/>
-      <!-- column-name column_2 -->
-      <column type="gchararray"/>
-      <!-- column-name column_3 -->
-      <column type="gchararray"/>
-      <!-- column-name column_4 -->
-      <column type="gchararray"/>
-      <!-- column-name column_6 -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">10000</col>
-        <col id="1" translatable="yes">insert</col>
-        <col id="2" translatable="yes">すみともでんこうハードメタル</col>
-        <col id="3" translatable="yes">abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789</col>
-        <col id="4" translatable="yes">AH120</col>
-        <col id="5" translatable="yes">5</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">0</col>
-        <col id="1" translatable="yes">0</col>
-        <col id="2" translatable="yes">0</col>
-        <col id="3" translatable="yes">CPM-TPT 2.5P PT1/8 2 Rcキョウユウ</col>
-        <col id="4" translatable="yes">0</col>
-        <col id="5" translatable="yes">0</col>
-      </row>
-    </data>
-  </object>
-  <object class="GtkListStore" id="liststore3column2nd">
-    <columns>
-      <!-- column-name column_0 -->
-      <column type="gchararray"/>
-      <!-- column-name column_1 -->
-      <column type="gchararray"/>
-      <!-- column-name column_2 -->
-      <column type="gchararray"/>
-      <!-- column-name column_3 -->
-      <column type="gchararray"/>
-      <!-- column-name column_4 -->
-      <column type="gchararray"/>
-      <!-- column-name column_5 -->
-      <column type="gchararray"/>
-    </columns>
-  </object>
-  <object class="GtkListStore" id="liststore3column3rd">
-    <columns>
-      <!-- column-name column_0 -->
-      <column type="gchararray"/>
-      <!-- column-name column_1 -->
-      <column type="gchararray"/>
-      <!-- column-name column_2 -->
-      <column type="gchararray"/>
-      <!-- column-name column_3 -->
-      <column type="gchararray"/>
-      <!-- column-name column_4 -->
-      <column type="gchararray"/>
-      <!-- column-name column_5 -->
-      <column type="gchararray"/>
-    </columns>
-  </object>
   <object class="GtkDialog" id="logoutDialog">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">パスワードを入力</property>
@@ -1421,26 +1232,6 @@ a</col>
       <class name="background-color_normal"/>
     </style>
   </object>
-  <object class="GtkListStore" id="storingToolListstore">
-    <columns>
-      <!-- column-name column_0 -->
-      <column type="gchararray"/>
-      <!-- column-name column_1 -->
-      <column type="gchararray"/>
-      <!-- column-name column_2 -->
-      <column type="gchararray"/>
-      <!-- column-name column_3 -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">dorill</col>
-        <col id="1" translatable="yes">tanngaroy</col>
-        <col id="2" translatable="yes">abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789</col>
-        <col id="3" translatable="yes">AH120</col>
-      </row>
-    </data>
-  </object>
   <object class="GtkWindow" id="storeWindow">
     <property name="width_request">1920</property>
     <property name="height_request">1080</property>
@@ -1798,7 +1589,6 @@ message message message message message</property>
                         <property name="visible">True</property>
                         <property name="sensitive">False</property>
                         <property name="can_focus">False</property>
-                        <property name="model">storingToolListstore</property>
                         <property name="search_column">0</property>
                         <child internal-child="selection">
                           <object class="GtkTreeSelection"/>
@@ -2003,9 +1793,427 @@ message message message message message</property>
                   <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="spacing">11</property>
+                    <child>
+                      <object class="GtkBox" id="table3column1stBox">
+                        <property name="width_request">626</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="valign">start</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkTreeView" id="table3column1st">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="search_column">0</property>
+                            <child internal-child="selection">
+                              <object class="GtkTreeSelection"/>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">ツール
+  番号</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="height">58</property>
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">0</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">分類</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">85</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">1</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">130</property>
+                                <property name="title" translatable="yes">メーカー</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">140</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">2</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">182</property>
+                                <property name="title" translatable="yes">型番</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">187</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">3</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">材質</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">4</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">70</property>
+                                <property name="title" translatable="yes">在庫数</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">7</attribute>
+                                    <attribute name="text">5</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <style>
+                              <class name="tree-style"/>
+                              <class name="selectableTree-style"/>
+                              <class name="tree-headerSize_59px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <style>
+                          <class name="border_solid"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="table3column2ndBox">
+                        <property name="width_request">626</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="valign">start</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkTreeView" id="table3column2nd">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="search_column">0</property>
+                            <child internal-child="selection">
+                              <object class="GtkTreeSelection"/>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">ツール
+  番号</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="height">58</property>
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">0</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">分類</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">85</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">1</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">130</property>
+                                <property name="title" translatable="yes">メーカー</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">140</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">2</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">182</property>
+                                <property name="title" translatable="yes">型番</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">187</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">3</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">材質</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">4</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">70</property>
+                                <property name="title" translatable="yes">在庫数</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">7</attribute>
+                                    <attribute name="text">5</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <style>
+                              <class name="tree-style"/>
+                              <class name="selectableTree-style"/>
+                              <class name="tree-headerSize_59px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <style>
+                          <class name="border_solid"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="table3column3rdBox">
+                        <property name="width_request">626</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="valign">start</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkTreeView" id="table3column3rd">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="search_column">0</property>
+                            <child internal-child="selection">
+                              <object class="GtkTreeSelection"/>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">ツール
+  番号</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="height">58</property>
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">0</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">分類</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">85</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">1</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">130</property>
+                                <property name="title" translatable="yes">メーカー</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">140</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">2</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">182</property>
+                                <property name="title" translatable="yes">型番</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">187</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">3</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">80</property>
+                                <property name="title" translatable="yes">材質</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
+                                    <attribute name="text">4</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkTreeViewColumn">
+                                <property name="fixed_width">70</property>
+                                <property name="title" translatable="yes">在庫数</property>
+                                <property name="alignment">0.5</property>
+                                <child>
+                                  <object class="GtkCellRendererText">
+                                    <property name="wrap_width">70</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="cell-background-rgba">7</attribute>
+                                    <attribute name="text">5</attribute>
+                                  </attributes>
+                                </child>
+                              </object>
+                            </child>
+                            <style>
+                              <class name="tree-style"/>
+                              <class name="selectableTree-style"/>
+                              <class name="tree-headerSize_59px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <style>
+                          <class name="border_solid"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">table3column</property>
+                    <property name="title" translatable="yes">table3column</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
                     <child>
                       <object class="GtkBox" id="table2column1stBox">
                         <property name="width_request">945</property>
+                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2013,7 +2221,6 @@ message message message message message</property>
                           <object class="GtkTreeView" id="table2column1st">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="model">liststore2column1st</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -2030,6 +2237,7 @@ message message message message message</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">0</attribute>
                                   </attributes>
                                 </child>
@@ -2045,6 +2253,7 @@ message message message message message</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">1</attribute>
                                   </attributes>
                                 </child>
@@ -2060,6 +2269,7 @@ message message message message message</property>
                                     <property name="wrap_width">185</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">2</attribute>
                                   </attributes>
                                 </child>
@@ -2075,6 +2285,7 @@ message message message message message</property>
                                     <property name="wrap_width">416</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">3</attribute>
                                   </attributes>
                                 </child>
@@ -2090,6 +2301,7 @@ message message message message message</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">4</attribute>
                                   </attributes>
                                 </child>
@@ -2105,6 +2317,7 @@ message message message message message</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">7</attribute>
                                     <attribute name="text">5</attribute>
                                   </attributes>
                                 </child>
@@ -2135,6 +2348,7 @@ message message message message message</property>
                     <child>
                       <object class="GtkBox" id="table2column2ndBox">
                         <property name="width_request">945</property>
+                        <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">start</property>
                         <property name="orientation">vertical</property>
@@ -2142,7 +2356,6 @@ message message message message message</property>
                           <object class="GtkTreeView" id="table2column2nd">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="model">liststore2column2nd</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -2158,6 +2371,7 @@ message message message message message</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">0</attribute>
                                   </attributes>
                                 </child>
@@ -2173,6 +2387,7 @@ message message message message message</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">1</attribute>
                                   </attributes>
                                 </child>
@@ -2188,6 +2403,7 @@ message message message message message</property>
                                     <property name="wrap_width">185</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">2</attribute>
                                   </attributes>
                                 </child>
@@ -2203,6 +2419,7 @@ message message message message message</property>
                                     <property name="wrap_width">416</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">3</attribute>
                                   </attributes>
                                 </child>
@@ -2218,6 +2435,7 @@ message message message message message</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">6</attribute>
                                     <attribute name="text">4</attribute>
                                   </attributes>
                                 </child>
@@ -2233,6 +2451,7 @@ message message message message message</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
+                                    <attribute name="cell-background-rgba">7</attribute>
                                     <attribute name="text">5</attribute>
                                   </attributes>
                                 </child>
@@ -2265,405 +2484,6 @@ message message message message message</property>
                   <packing>
                     <property name="name">table2column</property>
                     <property name="title" translatable="yes">table2column</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkBox">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="spacing">11</property>
-                    <child>
-                      <object class="GtkBox" id="table3column1stBox">
-                        <property name="width_request">626</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">start</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkTreeView" id="table3column1st">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="model">liststore3column1st</property>
-                            <property name="search_column">0</property>
-                            <child internal-child="selection">
-                              <object class="GtkTreeSelection"/>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">ツール
-  番号</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="height">58</property>
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">0</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">分類</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">85</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">1</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">130</property>
-                                <property name="title" translatable="yes">メーカー</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">140</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">2</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">182</property>
-                                <property name="title" translatable="yes">型番</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">187</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">3</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">材質</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">4</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">70</property>
-                                <property name="title" translatable="yes">在庫数</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">5</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <style>
-                              <class name="tree-style"/>
-                              <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="border_solid"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="table3column2ndBox">
-                        <property name="width_request">626</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">start</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkTreeView" id="table3column2nd">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="model">liststore2column2nd</property>
-                            <property name="search_column">0</property>
-                            <child internal-child="selection">
-                              <object class="GtkTreeSelection"/>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">ツール
-  番号</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="height">58</property>
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">0</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">分類</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">85</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">1</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">130</property>
-                                <property name="title" translatable="yes">メーカー</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">140</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">2</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">182</property>
-                                <property name="title" translatable="yes">型番</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">187</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">3</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">材質</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">4</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">70</property>
-                                <property name="title" translatable="yes">在庫数</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">5</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <style>
-                              <class name="tree-style"/>
-                              <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="border_solid"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="table3column3rdBox">
-                        <property name="width_request">626</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">start</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkTreeView" id="table3column3rd">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="model">liststore3column3rd</property>
-                            <property name="search_column">0</property>
-                            <child internal-child="selection">
-                              <object class="GtkTreeSelection"/>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">ツール
-  番号</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="height">58</property>
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">0</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">分類</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">85</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">1</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">130</property>
-                                <property name="title" translatable="yes">メーカー</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">140</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">2</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">182</property>
-                                <property name="title" translatable="yes">型番</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">187</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">3</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">80</property>
-                                <property name="title" translatable="yes">材質</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">4</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkTreeViewColumn">
-                                <property name="fixed_width">70</property>
-                                <property name="title" translatable="yes">在庫数</property>
-                                <property name="alignment">0.5</property>
-                                <child>
-                                  <object class="GtkCellRendererText">
-                                    <property name="wrap_width">70</property>
-                                  </object>
-                                  <attributes>
-                                    <attribute name="text">5</attribute>
-                                  </attributes>
-                                </child>
-                              </object>
-                            </child>
-                            <style>
-                              <class name="tree-style"/>
-                              <class name="selectableTree-style"/>
-                              <class name="tree-headerSize_59px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="border_solid"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">2</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="name">table3column</property>
-                    <property name="title" translatable="yes">table3column</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
