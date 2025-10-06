@@ -9,11 +9,7 @@
 #include <optional>
 #include "./typedef.hpp"
 #include "./parameters.hpp"
-#include "./db_client.hpp"
 #include "./develop.hpp"
-#include "./tool_io_gui.hpp"
-
-using namespace sgex;
 
 // 最後にglob_var.hppをインクルード
 #include "./glob_var.hpp"

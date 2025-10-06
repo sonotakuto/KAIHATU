@@ -7,9 +7,20 @@
 #include "./typedef.hpp"
 #include "./parameters.hpp"
 
-bool db_connect(void);
+/**
+ * @namespace db
+ * @brief データベース接続に関連する関数と定数を格納する名前空間。
+ */
+namespace db {
 
-void db_disconnect(void);
+constexpr int	RETRY_LIMIT	= 3;	// DB接続のリトライ回数
+constexpr const char*	ODBC_DSN	= "odbc_test";	// ODBCのDSN名
+constexpr const char*	ODBC_USER	= "pi";			// ODBCのユーザー名
+constexpr const char*	ODBC_PASS	= "pipasswd";	// ODBCのパスワード
+
+bool connect(void);
+
+void disconnect(void);
 
 bool user_authenticate(int user_id);
 
@@ -20,3 +31,5 @@ std::optional<ToolIndividualInfo> get_tool_data(int basic_tool_id);
 std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id);
 
 std::optional<ToolingListInfo> get_tooling_list(int line_id);
+
+} // namespace db

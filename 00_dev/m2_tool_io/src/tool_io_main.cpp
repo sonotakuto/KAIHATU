@@ -3,6 +3,7 @@
  * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
  */
 #include "./includes.hpp"
+#include "./tool_io_gui.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -16,7 +17,7 @@ int main(int argc, char *argv[])
 
 		// 2. メインウィンドウを生成
 		// 設計図(m2-1-1)の「GUIとスレッドを起動する」に相当 [cite: 195]
-		mainWindow = make_unique<MainWindow>();
+		mainWindow = make_unique<gui::MainWindow>();
 
 		// 3. アプリケーションにウィンドウを登録する
 		mainWindow->set_application(app);
