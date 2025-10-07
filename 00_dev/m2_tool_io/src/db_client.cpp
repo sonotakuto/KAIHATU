@@ -4,8 +4,11 @@
  */
 #include "./odbc.hpp"
 #include "./includes.hpp"
+#include "./db_client.hpp"
 
 using namespace odbc;
+
+namespace db {
 
 // データベースへの接続を管理するクラスをまとめた構造体へのポインタ
 static std::unique_ptr<OdbcSession> db_session;
@@ -22,7 +25,7 @@ static optional<OdbcStatement> create_statement_with_retry() {
 	}
 
 	// リトライ処理
-	for (int i = 0; i < DB_RETRY_LIMIT; i++) {
+	for (int i = 0; i < RETRY_LIMIT; i++) {
 		try {
 			// ステートメントを作成し、optionalに格納して返す
 			return optional<OdbcStatement>(in_place, *db_session->connection);
@@ -40,7 +43,7 @@ static optional<OdbcStatement> create_statement_with_retry() {
 	return nullopt;
 }
 
-bool db_connect(void) {
+bool connect(void) {
 /*
 	// リトライ処理
 	for (int i = 0; i < DB_RETRY_LIMIT; i++) {
@@ -70,7 +73,7 @@ bool db_connect(void) {
 	return true; // TODO: 一時的に常に成功させる
 }
 
-void db_disconnect(void) {
+void disconnect(void) {
 //	db_session.reset();
 }
 
@@ -259,3 +262,5 @@ std::optional<ToolingListInfo> get_tooling_list(int line_id) {
 		}
 	};
 }
+
+} // namespace db

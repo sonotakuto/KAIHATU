@@ -8,9 +8,21 @@
 #include "./parameters.hpp"
 #include "./SimpleGtk_extension.hpp"
 #include "./tracked_map.hpp"
+#include "./plc_communicator.hpp"
 
 /**
- * @class MainWindow
+ * @namespace gui
+ * @brief GUIに関連するクラス,関数,定数を格納する名前空間。
+ */
+namespace gui {
+
+struct MainWindow;
+
+/// @brief アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
+inline std::unique_ptr<gui::MainWindow> mainWindow;
+
+/**
+ * @struct MainWindow
  * @brief アプリケーションのメインウィンドウクラス。
  * @details GladeファイルからUI定義を読み込み、ウィジェットの管理とイベント処理を担当します。
  */
@@ -257,6 +269,23 @@ public:
 	// 公開メンバ関数
 	//=========================================================================
 
+	/**
+	 * @brief ワーカースレッドからの実行依頼をGUIスレッドで実行するためのディスパッチャ。
+	 * @details
+	 * C言語形式のコールバックである g_idle_add と C++ のラムダ式やメンバー関数を繋ぐための汎用的な糊（グルー）コード。
+	 * ワーカースレッドは、実行したい処理を std::function オブジェクトとしてヒープに作成し、
+	 * そのポインタをこの関数に渡すことで、GUIスレッドでの安全な実行を予約します。
+	 * @param user_data std::function<void()>* にキャストされるポインタ。
+	 * @return G_SOURCE_REMOVE (一度だけ実行して解除)。
+	 */
+	static gboolean dispatch_to_gui_thread(gpointer user_data);
+
+	/**
+	 * @brief PLCからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
+	 * @param next_state タスク完了後に遷移するべき次の状態。
+	 */
+	void on_plc_notified(plc::PlcCommand completed_command);
+
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
 	//=========================================================================
@@ -485,9 +514,15 @@ private:
 
 	/**
 	 * @brief 状態管理用の変数を初期状態にリセットする変数。
-	 * @details アプリケーションの初期化やログアウト時に呼び出されます。
+	 * @details GUI操作モードの変更時に呼び出されます。
 	 */
 	void reset_variables();
+
+	/**
+	 * @brief ヘッダーのボタン群を初期状態にリセットする変数。
+	 * @details GUI操作モードの変更時に呼び出されます。
+	 */
+	void reset_header_buttons();
 
 	/**
 	 * @brief ウィジェットの状態を更新するヘルパー関数。
@@ -704,15 +739,26 @@ private:
 	// TODO: 取り出しモードの状態遷移関数をここに追加
 
 	// --- 補充モードの状態遷移関数 ---
-	/// @brief STORE_WAITING_FOR_TOOL_QR 状態に入ったときの処理
+
+	/// @brief STORE_WAITING_FOR_TOOL_QR 状態に入ったときの処理。
 	void on_enter_store_waiting_for_tool_qr();
-	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の qrCodeEntry.on_activate の処理
+
+	/**
+	 * @brief STORE_WAITING_FOR_TOOL_QR 状態の qrCodeEntry.on_activate の処理。
+	 * @details これから補充する工具の情報をDBから取得する。
+	 */
 	void on_qrCodeEntry_store_waiting_for_tool_qr();
 
-	/// @brief STORE_CONTAINER_RETRIEVING 状態に入ったときの処理
+	/**
+	 * @brief STORE_CONTAINER_RETRIEVING 状態に入ったときの処理。
+	 * @details 工具を補充するコンテナを搬出する。
+	 */
 	void on_enter_store_container_retrieving();
 
-	/// @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理
+	/**
+	 * @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理。
+	 * @details 利用者が扉を開けるまで待機する。
+	 */
 	void on_enter_store_container_retrieved();
 
 	/// @brief STORE_READY_FOR_READING 状態に入ったときの処理
@@ -766,15 +812,6 @@ private:
 
 	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
 	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
-
-	// TODO: テスト用
-	// --- ヘルパー関数 ---
-	/// @brief ListStoreModelの次のテストを実行します。
-	void run_next_liststore_test();
-
-	// --- メンバ変数 ---
-	/// @brief ListStoreModelのテストステップを管理するカウンタ。
-	int m_test_step;
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)
@@ -788,3 +825,4 @@ bool operator!=(const MainWindow::WidgetState& lhs, const MainWindow::WidgetStat
 // MainWindow::TableStateの比較演算子 (宣言)
 bool operator==(const MainWindow::TableState& lhs, const MainWindow::TableState& rhs);
 bool operator!=(const MainWindow::TableState& lhs, const MainWindow::TableState& rhs);
+} // namespace gui
