@@ -9,6 +9,8 @@
 // inline int sample_value = 100;
 
 // --- グローバル変数 ---
+/// @brief 工具追跡システムとの通信ソケット。
+inline sg::Socket g_tool_tracking_socket;
 /// @brief ログイン中のユーザー情報を保持する構造体。
 inline std::optional<UserInfo> g_logged_in_user_info = std::nullopt;
 /// @brief パスワード認証が成功したかどうかのフラグ。
