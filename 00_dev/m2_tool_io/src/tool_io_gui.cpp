@@ -1703,8 +1703,13 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 
 void MainWindow::on_enter_store_container_retrieving() {
 	// TODO: コンテナ搬出処理を実装
-	// 現在はダミーで3秒待ってから次の状態に遷移する
-	std::this_thread::sleep_for(std::chrono::seconds(3));
+	plc::g_plc_command_queue.push(plc::PlcCommand{
+		.type = plc::PlcCommandType::RETRIEVE_CONTAINER,
+		.data = 0	// TODO: 搬出するコンテナIDを指定
+	});
+	plc::g_plc_command_queue.push(plc::PlcCommand{
+		.type = plc::PlcCommandType::WAIT_FOR_RETRIEVE_COMPLETION
+	});
 	set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
 }
 

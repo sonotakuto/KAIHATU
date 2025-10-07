@@ -8,7 +8,7 @@
 
 namespace plc {
 
-// PLCからのエラーコードとメッセージを対応付けるマップ
+/// @brief PLCからのエラーコードとメッセージを対応付けるマップ
 static const std::map<std::uint16_t, std::string> mc_error_map = {
 	{0xC061, "コマンド異常"}	,{0xC062, "サブコマンド異常"},
 	{0xC040, "アクセス権異常"}	,{0xC050, "監視タイマ異常"},
@@ -22,6 +22,9 @@ static sg::Socket socket;
 
 /**
  * @brief Mデバイスのビット書き込みコマンド（1点）を生成します。
+ * @param addr 書き込み対象のMデバイスアドレス。
+ * @param on 書き込む値 (true=ON, false=OFF)。
+ * @return 書き込みコマンドのバイト列。
  */
 static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool on) {
 	return {
@@ -35,6 +38,8 @@ static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool o
 
 /**
  * @brief Mデバイスのビット読み出しコマンド（1点）を生成します。
+ * @param addr 読み出し対象のMデバイスアドレス。
+ * @return 読み出しコマンドのバイト列。
  */
 static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 	return {
@@ -47,6 +52,8 @@ static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 
 /**
  * @brief コマンドを送信し、PLCからの正常応答（エラーコード0x0000）を待ちます。
+ * @param cmd 送信するコマンドのバイト列。
+ * @return 応答が正常終了した場合はtrue、エラーが発生した場合はfalse。
  */
 static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 	if (socket.send(cmd.data(), cmd.size()) < 0) {
@@ -76,6 +83,9 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 
 /**
  * @brief Mデバイスの状態を読み出し、その結果を返します。
+ * @param addr 読み出し対象のMデバイスアドレス。
+ * @param is_on 読み出されたMデバイスの状態を格納する参照。
+ * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
  */
 static bool read_M_status(std::uint16_t addr, bool& is_on) {
 	std::vector<std::uint8_t> cmd = make_read_M_command(addr);
@@ -102,6 +112,17 @@ static bool read_M_status(std::uint16_t addr, bool& is_on) {
 	}
 	is_on = (resp[2] == 0x10);
 	return true;
+}
+
+/**
+ * @brief PLCリスナースレッドからGUIスレッドに通知を送るためのヘルパー関数。
+ * @param command 完了したコマンド内容。
+ */
+void gui_notifier(PlcCommand command) {
+	if (gui::mainWindow) {
+		gui::mainWindow->on_plc_notified(command);
+	}
+
 }
 
 // --- ここからヘッダで宣言された関数の実装 ---
@@ -154,26 +175,28 @@ void run_plc_listener() {
 	while (true) {
 		try {
 			PlcCommand command = g_plc_command_queue.pop();
+			bool success = false;
 
 			switch (command.type) {
-			case PlcCommandType::WAIT_FOR_COMPLETION: {
-				bool success = plc::waiting_for_completion(command.data);
-
-				if (success) {
-					// 実行したい処理をラムダ式としてヒープに確保
-					// ラムダのポインタを渡して、GUIスレッドでの実行を依頼
-					g_idle_add(gui::MainWindow::dispatch_to_gui_thread, new std::function<void()>([=]() {
-						// このラムダの中身はGUIスレッドで実行される
-						if (gui::mainWindow) {
-							gui::mainWindow->on_plc_notified(command);
-						}
-					}));
-
-				} else { /* エラー処理 */ }
+			case PlcCommandType::RETRIEVE_CONTAINER:
+				success = plc::retrieve_container(command.data);
+				break;
+			case PlcCommandType::STORE_CONTAINER:
+				success = plc::store_container();
+				break;
+			case PlcCommandType::WAIT_FOR_RETRIEVE_COMPLETION:
+				success = plc::waiting_for_completion(M_DEVICE_RETRIEVE_COMPLETED);
+				break;
+			case PlcCommandType::WAIT_FOR_STORE_COMPLETION:
+				success = plc::waiting_for_completion(M_DEVICE_STORE_COMPLETED);
 				break;
 			}
-			// ... 他の指令の処理
-			}
+
+			if (success) {
+				// 実行したい処理をラムダ式としてヒープに確保
+				// ラムダのポインタを渡して、GUIスレッドでの実行を依頼
+				g_idle_add(gui::MainWindow::dispatch_to_gui_thread, new std::function<void()>([=]() { gui_notifier(command); }));
+			} else { /* TODO: エラー処理 */ }
 		} catch (const std::exception& e) {
 			DEV_PRINT(stderr, "PLCリスナースレッドで例外が発生: {}\n", e.what());
 		}

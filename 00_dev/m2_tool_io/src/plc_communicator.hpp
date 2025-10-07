@@ -20,9 +20,10 @@ namespace plc {
  */
 enum class PlcCommandType {
 	NONE,
-	WAIT_FOR_COMPLETION,
 	RETRIEVE_CONTAINER,
-	STORE_CONTAINER
+	STORE_CONTAINER,
+	WAIT_FOR_RETRIEVE_COMPLETION,
+	WAIT_FOR_STORE_COMPLETION
 	// 将来的に他の指令も追加可能
 };
 
@@ -72,5 +73,12 @@ bool store_container();
  * @return 待機が成功（ONを検出）した場合はtrue、通信エラー等で失敗した場合はfalse。
  */
 bool waiting_for_completion(std::uint16_t address);
+
+/**
+ * @brief PLCリスナースレッドのメインループ。
+ * @details この関数は無限ループで動作し、g_plc_command_queueから指令を受け取って処理します。
+ * GUIスレッドとは別スレッドで実行されることを想定しています。
+ */
+void run_plc_listener();
 
 } // namespace plc
