@@ -15,15 +15,15 @@
  */
 struct UserInfo {
 	/// @brief ユーザーID
-	int user_id;
+	int user_id{};
 	/// @brief ユーザー名
-	std::string user_name;
+	std::string user_name{};
 	/// @brief 取り出し権限
-	bool per_out;
+	bool per_out{};
 	/// @brief 補充権限
-	bool per_add;
+	bool per_add{};
 	/// @brief 棚卸し権限
-	bool per_reconcile;
+	bool per_reconcile{};
 };
 
 /**
@@ -32,17 +32,17 @@ struct UserInfo {
  */
 struct ToolBasicInfo {
 	/// @brief 基本情報ID (主キー)
-	int basic_tool_id;
+	int basic_tool_id{};
 	/// @brief 工具分類
-	std::string class_name;
+	std::string class_name{};
 	/// @brief 型番
-	std::string tool_name;
+	std::string tool_name{};
 	/// @brief メーカー名
-	std::string maker;
+	std::string maker{};
 	/// @brief 材質
-	std::string material;
+	std::string material{};
 	/// @brief 在庫数
-	int stc;
+	int stc{};
 };
 
 /**
@@ -64,17 +64,17 @@ enum class ToolCondition {
  */
 struct ToolIndividualInfo {
 	/// @brief 工具ID
-	int id;
+	int id{};
 	/// @brief 基本情報
-	ToolBasicInfo basic_info;
+	ToolBasicInfo basic_info{};
 	/// @brief 工具の状態
-	ToolCondition condition;
+	ToolCondition condition{};
 	/// @brief 再研磨回数
-	std::optional<int> regrind_count;
+	std::optional<int> reground_count{};
 	/// @brief ケース内インサート個数
-	std::optional<int> insert_count;
+	std::optional<int> insert_count{};
 	/// @brief QRコード文字列
-//	std::string qr_code;
+//	std::string qr_code{};
 };
 
 /**
@@ -83,9 +83,9 @@ struct ToolIndividualInfo {
  */
 struct ToolingListItem {
 	/// @brief ツール番号
-	std::string tool_number;
+	std::string tool_number{};
 	/// @brief 工具基本情報
-	ToolBasicInfo basic_info;
+	ToolBasicInfo basic_info{};
 };
 
 /**
@@ -94,11 +94,18 @@ struct ToolingListItem {
  */
 struct ToolingListInfo {
 	/// @brief ツーリングリストID (主キー)
-	int line_id;
+	int line_id{};
 	/// @brief ライン名
-	std::string line_name;
+	std::string line_name{};
 	/// @brief プログラム名
-	std::string prog_name;
+	std::string prog_name{};
 	/// @brief ツーリングリストに含まれる工具のリスト
-	std::vector<ToolingListItem> items;
+	std::vector<ToolingListItem> items{};
+};
+
+struct BoxInfo {
+	/// @brief ボックスID (主キー)
+	int box_id{};
+	/// @brief 基本工具情報
+	ToolBasicInfo item{};
 };
