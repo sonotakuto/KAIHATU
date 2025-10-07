@@ -17,13 +17,13 @@ int main(int argc, char *argv[])
 
 		// 2. メインウィンドウを生成
 		// 設計図(m2-1-1)の「GUIとスレッドを起動する」に相当 [cite: 195]
-		mainWindow = make_unique<gui::MainWindow>();
+		gui::mainWindow = make_unique<gui::MainWindow>();
 
 		// 3. アプリケーションにウィンドウを登録する
-		mainWindow->set_application(app);
+		gui::mainWindow->set_application(app);
 
 		// 4. ウィンドウを表示する
-		mainWindow->show_all();
+		gui::mainWindow->show_all();
 	});
 
 	// メッセージループを開始

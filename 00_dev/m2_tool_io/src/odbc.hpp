@@ -42,7 +42,7 @@ private:
 	 * @brief ODBCドライバから詳細なエラー情報を取得する静的ヘルパー関数。
 	 * @param handle エラーが発生したODBCハンドル。
 	 * @param handleType ハンドルの種別。
-	 * @return std::string SQLSTATE, Native Error, Messageを含む整形されたエラー文字列。
+	 * @return SQLSTATE, Native Error, Messageを含む整形されたエラー文字列。
 	 */
 	static std::string getOdbcError(SQLHANDLE handle, SQLSMALLINT handleType);
 };
@@ -78,7 +78,7 @@ public:
 
 	/**
 	 * @brief ODBC接続ハンドル(HDBC)を取得します。
-	 * @return SQLHDBC OdbcStatementの生成などに必要な接続ハンドル。
+	 * @return OdbcStatementの生成などに必要な接続ハンドル。
 	 */
 	SQLHDBC getHandle() const;
 private:
@@ -118,14 +118,14 @@ public:
 	 * @brief SQL文を直接実行します。
 	 * @details 結果セットを返さないINSERT/UPDATE/DELETE文や、パラメータを含まないSELECT文に使用します。
 	 * @param sql 実行するSQL文字列。
-	 * @return int 影響を受けた行数。
+	 * @return 影響を受けた行数。
 	 * @throw OdbcException クエリの実行に失敗した場合。
 	 */
 	int execute(const std::string& sql);
 
 	/**
 	 * @brief SELECT文の結果セットから次の行にカーソルを移動させます。
-	 * @return bool 次の行が存在すればtrue、存在しなければfalse。
+	 * @return 次の行が存在すればtrue、存在しなければfalse。
 	 * @throw OdbcException フェッチ処理中にエラーが発生した場合。
 	 */
 	bool fetch();
@@ -135,7 +135,7 @@ public:
 	 * @details 各データ型に対応する特殊化は odbc.cpp に実装されています。
 	 * @tparam T 取得したいC++のデータ型 (int, std::string, etc.)。
 	 * @param col 取得する列番号 (1から始まる)。
-	 * @return std::optional<T> データを格納したoptional。データがNULLまたは取得失敗の場合は空。
+	 * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
 	 */
 	template<typename T> std::optional<T> getData(int col);
 
@@ -150,7 +150,7 @@ public:
 	/**
 	 * @brief SELECT文の結果セット全行を、辞書型の配列として一括取得します。
 	 * @details 内部で最後までfetchし、自動でカーソルを閉じるため、呼び出し後にcloseCursorは不要です。
-	 * @return std::vector<std::map<std::string, std::any>> 全ての行データ。
+	 * @return 全ての行データ。
 	 * @throw OdbcException データ取得中にエラーが発生した場合。
 	 */
 	std::vector<std::map<std::string, std::any>> fetchAll();
@@ -176,14 +176,14 @@ public:
 
 	/**
 	 * @brief 準備・バインドされたステートメントを実行します。
-	 * @return int 影響を受けた行数。
+	 * @return 影響を受けた行数。
 	 * @throw OdbcException ステートメントの実行に失敗した場合。
 	 */
 	int executePrepared();
 
 	/**
 	 * @brief 直前のINSERT/UPDATE/DELETEで影響を受けた行数を取得します。
-	 * @return int 影響を受けた行数。
+	 * @return 影響を受けた行数。
 	 */
 	int getAffectedRowCount();
 
@@ -226,7 +226,7 @@ struct OdbcSession {
 	 * @brief このセッションに新しい名前付きステートメントを追加または取得します。
 	 * @param name このステートメントを識別するためのユニークな名前。
 	 * @param overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。デフォルトはfalse（上書きしない）。
-	 * @return OdbcStatement& 作成された、または既存のステートメントへの参照。
+	 * @return 作成された、または既存のステートメントへの参照。
 	 */
 	OdbcStatement& add_statement(const std::string& name, bool overwrite = false) {
 		if (!connection) {
