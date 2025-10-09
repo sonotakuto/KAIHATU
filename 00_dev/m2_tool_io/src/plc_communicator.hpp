@@ -23,7 +23,9 @@ enum class PlcCommandType {
 	RETRIEVE_CONTAINER,
 	STORE_CONTAINER,
 	WAIT_FOR_RETRIEVE_COMPLETION,
-	WAIT_FOR_STORE_COMPLETION
+	WAIT_FOR_STORE_COMPLETION,
+	WAIT_FOR_DOOR_OPEN_COMPLETION,
+	WAIT_FOR_DOOR_CLOSE_COMPLETION
 	// 将来的に他の指令も追加可能
 };
 
@@ -32,8 +34,9 @@ enum class PlcCommandType {
  * @brief PLCへの指令内容を格納する構造体
  */
 struct PlcCommand {
-	PlcCommandType	type{PlcCommandType::NONE};
-	std::uint16_t	data{}; // uint16_t のアドレスやコンテナ番号などを格納
+	PlcCommandType	type{PlcCommandType::NONE};	// PLCへの指令の種類
+	std::uint16_t	data{};						// uint16_t のアドレスやコンテナ番号などを格納
+	bool			result{false};				// 指令の結果
 };
 
 // --- 定数定義 ---

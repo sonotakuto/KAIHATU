@@ -253,6 +253,8 @@ public:
 		std::function<void(MainWindow*)> on_falseButton_clicked = nullptr;
 		/// @brief trueButton がクリックされたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_trueButton_clicked = nullptr;
+		/// @brief PLCからタスク完了通知を受け取ったときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*, plc::PlcCommand)> on_plc_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -533,12 +535,28 @@ private:
 	void update_widget_state(sg::Widget* widget, WidgetState state);
 
 	/**
+	 * @brief 複数のウィジェットの状態を更新するヘルパー関数。
+	 * @param widgets 更新対象のウィジェットのリスト。
+	 * @param state 適用する状態 (WidgetState)。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 */
+	void update_widget_state(std::vector<sg::Widget*> widgets, WidgetState state);
+
+	/**
 	 * @brief テーブルの状態を更新するヘルパー関数。
 	 * @param table 更新対象のテーブルウィジェット。
 	 * @param state 適用する状態 (TableState)。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
 	 */
 	void update_table_state(sgex::TreeView* table, TableState state);
+
+	/**
+	 * @brief 複数のテーブルの状態を更新するヘルパー関数。
+	 * @param tables 更新対象のテーブルウィジェットのリスト。
+	 * @param state 適用する状態 (TableState)。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 */
+	void update_table_state(std::vector<sgex::TreeView*> tables, TableState state);
 
 	/**
 	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
@@ -740,7 +758,10 @@ private:
 
 	// --- 補充モードの状態遷移関数 ---
 
-	/// @brief STORE_WAITING_FOR_TOOL_QR 状態に入ったときの処理。
+	/**
+	 * @brief STORE_WAITING_FOR_TOOL_QR 状態に入ったときの処理。
+	 * @details 補充する工具の読み取り準備を行う。
+	 */
 	void on_enter_store_waiting_for_tool_qr();
 
 	/**
@@ -756,24 +777,115 @@ private:
 	void on_enter_store_container_retrieving();
 
 	/**
+	 * @brief STORE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
+	 * @param completed_command 完了したコマンド
+	 */
+	void on_plc_store_container_retrieving(plc::PlcCommand completed_command);
+
+	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理。
 	 * @details 利用者が扉を開けるまで待機する。
 	 */
 	void on_enter_store_container_retrieved();
 
-	/// @brief STORE_READY_FOR_READING 状態に入ったときの処理
+	/**
+	 * @brief STORE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
+	 * @param completed_command 完了したコマンド
+	 */
+	void on_plc_store_container_retrieved(plc::PlcCommand completed_command);
+
+	/**
+	 * @brief STORE_READY_FOR_READING 状態に入ったときの処理
+	 * @details 表をクリアして、次の読み取り準備を行う。
+	 */
 	void on_enter_store_ready_for_reading();
-	/// @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+
+	/**
+	 * @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @details 読み取られた工具情報をDBから取得して表に追加し、次の画面に遷移する。
+	 */
 	void on_qrCodeEntry_store_ready_for_reading();
 
-	/// @brief STORE_READ_COMPLETED 状態に入ったときの処理
+	/**
+	 * @brief STORE_READ_COMPLETED 状態に入ったときの処理
+	 * @details 次の読み取り準備を行う。
+	 */
 	void on_enter_store_read_completed();
-	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の falseButton.on_clicked の処理
+
+	/**
+	 * @brief STORE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
+	 * @details 読み取られた工具情報をDBから取得して表に追加する。
+	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
+	 */
+	bool on_qrCodeEntry_store_read_completed();
+
+	/**
+	 * @brief STORE_READ_COMPLETED 状態の falseButton.on_clicked の処理
+	 * @details 補充機能を終了する。
+	 */
 	void on_falseButton_store_read_completed();
-	/// @brief STORE_WAITING_FOR_TOOL_QR 状態の trueButton.on_clicked の処理
+
+	/**
+	 * @brief STORE_READ_COMPLETED 状態の trueButton.on_clicked の処理
+	 * @details 補充機能の最初の画面に戻る。
+	 */
 	void on_trueButton_store_read_completed();
 
+	/**
+	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
+	 * @param completed_command 完了したコマンド
+	 */
+	void on_plc_store_read_completed(plc::PlcCommand completed_command);
+
 	// --- 棚卸しモードの状態遷移関数 ---
+
+	/**
+	 * @brief RECONCILE_WAITING_FOR_CONTAINER_SELECTION 状態に入ったときの処理。
+	 * @details DBから取得したコンテナリストをテーブルに表示する。
+	 */
+	void on_enter_reconcile_waiting_for_container_selection();
+
+	/**
+	 * @brief RECONCILE_WAITING_FOR_CONTAINER_SELECTION 状態の mainTableSelection_on_changed の処理。
+	 * @details 選択中の状態に選択行を変化させ、trueButton を有効化する。
+	 */
+	void on_mainTable_reconcile_waiting_for_container_selection();
+
+	/**
+	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態に入ったときの処理。
+	 * @details 工具を補充するコンテナを搬出する。
+	 */
+	void on_enter_reconcile_container_retrieving();
+
+	/**
+	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
+	 * @param completed_command 完了したコマンド
+	 */
+	void on_plc_reconcile_container_retrieving(plc::PlcCommand completed_command);
+
+	/**
+	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態に入ったときの処理。
+	 * @details 利用者が扉を開けるまで待機する。
+	 */
+	void on_enter_reconcile_container_retrieved();
+
+	/**
+	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
+	 * @param completed_command 完了したコマンド
+	 */
+	void on_plc_reconcile_container_retrieved(plc::PlcCommand completed_command);
+
+	/**
+	 * @brief RECONCILE_READY_FOR_READING 状態に入ったときの処理。
+	 * @details DBからこのコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
+	 */
+	void on_enter_reconcile_ready_for_reading();
+
 	// TODO: 棚卸しモードの状態遷移関数をここに追加
 
 	//=========================================================================

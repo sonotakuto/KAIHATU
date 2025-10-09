@@ -175,24 +175,29 @@ void run_plc_listener() {
 	while (true) {
 		try {
 			PlcCommand command = g_plc_command_queue.pop();
-			bool success = false;
+			command.result = false;
 
+			/*	TODO: 実際に動かすときはコメントアウトを解除
 			switch (command.type) {
 			case PlcCommandType::RETRIEVE_CONTAINER:
-				success = plc::retrieve_container(command.data);
+				command.result = plc::retrieve_container(command.data);
 				break;
 			case PlcCommandType::STORE_CONTAINER:
-				success = plc::store_container();
+				command.result = plc::store_container();
 				break;
 			case PlcCommandType::WAIT_FOR_RETRIEVE_COMPLETION:
-				success = plc::waiting_for_completion(M_DEVICE_RETRIEVE_COMPLETED);
+				command.result = plc::waiting_for_completion(M_DEVICE_RETRIEVE_COMPLETED);
 				break;
 			case PlcCommandType::WAIT_FOR_STORE_COMPLETION:
-				success = plc::waiting_for_completion(M_DEVICE_STORE_COMPLETED);
+				command.result = plc::waiting_for_completion(M_DEVICE_STORE_COMPLETED);
 				break;
 			}
+			/*/
+			std::this_thread::sleep_for(std::chrono::seconds(3));
+			command.result = true;	// 常に成功
+			//*/
 
-			if (success) {
+			if (command.result) {
 				// 実行したい処理をラムダ式としてヒープに確保
 				// ラムダのポインタを渡して、GUIスレッドでの実行を依頼
 				g_idle_add(gui::MainWindow::dispatch_to_gui_thread, new std::function<void()>([=]() { gui_notifier(command); }));
