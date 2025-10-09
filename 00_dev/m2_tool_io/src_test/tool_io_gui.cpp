@@ -1166,24 +1166,28 @@ void MainWindow::reset_variables() {
 	m_is_insert_operation = false;
 }
 
+// tool_io_gui.cpp
 void MainWindow::reset_header_buttons() {
-	// 権限に応じてトグルボタンの操作可否を設定
-	// 取り出しトグルボタン
-	update_widget_state(&retrieveToggleButton, WidgetState{
-		.is_sensitive = g_logged_in_user_info.value().per_out,
-	});
-	// 補充トグルボタン
-	update_widget_state(&storeToggleButton, WidgetState{
-		.is_sensitive = g_logged_in_user_info.value().per_add,
-	});
-	// 棚卸しトグルボタン
-	update_widget_state(&reconcileToggleButton, WidgetState{
-		.is_sensitive = g_logged_in_user_info.value().per_reconcile,
-	});
-	// ログアウトボタンを操作可能に
-	update_widget_state(&logoutButton, WidgetState{
-		.is_sensitive = true
-	});
+    // g_logged_in_user_infoに値がある（ユーザーがログインしている）かを確認
+    if (g_logged_in_user_info.has_value()) {
+        // 権限に応じてトグルボタンの操作可否を設定
+        // 取り出しトグルボタン
+        update_widget_state(&retrieveToggleButton, WidgetState{
+            .is_sensitive = g_logged_in_user_info.value().per_out,
+        });
+        // 補充トグルボタン
+        update_widget_state(&storeToggleButton, WidgetState{
+            .is_sensitive = g_logged_in_user_info.value().per_add,
+        });
+        // 棚卸しトグルボタン
+        update_widget_state(&reconcileToggleButton, WidgetState{
+            .is_sensitive = g_logged_in_user_info.value().per_reconcile,
+        });
+        // ログアウトボタンを操作可能に
+        update_widget_state(&logoutButton, WidgetState{
+            .is_sensitive = true
+        });
+    }
 }
 
 void MainWindow::update_widget_state(sg::Widget* widget, WidgetState state) {
