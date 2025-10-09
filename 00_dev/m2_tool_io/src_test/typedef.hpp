@@ -103,8 +103,12 @@ struct ToolingListInfo {
 	std::vector<ToolingListItem> items{};
 };
 
+/**
+ * @struct BoxInfo
+ * @brief コンテナ情報を保持する構造体
+ */
 struct BoxInfo {
-	/// @brief ボックスID (主キー)
+	/// @brief コンテナID (主キー)
 	int box_id{};
 	/// @brief 基本工具情報
 	ToolBasicInfo item{};

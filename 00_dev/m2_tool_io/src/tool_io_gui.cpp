@@ -1037,6 +1037,8 @@ MainWindow::MainWindow() :
 		.tableStackPageName = "table2column",
 		.on_enter_state = [](MainWindow* thiz){
 			// TODO: DBからこのコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
+
+		
 			thiz->qrCodeEntry.set_text("");
 			gtk_widget_grab_focus(GTK_WIDGET(thiz->qrCodeEntry.object));
 		},

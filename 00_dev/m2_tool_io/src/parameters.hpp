@@ -16,7 +16,7 @@ constexpr GdkRGBA TABLE_BGCOLOR_NORMAL				= {0.914, 0.922, 0.961, 1.0};	// テ�
 constexpr GdkRGBA TABLE_BGCOLOR_HIGHLIGHT			= {0.914, 0.922, 0.961, 1.0};	// テーブルの強調表示背景色
 constexpr GdkRGBA TABLE_BGCOLOR_FADED				= {0.914, 0.922, 0.961, 1.0};	// テーブルの薄く表示された背景色
 constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MATCH		= {0.914, 0.922, 0.961, 1.0};	// テーブルの棚卸し一致行背景色
-constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MISMATCH	= {0.914, 0.922, 0.961, 1.0};	// テーブルの棚卸し不一致行背景色
+constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MISMATCH	= {0.850, 0.850, 0.850, 1.0};	// テーブルの棚卸し不一致行背景色
 constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_UNREAD	= {0.914, 0.922, 0.961, 1.0};	// テーブルの棚卸し未読行背景色
 
 /**

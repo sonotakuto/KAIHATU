@@ -1261,14 +1261,14 @@
                 <property name="spacing">20</property>
                 <child>
                   <object class="GtkLabel" id="dateTimeLabel">
-                    <property name="width_request">239</property>
+                    <property name="width_request">240</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">YYYY / MM / DD   HH : MM</property>
                     <property name="xalign">0</property>
                     <style>
                       <class name="font-normal"/>
-                      <class name="font-size_25px"/>
+                      <class name="font-size_20px"/>
                     </style>
                   </object>
                   <packing>
@@ -1287,8 +1287,8 @@
                       <object class="GtkToggleButton" id="retrieveToggleButton">
                         <property name="label" translatable="yes">取り出し</property>
                         <property name="use_action_appearance">True</property>
-                        <property name="width_request">199</property>
-                        <property name="height_request">49</property>
+                        <property name="width_request">200</property>
+                        <property name="height_request">50</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="focus_on_click">False</property>
@@ -1296,7 +1296,7 @@
                         <style>
                           <class name="button"/>
                           <class name="retrieveButton"/>
-                          <class name="border_3px"/>
+                          <class name="border_6px"/>
                           <class name="br_10px"/>
                           <class name="border_solid"/>
                           <class name="font-bold"/>
@@ -1311,8 +1311,8 @@
                     <child>
                       <object class="GtkToggleButton" id="storeToggleButton">
                         <property name="label" translatable="yes">補充</property>
-                        <property name="width_request">199</property>
-                        <property name="height_request">49</property>
+                        <property name="width_request">200</property>
+                        <property name="height_request">50</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="focus_on_click">False</property>
@@ -1320,7 +1320,7 @@
                         <style>
                           <class name="button"/>
                           <class name="storeButton"/>
-                          <class name="border_3px"/>
+                          <class name="border_6px"/>
                           <class name="br_10px"/>
                           <class name="border_solid"/>
                           <class name="font-bold"/>
@@ -1335,8 +1335,8 @@
                     <child>
                       <object class="GtkToggleButton" id="reconcileToggleButton">
                         <property name="label" translatable="yes">棚卸し</property>
-                        <property name="width_request">199</property>
-                        <property name="height_request">49</property>
+                        <property name="width_request">200</property>
+                        <property name="height_request">50</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="focus_on_click">False</property>
@@ -1344,7 +1344,7 @@
                         <style>
                           <class name="button"/>
                           <class name="reconcileButton"/>
-                          <class name="border_3px"/>
+                          <class name="border_6px"/>
                           <class name="br_10px"/>
                           <class name="border_solid"/>
                           <class name="font-bold"/>
@@ -1382,7 +1382,7 @@
                 <child>
                   <object class="GtkButton" id="kanaKanjiButton">
                     <property name="label" translatable="yes">かな/漢字</property>
-                    <property name="width_request">199</property>
+                    <property name="width_request">200</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
@@ -1390,7 +1390,6 @@
                     <style>
                       <class name="button"/>
                       <class name="normalButton"/>
-                      <class name="border_3px"/>
                     </style>
                   </object>
                   <packing>
@@ -1402,7 +1401,7 @@
                 <child>
                   <object class="GtkButton" id="logoutButton">
                     <property name="label" translatable="yes">ログアウト</property>
-                    <property name="width_request">199</property>
+                    <property name="width_request">200</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
@@ -1420,7 +1419,7 @@
                 </child>
                 <child>
                   <object class="GtkEntry" id="userIdEntry">
-                    <property name="width_request">199</property>
+                    <property name="width_request">200</property>
                     <property name="visible">True</property>
                     <property name="sensitive">False</property>
                     <property name="can_focus">True</property>
@@ -1463,7 +1462,7 @@
             <property name="spacing">10</property>
             <child>
               <object class="GtkLabel" id="messageLabel">
-                <property name="width_request">944</property>
+                <property name="width_request">945</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="xpad">0</property>
@@ -1484,7 +1483,7 @@ message message message message message</property>
             </child>
             <child>
               <object class="GtkStack" id="operationStack">
-                <property name="width_request">944</property>
+                <property name="width_request">945</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -1773,7 +1772,7 @@ message message message message message</property>
             <property name="spacing">5</property>
             <child>
               <object class="GtkStack" id="table_stack">
-                <property name="height_request">734</property>
+                <property name="height_request">735</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -2497,7 +2496,7 @@ message message message message message</property>
             </child>
             <child>
               <object class="GtkBox" id="paginationBox">
-                <property name="height_request">39</property>
+                <property name="height_request">40</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">end</property>
@@ -2600,15 +2599,15 @@ message message message message message</property>
             <property name="can_focus">False</property>
             <child>
               <object class="GtkBox" id="qrCodeEntryBox">
-                <property name="height_request">49</property>
+                <property name="height_request">50</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">start</property>
                 <property name="valign">center</property>
                 <child>
                   <object class="GtkLabel" id="qrCodeEntryLabel">
-                    <property name="width_request">194</property>
-                    <property name="height_request">49</property>
+                    <property name="width_request">195</property>
+                    <property name="height_request">50</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">QRコード受付：</property>
@@ -2622,8 +2621,8 @@ message message message message message</property>
                 </child>
                 <child>
                   <object class="GtkEntry" id="qrCodeEntry">
-                    <property name="width_request">199</property>
-                    <property name="height_request">49</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">50</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="valign">center</property>
@@ -2657,8 +2656,8 @@ message message message message message</property>
                 <child>
                   <object class="GtkButton" id="falseButton">
                     <property name="label" translatable="yes">false</property>
-                    <property name="width_request">199</property>
-                    <property name="height_request">59</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
@@ -2678,8 +2677,8 @@ message message message message message</property>
                 <child>
                   <object class="GtkButton" id="trueButton">
                     <property name="label" translatable="yes">ture</property>
-                    <property name="width_request">199</property>
-                    <property name="height_request">59</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
