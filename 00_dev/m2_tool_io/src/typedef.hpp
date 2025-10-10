@@ -18,8 +18,8 @@ struct UserInfo {
 	int user_id{};
 	/// @brief ユーザー名
 	std::string user_name{};
-	/// @brief 取り出し権限
-	bool per_out{};
+	/// @brief 取り出し権限 (常に true)
+	bool per_out{true};
 	/// @brief 補充権限
 	bool per_add{};
 	/// @brief 棚卸し権限

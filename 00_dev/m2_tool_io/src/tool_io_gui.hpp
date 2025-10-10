@@ -59,14 +59,12 @@ public:
 
 		/// 補充モード
 		STORE,		// 移行用
-		STORE_WAITING_FOR_TOOL_QR,		// 補充する工具のQRコード読み取り待ち
-		STORE_CONFIRMING_SELECTION,		// 読み取った工具の確認
-		STORE_CONTAINER_RETRIEVING,		// コンテナ搬出待ち
-		STORE_CONTAINER_RETRIEVED,		// コンテナ搬出完了
-		STORE_READY_FOR_READING,		// 実際に補充を行う(インサート以外) - 工具読み取り前
-		STORE_READ_COMPLETED,			// 実際に補充を行う(インサート以外) - 工具読み取り後
-		STORE_INSERT_READY_FOR_READING,	// 実際に補充を行う(インサート) - 工具読み取り前
-		STORE_INSERT_READ_COMPLETED,	// 実際に補充を行う(インサート) - 工具読み取り後
+		STORE_WAITING_FOR_TOOL_QR,	// 補充する工具のQRコード読み取り待ち
+		STORE_CONFIRMING_SELECTION,	// 読み取った工具の確認
+		STORE_CONTAINER_RETRIEVING,	// コンテナ搬出待ち
+		STORE_CONTAINER_RETRIEVED,	// コンテナ搬出完了
+		STORE_READY_FOR_READING,	// 実際に補充を行う - 工具読み取り前
+		STORE_READ_COMPLETED,		// 実際に補充を行う - 工具読み取り後
 
 		/// 棚卸しモード
 		RECONCILE,	// 移行用
@@ -87,10 +85,8 @@ public:
 	 * @brief TextMode UIの表示言語モードを定義する列挙型。
 	 */
 	enum class TextMode {
-		/// @brief 漢字モード
-		KANJI,
-		/// @brief かなモード
-		KANA
+		KANJI,	// 漢字モード
+		KANA	// かなモード
 	};
 
 	/**
@@ -98,9 +94,9 @@ public:
 	 * @brief ページネーションUIの操作内容を定義する列挙型。
 	 */
 	enum class PaginationAction {
-		UPDATE_UI_ONLY, // ページは変更せず、UIの表示（ボタンの有効/無効など）だけを更新
-		GO_TO_PREV,     // 前のページへ移動
-		GO_TO_NEXT      // 次のページへ移動
+		UPDATE_UI_ONLY,	// ページは変更せず、UIの表示（ボタンの有効/無効など）だけを更新
+		GO_TO_PREV,		// 前のページへ移動
+		GO_TO_NEXT		// 次のページへ移動
 	};
 
 	/**
@@ -243,6 +239,8 @@ public:
 
 		// --- 状態の「振る舞い」を定義 ---
 
+		/// @brief 状態遷移時、UIリフレッシュの前に実行するカスタム初期化アクション
+		std::function<void(MainWindow*)> on_prepare_state = nullptr;
 		/// @brief 状態遷移直後に実行するアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_enter_state = nullptr;
 		/// @brief いずれかのメインテーブルの選択が変更されたときのアクション (nullptrなら何もしない)
@@ -804,7 +802,8 @@ private:
 
 	/**
 	 * @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
-	 * @details 読み取られた工具情報をDBから取得して表に追加し、次の画面に遷移する。
+	 * @details on_qrCodeEntry_store_read_completed() の処理に加え、
+	 * 読み取りに成功した場合は次の画面に遷移する。
 	 */
 	void on_qrCodeEntry_store_ready_for_reading();
 
@@ -882,10 +881,24 @@ private:
 
 	/**
 	 * @brief RECONCILE_READY_FOR_READING 状態に入ったときの処理。
-	 * @details DBからこのコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
+	 * @details DBからコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
 	 */
 	void on_enter_reconcile_ready_for_reading();
 
+	/**
+	 * @brief RECONCILE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @details on_qrCodeEntry_reconcile_read_completed() の処理に加え、
+	 * 読み取りに成功した場合に次の画面に遷移する。
+	 */
+	void on_qrCodeEntry_reconcile_ready_for_reading();
+
+	/**
+	 * @brief RECONCILE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @details 読み取られた工具情報をDBから取得し、テーブル内の該当工具を検索して、
+	 * 見つかれば「一致」状態に更新し、見つからなければ「不一致」として新規行を追加する。
+	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
+	 */
+	bool on_qrCodeEntry_reconcile_read_completed();
 	// TODO: 棚卸しモードの状態遷移関数をここに追加
 
 	//=========================================================================

@@ -124,13 +124,14 @@ MainWindow::MainWindow() :
 	storingToolTable(glade, "storingToolTable"),
 	storingToolListstore(
 		storingToolTable,
-		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING },
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
 		[](sgex::ListStore* store, GtkTreeIter* iter, const ToolBasicInfo& row) {
 			store->set(iter,
 				0, row.class_name.c_str(),
 				1, row.maker.c_str(),
 				2, row.tool_name.c_str(),
-				3, row.material.c_str()
+				3, row.material.c_str(),
+				4, &GdkRGBA(TABLE_BGCOLOR_NORMAL)	// TODO: コンパイルできる所まで進めたら動作確認
 			);
 		}
 	),
@@ -860,7 +861,7 @@ MainWindow::MainWindow() :
 		.on_plc_notified	= [](MainWindow* thiz, plc::PlcCommand completed_command){ thiz->on_plc_store_container_retrieved(completed_command); }
 	}));
 
-	// --- 状態：補充 - 実際に補充を行う(インサート以外) - 工具読み取り前 ---
+	// --- 状態：補充 - 実際に補充を行う - 工具読み取り前 ---
 	g_app_state_configs.insert(make_pair(AppState::STORE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
@@ -869,26 +870,29 @@ MainWindow::MainWindow() :
 			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, false, true} },
 			{ {&trueButton}, {UiText{"続ける", "つづける"}, false, true} }
 		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName = "pageNone",
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state			= [](MainWindow* thiz){
+			thiz->update_table_state({&(thiz->table2column1st), &(thiz->table2column2nd)}, {
 				.column_headers = std::vector<UiText>{
 					{"ID", "ID"},
 					{"分類", "ぶんるい"},
 					{"メーカー", "メーカー"},
 					{"型番", "かたばん"},
 					{"材質", "ざいしつ"},
-					{"再研磨\n  回数", "さいけんま\n  かいすう"}
+					((thiz->m_is_insert_operation)
+						? (UiText{"ケース内\n　個数", "ケースない\n　こすう"})
+						: (UiText{"再研磨\n  回数", "さいけんま\n  かいすう"})
+					)
 				}, .is_sensitive = true
-			} }
+			});
 		},
-		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName = "pageNone",
-		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_ready_for_reading(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); }
 	}));
 
-	// --- 状態：補充 - 実際に補充を行う(インサート以外) - 工具読み取り後 ---
+	// --- 状態：補充 - 実際に補充を行う - 工具読み取り後 ---
 	g_app_state_configs.insert(make_pair(AppState::STORE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
@@ -899,50 +903,7 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName = "table2column",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_read_completed(); },
-		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_read_completed(); },
-		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_read_completed(); }
-	}));
-
-	// --- 状態：補充 - 実際に補充を行う(インサート) - 工具読み取り前 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_INSERT_READY_FOR_READING, WidgetStateConfig{
-		// --- UIの「見た目」を定義 ---
-		.widget_states = {
-			{ {&messageLabel}, {UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}, true, true} },
-			{ {&qrCodeEntry}, {.is_sensitive = true} },
-			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, false, true} },
-			{ {&trueButton}, {UiText{"続ける", "つづける"}, false, true} }
-		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {
-				.column_headers = std::vector<UiText>{
-					{"ID", "ID"},
-					{"分類", "ぶんるい"},
-					{"メーカー", "メーカー"},
-					{"型番", "かたばん"},
-					{"材質", "ざいしつ"},
-					{"ケース内\n　個数", "ケースない\n　こすう"}
-				}, .is_sensitive = true
-			} }
-		},
-		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName = "pageNone",
-		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_ready_for_reading(); },
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); }
-	}));
-
-	// --- 状態：補充 - 実際に補充を行う(インサート) - 工具読み取り後 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_INSERT_READ_COMPLETED, WidgetStateConfig{
-		// --- UIの「見た目」を定義 ---
-		.widget_states = {
-			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}, true, true} },
-			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
-			{ {&paginationBox}, {.is_visible = true} }
-		},
-		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName = "table2column",
-		// --- 状態の「振る舞い」を定義 ---
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_read_completed(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_read_completed(); },
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_read_completed(); },
 		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_read_completed(); }
@@ -1034,7 +995,7 @@ MainWindow::MainWindow() :
 		.on_enter_state = [](MainWindow* thiz){
 			// TODO: DBからこのコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
 
-		
+
 			thiz->qrCodeEntry.set_text("");
 			gtk_widget_grab_focus(GTK_WIDGET(thiz->qrCodeEntry.object));
 		},
@@ -1236,10 +1197,10 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 }
 
 void MainWindow::set_app_state(AppState state) {
-	// 1. メンバ変数の状態を更新
+	// メンバ変数の状態を更新
 	m_app_state = state;
 
-	// 2. m_widget_statesを更新する
+	// m_widget_statesを更新する
 	const auto& state_config = g_app_state_configs.at(state);
 	for (const auto& widget_state : state_config.widget_states) {
 		for (const auto& widget : widget_state.widgets) {
@@ -1247,14 +1208,14 @@ void MainWindow::set_app_state(AppState state) {
 		}
 	}
 
-	// 3. m_table_statesを更新する
+	// m_table_statesを更新する
 	for (const auto& table_state : state_config.table_states) {
 		for (const auto& table : table_state.tables) {
 			update_table_state(table, table_state.state);
 		}
 	}
 
-	// 4. 各スタックの表示ページを更新
+	// 各スタックの表示ページを更新
 	if (!state_config.operationStackPageName.empty() && operationStack.get_visible_child_name() != state_config.operationStackPageName) {
 		operationStack.set_visible_child_name(state_config.operationStackPageName.c_str());
 	}
@@ -1263,10 +1224,15 @@ void MainWindow::set_app_state(AppState state) {
 		update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
 	}
 
-	// 5. UIを再描画
+	// UI更新前のカスタム処理を実行
+	if (state_config.on_prepare_state) {
+		state_config.on_prepare_state(this);
+	}
+
+	// UIを再描画
 	refresh_ui(false);
 
-	// 6. 状態遷移直後に実行するアクションがあれば実行
+	// 状態遷移直後に実行するアクションがあれば実行
 	if (state_config.on_enter_state) {
 		state_config.on_enter_state(this);
 	}
@@ -1748,10 +1714,7 @@ void MainWindow::on_enter_store_container_retrieved() {
 void MainWindow::on_plc_store_container_retrieved(plc::PlcCommand completed_command) {
 	if (completed_command.type == plc::PlcCommandType::WAIT_FOR_DOOR_OPEN_COMPLETION) {
 		if (completed_command.result) {
-			set_app_state(((m_is_insert_operation)
-				? (AppState::STORE_INSERT_READY_FOR_READING)
-				: (AppState::RECONCILE_READY_FOR_READING)
-			));
+			set_app_state(AppState::RECONCILE_READY_FOR_READING);
 		} else { /* TODO: エラー処理 */ }
 	}
 }
@@ -1765,10 +1728,7 @@ void MainWindow::on_enter_store_ready_for_reading() {
 
 void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 	if (on_qrCodeEntry_store_read_completed) {
-		set_app_state(((m_is_insert_operation)
-			? (AppState::STORE_INSERT_READ_COMPLETED)
-			: (AppState::STORE_READ_COMPLETED)
-		));
+		set_app_state(AppState::STORE_READ_COMPLETED);
 	}
 }
 
