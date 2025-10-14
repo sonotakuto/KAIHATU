@@ -40,6 +40,7 @@ public:
 	using sg::Dialog::Dialog;
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 
 	// プロパティ
 
@@ -141,6 +142,7 @@ public:
 	using sg::Entry::Entry;
 
 	// メソッド
+	DEFINE_METHOD(widget, grab_focus, void)
 
 	// プロパティ
 	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
@@ -349,6 +351,45 @@ public:
 	// シグナル
 };
 
+// SimpleGtk_extension.hpp の sgex 名前空間内に追記
+
+/**
+ * @class TreeViewColumn
+ * @brief GtkTreeViewColumnのRAIIラッパークラス。
+ * @details sg::Objectを継承し、カラムの生成とプロパティ設定をカプセル化します。
+ */
+class TreeViewColumn : public sg::Object {
+public:
+	// コンストラクタ
+	TreeViewColumn() : sg::Object(G_OBJECT(gtk_tree_view_column_new())) {}
+	TreeViewColumn(GtkTreeViewColumn* column) : sg::Object(G_OBJECT(column)) {}
+	virtual ~TreeViewColumn() = default;
+
+	// コピーは禁止
+	TreeViewColumn(const TreeViewColumn&) = delete;
+	TreeViewColumn& operator=(const TreeViewColumn&) = delete;
+
+	// ムーブは許可
+	TreeViewColumn(TreeViewColumn&& other) noexcept : sg::Object(std::move(other)) {}
+	TreeViewColumn& operator=(TreeViewColumn&& other) noexcept {
+		sg::Object::operator=(std::move(other));
+		return *this;
+	}
+
+	// GtkTreeViewColumn*へのキャスト演算子
+	operator GtkTreeViewColumn*() const {
+		return GTK_TREE_VIEW_COLUMN(this->object);
+	}
+
+	// --- メソッド ---
+	DEFINE_METHOD_WITH_ARGS(tree_view_column, set_title, void, (const char* title), title)
+	DEFINE_METHOD_WITH_ARGS(tree_view_column, set_alignment, void, (gfloat xalign), xalign)
+	DEFINE_METHOD_WITH_ARGS(tree_view_column, set_fixed_width, void, (int fixed_width), fixed_width)
+	DEFINE_METHOD_WITH_ARGS(tree_view_column, pack_start, void, (GtkCellRenderer* cell, bool expand), cell, expand)
+	DEFINE_METHOD_WITH_ARGS(tree_view_column, pack_end, void, (GtkCellRenderer* cell, bool expand), cell, expand)
+	DEFINE_METHOD_WITH_ARGS(tree_view_column, add_attribute, void, (GtkCellRenderer* cell, const char* attribute, int column), cell, attribute, column)
+};
+
 /**
  * @class TreeView
  * @brief sg::TreeViewを拡張し、機能を追加したクラス。
@@ -359,8 +400,9 @@ public:
 
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
-	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
 	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
+	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
+	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
 
 	// プロパティ
 	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)

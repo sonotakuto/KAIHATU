@@ -11,5 +11,3 @@
 // --- グローバル変数 ---
 /// @brief ログイン中のユーザー情報を保持する構造体。
 inline std::optional<UserInfo> g_logged_in_user_info = std::nullopt;
-/// @brief パスワード認証が成功したかどうかのフラグ。
-inline bool g_password_authenticated = false;

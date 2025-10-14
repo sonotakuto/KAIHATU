@@ -100,6 +100,7 @@ $(OBJECTS_DIR)/%_debug.o: %.cpp $(HEADERS)
 
 # 'make debug' でデバッグ版をビルドする
 debug: $(DEBUG_TARGET)
+	@echo [F5]でデバッグを開始します。
 
 # 'make check' でソースコードの構文チェックを行う
 check: $(SOURCES)

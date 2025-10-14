@@ -809,7 +809,7 @@ private:
 
 	/**
 	 * @brief STORE_READ_COMPLETED 状態に入ったときの処理
-	 * @details 次の読み取り準備を行う。
+	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
 	 */
 	void on_enter_store_read_completed();
 
@@ -893,12 +893,31 @@ private:
 	void on_qrCodeEntry_reconcile_ready_for_reading();
 
 	/**
-	 * @brief RECONCILE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @brief RECONCILE_READ_COMPLETED 状態に入ったときの処理。
+	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
+	 */
+	void on_enter_reconcile_read_completed();
+
+	/**
+	 * @brief RECONCILE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
 	 * @details 読み取られた工具情報をDBから取得し、テーブル内の該当工具を検索して、
 	 * 見つかれば「一致」状態に更新し、見つからなければ「不一致」として新規行を追加する。
 	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
 	 */
 	bool on_qrCodeEntry_reconcile_read_completed();
+
+	/**
+	 * @brief RECONCILE_READ_COMPLETED 状態の falseButton.on_clicked の処理
+	 * @details 棚卸し機能を終了する。
+	 */
+	void on_falseButton_reconcile_read_completed();
+
+	/**
+	 * @brief RECONCILE_READ_COMPLETED 状態の trueButton.on_clicked の処理
+	 * @details 棚卸し機能の最初の画面に戻る。
+	 */
+	void on_trueButton_reconcile_read_completed();
+
 	// TODO: 棚卸しモードの状態遷移関数をここに追加
 
 	//=========================================================================
@@ -914,6 +933,8 @@ private:
 	 */
 	bool m_isProgrammaticallyChangingToggle;
 
+	/// @brief パスワード認証が成功したかどうかのフラグ。
+	bool m_password_authenticated;
 	/// @brief 現在のGUI操作モードを保持するメンバ変数。
 	GuiMode m_gui_mode;
 	/// @brief 現在の状態を保持するメンバ変数。

@@ -7,6 +7,10 @@
 
 int main(int argc, char *argv[])
 {
+	vector<thread> threads;
+
+	threads.emplace_back(plc::run_plc_listener);
+
 	// アプリケーションオブジェクトの生成
 	Application app;
 

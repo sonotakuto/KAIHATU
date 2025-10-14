@@ -43,7 +43,7 @@ OBJECTS_DIR = objects
 
 # 生成する実行ファイル名（通常版）
 # 例: TARGET = my_app
-TARGET = tool_io
+TARGET = tool_io_exe
 
 # 生成する実行ファイル名（デバッグ版）
 # 例: DEBUG_TARGET = my_app_debug

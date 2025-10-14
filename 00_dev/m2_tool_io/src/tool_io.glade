@@ -1453,7 +1453,6 @@
                     <property name="visible">True</property>
                     <property name="sensitive">False</property>
                     <property name="can_focus">True</property>
-                    <property name="text" translatable="yes">aaa</property>
                     <property name="shadow_type">etched-out</property>
                     <style>
                       <class name="entry"/>
