@@ -325,7 +325,7 @@ public:
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	sgex::TreeView storingToolTable;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア
-	sgex::TreeViewListStoreModel<ToolBasicInfo> storingToolListstore;
+	sgex::TreeViewListStoreModel<MstToolInfo> storingToolListstore;
 	/// @brief (棚卸し時) 絞り込みダイアログを開くボタン (ID: filterButton)
 	sgex::Button filterButton;
 	/// @brief (棚卸し時) 「コンテナ番号：」のラベル (ID: containerLabel)
@@ -507,9 +507,9 @@ private:
 	 * @details m_text_mode メンバ変数に基づいて、ui_text の適切なフィールドを返します。
 	 */
 	const std::string& get_display_text(const UiText& ui_text) const {
-		return (m_text_mode == TextMode::KANA)
-				? ui_text.kana
-				: ui_text.kanji;
+		return ((m_text_mode == TextMode::KANA)
+				? (ui_text.kana)
+				: (ui_text.kanji));
 	}
 
 	/**

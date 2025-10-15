@@ -125,7 +125,7 @@ MainWindow::MainWindow() :
 	storingToolListstore(
 		storingToolTable,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const ToolBasicInfo& row) {
+		[](sgex::ListStore* store, GtkTreeIter* iter, const MstToolInfo& row) {
 			store->set(iter,
 				0, row.class_name.c_str(),
 				1, row.maker.c_str(),
@@ -296,7 +296,7 @@ MainWindow::MainWindow() :
 	//=========================================================================
 
 	// --- 「取り出し」トグルボタン ---
-	m_widget_states.insert(make_pair(&retrieveToggleButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&retrieveToggleButton, WidgetStateUpdater{
 		{UiText{"取り出し", "とりだし"}, false, true},
 		[this](const WidgetState& state){
 			this->retrieveToggleButton.set_label(get_display_text(state.text.value()).c_str());
@@ -306,7 +306,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「補充」トグルボタン ---
-	m_widget_states.insert(make_pair(&storeToggleButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&storeToggleButton, WidgetStateUpdater{
 		{UiText{"補充", "ほじゅう"}, false, true},
 		[this](const WidgetState& state){
 			this->storeToggleButton.set_label(get_display_text(state.text.value()).c_str());
@@ -316,7 +316,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「棚卸し」トグルボタン ---
-	m_widget_states.insert(make_pair(&reconcileToggleButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&reconcileToggleButton, WidgetStateUpdater{
 		{UiText{"棚卸し", "たなおろし"}, false, true},
 		[this](const WidgetState& state){
 			this->reconcileToggleButton.set_label(get_display_text(state.text.value()).c_str());
@@ -326,7 +326,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「かな/漢字」ボタン ---
-	m_widget_states.insert(make_pair(&kanaKanjiButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&kanaKanjiButton, WidgetStateUpdater{
 		{UiText{"かな/漢字", "かな/漢字"}, true, true},
 		[this](const WidgetState& state){
 			this->kanaKanjiButton.set_label(get_display_text(state.text.value()).c_str());
@@ -336,7 +336,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「ログアウト」ボタン ---
-	m_widget_states.insert(make_pair(&logoutButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&logoutButton, WidgetStateUpdater{
 		{UiText{"ログアウト", "ログアウト"}, false, true},
 		[this](const WidgetState& state){
 			this->logoutButton.set_label(get_display_text(state.text.value()).c_str());
@@ -346,7 +346,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- ユーザーIDエントリ ---
-	m_widget_states.insert(make_pair(&userIdEntry, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&userIdEntry, WidgetStateUpdater{
 		{nullopt, true, true},
 		[this](const WidgetState& state){
 			this->userIdEntry.set_sensitive(state.is_sensitive.value());
@@ -355,7 +355,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「ライン番号」ラベル ---
-	m_widget_states.insert(make_pair(&lineLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&lineLabel, WidgetStateUpdater{
 		{UiText{"ライン番号：", "ラインばんごう："}, true, true},
 		[this](const WidgetState& state){
 			this->lineLabel.set_label(get_display_text(state.text.value()).c_str());
@@ -365,7 +365,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「プログラム番号」ラベル ---
-	m_widget_states.insert(make_pair(&programLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&programLabel, WidgetStateUpdater{
 		{UiText{"プログラム番号：", "プログラムばんごう："}, true, true},
 		[this](const WidgetState& state){
 			this->programLabel.set_label(get_display_text(state.text.value()).c_str());
@@ -374,7 +374,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「絞り込み」ボタン ---
-	m_widget_states.insert(make_pair(&filterButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&filterButton, WidgetStateUpdater{
 		{UiText{"絞り込み", "しぼりこみ"}, true, true},
 		[this](const WidgetState& state){
 			this->filterButton.set_label(get_display_text(state.text.value()).c_str());
@@ -384,7 +384,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「コンテナ番号」ラベル ---
-	m_widget_states.insert(make_pair(&containerLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&containerLabel, WidgetStateUpdater{
 		{UiText{"コンテナ番号：", "コンテナばんごう："}, true, true},
 		[this](const WidgetState& state){
 			this->containerLabel.set_label(get_display_text(state.text.value()).c_str());
@@ -393,7 +393,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- メッセージラベル ---
-	m_widget_states.insert(make_pair(&messageLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&messageLabel, WidgetStateUpdater{
 		{UiText{"", ""}, true, true},
 		[this](const WidgetState& state){
 			this->messageLabel.set_label(get_display_text(state.text.value()).c_str());
@@ -402,7 +402,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 3列表示テーブルのボックス (1) ---
-	m_widget_states.insert(make_pair(&table3column1stBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&table3column1stBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table3column1stBox.set_visible(state.is_visible.value());
@@ -410,7 +410,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 3列表示テーブルのボックス (2) ---
-	m_widget_states.insert(make_pair(&table3column2ndBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&table3column2ndBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table3column2ndBox.set_visible(state.is_visible.value());
@@ -418,7 +418,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 3列表示テーブルのボックス (3) ---
-	m_widget_states.insert(make_pair(&table3column3rdBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&table3column3rdBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table3column3rdBox.set_visible(state.is_visible.value());
@@ -426,7 +426,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 2列表示テーブルのボックス (1) ---
-	m_widget_states.insert(make_pair(&table2column1stBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&table2column1stBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table2column1stBox.set_visible(state.is_visible.value());
@@ -434,7 +434,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 2列表示テーブルのボックス (2) ---
-	m_widget_states.insert(make_pair(&table2column2ndBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&table2column2ndBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->table2column2ndBox.set_visible(state.is_visible.value());
@@ -442,7 +442,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- テーブルのページネーション(ページ送り)UIを格納するボックス ---
-	m_widget_states.insert(make_pair(&paginationBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&paginationBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->paginationBox.set_visible(state.is_visible.value());
@@ -450,7 +450,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- QRコード受付UIのボックス ---
-	m_widget_states.insert(make_pair(&qrCodeEntryBox, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&qrCodeEntryBox, WidgetStateUpdater{
 		{nullopt, nullopt, false},
 		[this](const WidgetState& state){
 			this->qrCodeEntryBox.set_visible(state.is_visible.value());
@@ -458,7 +458,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 「QRコード受付」ラベル ---
-	m_widget_states.insert(make_pair(&qrCodeEntryLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&qrCodeEntryLabel, WidgetStateUpdater{
 		{UiText{"QRコード受付：", "QRコード うけつけ："}, true, true},
 		[this](const WidgetState& state){
 			this->qrCodeEntryLabel.set_label(get_display_text(state.text.value()).c_str());
@@ -467,7 +467,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- QRコードを入力するエントリ ---
-	m_widget_states.insert(make_pair(&qrCodeEntry, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&qrCodeEntry, WidgetStateUpdater{
 		{nullopt, false, true},
 		[this](const WidgetState& state){
 			this->qrCodeEntry.set_sensitive(state.is_sensitive.value());
@@ -476,7 +476,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- true/falseボタン（ラベルは動的に変わるため空） ---
-	m_widget_states.insert(make_pair(&falseButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&falseButton, WidgetStateUpdater{
 		{UiText{"", ""}, true, true},
 		[this](const WidgetState& state){
 			this->falseButton.set_label(get_display_text(state.text.value()).c_str());
@@ -484,7 +484,7 @@ MainWindow::MainWindow() :
 			this->falseButton.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&trueButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&trueButton, WidgetStateUpdater{
 		{UiText{"", ""}, true, true},
 		[this](const WidgetState& state){
 			this->trueButton.set_label(get_display_text(state.text.value()).c_str());
@@ -494,14 +494,14 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- インサート枚数確認ダイアログ ---
-	m_widget_states.insert(make_pair(&confirmInsertCountLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&confirmInsertCountLabel, WidgetStateUpdater{
 		{UiText{"使用するインサートの枚数を\n入力してください", "しようする インサートの まいすうを\nにゅうりょく してください"}, true, true},
 		[this](const WidgetState& state){
 			this->confirmInsertCountLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->confirmInsertCountLabel.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&insertCountOkButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&insertCountOkButton, WidgetStateUpdater{
 		{UiText{"OK", "OK"}, true, true},
 		[this](const WidgetState& state){
 			this->insertCountOkButton.set_label(get_display_text(state.text.value()).c_str());
@@ -511,14 +511,14 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 再研磨確認ダイアログ ---
-	m_widget_states.insert(make_pair(&confirmRegroundLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&confirmRegroundLabel, WidgetStateUpdater{
 		{UiText{"一度取り出された工具を検出しました。\n再研磨された工具ですか？", "いちど とりだされた こうぐを けんしゅつしました。\nさいけんま された こうぐですか？"}, true, true},
 		[this](const WidgetState& state){
 			this->confirmRegroundLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->confirmRegroundLabel.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&confirmRegroundOkButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&confirmRegroundOkButton, WidgetStateUpdater{
 		{UiText{"OK", "OK"}, true, true},
 		[this](const WidgetState& state){
 			this->confirmRegroundOkButton.set_label(get_display_text(state.text.value()).c_str());
@@ -526,7 +526,7 @@ MainWindow::MainWindow() :
 			this->confirmRegroundOkButton.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&notRegroundButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&notRegroundButton, WidgetStateUpdater{
 		{UiText{"いいえ", "いいえ"}, true, true},
 		[this](const WidgetState& state){
 			this->notRegroundButton.set_label(get_display_text(state.text.value()).c_str());
@@ -534,7 +534,7 @@ MainWindow::MainWindow() :
 			this->notRegroundButton.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&regroundButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&regroundButton, WidgetStateUpdater{
 		{UiText{"はい", "はい"}, true, true},
 		[this](const WidgetState& state){
 			this->regroundButton.set_label(get_display_text(state.text.value()).c_str());
@@ -544,7 +544,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- ログアウト確認ダイアログ ---
-	m_widget_states.insert(make_pair(&logoutNoButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&logoutNoButton, WidgetStateUpdater{
 		{UiText{"いいえ", "いいえ"}, true, true},
 		[this](const WidgetState& state){
 			this->logoutNoButton.set_label(get_display_text(state.text.value()).c_str());
@@ -552,7 +552,7 @@ MainWindow::MainWindow() :
 			this->logoutNoButton.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&logoutYesButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&logoutYesButton, WidgetStateUpdater{
 		{UiText{"はい", "はい"}, true, true},
 		[this](const WidgetState& state){
 			this->logoutYesButton.set_label(get_display_text(state.text.value()).c_str());
@@ -562,14 +562,14 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- パスワード入力ダイアログ ---
-	m_widget_states.insert(make_pair(&passwordEntryLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&passwordEntryLabel, WidgetStateUpdater{
 		{UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"}, true, true},
 		[this](const WidgetState& state){
 			this->passwordEntryLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->passwordEntryLabel.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&passwordCancelButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&passwordCancelButton, WidgetStateUpdater{
 		{UiText{"キャンセル", "キャンセル"}, true, true},
 		[this](const WidgetState& state){
 			this->passwordCancelButton.set_label(get_display_text(state.text.value()).c_str());
@@ -577,7 +577,7 @@ MainWindow::MainWindow() :
 			this->passwordCancelButton.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&passwordEnterButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&passwordEnterButton, WidgetStateUpdater{
 		{UiText{"確定", "かくてい"}, true, true},
 		[this](const WidgetState& state){
 			this->passwordEnterButton.set_label(get_display_text(state.text.value()).c_str());
@@ -587,21 +587,21 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 棚卸し絞り込みダイアログ ---
-	m_widget_states.insert(make_pair(&reconcileToolTypeFilterLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&reconcileToolTypeFilterLabel, WidgetStateUpdater{
 		{UiText{"分類", "ぶんるい"}, true, true},
 		[this](const WidgetState& state){
 			this->reconcileToolTypeFilterLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->reconcileToolTypeFilterLabel.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&reconcilePeriodFilterLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&reconcilePeriodFilterLabel, WidgetStateUpdater{
 		{UiText{"最終棚卸し日時", "さいしゅうたなおろしにちじ"}, true, true},
 		[this](const WidgetState& state){
 			this->reconcilePeriodFilterLabel.set_label(get_display_text(state.text.value()).c_str());
 			this->reconcilePeriodFilterLabel.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&reconcileFilterEnterButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&reconcileFilterEnterButton, WidgetStateUpdater{
 		{UiText{"決定", "けってい"}, true, true},
 		[this](const WidgetState& state){
 			this->reconcileFilterEnterButton.set_label(get_display_text(state.text.value()).c_str());
@@ -609,7 +609,7 @@ MainWindow::MainWindow() :
 			this->reconcileFilterEnterButton.set_visible(state.is_visible.value());
 		}
 	}));
-	m_widget_states.insert(make_pair(&reconcileFilterResetButton, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&reconcileFilterResetButton, WidgetStateUpdater{
 		{UiText{"期間リセット", "きかんリセット"}, true, true},
 		[this](const WidgetState& state){
 			this->reconcileFilterResetButton.set_label(get_display_text(state.text.value()).c_str());
@@ -619,7 +619,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 警告ダイアログ（ラベルは動的に変わるため空） ---
-	m_widget_states.insert(make_pair(&warningLabel, WidgetStateUpdater{
+	m_widget_states.insert(std::make_pair(&warningLabel, WidgetStateUpdater{
 		{UiText{"", ""}, true, true},
 		[this](const WidgetState& state){
 			this->warningLabel.set_label(get_display_text(state.text.value()).c_str());
@@ -633,7 +633,7 @@ MainWindow::MainWindow() :
 	//=========================================================================
 
 	// --- 補充する工具の情報を表示するテーブル ---
-	m_table_states.insert(make_pair(&storingToolTable, TableState{
+	m_table_states.insert(std::make_pair(&storingToolTable, TableState{
 		std::vector<UiText>{
 			{"分類", "ぶんるい"},
 			{"メーカー", "メーカー"},
@@ -643,7 +643,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 3列表示テーブル ---
-	m_table_states.insert(make_pair(&table3column1st, TableState{
+	m_table_states.insert(std::make_pair(&table3column1st, TableState{
 		std::vector<UiText>{
 			{"ツール\n  番号", "  ツール\nばんごう"},
 			{"分類", "ぶんるい"},
@@ -653,7 +653,7 @@ MainWindow::MainWindow() :
 			{"在庫数", "ざいこ\n  すう"}
 		}, true, true
 	}));
-	m_table_states.insert(make_pair(&table3column2nd, TableState{
+	m_table_states.insert(std::make_pair(&table3column2nd, TableState{
 		std::vector<UiText>{
 			{"ツール\n  番号", "  ツール\nばんごう"},
 			{"分類", "ぶんるい"},
@@ -663,7 +663,7 @@ MainWindow::MainWindow() :
 			{"在庫数", "ざいこ\n  すう"}
 		}, true, true
 	}));
-	m_table_states.insert(make_pair(&table3column3rd, TableState{
+	m_table_states.insert(std::make_pair(&table3column3rd, TableState{
 		std::vector<UiText>{
 			{"ツール\n  番号", "  ツール\nばんごう"},
 			{"分類", "ぶんるい"},
@@ -675,7 +675,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 2列表示テーブル ---
-	m_table_states.insert(make_pair(&table2column1st, TableState{
+	m_table_states.insert(std::make_pair(&table2column1st, TableState{
 		std::vector<UiText>{
 			{"ID", "ID"},
 			{"分類", "ぶんるい"},
@@ -685,7 +685,7 @@ MainWindow::MainWindow() :
 			{"再研磨\n  回数", "さいけんま\n  かいすう"}
 		}, true, true
 	}));
-	m_table_states.insert(make_pair(&table2column2nd, TableState{
+	m_table_states.insert(std::make_pair(&table2column2nd, TableState{
 		std::vector<UiText>{
 			{"ID", "ID"},
 			{"分類", "ぶんるい"},
@@ -701,12 +701,12 @@ MainWindow::MainWindow() :
 	//=========================================================================
 
 	// --- 状態：ユーザーログイン待ち - 移行 ---
-	g_app_state_configs.insert(make_pair(AppState::NONE, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::NONE, WidgetStateConfig{
 		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::WAITING_FOR_USER_LOGIN); }
 	}));
 
 	// --- 状態：ユーザーログイン待ち ---
-	g_app_state_configs.insert(make_pair(AppState::WAITING_FOR_USER_LOGIN, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::WAITING_FOR_USER_LOGIN, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &storeToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false, .is_visible = true}},
@@ -726,12 +726,12 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：取り出し - 移行 ---
-	g_app_state_configs.insert(make_pair(AppState::RETRIEVE, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RETRIEVE, WidgetStateConfig{
 		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); }
 	}));
 
 	// --- 状態：取り出し - プログラムQR待ち ---
-	g_app_state_configs.insert(make_pair(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&logoutButton}, {.is_sensitive = true} },
@@ -748,7 +748,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：取り出し - 工具選択中 ---
-	g_app_state_configs.insert(make_pair(AppState::RETRIEVE_SELECTING_TOOLS, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RETRIEVE_SELECTING_TOOLS, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"取り出す工具を選択してください", "とりだす こうぐを せんたく してください"}, true, true} },
@@ -769,7 +769,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：取り出し - 選択内容の確認中 ---
-	g_app_state_configs.insert(make_pair(AppState::RETRIEVE_CONFIRMING_SELECTION, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RETRIEVE_CONFIRMING_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"選択した工具は以下の通りです\nよろしければ「搬出」を押してください", "せんたくした こうぐは いかのとおりです..."}, true, true} },
@@ -792,12 +792,12 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：補充 - 移行 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE, WidgetStateConfig{
 		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }
 	}));
 
 	// --- 状態：補充 - 工具QR待ち ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_WAITING_FOR_TOOL_QR, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE_WAITING_FOR_TOOL_QR, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&logoutButton}, {.is_sensitive = true} },
@@ -818,7 +818,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：補充 - 読み取った工具の確認 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_CONFIRMING_SELECTION, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE_CONFIRMING_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"補充する工具に間違いがなければ\n「搬出」を押してください", "ほじゅうする こうぐに まちがいが なければ\n「はんしゅつ」を おしてください"}, true, true} },
@@ -837,7 +837,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：補充 - コンテナ搬出待ち ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_CONTAINER_RETRIEVING, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE_CONTAINER_RETRIEVING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false} },
@@ -855,7 +855,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：補充 - コンテナ搬出完了 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_CONTAINER_RETRIEVED, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE_CONTAINER_RETRIEVED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
@@ -872,7 +872,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う - 工具読み取り前 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_READY_FOR_READING, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}, true, true} },
@@ -903,7 +903,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う - 工具読み取り後 ---
-	g_app_state_configs.insert(make_pair(AppState::STORE_READ_COMPLETED, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::STORE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}, true, true} },
@@ -921,12 +921,12 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：棚卸し - 移行 ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RECONCILE, WidgetStateConfig{
 		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION); }
 	}));
 
 	// --- 状態：棚卸し - コンテナ選択待ち ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"棚卸しを行うコンテナを選択してください", "たなおろしを おこなう コンテナを\nせんたく してください"}, true, true} },
@@ -956,7 +956,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：棚卸し - コンテナ搬出待ち ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE_CONTAINER_RETRIEVING, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RECONCILE_CONTAINER_RETRIEVING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &storeToggleButton, &logoutButton}, {.is_sensitive = false} },
@@ -975,7 +975,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：棚卸し - コンテナ搬出完了 ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE_CONTAINER_RETRIEVED, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RECONCILE_CONTAINER_RETRIEVED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} }
@@ -991,7 +991,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：棚卸し - スキャン待ち ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE_READY_FOR_READING, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RECONCILE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナ内の工具をすべてQRコードリーダーで読み取ってください", "コンテナないの こうぐを すべて QRコードリーダーで よみとってください"}, true, true} },
@@ -1023,7 +1023,7 @@ MainWindow::MainWindow() :
 	}));
 
 	// --- 状態：棚卸し - 工具読み取り後 ---
-	g_app_state_configs.insert(make_pair(AppState::RECONCILE_READ_COMPLETED, WidgetStateConfig{
+	g_app_state_configs.insert(std::make_pair(AppState::RECONCILE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"", ""}, true, true} },
@@ -1084,7 +1084,7 @@ void MainWindow::reset_variables() {
 
 void MainWindow::reset_header_buttons() {
 	// 権限に応じてトグルボタンの操作可否を設定
-	UserInfo logged_in_user_info = g_logged_in_user_info.value_or(UserInfo{0, "", false, false, false});
+	MstUserInfo logged_in_user_info = g_logged_in_user_info.value_or(MstUserInfo{0, "", false, false, false});
 	// 取り出しトグルボタン
 	update_widget_state(&retrieveToggleButton, WidgetState{
 		.is_sensitive = logged_in_user_info.per_out,
@@ -1095,7 +1095,7 @@ void MainWindow::reset_header_buttons() {
 	});
 	// 棚卸しトグルボタン
 	update_widget_state(&reconcileToggleButton, WidgetState{
-		.is_sensitive = logged_in_user_info.per_reconcile,
+		.is_sensitive = logged_in_user_info.per_inventory,
 	});
 	// ログアウトボタンを操作可能に
 	update_widget_state(&logoutButton, WidgetState{
@@ -1154,8 +1154,8 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 
 	// 3. 更新対象となるテーブルのリストを取得
 	auto tables_to_update = force_redraw_all
-		? m_table_states.get_all(true)	// 全テーブルを取得
-		: m_table_states.get_updated_elements(true); // 更新されたテーブルのみ取得し、取得後に更新リストをクリア
+		? (m_table_states.get_all(true))	// 全テーブルを取得
+		: (m_table_states.get_updated_elements(true)); // 更新されたテーブルのみ取得し、取得後に更新リストをクリア
 
 	// 4. 対象テーブルのカラムヘッダー表示を更新
 	for (const auto& [table, headers] : tables_to_update) {
@@ -1271,8 +1271,8 @@ void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter
 	try {
 		bgcolor_0to4 = MainWindow::g_table_row_colors.at(row.cell_state_0to4);
 		bgcolor_5 = ((row.cell_state_5 == TableCellState::NONE)
-			? bgcolor_0to4
-			: MainWindow::g_table_row_colors.at(row.cell_state_5)
+			? (bgcolor_0to4)
+			: (MainWindow::g_table_row_colors.at(row.cell_state_5))
 		);
 	} catch (const std::out_of_range& e) {
 		DEV_PRINT(stderr, "Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state_0to4));
@@ -1460,7 +1460,7 @@ void MainWindow::reconcileToggleButton_on_toggled() {
 }
 
 void MainWindow::kanaKanjiButton_on_clicked() {
-	m_text_mode = (m_text_mode == TextMode::KANJI) ? TextMode::KANA : TextMode::KANJI;
+	m_text_mode = ((m_text_mode == TextMode::KANJI) ? (TextMode::KANA) : (TextMode::KANJI));
 	refresh_ui(true); // 現在の状態のままUIテキストを更新
 }
 
@@ -1496,7 +1496,7 @@ void MainWindow::userIdEntry_on_activate() {
 		} else if (g_logged_in_user_info.value().per_add) {
 			// 補充権限があれば補充モードへ
 			set_mode(GuiMode::STORE);
-		} else if (g_logged_in_user_info.value().per_reconcile) {
+		} else if (g_logged_in_user_info.value().per_inventory) {
 			// 棚卸し権限があれば棚卸しモードへ
 			set_mode(GuiMode::RECONCILE);
 		} else {
@@ -1631,23 +1631,23 @@ void MainWindow::on_enter_waiting_for_user_login() {
 
 void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	storingToolListstore.clear();
-	storingToolListstore.append(ToolBasicInfo{});
+	storingToolListstore.append(MstToolInfo{});
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
-	ToolBasicInfo basic_info;
+	MstToolInfo mst_tool;
 	std::string text(qrCodeEntry.get_text());
 	DEV_PRINT("補充モード - 工具QRコード入力: '{}'\n", text);
 	auto individual_info = db::get_tool_data(stoi(text));
 
 	if (individual_info.has_value()) {
-		basic_info = individual_info.value().basic_info;
-		storingToolListstore.update(0, basic_info);
+		mst_tool = individual_info.value().mst_tool;
+		storingToolListstore.update(0, mst_tool);
 
 		// インサート個数が設定されていて、再研磨回数が設定されていなければインサート操作とみなす
-		if (individual_info.value().insert_count.has_value() && !individual_info.value().reground_count.has_value()) {
+		if (individual_info.value().case_pack.has_value() && !individual_info.value().regrind_count.has_value()) {
 			m_is_insert_operation = true;
 		} else {
 			m_is_insert_operation = false;
@@ -1719,29 +1719,29 @@ void MainWindow::on_enter_store_read_completed() {
 bool MainWindow::on_qrCodeEntry_store_read_completed() {
 	bool result = false;
 	bool is_reground = false;
-	ToolBasicInfo basic_info;
+	MstToolInfo mst_tool;
 	std::string text(qrCodeEntry.get_text());
 	auto individual_info = db::get_tool_data(stoi(text));
 
 	if (individual_info.has_value()) {
-		if (!m_is_insert_operation && individual_info.value().condition == ToolCondition::TAKEN_OUT) {
+		if (!m_is_insert_operation && individual_info.value().storage_condition == StorageCondition::TAKEN_OUT) {
 			if ((is_reground = confirm_if_reground())) {
 				// 再研磨操作の場合、再研磨回数を1増やす
-				individual_info.value().reground_count = (individual_info.value().reground_count.value_or(0) + 1);
+				individual_info.value().regrind_count = (individual_info.value().regrind_count.value_or(0) + 1);
 			}
 		}
 
 		liststore2columnAll.append(MainTableData{
-			.id = individual_info.value().id,
+			.id = individual_info.value().unique_tool_id,
 			.data_columns = {
-				to_string(individual_info.value().id),
-				individual_info.value().basic_info.class_name,
-				individual_info.value().basic_info.maker,
-				individual_info.value().basic_info.tool_name,
-				individual_info.value().basic_info.material,
+				to_string(individual_info.value().unique_tool_id),
+				individual_info.value().mst_tool.class_name,
+				individual_info.value().mst_tool.maker,
+				individual_info.value().mst_tool.tool_name,
+				individual_info.value().mst_tool.material,
 				to_string(((m_is_insert_operation)
-					? (individual_info.value().insert_count)
-					: (individual_info.value().reground_count)
+					? (individual_info.value().case_pack)
+					: (individual_info.value().regrind_count)
 				).value())
 			}
 		});

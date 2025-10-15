@@ -21,6 +21,19 @@ static sg::Socket socket;
 // --- 以下は、このファイル内部でのみ使用するヘルパー関数 ---
 
 /**
+ * @brief PLCリスナースレッドからGUIスレッドに通知を送るためのヘルパー関数。
+ * @param notification GUIに送る通知内容。
+ */
+static void notify_gui_thread(const Notification& notification) {
+	auto* func = new std::function<void()>([=]() {
+		if (gui::mainWindow) {
+			gui::mainWindow->on_plc_notified(notification);
+		}
+	});
+	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+}
+
+/**
  * @brief Mデバイスのビット書き込みコマンド（1点）を生成します。
  * @param addr 書き込み対象のMデバイスアドレス。
  * @param on 書き込む値 (true=ON, false=OFF)。
@@ -32,7 +45,7 @@ static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool o
 		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
 		0x20, 0x4D, // デバイスコード (M)
 		0x01, 0x00, // 点数 (1点)
-		(std::uint8_t)(on ? 0x10 : 0x00) // データ (ON/OFF)
+		(std::uint8_t)((on) ? (0x10) : (0x00)) // データ (ON/OFF)
 	};
 }
 
@@ -46,7 +59,7 @@ static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 		0x00, 0xFF, 0x00, 0x00, // サブヘッダ (読出し要求)
 		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
 		0x20, 0x4D, // デバイスコード (M)
-		0x01, 0x00  // 点数 (1点)
+		0x01, 0x00	// 点数 (1点)
 	};
 }
 
@@ -115,45 +128,49 @@ static bool read_M_status(std::uint16_t addr, bool& is_on) {
 }
 
 /**
- * @brief PLCリスナースレッドからGUIスレッドに通知を送るためのヘルパー関数。
- * @param command 完了したコマンド内容。
+ * @brief PLCにコンテナの搬出を要求します。
+ * @details 指定されたコンテナ番号に対応するMデバイスと、搬出開始を指示するM91をONにします。
+ * @param container_number 搬出するコンテナ番号。
+ * @return 処理が成功した場合はtrue、失敗した場合はfalse。
  */
-void gui_notifier(PlcCommand command) {
-	if (gui::mainWindow) {
-		gui::mainWindow->on_plc_notified(command);
-	}
-
-}
-
-// --- ここからヘッダで宣言された関数の実装 ---
-
-bool retrieve_container(std::uint16_t container_number) {
+static bool retrieve_container(std::uint16_t container_number) {
 	DEV_PRINT("PLC: コンテナ({})の搬出要求を開始します。\n", container_number);
 	if (!send_and_receive_ack(make_write_M_command(container_number, true))) {
-		DEV_PRINT(stderr, "  エラー: M{}のONに失敗しました。\n", container_number);
+		DEV_PRINT(stderr, "	 エラー: M{}のONに失敗しました。\n", container_number);
 		return false;
 	}
-	DEV_PRINT("  - M{} ON 成功\n", container_number);
+	DEV_PRINT("	 - M{} ON 成功\n", container_number);
 
 	if (!send_and_receive_ack(make_write_M_command(M_DEVICE_RETRIEVE_START, true))) {
-		DEV_PRINT(stderr, "  エラー: M{} (搬出開始トリガ)のONに失敗しました。\n", M_DEVICE_RETRIEVE_START);
+		DEV_PRINT(stderr, "	 エラー: M{} (搬出開始トリガ)のONに失敗しました。\n", M_DEVICE_RETRIEVE_START);
 		return false;
 	}
-	DEV_PRINT("  - M{} ON 成功\n", M_DEVICE_RETRIEVE_START);
+	DEV_PRINT("	 - M{} ON 成功\n", M_DEVICE_RETRIEVE_START);
 	return true;
 }
 
-bool store_container() {
+/**
+ * @brief PLCにコンテナの搬入を要求します。
+ * @details 搬入開始を指示するM92をONにします。
+ * @return 処理が成功した場合はtrue、失敗した場合はfalse。
+ */
+static bool store_container() {
 	DEV_PRINT("PLC: コンテナの搬入要求を開始します。\n");
 	if (!send_and_receive_ack(make_write_M_command(M_DEVICE_STORE_START, true))) {
-		DEV_PRINT(stderr, "  エラー: M{} (搬入開始トリガ)のONに失敗しました。\n", M_DEVICE_STORE_START);
+		DEV_PRINT(stderr, "	 エラー: M{} (搬入開始トリガ)のONに失敗しました。\n", M_DEVICE_STORE_START);
 		return false;
 	}
-	DEV_PRINT("  - M{} ON 成功\n", M_DEVICE_STORE_START);
+	DEV_PRINT("	 - M{} ON 成功\n", M_DEVICE_STORE_START);
 	return true;
 }
 
-bool waiting_for_completion(std::uint16_t address) {
+/**
+ * @brief 指定されたMデバイスがONになるのを待機します。
+ * @details PLCからの完了信号を待つために使用します。ポーリング間隔は0.1秒です。
+ * @param address 監視対象のMデバイスのアドレス。
+ * @return 待機が成功（ONを検出）した場合はtrue、通信エラー等で失敗した場合はfalse。
+ */
+static bool waiting_for_completion(std::uint16_t address) {
 	DEV_PRINT("PLC: M{} (完了信号) の監視を開始します...\n", address);
 	while (true) {
 		bool on = false;
@@ -161,7 +178,7 @@ bool waiting_for_completion(std::uint16_t address) {
 			return false;
 		}
 		if (on) {
-			DEV_PRINT("  - M{} ON を検出しました。\n", address);
+			DEV_PRINT("	 - M{} ON を検出しました。\n", address);
 			break;
 		}
 		// マクロで定義された時間だけ待機
@@ -170,42 +187,155 @@ bool waiting_for_completion(std::uint16_t address) {
 	return true;
 }
 
-void run_plc_listener() {
+/**
+ * @brief PLCへの接続を試みる内部関数。
+ */
+static bool connect_to_plc() {
+	const char* host = HOST;
+	int port = PORT;
+
+	if (socket.is_connected()) return true;
+
+	DEV_PRINT("PLCへの接続を試みています... ({}:{})\n", host, port);
+	if (socket.connect(host, port)) {
+		DEV_PRINT("PLCへの接続が確立しました。\n");
+		notify_gui_thread({.type = NotificationType::CONNECTION_ESTABLISHED});
+		return true;
+	}
+	return false;
+}
+
+/**
+ * @brief PLCリスナースレッドのメインループ。
+ * @details この関数は無限ループで動作し、g_command_queueから指令を受け取って処理します。
+ * GUIスレッドとは別スレッドで実行されることを想定しています。
+ */
+static void run_plc_listener() {
 	DEV_PRINT("PLCリスナースレッドを開始します。\n");
+
+	// 監視リストがアクティブかどうかをチェックするラムダ式
+	auto is_any_watch_active = []() {
+		for (const auto& [name, item] : g_watchlist) {
+			if (item.is_active) return true;
+		}
+		return false;
+	};
+
 	while (true) {
 		try {
-			PlcCommand command = g_plc_command_queue.pop();
-			command.result = false;
-
-			/*	TODO: 実際に動かすときはコメントアウトを解除
-			switch (command.type) {
-			case PlcCommandType::RETRIEVE_CONTAINER:
-				command.result = plc::retrieve_container(command.data);
-				break;
-			case PlcCommandType::STORE_CONTAINER:
-				command.result = plc::store_container();
-				break;
-			case PlcCommandType::WAIT_FOR_RETRIEVE_COMPLETION:
-				command.result = plc::waiting_for_completion(M_DEVICE_RETRIEVE_COMPLETED);
-				break;
-			case PlcCommandType::WAIT_FOR_STORE_COMPLETION:
-				command.result = plc::waiting_for_completion(M_DEVICE_STORE_COMPLETED);
-				break;
+			// --- 接続処理 ---
+			if (!socket.is_connected()) {
+				connect_to_plc();
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+				continue;
 			}
-			/*/
-			std::this_thread::sleep_for(std::chrono::seconds(3));
-			command.result = true;	// 常に成功
-			//*/
 
-			if (command.result) {
-				// 実行したい処理をラムダ式としてヒープに確保
-				// ラムダのポインタを渡して、GUIスレッドでの実行を依頼
-				g_idle_add(gui::MainWindow::dispatch_to_gui_thread, new std::function<void()>([=]() { gui_notifier(command); }));
-			} else { /* TODO: エラー処理 */ }
+			// --- 1. 指令処理 (監視対象の有無でpop/try_popを切り替え) ---
+			std::optional<Command> command_opt;
+			if (!is_any_watch_active()) {
+				// 監視対象がないので、指令が来るまでブロックして待機 (CPUリソースを解放)
+				command_opt = g_command_queue.pop();
+			} else {
+				// 監視対象があるので、ポーリングの合間に指令をチェック (ブロックしない)
+				command_opt = g_command_queue.try_pop();
+			}
+
+			if (command_opt.has_value()) {
+				Command command = command_opt.value();
+				bool result = false;
+
+				switch (command.type) {
+				case CommandType::SET_WATCH_ITEM_ACTIVE: {
+					auto cmd_data = std::any_cast<SetWatchActiveCmd>(command.data);
+					if (g_watchlist.count(cmd_data.watch_item_name)) {
+						auto& item = g_watchlist.at(cmd_data.watch_item_name);
+						item.is_active = cmd_data.is_active;
+						if (item.is_active) {
+							item.is_first = true;
+						}
+						DEV_PRINT("PLC監視項目 '{}' を {} に設定しました。\n", cmd_data.watch_item_name, ((cmd_data.is_active) ? ("有効") : ("無効")));
+					}
+					break;
+				}
+				case CommandType::START_SESSION:
+					send_and_receive_ack(make_write_M_command(M_DEVICE_SESSION_START, true));
+					break;
+				case CommandType::END_SESSION:
+					send_and_receive_ack(make_write_M_command(M_DEVICE_SESSION_END, true));
+					break;
+				case CommandType::RETRIEVE_CONTAINER:
+					result = retrieve_container(std::any_cast<uint16_t>(command.data));
+					notify_gui_thread({((result) ? (NotificationType::TASK_SUCCESS) : (NotificationType::TASK_FAILURE)), command});
+					break;
+				case CommandType::STORE_CONTAINER:
+					result = store_container();
+					notify_gui_thread({((result) ? (NotificationType::TASK_SUCCESS) : (NotificationType::TASK_FAILURE)), command});
+					break;
+				}
+			}
+
+			// --- 2. 監視処理 (改良版WatchItemを使用) ---
+			for (auto& [name, item] : g_watchlist) {
+				if (!item.is_active) continue;	// 無効な項目はスキップ
+
+				bool current_state = false;
+				if (read_M_status(item.address, current_state)) {
+					// is_firstフラグが立っている場合の初回チェックと、状態変化（エッジ）の検出
+					if (item.is_first || current_state != item.prev_status) {
+						if (current_state == true && item.notification_rise.has_value()) {
+							DEV_PRINT("PLC監視 '{}': 立ち上がり(ON)を検出。\n", name);
+							notify_gui_thread(item.notification_rise.value());
+							if (item.is_one_shot) item.is_active = false;
+						} else if (current_state == false && item.notification_fall.has_value()) {
+							DEV_PRINT("PLC監視 '{}': 立ち下がり(OFF)を検出。\n", name);
+							notify_gui_thread(item.notification_fall.value());
+							if (item.is_one_shot) item.is_active = false;
+						}
+						// 状態を更新
+						item.is_first = false;
+						item.prev_status = current_state;
+					}
+				} else {
+					socket.close();	// 読み出し失敗＝切断とみなす
+					notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
+					break;
+				}
+			}
+
+			// ポーリング間隔で待機 (監視対象がない場合はpopで待機しているので、このsleepは実行されない)
+			std::this_thread::sleep_for(std::chrono::milliseconds(POLLING_INTERVAL_MS));
+
 		} catch (const std::exception& e) {
 			DEV_PRINT(stderr, "PLCリスナースレッドで例外が発生: {}\n", e.what());
 		}
 	}
+	DEV_PRINT("PLC統合リスナースレッドを終了します。\n");
+}
+
+// --- 公開関数 ---
+
+void initialize() {
+	// 監視リストの項目を定義
+	g_watchlist.insert(std::make_pair("wait_retrieve", WatchItem{
+		.address = M_DEVICE_RETRIEVE_COMPLETED,
+		.notification_rise = Notification{NotificationType::TASK_SUCCESS, CommandType::RETRIEVE_CONTAINER},
+		.is_one_shot = true
+		// 他のメンバはデフォルト初期化
+	}));
+	g_watchlist.insert(std::make_pair("wait_store", WatchItem{
+		.address = M_DEVICE_STORE_COMPLETED,
+		.notification_rise = Notification{NotificationType::TASK_SUCCESS, CommandType::STORE_CONTAINER},
+		.is_one_shot = true
+	}));
+	g_watchlist.insert(std::make_pair("monitor_maintenance", WatchItem{
+		.address = M_DEVICE_RETRIEVE_COMPLETED,
+		.notification_fall = Notification{NotificationType::MAINTENANCE_MODE_OFF},
+		.notification_rise = Notification{NotificationType::MAINTENANCE_MODE_ON}
+	}));
+	// ... 他の監視項目の初期化 ...
+
+	// 単一の統合スレッドを起動
+	std::thread(run_plc_listener).detach();
 }
 
 } // namespace plc

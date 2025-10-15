@@ -10,4 +10,4 @@
 
 // --- グローバル変数 ---
 /// @brief ログイン中のユーザー情報を保持する構造体。
-inline std::optional<UserInfo> g_logged_in_user_info = std::nullopt;
+inline std::optional<MstUserInfo> g_logged_in_user_info = std::nullopt;

@@ -26,9 +26,11 @@ bool user_authenticate(int user_id);
 
 bool save_history(void);
 
-std::optional<ToolIndividualInfo> get_tool_data(int basic_tool_id);
+std::optional<MstUserTable> get_user_data(int user_id);
 
-std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id);
+std::optional<MstToolTable> get_mst_tool_data(int basic_tool_id);
+
+std::optional<UniqueToolTable> get_unique_tool_data(int unique_tool_id);
 
 std::optional<ToolingListInfo> get_tooling_list(int line_id);
 

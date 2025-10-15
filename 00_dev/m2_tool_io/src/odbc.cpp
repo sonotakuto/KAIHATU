@@ -172,7 +172,7 @@ template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<c
 			return std::nullopt; // 読み取り中にエラー
 		}
 		// indicatorには実際に読み取ったバイト数が入る
-		long bytesInChunk = (indicator > CHUNK_SIZE || indicator < 0) ? CHUNK_SIZE : indicator;
+		long bytesInChunk = (indicator > CHUNK_SIZE || indicator < 0) ? (CHUNK_SIZE) : (indicator);
 		buffer.insert(buffer.end(), chunk, chunk + bytesInChunk);
 	}
 	return buffer;
