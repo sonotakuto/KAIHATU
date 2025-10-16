@@ -52,7 +52,7 @@ struct MstToolTable {
 enum class StorageCondition {
 	/// @brief 未補充
 	NOT_STORED,
-	/// @brief 使用可能
+	/// @brief 使用可能 (保管中)
 	USABLE,
 	/// @brief 取り出された
 	TAKEN_OUT
@@ -244,15 +244,4 @@ struct StrageAreaInfo {
 	int toolcase_stc_num{};
 	/// @brief 住所 (画面表示住所とPLC制御住所)
 	MstAddressInfo mst_address{};
-};
-
-/**
- * @struct BoxInfo
- * @brief コンテナ情報を保持する構造体
- */
-struct BoxInfo {
-	/// @brief コンテナID (主キー)
-	int box_id{};
-	/// @brief 基本工具情報
-	MstToolInfo item{};
 };

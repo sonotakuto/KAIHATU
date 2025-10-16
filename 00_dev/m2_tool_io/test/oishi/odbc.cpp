@@ -172,7 +172,7 @@ template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<c
 			return std::nullopt; // 読み取り中にエラー
 		}
 		// indicatorには実際に読み取ったバイト数が入る
-		long bytesInChunk = (indicator > CHUNK_SIZE || indicator < 0) ? CHUNK_SIZE : indicator;
+		long bytesInChunk = (indicator > CHUNK_SIZE || indicator < 0) ? (CHUNK_SIZE) : (indicator);
 		buffer.insert(buffer.end(), chunk, chunk + bytesInChunk);
 	}
 	return buffer;
@@ -240,36 +240,36 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 		for (SQLUSMALLINT i = 1; i <= columnCount; ++i) {
 			std::any value;
 			switch (columnTypes[i - 1]) {
-				case SQL_INTEGER: case SQL_SMALLINT: case SQL_TINYINT: {
-					auto data = this->getData<int>(i);
-					if (data.has_value()) value = data.value();
-					break;
-				}
-				case SQL_BIGINT: {
-					auto data = this->getData<long long>(i);
-					if (data.has_value()) value = data.value();
-					break;
-				}
-				case SQL_DOUBLE: case SQL_FLOAT: case SQL_REAL: case SQL_DECIMAL: case SQL_NUMERIC: {
-					auto data = this->getData<double>(i);
-					if (data.has_value()) value = data.value();
-					break;
-				}
-				case SQL_TYPE_DATE: case SQL_TYPE_TIME: case SQL_TYPE_TIMESTAMP: {
-					auto data = this->getData<std::chrono::system_clock::time_point>(i);
-					if (data.has_value()) value = data.value();
-					break;
-				}
-				case SQL_BINARY: case SQL_VARBINARY: case SQL_LONGVARBINARY: {
-					auto data = this->getData<std::vector<char>>(i);
-					if (data.has_value()) value = data.value();
-					break;
-				}
-				default: { // 不明な型は文字列として取得を試みる
-					auto data = this->getData<std::string>(i);
-					if (data.has_value()) value = data.value();
-					break;
-				}
+			case SQL_INTEGER: case SQL_SMALLINT: case SQL_TINYINT: {
+				auto data = this->getData<int>(i);
+				if (data.has_value()) value = data.value();
+				break;
+			}
+			case SQL_BIGINT: {
+				auto data = this->getData<long long>(i);
+				if (data.has_value()) value = data.value();
+				break;
+			}
+			case SQL_DOUBLE: case SQL_FLOAT: case SQL_REAL: case SQL_DECIMAL: case SQL_NUMERIC: {
+				auto data = this->getData<double>(i);
+				if (data.has_value()) value = data.value();
+				break;
+			}
+			case SQL_TYPE_DATE: case SQL_TYPE_TIME: case SQL_TYPE_TIMESTAMP: {
+				auto data = this->getData<std::chrono::system_clock::time_point>(i);
+				if (data.has_value()) value = data.value();
+				break;
+			}
+			case SQL_BINARY: case SQL_VARBINARY: case SQL_LONGVARBINARY: {
+				auto data = this->getData<std::vector<char>>(i);
+				if (data.has_value()) value = data.value();
+				break;
+			}
+			default: { // 不明な型は文字列として取得を試みる
+				auto data = this->getData<std::string>(i);
+				if (data.has_value()) value = data.value();
+				break;
+			}
 			}
 			singleRow[columnNames[i - 1]] = value;
 		}
@@ -301,13 +301,13 @@ void OdbcStatement::bind(int paramIndex, const std::chrono::system_clock::time_p
 	// 2. 変換後のデータを、寿命が保証されるtimestamp_buffersに格納する
 	timestamp_buffers.emplace_back();
 	SQL_TIMESTAMP_STRUCT& ts = timestamp_buffers.back();
-	ts.year = timeinfo->tm_year + 1900;
-	ts.month = timeinfo->tm_mon + 1;
-	ts.day = timeinfo->tm_mday;
-	ts.hour = timeinfo->tm_hour;
-	ts.minute = timeinfo->tm_min;
-	ts.second = timeinfo->tm_sec;
-	ts.fraction = std::chrono::duration_cast<std::chrono::nanoseconds>(value.time_since_epoch()).count() % 1000000000;
+	ts.year		= timeinfo->tm_year	+ 1900;
+	ts.month	= timeinfo->tm_mon	+ 1;
+	ts.day		= timeinfo->tm_mday;
+	ts.hour		= timeinfo->tm_hour;
+	ts.minute	= timeinfo->tm_min;
+	ts.second	= timeinfo->tm_sec;
+	ts.fraction	= std::chrono::duration_cast<std::chrono::nanoseconds>(value.time_since_epoch()).count() % 1000000000;
 	// 3. 実行時まで有効なポインタをマップに保存する
 	bound_params[paramIndex] = &ts;
 }

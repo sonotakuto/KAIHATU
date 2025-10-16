@@ -4,7 +4,11 @@
  */
 #include "./odbc.hpp"
 #include "./includes.hpp"
+#include "./db_client.hpp"
+
 using namespace odbc;
+
+namespace db {
 
 // データベースへの接続を管理するクラスをまとめた構造体へのポインタ
 static std::unique_ptr<OdbcSession> db_session;
@@ -21,13 +25,13 @@ static optional<OdbcStatement> create_statement_with_retry() {
 	}
 
 	// リトライ処理
-	for (int i = 0; i < DB_RETRY_LIMIT; i++) {
+	for (int i = 0; i < RETRY_LIMIT; i++) {
 		try {
 			// ステートメントを作成し、optionalに格納して返す
 			return optional<OdbcStatement>(in_place, *db_session->connection);
 		} catch (const odbc::OdbcException& e) {
 			// TODO: ログを残すか表示する
-			string message = "ステートメント作成失敗 (試行 " + to_string(i + 1) + "): " + e.what();
+			DEV_PRINT(stderr, "[LOG] ステートメント作成失敗 (試行 {}): {}", i + 1, e.what());
 			// cerr << "[LOG] " << message << endl;
 
 			// 5秒待機してからリトライ
@@ -39,7 +43,7 @@ static optional<OdbcStatement> create_statement_with_retry() {
 	return nullopt;
 }
 
-bool db_connect(void) {
+bool connect(void) {
 /*
 	// リトライ処理
 	for (int i = 0; i < DB_RETRY_LIMIT; i++) {
@@ -53,8 +57,7 @@ bool db_connect(void) {
 		} catch (const odbc::OdbcException& e) {
 			// 接続に失敗した場合
 			// TODO:ログを残すか表示する？
-			string message = "接続失敗 (試行 " + to_string(i + 1) + "): " + e.what();
-//			cerr << "[LOG] " << message << endl;
+			DEV_PRINT(stderr, "[LOG] 接続失敗 (試行 {}): {}", i + 1, e.what());
 
 			// 5秒待機
 			this_thread::sleep_for(chrono::seconds(5));
@@ -69,11 +72,16 @@ bool db_connect(void) {
 	return true; // TODO: 一時的に常に成功させる
 }
 
-void db_disconnect(void) {
+void disconnect(void) {
 //	db_session.reset();
 }
 
 bool user_authenticate(int user_id) {
+	g_logged_in_user_info = get_MstUserInfo(user_id);
+	return g_logged_in_user_info.has_value();
+}
+
+bool save_history(const RecOperationTable& rec) {
 /*
 	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
 
@@ -82,179 +90,181 @@ bool user_authenticate(int user_id) {
 		// TODO:エラーメッセージを表示するコードをここに書く？
 	}
 */
-	fmt::print("[DB Stub] user_authenticate called with user_id = {}\n", user_id);
-
-	g_logged_in_user_info = UserInfo{
-		.user_id = user_id,
-		.user_name = "山田太郎",
-		.per_out = true,
-		.per_add = true,
-		.per_reconcile = true
-	};
-
+	DEV_PRINT("[DB Stub] save_history called.\n");
 	return true; // TODO: 一時的に常に成功させる
 }
 
-bool save_history(void) {
-/*
-	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
+std::optional<MstUserInfo> get_MstUserInfo(int user_id) {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt) return std::nullopt;
 
-	if (!stmt_opt) {
-		// 試行が全て失敗した場合
-		// TODO:エラーメッセージを表示するコードをここに書く？
-	}
-*/
-	fmt::print("[DB Stub] save_history called.\n");
-	return true; // TODO: 一時的に常に成功させる
-}
+	auto& stmt = stmt_opt.value();
 
-std::optional<ToolIndividualInfo> get_tool_data(int id) {
-/*
-	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
+	try {
+		const std::string sql = "SELECT * FROM mst_user WHERE user_id = ?;";
+		stmt.prepare(sql);
+		stmt.bind(1, user_id);
+		stmt.executePrepared();
 
-	if (!stmt_opt) {
-		// 試行が全て失敗した場合
-		// TODO:エラーメッセージを表示するコードをここに書く？
-	}
-*/
-	fmt::print("[DB Stub] get_tool_data called with id = {}\n", id);
-
-	return ToolIndividualInfo{
-		.id = id,
-		.basic_info = get_basic_tool_data(id).value(),
-		.condition = ToolCondition::USABLE,
-		.regrind_count = 2,
-		.insert_count = 5
-	};
-}
-
-std::optional<ToolBasicInfo> get_basic_tool_data(int basic_tool_id) {
-/*
-	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
-	if (!stmt_opt) {
-		// 試行が全て失敗した場合
-		// TODO:エラーメッセージを表示するコードをここに書く？
-	}
-*/
-	fmt::print("[DB Stub] get_basic_tool_data called with basic_tool_id = {}\n", basic_tool_id);
-
-	return ToolBasicInfo{
-		.basic_tool_id = basic_tool_id,
-		.class_name = "ドリル",
-		.tool_name = "D-1234",
-		.maker = "工具メーカー",
-		.material = "超硬",
-		.stc = 10
-	};
-}
-
-std::optional<ToolingListInfo> get_tooling_list(int line_id) {
-/*
-	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
-
-	if (!stmt_opt) {
-		// 試行が全て失敗した場合
-		// TODO:エラーメッセージを表示するコードをここに書く？
-	}
-*/
-	fmt::print("[DB Stub] get_tooling_list called with line_id = {}\n", line_id);
-
-	return ToolingListInfo{
-		.line_id = line_id,
-		.line_name = "ラインA",
-		.prog_name = "プログラムX",
-		.items = std::vector<ToolingListItem>{
-			{
-				.tool_number = "T-0001",
-				.basic_info = get_basic_tool_data(1).value()
-			}, {
-				.tool_number = "T-0002",
-				.basic_info = get_basic_tool_data(2).value()
-			}, {
-				.tool_number = "T-0003",
-				.basic_info = get_basic_tool_data(3).value()
-			}, {
-				.tool_number = "T-0004",
-				.basic_info = get_basic_tool_data(4).value()
-			}, {
-				.tool_number = "T-0005",
-				.basic_info = get_basic_tool_data(5).value()
-			}, {
-				.tool_number = "T-0006",
-				.basic_info = get_basic_tool_data(6).value()
-			}, {
-				.tool_number = "T-0007",
-				.basic_info = get_basic_tool_data(7).value()
-			}, {
-				.tool_number = "T-0008",
-				.basic_info = get_basic_tool_data(8).value()
-			}, {
-				.tool_number = "T-0009",
-				.basic_info = get_basic_tool_data(9).value()
-			}, {
-				.tool_number = "T-0010",
-				.basic_info = get_basic_tool_data(10).value()
-			}, {
-				.tool_number = "T-0011",
-				.basic_info = get_basic_tool_data(11).value()
-			}, {
-				.tool_number = "T-0012",
-				.basic_info = get_basic_tool_data(12).value()
-			}, {
-				.tool_number = "T-0013",
-				.basic_info = get_basic_tool_data(13).value()
-			}, {
-				.tool_number = "T-0014",
-				.basic_info = get_basic_tool_data(14).value()
-			}, {
-				.tool_number = "T-0015",
-				.basic_info = get_basic_tool_data(15).value()
-			}, {
-				.tool_number = "T-0016",
-				.basic_info = get_basic_tool_data(16).value()
-			}, {
-				.tool_number = "T-0017",
-				.basic_info = get_basic_tool_data(17).value()
-			}, {
-				.tool_number = "T-0018",
-				.basic_info = get_basic_tool_data(18).value()
-			}, {
-				.tool_number = "T-0019",
-				.basic_info = get_basic_tool_data(19).value()
-			}, {
-				.tool_number = "T-0020",
-				.basic_info = get_basic_tool_data(20).value()
-			}, {
-				.tool_number = "T-0021",
-				.basic_info = get_basic_tool_data(21).value()
-			}, {
-				.tool_number = "T-0022",
-				.basic_info = get_basic_tool_data(22).value()
-			}, {
-				.tool_number = "T-0023",
-				.basic_info = get_basic_tool_data(23).value()
-			}, {
-				.tool_number = "T-0024",
-				.basic_info = get_basic_tool_data(24).value()
-			}, {
-				.tool_number = "T-0025",
-				.basic_info = get_basic_tool_data(25).value()
-			}, {
-				.tool_number = "T-0026",
-				.basic_info = get_basic_tool_data(26).value()
-			}, {
-				.tool_number = "T-0027",
-				.basic_info = get_basic_tool_data(27).value()
-			}, {
-				.tool_number = "T-0028",
-				.basic_info = get_basic_tool_data(28).value()
-			}, {
-				.tool_number = "T-0029",
-				.basic_info = get_basic_tool_data(29).value()
-			}, {
-				.tool_number = "T-0030",
-				.basic_info = get_basic_tool_data(30).value()
-			}
+		auto rows = stmt.fetchAll();
+		if (rows.empty()) {
+			return std::nullopt; // ユーザーが見つからない
 		}
-	};
+
+		const auto& row = rows[0];
+		MstUserInfo user_info;
+		user_info.user_id		= std::any_cast<int>		(row.at("user_id"));
+		user_info.user_name		= std::any_cast<std::string>(row.at("user_name"));
+		// TINYINT(1) は int として取得し、boolに変換
+		user_info.per_add		= (std::any_cast<int>		(row.at("per_add"))			!= 0);
+		user_info.per_inventory	= (std::any_cast<int>		(row.at("per_inventory"))	!= 0);
+		// per_outはtypedef.hppでデフォルトtrueのため、DBスキーマに合わせて他の権限も追加
+
+		return user_info;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_MstUserInfo: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_MstUserInfo: {}\n", e.what());
+		return std::nullopt;
+	}
 }
+
+std::optional<UniqueToolInfo> get_UniqueToolInfo(int unique_tool_id) {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt) return std::nullopt;
+
+	auto& stmt = stmt_opt.value();
+
+	try {
+		const std::string sql =
+			"SELECT "
+			"    ut.unique_tool_id, ut.unique_num, ut.case_pack_num, ut.storage_condition, ut.regrind_count, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, "
+			"    sa.storage_area_id, sa.toolcase_stc_num, "
+			"    ma.display_address, ma.control_address "
+			"FROM unique_tool AS ut "
+			"LEFT JOIN mst_tool AS mt ON ut.basic_tool_id = mt.basic_tool_id "
+			"LEFT JOIN storage_area AS sa ON ut.storage_area_id = sa.storage_area_id "
+			"LEFT JOIN mst_address AS ma ON sa.display_address = ma.display_address "
+			"WHERE ut.unique_tool_id = ?;";
+
+		stmt.prepare(sql);
+		stmt.bind(1, unique_tool_id);
+		stmt.executePrepared();
+
+		auto rows = stmt.fetchAll();
+		if (rows.empty()) {
+			return std::nullopt;
+		}
+
+		const auto& row = rows[0];
+		UniqueToolInfo tool_info;
+
+		// unique_tool テーブルの情報を詰める
+		tool_info.unique_tool_id	= std::any_cast<int>(row.at("unique_tool_id"));
+		tool_info.unique_num		= std::any_cast<int>(row.at("unique_num"));
+		tool_info.case_pack_num		= std::any_cast<int>(row.at("case_pack_num"));
+
+		// enumは文字列として取得
+		std::string condition_str	= std::any_cast<std::string>(row.at("storage_condition"));
+		if		(condition_str == "保管中")	{tool_info.storage_condition = StorageCondition::USABLE;}
+		else if	(condition_str == "取出")	{tool_info.storage_condition = StorageCondition::TAKEN_OUT;}
+		else								{tool_info.storage_condition = StorageCondition::NOT_STORED;}
+
+		if (row.count("regrind_count") && row.at("regrind_count").has_value()) {
+			tool_info.regrind_count = std::any_cast<int>(row.at("regrind_count"));
+		}
+
+		// mst_tool テーブルの情報を詰める
+		tool_info.mst_tool.basic_tool_id	= std::any_cast<int>		(row.at("basic_tool_id"));
+		tool_info.mst_tool.tool_name		= std::any_cast<std::string>(row.at("tool_name"));
+		tool_info.mst_tool.maker			= std::any_cast<std::string>(row.at("maker"));
+		tool_info.mst_tool.tool_category	= std::any_cast<std::string>(row.at("tool_category"));
+		tool_info.mst_tool.tool_material	= std::any_cast<std::string>(row.at("tool_material"));
+		tool_info.mst_tool.stc				= std::any_cast<int>		(row.at("stc"));
+
+		// storage_area と mst_address の情報を詰める (LEFT JOINなのでNULLの可能性がある)
+		if (row.count("storage_area_id") && row.at("storage_area_id").has_value()) {
+			StrageAreaInfo area_info;
+			area_info.storage_area_id				= std::any_cast<int>		(row.at("storage_area_id"));
+			area_info.toolcase_stc_num				= std::any_cast<int>		(row.at("toolcase_stc_num"));
+			area_info.mst_address.display_address	= std::any_cast<std::string>(row.at("display_address"));
+			area_info.mst_address.control_address	= std::any_cast<int>		(row.at("control_address"));
+			area_info.item = tool_info.mst_tool;	// StrageAreaInfo内のitemは、この工具の基本情報と同じ
+			tool_info.storage_area = area_info;
+		}
+
+		return tool_info;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_UniqueToolInfo: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_UniqueToolInfo: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
+std::optional<ToolingListInfo> get_ToolingListInfo(int program_assignment_id) {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt) return std::nullopt;
+
+	auto& stmt = stmt_opt.value();
+
+	try {
+		const std::string sql =
+			"SELECT "
+			"    pal.program_assignment_id, pal.line_name, pal.program_num, "
+			"    ta.tool_assignment_id, ta.tool_num, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
+			"FROM program_assignment_list AS pal "
+			"JOIN tool_assignment AS ta ON pal.program_assignment_id = ta.program_assignment_id "
+			"JOIN mst_tool AS mt ON ta.basic_tool_id = mt.basic_tool_id "
+			"WHERE pal.program_assignment_id = ? "
+			"ORDER BY ta.tool_assignment_id ASC;";
+
+		stmt.prepare(sql);
+		stmt.bind(1, program_assignment_id);
+		stmt.executePrepared();
+
+		auto rows = stmt.fetchAll();
+		if (rows.empty()) {
+			return std::nullopt; // リストが見つからない
+		}
+
+		// 最初の行からリスト全体の情報を作成
+		ToolingListInfo list_info;
+		list_info.program_assignment_id	= std::any_cast<int>		(rows[0].at("program_assignment_id"));
+		list_info.line_name				= std::any_cast<std::string>(rows[0].at("line_name"));
+		list_info.program_num			= std::any_cast<std::string>(rows[0].at("program_num"));
+
+		// 全ての行をループして、工具のリストを作成
+		for (const auto& row : rows) {
+			ToolAssignmentInfo item;
+			item.tool_assignment_id	= std::any_cast<int>		(row.at("tool_assignment_id"));
+			item.tool_number		= std::any_cast<std::string>(row.at("tool_num"));
+
+			item.mst_tool.basic_tool_id	= std::any_cast<int>		(row.at("basic_tool_id"));
+			item.mst_tool.tool_name		= std::any_cast<std::string>(row.at("tool_name"));
+			item.mst_tool.maker			= std::any_cast<std::string>(row.at("maker"));
+			item.mst_tool.tool_category	= std::any_cast<std::string>(row.at("tool_category"));
+			item.mst_tool.tool_material	= std::any_cast<std::string>(row.at("tool_material"));
+			item.mst_tool.stc			= std::any_cast<int>		(row.at("stc"));
+
+			list_info.tool_assignments.push_back(item);
+		}
+
+		return list_info;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_ToolingListInfo: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_ToolingListInfo: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
+} // namespace db

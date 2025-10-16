@@ -69,6 +69,48 @@ public:
 	}
 
 	/**
+	 * @brief キューから要素を取り出す（タイムアウト付きブロッキング）。
+	 * @details キューが空の場合、指定されたタイムアウト時間まで要素が追加されるのを待機する。
+	 * @param timeout 待機する最大時間。
+	 * @return 要素が取り出せた場合はその値、タイムアウトした場合はstd::nullopt。
+	 */
+	template<typename Rep, typename Period>
+	std::optional<value_type> pop_wait_for(const std::chrono::duration<Rep, Period>& timeout) {
+		std::unique_lock<std::mutex> lock(mtx);
+		// cv.wait_for は、タイムアウトするか、述語(第3引数)がtrueになるまで待機する
+		if (cv.wait_for(lock, timeout, [this] { return !que.empty(); })) {
+			// 述語がtrueになった（＝キューに要素が来た）場合
+			value_type value = que.front();
+			que.pop();
+			return value;
+		} else {
+			// タイムアウトした場合
+			return std::nullopt;
+		}
+	}
+
+	/**
+	 * @brief キューから要素を取り出す（タイムアウト付きブロッキング）。
+	 * @details キューが空の場合、指定された時刻まで要素が追加されるのを待機する。
+	 * @param timeout_time 待機を打ち切る絶対時刻。
+	 * @return 要素が取り出せた場合はその値、タイムアウトした場合はstd::nullopt。
+	 */
+	template<class Clock, class Duration>
+	std::optional<value_type> pop_wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+		std::unique_lock<std::mutex> lock(mtx);
+		// cv.wait_until は、タイムアウトするか、述語(第3引数)がtrueになるまで待機する
+		if (cv.wait_until(lock, timeout_time, [this] { return !que.empty(); })) {
+			// 時間内にデータが来て、キューが空でなくなった場合
+			value_type value = que.front();
+			que.pop();
+			return value;
+		} else {
+			// タイムアウトした場合
+			return std::nullopt;
+		}
+	}
+
+	/**
 	 * @brief キューが空かどうかをスレッドセーフに確認する。
 	 * @return キューが空の場合はtrue、そうでない場合はfalse。
 	 */

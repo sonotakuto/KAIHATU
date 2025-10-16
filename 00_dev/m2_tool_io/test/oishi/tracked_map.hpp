@@ -1,9 +1,9 @@
 #pragma once
 
+#include <condition_variable>
 #include <map>
+#include <mutex>
 #include <set>
-#include <mutex> // SafeMapで必要
-#include <condition_variable> // SafeMapで必要
 
 namespace utils {
 

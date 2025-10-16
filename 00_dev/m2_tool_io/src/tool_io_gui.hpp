@@ -251,8 +251,8 @@ public:
 		std::function<void(MainWindow*)> on_falseButton_clicked = nullptr;
 		/// @brief trueButton がクリックされたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_trueButton_clicked = nullptr;
-		/// @brief PLCからタスク完了通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, plc::PlcCommand)> on_plc_notified = nullptr;
+		/// @brief PLCリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*, plc::Notification)> on_plc_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -281,10 +281,10 @@ public:
 	static gboolean dispatch_to_gui_thread(gpointer user_data);
 
 	/**
-	 * @brief PLCからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
-	 * @param next_state タスク完了後に遷移するべき次の状態。
+	 * @brief PLCリスナースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
+	 * @param notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_notified(plc::PlcCommand completed_command);
+	void on_plc_notified(plc::Notification notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -697,34 +697,10 @@ private:
 	void trueButton_on_clicked();
 
 	/**
-	 * @brief logoutNoButton の "clicked" シグナルに対応するハンドラ。
-	 * @details logoutDialog で GTK_RESPONSE_NO を返す。
-	 */
-	void logoutNoButton_on_clicked();
-
-	/**
-	 * @brief logoutYesButton の "clicked" シグナルに対応するハンドラ。
-	 * @details logoutDialog で GTK_RESPONSE_YES を返す。
-	 */
-	void logoutYesButton_on_clicked();
-
-	/**
 	 * @brief passwordEntryDialog の "show" シグナルに対応するハンドラ。
 	 * @details ダイアログが表示された直後に呼び出され、パスワード入力欄にフォーカスを当てる。
 	 */
 	void passwordEntryDialog_on_show();
-
-	/**
-	 * @brief passwordEnterButton の "clicked" シグナルに対応するハンドラ。
-	 * @details パスワード入力を確定して認証を試みる。
-	 */
-	void passwordEnterButton_on_clicked();
-
-	/**
-	 * @brief passwordCancelButton の "clicked" シグナルに対応するハンドラ。
-	 * @details パスワード入力をキャンセルする。
-	 */
-	void passwordCancelButton_on_clicked();
 
 	/**
 	 * @brief regroundButton の "toggled" シグナルに対応するハンドラ。
@@ -737,12 +713,6 @@ private:
 	 * @details 「いいえ」が選択された状態への切り替えを試みる。
 	 */
 	void notRegroundButton_on_toggled();
-
-	/**
-	 * @brief confirmRegroundOkButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 選択を確定し、confirmRegroundDialog で GTK_RESPONSE_OK を返す。
-	 */
-	void confirmRegroundOkButton_on_clicked();
 
 	//=========================================================================
 	// プライベートメンバ関数 (状態毎の関数)
@@ -777,9 +747,9 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param completed_command 完了したコマンド
+	 * @param notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_store_container_retrieving(plc::PlcCommand completed_command);
+	void on_plc_store_container_retrieving(plc::Notification notification);
 
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -790,9 +760,9 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param completed_command 完了したコマンド
+	 * @param notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_store_container_retrieved(plc::PlcCommand completed_command);
+	void on_plc_store_container_retrieved(plc::Notification notification);
 
 	/**
 	 * @brief STORE_READY_FOR_READING 状態に入ったときの処理
@@ -835,9 +805,9 @@ private:
 	/**
 	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param completed_command 完了したコマンド
+	 * @param notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_store_read_completed(plc::PlcCommand completed_command);
+	void on_plc_store_read_completed(plc::Notification notification);
 
 	// --- 棚卸しモードの状態遷移関数 ---
 
@@ -862,9 +832,9 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param completed_command 完了したコマンド
+	 * @param notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_reconcile_container_retrieving(plc::PlcCommand completed_command);
+	void on_plc_reconcile_container_retrieving(plc::Notification notification);
 
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -875,9 +845,9 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param completed_command 完了したコマンド
+	 * @param notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_reconcile_container_retrieved(plc::PlcCommand completed_command);
+	void on_plc_reconcile_container_retrieved(plc::Notification notification);
 
 	/**
 	 * @brief RECONCILE_READY_FOR_READING 状態に入ったときの処理。

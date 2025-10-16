@@ -36,7 +36,7 @@ SOURCES = db_client.cpp odbc.cpp plc_communicator.cpp tool_io_gui.cpp tool_io_ma
 # プロジェクトに含まれるヘッダーファイル（.h, .hpp）をスペース区切りで列挙
 # これを指定すると、ヘッダーファイルの変更時にもソースが再コンパイルされる
 # 例: HEADERS = utils.h
-HEADERS = db_client.hpp develop.hpp glob_var.hpp includes.hpp odbc.hpp parameters.hpp plc_communicator.hpp safe_queue.hpp SimpleGtk_extension.hpp tool_io_gui.hpp tracked_map.hpp tracking_communicator.hpp typedef.hpp
+HEADERS = db_client.hpp develop.hpp glob_var.hpp includes.hpp odbc.hpp parameters.hpp periodic_timer.hpp plc_communicator.hpp safe_queue.hpp SimpleGtk_extension.hpp tool_io_gui.hpp tracked_map.hpp tracking_communicator.hpp typedef.hpp
 
 # 中間生成物（オブジェクトファイル）を格納するディレクトリ名
 OBJECTS_DIR = objects

@@ -127,10 +127,10 @@ MainWindow::MainWindow() :
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
 		[](sgex::ListStore* store, GtkTreeIter* iter, const MstToolInfo& row) {
 			store->set(iter,
-				0, row.class_name.c_str(),
+				0, row.tool_category.c_str(),
 				1, row.maker.c_str(),
 				2, row.tool_name.c_str(),
-				3, row.material.c_str(),
+				3, row.tool_material.c_str(),
 				4, &TABLE_BGCOLOR_NORMAL	// TODO: コンパイルできる所まで進めたら動作確認
 			);
 		}
@@ -281,15 +281,15 @@ MainWindow::MainWindow() :
 	qrCodeEntry.on_activate([this]() { this->qrCodeEntry_on_activate(); });
 	falseButton.on_clicked([this]() { this->falseButton_on_clicked(); });
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
-	logoutNoButton.on_clicked([this]() { this->logoutNoButton_on_clicked(); });
-	logoutYesButton.on_clicked([this]() { this->logoutYesButton_on_clicked(); });
+	logoutNoButton.on_clicked([this]() { this->logoutDialog.response(GTK_RESPONSE_NO); });
+	logoutYesButton.on_clicked([this]() { this->logoutDialog.response(GTK_RESPONSE_YES); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
-	passwordCancelButton.on_clicked([this]() { this->passwordCancelButton_on_clicked(); });
-	passwordEnterButton.on_clicked([this]() { this->passwordEnterButton_on_clicked(); });
-	passwordEntry.on_activate([this]() { this->passwordEnterButton_on_clicked(); });	// 確定ボタンがクリックされた時と同じ処理を呼び出す
+	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_CANCEL); });
+	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });
+	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
-	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundOkButton_on_clicked(); });
+	confirmRegroundOkButton.on_clicked([this]() { confirmRegroundDialog.response(GTK_RESPONSE_OK); });
 
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
@@ -851,7 +851,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName	= "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::PlcCommand completed_command){ thiz->on_plc_store_container_retrieving(completed_command); }
+		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_store_container_retrieving(notification); }
 	}));
 
 	// --- 状態：補充 - コンテナ搬出完了 ---
@@ -868,7 +868,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName	= "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieved(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::PlcCommand completed_command){ thiz->on_plc_store_container_retrieved(completed_command); }
+		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_store_container_retrieved(notification); }
 	}));
 
 	// --- 状態：補充 - 実際に補充を行う - 工具読み取り前 ---
@@ -971,7 +971,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::PlcCommand completed_command){ thiz->on_plc_reconcile_container_retrieving(completed_command); }
+		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
 	}));
 
 	// --- 状態：棚卸し - コンテナ搬出完了 ---
@@ -987,7 +987,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName	= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::PlcCommand completed_command){ thiz->on_plc_reconcile_container_retrieving(completed_command); }
+		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
 	}));
 
 	// --- 状態：棚卸し - スキャン待ち ---
@@ -1050,12 +1050,12 @@ MainWindow::MainWindow() :
 /**
  * @brief PLCなどのワーカースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
  */
-void MainWindow::on_plc_notified(plc::PlcCommand completed_command) {
-	DEV_PRINT("GUIスレッド: PLCタスク完了通知を受け取りました。完了コマンド: {}\n", (int)completed_command.type);
+void MainWindow::on_plc_notified(plc::Notification notification) {
+	DEV_PRINT("GUIスレッド: PLCタスク完了通知を受け取りました。完了コマンド: {}\n", (int)notification.type);
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
 		if (state_config.on_plc_notified) {
-			state_config.on_plc_notified(this, completed_command);
+			state_config.on_plc_notified(this, notification);
 		}
 	} catch (const std::out_of_range& e) {
 		DEV_PRINT(stderr, "Error: 未定義の状態でPLC通知を受け取りました (AppState={})\n", static_cast<int>(m_app_state));
@@ -1388,7 +1388,7 @@ bool MainWindow::confirm_if_reground() {
 }
 
 void MainWindow::save_store_history() {
-	db::save_history();
+	db::save_history(RecOperationTable{});	// TODO: 後で詳細を書く
 }
 
 //=============================================================================
@@ -1568,31 +1568,9 @@ void MainWindow::trueButton_on_clicked() {
 	}
 }
 
-void MainWindow::logoutNoButton_on_clicked() {
-	this->logoutDialog.response(GTK_RESPONSE_NO);
-}
-
-void MainWindow::logoutYesButton_on_clicked() {
-	this->logoutDialog.response(GTK_RESPONSE_YES);
-}
-
 void MainWindow::passwordEntryDialog_on_show() {
 	// Gtkウィジェットにキーボードフォーカスを強制的に設定する
 	passwordEntry.grab_focus();
-}
-
-void MainWindow::passwordCancelButton_on_clicked() {
-	// passwdEntryDialogに対して、GTK_RESPONSE_OK (-5) の応答シグナルを送信する
-	// これにより、dialog.run()が GTK_RESPONSE_OK を返して終了する
-	DEV_PRINT("[キャンセル]\n");
-	passwordEntryDialog.response(GTK_RESPONSE_CANCEL);
-}
-
-void MainWindow::passwordEnterButton_on_clicked() {
-	// passwdEntryDialogに対して、GTK_RESPONSE_CANCEL (-6) の応答シグナルを送信する
-	// これにより、dialog.run()が GTK_RESPONSE_CANCEL を返して終了する
-	DEV_PRINT("[確定]\n");
-	passwordEntryDialog.response(GTK_RESPONSE_OK);
 }
 
 void MainWindow::regroundButton_on_toggled() {
@@ -1615,11 +1593,6 @@ void MainWindow::notRegroundButton_on_toggled() {
 	}
 }
 
-void MainWindow::confirmRegroundOkButton_on_clicked() {
-	// ダイアログに OK の応答を送信する
-	confirmRegroundDialog.response(GTK_RESPONSE_OK);
-}
-
 //=========================================================================
 // プライベートメンバ関数 (状態毎の関数) 実装
 //=========================================================================
@@ -1640,18 +1613,15 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 	MstToolInfo mst_tool;
 	std::string text(qrCodeEntry.get_text());
 	DEV_PRINT("補充モード - 工具QRコード入力: '{}'\n", text);
-	auto individual_info = db::get_tool_data(stoi(text));
+	auto unique_info = db::get_UniqueToolInfo(stoi(text));
 
-	if (individual_info.has_value()) {
-		mst_tool = individual_info.value().mst_tool;
+	if (unique_info.has_value()) {
+		mst_tool = unique_info.value().mst_tool;
 		storingToolListstore.update(0, mst_tool);
 
-		// インサート個数が設定されていて、再研磨回数が設定されていなければインサート操作とみなす
-		if (individual_info.value().case_pack.has_value() && !individual_info.value().regrind_count.has_value()) {
-			m_is_insert_operation = true;
-		} else {
-			m_is_insert_operation = false;
-		}
+		// 再研磨回数が設定されていなければインサート操作とみなす
+		m_is_insert_operation = !unique_info.value().regrind_count.has_value();
+
 		set_app_state(AppState::STORE_CONFIRMING_SELECTION);
 	} else {
 		// TODO: 該当データが無い場合の処理
@@ -1663,37 +1633,48 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 }
 
 void MainWindow::on_enter_store_container_retrieving() {
-	// TODO: コンテナ搬出処理を実装
-	plc::g_plc_command_queue.push(plc::PlcCommand{
-		.type = plc::PlcCommandType::RETRIEVE_CONTAINER,
-		.data = 0	// TODO: 搬出するコンテナIDを指定
-	});
-	plc::g_plc_command_queue.push(plc::PlcCommand{
-		.type = plc::PlcCommandType::WAIT_FOR_RETRIEVE_COMPLETION
+	plc::retrieve_container(0);	// TODO: 搬出するコンテナIDを指定
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
 	});
 }
 
-void MainWindow::on_plc_store_container_retrieving(plc::PlcCommand completed_command) {
-	if (completed_command.type == plc::PlcCommandType::WAIT_FOR_RETRIEVE_COMPLETION) {
-		if (completed_command.result) {
+void MainWindow::on_plc_store_container_retrieving(plc::Notification notification) {
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
+		auto result = notification.monitor_result.value();
+		if (result.addr = plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
 			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
-		} else { /* TODO: エラー処理 */ }
+		} else {}	// TODO: エラー処理
 	}
 }
 
 void MainWindow::on_enter_store_container_retrieved() {
 	// TODO: 扉を開けるまで待機する処理を実装
-	plc::g_plc_command_queue.push(plc::PlcCommand{
-		.type = plc::PlcCommandType::WAIT_FOR_DOOR_OPEN_COMPLETION
+/*
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
 	});
+*/
 }
 
-void MainWindow::on_plc_store_container_retrieved(plc::PlcCommand completed_command) {
-	if (completed_command.type == plc::PlcCommandType::WAIT_FOR_DOOR_OPEN_COMPLETION) {
-		if (completed_command.result) {
-			set_app_state(AppState::STORE_READY_FOR_READING);
-		} else { /* TODO: エラー処理 */ }
+void MainWindow::on_plc_store_container_retrieved(plc::Notification notification) {
+	// TODO: 扉を開けるまで待機する処理を実装
+/*
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
+		auto result = notification.monitor_result.value();
+		if (result.addr = plc::M_DEVICE_DOOR_OPEND && result.status) {
+			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
+		} else {}	// TODO: エラー処理
 	}
+*/
 }
 
 void MainWindow::on_enter_store_ready_for_reading() {
@@ -1711,9 +1692,15 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 
 void MainWindow::on_enter_store_read_completed() {
 	// TODO: 扉を閉めるまで待機する処理を実装
-	plc::g_plc_command_queue.push(plc::PlcCommand{
-		.type = plc::PlcCommandType::WAIT_FOR_DOOR_CLOSE_COMPLETION
+/*
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.flags = plc::WatchFlags{
+			.enable_fall_notification = true,
+			.fall_is_one_shot = true
+		}
 	});
+*/
 }
 
 bool MainWindow::on_qrCodeEntry_store_read_completed() {
@@ -1721,27 +1708,27 @@ bool MainWindow::on_qrCodeEntry_store_read_completed() {
 	bool is_reground = false;
 	MstToolInfo mst_tool;
 	std::string text(qrCodeEntry.get_text());
-	auto individual_info = db::get_tool_data(stoi(text));
+	auto unique_info = db::get_UniqueToolInfo(stoi(text));
 
-	if (individual_info.has_value()) {
-		if (!m_is_insert_operation && individual_info.value().storage_condition == StorageCondition::TAKEN_OUT) {
+	if (unique_info.has_value()) {
+		if (!m_is_insert_operation && unique_info.value().storage_condition == StorageCondition::TAKEN_OUT) {
 			if ((is_reground = confirm_if_reground())) {
 				// 再研磨操作の場合、再研磨回数を1増やす
-				individual_info.value().regrind_count = (individual_info.value().regrind_count.value_or(0) + 1);
+				unique_info.value().regrind_count = (unique_info.value().regrind_count.value_or(0) + 1);
 			}
 		}
 
 		liststore2columnAll.append(MainTableData{
-			.id = individual_info.value().unique_tool_id,
+			.id = unique_info.value().unique_tool_id,
 			.data_columns = {
-				to_string(individual_info.value().unique_tool_id),
-				individual_info.value().mst_tool.class_name,
-				individual_info.value().mst_tool.maker,
-				individual_info.value().mst_tool.tool_name,
-				individual_info.value().mst_tool.material,
+				to_string(unique_info.value().unique_tool_id),
+				unique_info.value().mst_tool.tool_category,
+				unique_info.value().mst_tool.maker,
+				unique_info.value().mst_tool.tool_name,
+				unique_info.value().mst_tool.tool_material,
 				to_string(((m_is_insert_operation)
-					? (individual_info.value().case_pack)
-					: (individual_info.value().regrind_count)
+					? (unique_info.value().case_pack_num)
+					: (unique_info.value().regrind_count)
 				).value())
 			}
 		});
@@ -1770,13 +1757,16 @@ void MainWindow::on_trueButton_store_read_completed() {
 	set_mode(GuiMode::STORE);
 }
 
-void MainWindow::on_plc_store_read_completed(plc::PlcCommand completed_command) {
-	if (completed_command.type == plc::PlcCommandType::WAIT_FOR_DOOR_CLOSE_COMPLETION) {
-		if (completed_command.result) {
-			update_widget_state(&qrCodeEntry, WidgetState{ .is_sensitive = false });
-			update_widget_state({&falseButton, &trueButton}, WidgetState{ .is_sensitive = true });
-		} else { /* TODO: エラー処理 */ }
+void MainWindow::on_plc_store_read_completed(plc::Notification notification) {
+	// TODO: 扉を閉めるまで待機する処理を実装
+/*
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
+		auto result = notification.monitor_result.value();
+		if (result.addr = plc::M_DEVICE_DOOR_OPEND && result.status) {
+			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
+		} else {}	// TODO: エラー処理
 	}
+*/
 }
 
 void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
@@ -1791,7 +1781,7 @@ void MainWindow::on_enter_reconcile_container_retrieving() {
 
 }
 
-void MainWindow::on_plc_reconcile_container_retrieving(plc::PlcCommand completed_command) {
+void MainWindow::on_plc_reconcile_container_retrieving(plc::Notification notification) {
 
 }
 
@@ -1799,7 +1789,7 @@ void MainWindow::on_enter_reconcile_container_retrieved() {
 
 }
 
-void MainWindow::on_plc_reconcile_container_retrieved(plc::PlcCommand completed_command) {
+void MainWindow::on_plc_reconcile_container_retrieved(plc::Notification notification) {
 
 }
 
