@@ -7,6 +7,11 @@
 #include <cstdint>
 #include "safe_queue.hpp"
 
+// PLCを使わずにテストしたいときに定義する。
+#ifndef STUB_PLC
+#define STUB_PLC	// TODO: リリース時はコメントアウト
+#endif
+
 /**
  * @namespace plc
  * @brief PLCとの連携に関連する関数と定数を格納する名前空間。
@@ -39,9 +44,9 @@ struct WatchFlags {
  * @details 立ち上がり/立ち下がりエッジを検出し、個別の通知を送信できる。
  */
 struct WatchData {
-	WatchFlags	flags{};			// 監視対象のMデバイスアドレス
-	bool		prev_status{false};	// 前回の状態。通知トリガの検知用。
-	bool		is_first{false};	// flags を外部から更新する際 true にする。これがtrueのとき、現在の状態に応じて必ず通知を試行し、試行後このフラグをfalseにする。
+	WatchFlags	flags{};		// 監視対象のMデバイスアドレス
+	bool		prev_status{};	// 前回の状態。通知トリガの検知用。
+	bool		is_first{};		// flags を外部から更新する際 true にする。これがtrueのとき、現在の状態に応じて必ず通知を試行し、試行後このフラグをfalseにする。
 };
 
 /**
@@ -65,8 +70,8 @@ enum class NotificationType {
 };
 
 struct MonitorResult {
-	std::uint16_t	addr;	// 監視対象
-	bool			status;	// 監視対象の状態
+	std::uint16_t	addr{};		// 監視対象
+	bool			status{};	// 監視対象の状態
 };
 
 /**
@@ -75,7 +80,7 @@ struct MonitorResult {
  */
 struct Notification {
 	NotificationType				type{NotificationType::NONE};
-	std::optional<MonitorResult>	monitor_result; // 監視結果の通知の場合に結果を格納
+	std::optional<MonitorResult>	monitor_result{}; // 監視結果の通知の場合に結果を格納
 };
 
 // --- 定数定義 ---
@@ -94,7 +99,11 @@ constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始トリガ
 constexpr std::uint16_t M_DEVICE_STORE_START		= 92;	// 搬入開始トリガ
 constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
 
+#ifdef STUB_PLC
+constexpr std::uint16_t M_DEVICE_DOOR_OPEND		= 0;	// ドアの状態 // TODO: 決まったらアドレスを設定する
+#else
 //constexpr std::uint16_t M_DEVICE_DOOR_OPEND		= xx;	// ドアの状態 // TODO: 決まったらアドレスを設定する
+#endif
 
 // --- PLC通信機能の使用に必要なグローバル変数を定義 ---
 

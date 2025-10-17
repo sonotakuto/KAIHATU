@@ -44,32 +44,63 @@ struct QrCodeData {
  */
 std::optional<QrCodeData> parse_qr(const std::string& qr_string);
 
+/**
+ * @brief データベースへの接続を確立します。
+ * @details
+ * 内部でOdbcSessionを生成し、グローバルなdb_sessionポインタで管理します。
+ * 接続に失敗した場合は、DB_RETRY_LIMITで定義された回数だけ再試行します。
+ * @return 接続に成功した場合はtrue、全てのリトライに失敗した場合はfalse。
+ */
 bool connect(void);
 
+/**
+ * @brief データベースとの接続を切断します。
+ * @details
+ * グローバルなdb_sessionポインタをリセットし、OdbcSessionのデストラクタを呼び出すことで、
+ * 安全に接続を解放します。
+ */
 void disconnect(void);
 
-bool user_authenticate(int user_id);
-
-bool save_history(const RecOperationTable& rec);
+/**
+ * @brief QRコード文字列を基にユーザー情報をデータベースから取得し、結果を g_logged_in_user_info に格納します。
+ * @param qr_string 取得対象のQRコード文字列。
+ * @return ユーザー情報が見つかった場合は true、見つからなければ false。
+ */
+bool user_authenticate(const std::string& qr_string);
 
 /**
- * @brief ユーザーIDを基にユーザー情報をデータベースから取得します。
+ * @brief 操作履歴のレコードをデータベースに保存します。
+ * @param record 保存する履歴データを含む RecOperationTable 構造体。
+ * @return 保存に成功した場合はtrue、失敗した場合はfalse。
+ */
+bool save_history(const RecOperationTable& record);
+
+/**
+ * @brief 複数の操作履歴のレコードをデータベースに保存します。
+ * @details パフォーマンス向上のため、トランザクションとODBCのパラメータ配列機能を使用します。
+ * @param records 保存する履歴データのリスト。
+ * @return 全てのレコードの保存に成功した場合はtrue、一件でも失敗した場合はfalse。
+ */
+bool save_history(const std::vector<RecOperationTable>& records);
+
+/**
+ * @brief QRコード文字列を基にユーザー情報をデータベースから取得します。
  * @param qr_string 取得対象のQRコード文字列。
- * @return std::optional<MstUserInfo> ユーザー情報が見つかった場合はその構造体、見つからなければstd::nullopt。
+ * @return ユーザー情報が見つかった場合はその構造体、見つからなければ std::nullopt。
  */
 std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string);
 
 /**
- * @brief 個別工具IDを基に、関連する全ての情報（基本情報、保管領域情報など）を結合して取得します。
- * @param qr 取得対象のQRコード文字列。
- * @return std::optional<UniqueToolInfo> 工具情報が見つかった場合はその構造体、見つからなければstd::nullopt。
+ * @brief QRコード文字列を基に、関連する全ての情報（基本情報、保管領域情報など）を結合して取得します。
+ * @param qr_string 取得対象のQRコード文字列。
+ * @return 工具情報が見つかった場合はその構造体、見つからなければ std::nullopt。
  */
 std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string);
 
 /**
- * @brief プログラム割り当てIDを基に、ツーリングリスト全体の情報（それに含まれる全工具の情報を含む）を取得します。
- * @param qr 取得対象のQRコード文字列。
- * @return std::optional<ToolingListInfo> ツーリングリストが見つかった場合はその構造体、見つからなければstd::nullopt。
+ * @brief QRコード文字列を基に、ツーリングリスト全体の情報（それに含まれる全工具の情報を含む）を取得します。
+ * @param qr_string 取得対象のQRコード文字列。
+ * @return ツーリングリストが見つかった場合はその構造体、見つからなければ std::nullopt。
  */
 std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string);
 

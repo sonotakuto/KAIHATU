@@ -47,7 +47,7 @@ bool WatchFlags::merge(const WatchFlags& other) {
 // --- このファイル内部でのみ使用するヘルパー関数 ---
 
 /**
- * @brief PLCリスナースレッドからGUIスレッドに通知を送るためのヘルパー関数。
+ * @brief PLCモニタースレッドからGUIスレッドに通知を送るためのヘルパー関数。
  * @param notification GUIに送る通知内容。
  */
 static void notify_gui_thread(const Notification& notification) {
@@ -95,6 +95,10 @@ static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
  * @return 応答が正常終了した場合はtrue、エラーが発生した場合はfalse。
  */
 static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
+#ifdef STUB_PLC
+	DEV_PRINT("PLCにコマンドを送信します。(STUBモード)\n");
+	return true;
+#else
 	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	if (socket.send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへのコマンド送信エラー\n");
@@ -119,6 +123,7 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 		DEV_PRINT(stderr, "PLCから未知のエラーコードを受信: 0x{:04X}\n", error_code);
 	}
 	return false;
+#endif
 }
 
 /**
@@ -201,8 +206,86 @@ static bool waiting_for_completion(std::uint16_t address) {
  * @brief PLCモニタースレッドのメインループ。
  * @details この関数は無限ループで動作し、g_watchlistの項目を監視する。
  * 項目の増減要求は g_command_queue で指令を受け取って処理します。
+ * STUB_PLCが定義されている場合、PLCに接続せず、ワンショット通知を時間経過でシミュレートします。
+ * 定義されていない場合、実際のPLCに接続してポーリングを行います。
  */
 static void run_status_monitor() {
+#ifdef STUB_PLC
+	// =========================================================================
+	// スタブ実装 (PLC不要のテスト用)
+	// =========================================================================
+	DEV_PRINT("PLCリスナースレッドを開始します。(STUBモード)\n");
+	utils::PeriodicTimer timer;
+
+	// ワンショット要求の受付時刻を記録するためのマップ
+	std::map<std::uint16_t, std::chrono::steady_clock::time_point> one_shot_timers;
+
+	while (true) {
+		// --- 1. GUIスレッドからの指令を処理 ---
+		while (auto command_opt = g_command_queue.try_pop()) {
+			auto& command = command_opt.value();
+			bool is_one_shot = command.flags.rise_is_one_shot.value_or(false) || command.flags.fall_is_one_shot.value_or(false);
+
+			if (g_watchlist.count(command.addr)) {
+				// 既存の監視項目を更新
+				auto& item = g_watchlist.at(command.addr);
+				item.flags.merge(command.flags);
+				item.is_first = true;
+			} else {
+				// 新しい監視項目を追加
+				g_watchlist[command.addr] = plc::WatchData{.flags = command.flags, .is_first = true};
+			}
+
+			// もし、この指令がワンショット通知の要求なら、現在時刻を記録
+			if (is_one_shot) {
+				one_shot_timers[command.addr] = std::chrono::steady_clock::now();
+				DEV_PRINT("PLC(STUB): M{} の one-shot 監視要求を受付。\n", command.addr);
+			}
+		}
+
+		// --- 2. ワンショットイベントを時間経過でシミュレート ---
+		const auto now = std::chrono::steady_clock::now();
+		for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ループ内でインクリメント */) {
+			auto& addr = it->first;
+			auto& item = it->second;
+
+			// ワンショットタイマーがセットされているか確認
+			if (one_shot_timers.count(addr)) {
+				// 3秒経過したら通知をシミュレート
+				if (now - one_shot_timers.at(addr) > std::chrono::seconds(3)) {
+					// 立ち上がり(rise)通知のシミュレート
+					if (item.flags.rise_is_one_shot.value_or(false) && item.flags.enable_rise_notification.value_or(false)) {
+						DEV_PRINT("PLC(STUB): M{} の one-shot (rise) を通知します。\n", addr);
+						notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, true } });
+						item.flags.enable_rise_notification = false; // 一度通知したら無効化
+					}
+					// 立ち下がり(fall)通知のシミュレート
+					if (item.flags.fall_is_one_shot.value_or(false) && item.flags.enable_fall_notification.value_or(false)) {
+						DEV_PRINT("PLC(STUB): M{} の one-shot (fall) を通知します。\n", addr);
+						notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, false } });
+						item.flags.enable_fall_notification = false; // 一度通知したら無効化
+					}
+					// シミュレートが完了したのでタイマーから削除
+					one_shot_timers.erase(addr);
+				}
+			}
+
+			// 監視フラグが全て無効になった項目はリストから削除
+			if (!item.flags.is_active()) {
+				it = g_watchlist.erase(it);
+			} else {
+				++it;
+			}
+		}
+
+		// --- 3. 次のポーリング周期まで待機 ---
+		timer.wait_for_next(POLLING_INTERVAL_MS, true);
+	}
+
+#else
+	// =========================================================================
+	// 本来の実装 (PLCとの通信)
+	// =========================================================================
 	DEV_PRINT("PLCリスナースレッドを開始します。\n");
 
 	// ポーリングの周期制御用タイマ
@@ -225,8 +308,6 @@ static void run_status_monitor() {
 
 			if (command_opt.has_value()) {
 				WatchCommand command = command_opt.value();
-				bool result = false;
-
 				if (g_watchlist.count(command.addr)) {
 					if (command.flags.is_active()) {
 						auto& item = g_watchlist.at(command.addr);
@@ -255,11 +336,11 @@ static void run_status_monitor() {
 						if (current_state == true && item.flags.enable_rise_notification.value_or(false)) {
 							DEV_PRINT("PLC監視 '{}': 立ち上がり(ON)を検出。\n", addr);
 							notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, current_state } });
-							if (item.flags.rise_is_one_shot) item.flags.enable_rise_notification = false;
+							if (item.flags.rise_is_one_shot.value_or(false)) item.flags.enable_rise_notification = false;
 						} else if (current_state == false && item.flags.enable_fall_notification.value_or(false)) {
 							DEV_PRINT("PLC監視 '{}': 立ち下がり(OFF)を検出。\n", addr);
 							notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, current_state } });
-							if (item.flags.fall_is_one_shot) item.flags.enable_fall_notification = false;
+							if (item.flags.fall_is_one_shot.value_or(false)) item.flags.enable_fall_notification = false;
 						}
 
 						// 状態を更新
@@ -288,6 +369,7 @@ static void run_status_monitor() {
 		}
 	}
 	DEV_PRINT("PLC統合リスナースレッドを終了します。\n");
+#endif
 }
 
 // --- 公開関数 ---

@@ -53,9 +53,13 @@ public:
 
 		/// 取り出しモード
 		RETRIEVE,	// 移行用
-		RETRIEVE_WAITING_FOR_PROGRAM_QR,	// TODO: 説明を書く
-		RETRIEVE_SELECTING_TOOLS,			// TODO: 説明を書く
-		RETRIEVE_CONFIRMING_SELECTION,		// TODO: 説明を書く
+		RETRIEVE_WAITING_FOR_PROGRAM_QR,	// プログラム割当一覧表のQRコード読み取り待ち
+		RETRIEVE_SELECTING_TOOLS,			// 工具選択画面
+		RETRIEVE_CONFIRMING_SELECTION,		// 選択した工具の確認
+		RETRIEVE_CONTAINER_RETRIEVING,		// コンテナ搬出待ち
+		RETRIEVE_CONTAINER_RETRIEVED,		// コンテナ搬出完了
+		RETRIEVE_READY_FOR_READING,			// 実際に取り出しを行う - 工具読み取り前
+		RETRIEVE_READ_COMPLETED,			// 実際に取り出しを行う - 工具読み取り後
 
 		/// 補充モード
 		STORE,		// 移行用
@@ -928,6 +932,9 @@ private:
 
 	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
 	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
+
+	/// @brief ログイン中のユーザー情報を保持する構造体。
+	std::optional<MstUserInfo> g_logged_in_user_info = std::nullopt;
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

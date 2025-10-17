@@ -736,13 +736,12 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&logoutButton}, {.is_sensitive = true} },
 			{ {&messageLabel}, {UiText{"プログラム割当一覧表のQRコードを\nQRコードリーダーにかざしてください", "プログラムわりあていちらんひょうの QRコードを\nQRコードリーダーにかざしてください"}, true, true} },
+			{ {&paginationBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
-		.table_states = {
-			{ {&table3column1st, &table3column2nd, &table3column3rd}, {.is_sensitive = false} }
-		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.operationStackPageName = "retrieveOperationPage", "pageNone",
+		.operationStackPageName = "retrieveOperationPage",
+		.tableStackPageName		= "pageNone",	// 初期ページ
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state	= [](MainWindow* thiz){ /* TODO: テーブルをクリアするなどの初期化処理 */ }
 	}));
@@ -752,16 +751,24 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"取り出す工具を選択してください", "とりだす こうぐを せんたく してください"}, true, true} },
-			{ {&table3column1stBox, &table3column2ndBox, &table3column3rdBox}, {.is_visible = true} },
+			{ {&paginationBox}, {.is_visible = true} },
 			{ {&trueButton}, {UiText{"確定", "かくてい"}, true, true} },
 			{ {&falseButton}, {UiText{"全選択解除", "ぜんせんたくかいじょ"}, true, true} }
 		},
 		.table_states = {
-			{ {&table3column1st, &table3column2nd, &table3column3rd}, {.is_sensitive = true} }
+			{ {&table2column1st, &table2column2nd}, {
+				.column_headers = std::vector<UiText>{
+					{"ツール\n  番号", "  ツール\nばんごう"},
+					{"分類", "ぶんるい"},
+					{"メーカー", "メーカー"},
+					{"型番", "かたばん"},
+					{"材質", "ざいしつ"},
+					{"在庫数", "ざいこ\n  すう"}
+				}, .is_sensitive = true
+			} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.operationStackPageName	= "retrieveOperationPage",
-		.tableStackPageName		= "table3column",
+		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state			= [](MainWindow* thiz){ /* TODO: DBから取得した工具リストをテーブルに表示する */ },
 		.on_falseButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_CONFIRMING_SELECTION); },
@@ -773,22 +780,40 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"選択した工具は以下の通りです\nよろしければ「搬出」を押してください", "せんたくした こうぐは いかのとおりです..."}, true, true} },
-			{ {&table2column1stBox}, {.is_visible = true} },
-			{ {&table2column2ndBox}, {.is_visible = false} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} },
 			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} }
 		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} },
-			// TODO: 選択された工具のみを表示するテーブルに設定
-		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.operationStackPageName	= "retrieveOperationPage",
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state			= [](MainWindow* thiz){ /* TODO: 選択された工具のみをテーブルに表示する */ },
 		.on_falseButton_clicked	= [](MainWindow* thiz){ /* TODO: 搬出処理を開始し、次の状態へ */ },
 		.on_trueButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_SELECTING_TOOLS); } // 前の状態に戻る
+	}));
+
+	// --- 状態：取り出し - コンテナ搬出待ち ---
+	g_app_state_configs.insert(std::make_pair(AppState::RETRIEVE_CONTAINER_RETRIEVING, WidgetStateConfig{
+		// --- UIの「見た目」を定義 ---
+		.widget_states = {
+			{ {&retrieveToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false} },
+			{ {&messageLabel}, {UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}, true, true} },
+			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
+		},
+		.table_states = {
+			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
+		},
+		// --- 各スタックの「表示ページ」を定義 ---
+		.tableStackPageName		= "table2column",
+		//TODO --- 状態の「振る舞い」を定義 ---
+	}));
+
+	// --- 状態：取り出し - コンテナ搬出完了 ---
+	g_app_state_configs.insert(std::make_pair(AppState::RETRIEVE_CONTAINER_RETRIEVED, WidgetStateConfig{
+		// --- UIの「見た目」を定義 ---
+		.widget_states = {
+			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
+		},
+		//TODO --- 状態の「振る舞い」を定義 ---
 	}));
 
 	// --- 状態：補充 - 移行 ---
@@ -806,9 +831,6 @@ MainWindow::MainWindow() :
 			{ {&qrCodeEntry}, {.is_sensitive = true} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
-		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName	= "storeOperationPage",
 		.tableStackPageName		= "pageNone",
@@ -825,9 +847,6 @@ MainWindow::MainWindow() :
 			{ {&qrCodeEntry}, {.is_sensitive = false} },
 			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} }
-		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName	= "pageNone",
@@ -859,13 +878,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
-			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
-		},
-		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName	= "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieved(); },
 		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_store_container_retrieved(notification); }
@@ -980,11 +993,6 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} }
 		},
-		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
-		},
-		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName	= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
 		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
@@ -1047,22 +1055,6 @@ MainWindow::MainWindow() :
 // 公開メンバ関数実装
 //=============================================================================
 
-/**
- * @brief PLCなどのワーカースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
- */
-void MainWindow::on_plc_notified(plc::Notification notification) {
-	DEV_PRINT("GUIスレッド: PLCタスク完了通知を受け取りました。完了コマンド: {}\n", (int)notification.type);
-	try {
-		auto state_config = g_app_state_configs.at(m_app_state);
-		if (state_config.on_plc_notified) {
-			state_config.on_plc_notified(this, notification);
-		}
-	} catch (const std::out_of_range& e) {
-		DEV_PRINT(stderr, "Error: 未定義の状態でPLC通知を受け取りました (AppState={})\n", static_cast<int>(m_app_state));
-		// 例外を無視して処理を続行
-	}
-}
-
 gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
 	// 渡されたポインタを元の std::function オブジェクトにキャスト
 	auto* func = static_cast<std::function<void()>*>(user_data);
@@ -1072,6 +1064,53 @@ gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
 	delete func;
 	// このコールバックは一度きりなので解除
 	return G_SOURCE_REMOVE;
+}
+
+void MainWindow::on_plc_notified(plc::Notification notification) {
+	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", (int)notification.type);
+	switch (notification.type) {
+	case plc::NotificationType::CONNECTION_ESTABLISHED :
+		// TODO: CONNECTION_ESTABLISHED 通知を受け取ったときの処理
+		break;
+	case plc::NotificationType::CONNECTION_LOST :
+		// TODO: CONNECTION_LOST 通知を受け取ったときの処理
+		break;
+	case plc::NotificationType::MONITOR :
+		if (notification.monitor_result.has_value()) {
+			switch (notification.monitor_result.value().addr) {
+			case plc::M_DEVICE_MAINTENANCE_MODE :
+				// TODO: メンテナンスモードに関する処理を追加
+				if (notification.monitor_result.value().status) {
+					update_widget_state(&warningLabel, WidgetState{.text = UiText{
+						"ステータスモニタでの操作により、画面がロックされました。\n詳細はステータスモニタをご覧ください。",
+						"ステータスモニタでの そうさにより、がめんが ロックされました。\nしょうさいは ステータスモニタを ごらんください。"
+					}});
+					refresh_ui(false);
+					warningDialog.show_all();
+				} else {
+					warningDialog.destroy();
+				}
+				break;
+
+			// TODO: 他にも全画面共通の処理があれば追加
+
+			default :	// 全画面共通の処理を行わないモニター通知は、状態毎の処理に投げる
+				try {
+					auto state_config = g_app_state_configs.at(m_app_state);
+					if (state_config.on_plc_notified) {
+						state_config.on_plc_notified(this, notification);
+					}
+				} catch (const std::out_of_range& e) {
+					DEV_PRINT(stderr, "Error: 未定義の状態でPLC通知を受け取りました (AppState={})\n", static_cast<int>(m_app_state));
+					// 例外を無視して処理を続行
+				}
+				break;
+			}
+		}
+		break;
+	default :
+		DEV_PRINT(stderr, "Error: 未知のPLC通知を受け取りました\n");
+	}
 }
 
 //=============================================================================
@@ -1479,7 +1518,7 @@ void MainWindow::logoutButton_on_clicked() {
 void MainWindow::userIdEntry_on_activate() {
 	DEV_PRINT("ユーザーIDエントリでEnterキーが押されました\n");
 
-	if (db::user_authenticate(stoi(std::string(userIdEntry.get_text())))) {
+	if (db::user_authenticate(userIdEntry.get_text())) {
 		DEV_PRINT("ユーザー認証成功\n");
 
 		// ユーザーIDエントリにログインユーザー名を表示して固定
@@ -1505,7 +1544,10 @@ void MainWindow::userIdEntry_on_activate() {
 		}
 	} else {
 		DEV_PRINT("ユーザー認証失敗\n");
-		// TODO: エラーメッセージを表示する処理
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"該当するユーザーが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする ユーザーが みつかりません\nもういちど QRコードを よみとってください"}
+		});
+		refresh_ui(false); // ラベルのテキストを更新
 	}
 }
 
@@ -1611,9 +1653,7 @@ void MainWindow::on_enter_store_waiting_for_tool_qr() {
 
 void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 	MstToolInfo mst_tool;
-	std::string text(qrCodeEntry.get_text());
-	DEV_PRINT("補充モード - 工具QRコード入力: '{}'\n", text);
-	auto unique_info = db::get_UniqueToolInfo(stoi(text));
+	auto unique_info = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
 	if (unique_info.has_value()) {
 		mst_tool = unique_info.value().mst_tool;
@@ -1646,7 +1686,7 @@ void MainWindow::on_enter_store_container_retrieving() {
 void MainWindow::on_plc_store_container_retrieving(plc::Notification notification) {
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
 		auto result = notification.monitor_result.value();
-		if (result.addr = plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
+		if (result.addr == plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
 			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
 		} else {}	// TODO: エラー処理
 	}
@@ -1654,7 +1694,6 @@ void MainWindow::on_plc_store_container_retrieving(plc::Notification notificatio
 
 void MainWindow::on_enter_store_container_retrieved() {
 	// TODO: 扉を開けるまで待機する処理を実装
-/*
 	plc::g_command_queue.push(plc::WatchCommand{
 		.addr = plc::M_DEVICE_DOOR_OPEND,
 		.flags = plc::WatchFlags{
@@ -1662,19 +1701,16 @@ void MainWindow::on_enter_store_container_retrieved() {
 			.rise_is_one_shot = true
 		}
 	});
-*/
 }
 
 void MainWindow::on_plc_store_container_retrieved(plc::Notification notification) {
 	// TODO: 扉を開けるまで待機する処理を実装
-/*
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
 		auto result = notification.monitor_result.value();
 		if (result.addr = plc::M_DEVICE_DOOR_OPEND && result.status) {
 			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
 		} else {}	// TODO: エラー処理
 	}
-*/
 }
 
 void MainWindow::on_enter_store_ready_for_reading() {
@@ -1692,23 +1728,22 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 
 void MainWindow::on_enter_store_read_completed() {
 	// TODO: 扉を閉めるまで待機する処理を実装
-/*
 	plc::g_command_queue.push(plc::WatchCommand{
 		.addr = plc::M_DEVICE_DOOR_OPEND,
 		.flags = plc::WatchFlags{
 			.enable_fall_notification = true,
-			.fall_is_one_shot = true
+			.enable_rise_notification = true,
+			.fall_is_one_shot = false,
+			.rise_is_one_shot = false
 		}
 	});
-*/
 }
 
 bool MainWindow::on_qrCodeEntry_store_read_completed() {
 	bool result = false;
 	bool is_reground = false;
 	MstToolInfo mst_tool;
-	std::string text(qrCodeEntry.get_text());
-	auto unique_info = db::get_UniqueToolInfo(stoi(text));
+	auto unique_info = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
 	if (unique_info.has_value()) {
 		if (!m_is_insert_operation && unique_info.value().storage_condition == StorageCondition::TAKEN_OUT) {
@@ -1759,14 +1794,12 @@ void MainWindow::on_trueButton_store_read_completed() {
 
 void MainWindow::on_plc_store_read_completed(plc::Notification notification) {
 	// TODO: 扉を閉めるまで待機する処理を実装
-/*
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
 		auto result = notification.monitor_result.value();
-		if (result.addr = plc::M_DEVICE_DOOR_OPEND && result.status) {
-			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
+		if (result.addr = plc::M_DEVICE_DOOR_OPEND) {
+			update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = !result.status});
 		} else {}	// TODO: エラー処理
 	}
-*/
 }
 
 void MainWindow::on_enter_reconcile_waiting_for_container_selection() {

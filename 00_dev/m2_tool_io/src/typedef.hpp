@@ -46,6 +46,32 @@ struct MstToolTable {
 };
 
 /**
+ * @struct MstAddressTable
+ * @brief 画面表示住所とPLC制御住所を紐づける辞書テーブルのデータ構造
+ */
+struct MstAddressTable {
+	/// @brief 画面表示住所
+	std::string display_address{};
+	/// @brief PLC制御住所
+	int control_address{};
+};
+
+/**
+ * @struct StrageAreaTable
+ * @brief 工具保管領域の情報を保持するテーブルのデータ構造
+ */
+struct StrageAreaTable {
+	/// @brief 保管領域ID (工具保管領域識別用連番)
+	int storage_area_id{};
+	/// @brief 基本工具ID (工具種別ごとの連番)
+	int basic_tool_id{};
+	/// @brief 保管ケース個数 (工具ケースの保管個数)
+	int toolcase_stc_num{};
+	/// @brief 画面表示住所
+	std::string display_address{};
+};
+
+/**
  * @enum StorageCondition
  * @brief 工具の状態を示す列挙型
  */
@@ -90,8 +116,8 @@ struct ToolAssignmentTable {
 	int program_assignment_id{};
 	/// @brief ツール番号
 	std::string tool_number{};
-	/// @brief 工具基本情報
-	MstToolInfo mst_tool{};
+	/// @brief 基本工具ID (工具種別識別用連番)
+	int basic_tool_id{};
 };
 
 /**
@@ -105,32 +131,6 @@ struct ProgramAssignmentListTable {
 	std::string line_name{};
 	/// @brief プログラム番号
 	std::string program_num{};
-};
-
-/**
- * @struct MstAddressTable
- * @brief 画面表示住所とPLC制御住所を紐づける辞書テーブルのデータ構造
- */
-struct MstAddressTable {
-	/// @brief 画面表示住所
-	std::string display_address{};
-	/// @brief PLC制御住所
-	int control_address{};
-};
-
-/**
- * @struct StrageAreaTable
- * @brief 工具保管領域の情報を保持するテーブルのデータ構造
- */
-struct StrageAreaTable {
-	/// @brief 保管領域ID (工具保管領域識別用連番)
-	int storage_area_id{};
-	/// @brief 基本工具ID (工具種別ごとの連番)
-	int basic_tool_id{};
-	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	int toolcase_stc_num{};
-	/// @brief 画面表示住所
-	std::string display_address{};
 };
 
 /**
@@ -162,6 +162,8 @@ struct RecOperationTable {
 	int unique_tool_id{};
 	/// @brief 動画パス (動画の保存先リンク)
 	std::string video_path{};
+	/// @brief 操作個数 (補充、取出の際の個数)
+	int tool_num{};
 };
 
 /**
@@ -175,6 +177,27 @@ using MstUserInfo = MstUserTable;
  * @brief 工具の基本情報を保持する構造体
  */
 using MstToolInfo = MstToolTable;
+
+/**
+ * @struct MstAddressInfo
+ * @brief 画面表示住所とPLC制御住所の情報を保持する構造体
+ */
+using MstAddressInfo = MstAddressTable;
+
+/**
+ * @struct StrageAreaInfo
+ * @brief 工具保管領域の情報を保持する構造体
+ */
+struct StrageAreaInfo {
+	/// @brief 保管領域ID (工具保管領域識別用連番)
+	int storage_area_id{};
+	/// @brief 保管している工具の基本情報
+	MstToolInfo item{};
+	/// @brief 保管ケース個数 (工具ケースの保管個数)
+	int toolcase_stc_num{};
+	/// @brief 住所 (画面表示住所とPLC制御住所)
+	MstAddressInfo mst_address{};
+};
 
 /**
  * @struct UniqueToolInfo
@@ -223,25 +246,4 @@ struct ToolingListInfo {
 	std::string program_num{};
 	/// @brief ツーリングリストに含まれる工具のリスト
 	std::vector<ToolAssignmentInfo> tool_assignments{};
-};
-
-/**
- * @struct MstAddressInfo
- * @brief 画面表示住所とPLC制御住所の情報を保持する構造体
- */
-using MstAddressInfo = MstAddressTable;
-
-/**
- * @struct StrageAreaInfo
- * @brief 工具保管領域の情報を保持する構造体
- */
-struct StrageAreaInfo {
-	/// @brief 保管領域ID (工具保管領域識別用連番)
-	int storage_area_id{};
-	/// @brief 保管している工具の基本情報
-	MstToolInfo item{};
-	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	int toolcase_stc_num{};
-	/// @brief 住所 (画面表示住所とPLC制御住所)
-	MstAddressInfo mst_address{};
 };

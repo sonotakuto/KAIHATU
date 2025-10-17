@@ -1,3 +1,6 @@
+// コンパイル方法
+// g++ -std=c++17 -o odbc_test2 odbc_test2.cpp odbc.cpp -lodbc
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -6,7 +9,9 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
-#include "../../00_dev/m2_tool_io/src/odbc.hpp"
+#include "./odbc.hpp"
+
+using namespace odbc;
 
 // --- ヘルパー関数群 (変更なし) ---
 

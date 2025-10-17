@@ -81,6 +81,26 @@ public:
 	 * @return OdbcStatementの生成などに必要な接続ハンドル。
 	 */
 	SQLHDBC getHandle() const;
+
+	/**
+	 * @brief トランザクションを開始します。
+	 * @details 内部でオートコミットを無効にします。
+	 * @throw OdbcException トランザクションの開始に失敗した場合。
+	 */
+	void beginTransaction();
+
+	/**
+	 * @brief 現在のトランザクションをコミットします。
+	 * @throw OdbcException コミットに失敗した場合。
+	 */
+	void commit();
+
+	/**
+	 * @brief 現在のトランザクションをロールバックします。
+	 * @throw OdbcException ロールバックに失敗した場合。
+	 */
+	void rollback();
+
 private:
 	/// @brief ODBC環境ハンドル。
 	SQLHENV henv = SQL_NULL_HENV;
@@ -163,19 +183,79 @@ public:
 	void prepare(const std::string& sql);
 
 	/**
-	 * @brief パラメータをバインドします（汎用テンプレート版）。
-	 * @details int, double, string, vector<char>など、特別な変換が不要な型を扱います。
+	 * @brief パラメータをバインドします。
+	 * @tparam T バインドするパラメータの型。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param value バインドするパラメータの値。
 	 */
-	template<typename T> void bind(int paramIndex, const T& value) { bound_params[paramIndex] = value; }
+	template<typename T>
+	void bind(int paramIndex, const T& value) { bound_params[paramIndex] = value; }
+
+	/**
+	 * @brief パラメータをバインドします。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param value バインドするパラメータの値。
+	 */
+	void bind(int paramIndex, const std::string& value);
+
+	/**
+	 * @brief パラメータをバインドします。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param value バインドするパラメータの値。
+	 */
+	void bind(int paramIndex, const std::vector<char>& value);
 
 	/**
 	 * @brief パラメータをバインドします (日時型専用のオーバーロード)。
-	 * @details time_pointをODBC用のTIMESTAMP構造体に変換する特別な処理を行います。
+	 * @details time_pointをODBC用のTIMESTAMP構造体に変換する特別な処理を行ってからバインドします。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param value バインドするパラメータの値 (time_point)。
 	 */
 	void bind(int paramIndex, const std::chrono::system_clock::time_point& value);
 
 	/**
+	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします。
+	 * @details int, double, long long などの固定長で連続メモリに配置される型を扱うための汎用テンプレートです。
+	 * @tparam T バインドするデータの型 (例: int, std::string)
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param values バインドするデータのvector。
+	 */
+	template<typename T>
+	void bindColumn(int paramIndex, const std::vector<T>& values) { bulk_param_buffers[paramIndex] = values; }
+
+	/**
+	 * @brief 一括挿入用に文字列の配列をバインドします (string専用オーバーロード)。
+	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param values バインドするデータのvector。
+	 */
+	void bindColumn(int paramIndex, const std::vector<std::string>& values);
+
+	/**
+	 * @brief 一括挿入用にBLOBの配列をバインドします (vector<char>専用オーバーロード)。
+	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param values バインドするデータのvector。
+	 */
+	void bindColumn(int paramIndex, const std::vector<std::vector<char>>& values);
+
+	/**
+	 * @brief 一括挿入用に日時の配列をバインドします (time_point専用オーバーロード)。
+	 * @details time_pointをTIMESTAMP構造体に変換する特別な処理を行います。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param values バインドするデータのvector。
+	 */
+	void bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values);
+
+	/**
+	 * @brief 一括挿入(バルクインサート)で一度に処理する行数を設定します。
+	 * @param size 挿入する行数。
+	 */
+	void setParamsetSize(size_t size);
+
+	/**
 	 * @brief 準備・バインドされたステートメントを実行します。
+	 * @details set_paramset_sizeが呼び出されている場合は一括実行、そうでなければ単一行実行を行います。
 	 * @return 影響を受けた行数。
 	 * @throw OdbcException ステートメントの実行に失敗した場合。
 	 */
@@ -190,12 +270,21 @@ public:
 private:
 	/// @brief ODBCステートメントハンドル。
 	SQLHSTMT hstmt = SQL_NULL_HSTMT;
-	/// @brief バインドされたパラメータの値を、実行時まで保持するためのコンテナ。
+	/// @brief (単一行用) バインドされたパラメータの値を、実行時まで保持するためのコンテナ。
 	std::map<int, std::any> bound_params;
-	/// @brief バインドされた文字列やBLOBの長さを保持するためのコンテナ。
+	/// @brief (単一行用) バインドされた文字列やBLOBの長さを保持するためのコンテナ。
 	std::map<int, SQLLEN> param_indicators;
-	/// @brief バインドされた日時型をTIMESTAMP構造体に変換して保持するためのバッファ。
-	std::list<SQL_TIMESTAMP_STRUCT> timestamp_buffers;
+
+	/// @brief (一括実行用) バインドされたパラメータ配列のデータを保持するバッファ。
+	std::map<int, std::any> bulk_param_buffers;
+	/// @brief (一括実行用) バインドされた可変長データ(文字列など)の長さの配列を保持するバッファ。
+	std::map<int, std::vector<SQLLEN>> bulk_param_indicators;
+	/// @brief (一括実行用) BLOBのストライド（1行あたりの固定長）を保持するバッファ。
+	std::map<int, size_t> bulk_param_strides;
+	/// @brief (一括実行用) 各パラメータのSQL型を保持するマップ。
+	std::map<int, SQLSMALLINT> bulk_param_sql_types;
+	/// @brief 一括実行で処理する行数。
+	size_t paramset_size = 0;
 };
 
 //============================================

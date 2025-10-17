@@ -7,6 +7,31 @@
 #include <SimpleGtk> // インストール済みのSimpleGtkライブラリをインクルード
 
 /**
+ * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
+ * @param signal_name GTKシグナル名 (文字列)。
+ * @param c_signal_name C++の関数名として使用する名前。
+ * @param return_type ハンドラの戻り値の型 (例: gboolean)。
+ * @param para_static 静的コールバック関数の引数リスト。
+ * @param function std::function の型。
+ * @param ... std::function に渡す引数。
+ */
+#define DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, function, ...) \
+public: \
+void on_##c_signal_name(function handler) { \
+	on_##c_signal_name##_handler = handler; \
+	if (on_##c_signal_name##_handler != nullptr) \
+		set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+} \
+private: \
+function on_##c_signal_name##_handler = nullptr; \
+static return_type on_##c_signal_name##_static para_static { \
+	if (thiz->on_##c_signal_name##_handler != nullptr) { \
+		return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+	} \
+	return FALSE; \
+}
+
+/**
  * @namespace sgex
  * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
  */
@@ -46,6 +71,14 @@ public:
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN(
+		"delete-event",
+		delete_event,
+		gboolean,
+		(GtkWidget* self, GdkEvent* event, Dialog* thiz),
+		std::function<bool(GdkEvent* event)>,
+		event
+	)
 };
 
 /**

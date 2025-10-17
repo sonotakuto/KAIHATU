@@ -109,9 +109,8 @@ std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 }
 
 bool connect(void) {
-/*
 	// リトライ処理
-	for (int i = 0; i < DB_RETRY_LIMIT; i++) {
+	for (int i = 0; i < RETRY_LIMIT; i++) {
 		try {
 			// DBに接続
 			auto conn = make_unique<OdbcConnection>(ODBC_DSN, ODBC_USER, ODBC_PASS);
@@ -133,8 +132,6 @@ bool connect(void) {
 	// TODO:エラーメッセージを表示するコードをここに書く？
 
 	return false;
-*/
-	return true; // TODO: 一時的に常に成功させる
 }
 
 void disconnect(void) {
@@ -146,17 +143,149 @@ bool user_authenticate(const std::string& qr_string) {
 	return g_logged_in_user_info.has_value();
 }
 
-bool save_history(const RecOperationTable& rec) {
-/*
+bool save_history(const RecOperationTable& record) {
+	// 1. リトライ処理付きでステートメントオブジェクトを取得します。
 	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
-
 	if (!stmt_opt) {
-		// 試行が全て失敗した場合
-		// TODO:エラーメッセージを表示するコードをここに書く？
+		DEV_PRINT(stderr, "Error: Failed to create statement for saving history after multiple retries.\n");
+		// TODO: ユーザーにエラーを通知する処理
+		return false;
 	}
-*/
-	DEV_PRINT("[DB Stub] save_history called.\n");
-	return true; // TODO: 一時的に常に成功させる
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// 2. 実行するSQL文を準備します。
+		// operation_id は自動インクリメントなので含めません。
+		const std::string sql =
+			"INSERT INTO rec_operation "
+			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_num) "
+			"VALUES (?, ?, ?, ?, ?, ?, ?);";
+
+		stmt.prepare(sql);
+
+		// 3. OperationClass enumをデータベースの文字列に変換します。
+		std::string op_class_str;
+		switch (record.operation_class) {
+			case OperationClass::OUT:		op_class_str = "取出"; break;
+			case OperationClass::ADD:		op_class_str = "補充"; break;
+			case OperationClass::INVENTORY:	op_class_str = "棚卸"; break;
+			default:
+				DEV_PRINT(stderr, "Error: Unknown operation class provided to save_history.\n");
+				return false;
+		}
+
+		// 4. 各プレースホルダにRecOperationTable構造体の値をバインドします。
+		stmt.bind(1, op_class_str);
+		stmt.bind(2, record.user_id);
+		stmt.bind(3, record.proc_time);
+		stmt.bind(4, record.storage_area_id);
+		stmt.bind(5, record.unique_tool_id);
+		stmt.bind(6, record.video_path);
+		stmt.bind(7, record.tool_num);
+
+		// 5. 準備されたステートメントを実行します。
+		stmt.executePrepared();
+
+		DEV_PRINT("[DB] save_history successful.\n");
+		return true;
+
+	} catch (const odbc::OdbcException& e) {
+		// データベース処理中にエラーが発生した場合
+		DEV_PRINT(stderr, "DB Error in save_history: {}\n", e.what());
+		// TODO: ユーザーにエラーを通知する処理
+		return false;
+	}
+}
+
+bool save_history(const std::vector<RecOperationTable>& records) {
+	if (records.empty()) {
+		return true; // 保存対象がなければ成功とみなす
+	}
+
+	// 1. 接続セッションを確認
+	if (!db_session || !db_session->connection) {
+		DEV_PRINT(stderr, "Error: DB connection not available for saving histories.\n");
+		return false;
+	}
+
+	// 2. トランザクションを開始
+	db_session->connection->beginTransaction();
+
+	try {
+		// 3. ステートメントを準備
+		optional<OdbcStatement> stmt_opt = create_statement_with_retry();
+		if (!stmt_opt) {
+			DEV_PRINT(stderr, "Error: Failed to create statement for saving history after multiple retries.\n");
+			// TODO: ユーザーにエラーを通知する処理
+			return false;
+		}
+		auto& stmt = stmt_opt.value();
+
+		const std::string sql =
+			"INSERT INTO rec_operation "
+			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_id) "
+			"VALUES (?, ?, ?, ?, ?, ? ?);";
+		stmt.prepare(sql);
+
+		// 4. 一括挿入する行数を設定
+		stmt.setParamsetSize(records.size());
+
+		// 5. `records` (vector of struct) から各列の `vector` (struct of vector) にデータを変換
+		std::vector<std::string> op_class_strs;
+		std::vector<int> user_ids;
+		std::vector<std::chrono::system_clock::time_point> proc_times;
+		std::vector<int> storage_area_ids;
+		std::vector<int> unique_tool_ids;
+		std::vector<std::string> video_paths;
+		std::vector<int> tool_nums;
+
+		op_class_strs.reserve(records.size());
+		user_ids.reserve(records.size());
+		proc_times.reserve(records.size());
+		storage_area_ids.reserve(records.size());
+		unique_tool_ids.reserve(records.size());
+		video_paths.reserve(records.size());
+		tool_nums.reserve(records.size());
+
+		for (const auto& rec : records) {
+			switch (rec.operation_class) {
+				case OperationClass::OUT:		op_class_strs.push_back("取出"); break;
+				case OperationClass::ADD:		op_class_strs.push_back("補充"); break;
+				case OperationClass::INVENTORY:	op_class_strs.push_back("棚卸"); break;
+				default: throw std::runtime_error("Unknown operation class");
+			}
+			user_ids.push_back(rec.user_id);
+			proc_times.push_back(rec.proc_time);
+			storage_area_ids.push_back(rec.storage_area_id);
+			unique_tool_ids.push_back(rec.unique_tool_id);
+			video_paths.push_back(rec.video_path);
+			tool_nums.push_back(rec.tool_num);
+		}
+
+		// 6. 各列のデータを一括でバインド
+		stmt.bindColumn(1, op_class_strs);
+		stmt.bindColumn(2, user_ids);
+		stmt.bindColumn(3, proc_times);
+		stmt.bindColumn(4, storage_area_ids);
+		stmt.bindColumn(5, unique_tool_ids);
+		stmt.bindColumn(6, video_paths);
+		stmt.bindColumn(7, tool_nums);
+
+		// 7. SQLを一括実行
+		stmt.executePrepared();
+
+		// 8. トランザクションをコミット
+		db_session->connection->commit();
+
+		DEV_PRINT("[DB] save_histories successful for {} records.\n", records.size());
+		return true;
+
+	} catch (const std::exception& e) {
+		// エラーが発生した場合はロールバック
+		DEV_PRINT(stderr, "Error in save_histories, rolling back transaction: {}\n", e.what());
+		db_session->connection->rollback();
+		return false;
+	}
 }
 
 std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
@@ -200,9 +329,11 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 }
 
 std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
+	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
-	if (!stmt_opt) { return std::nullopt; }
+	if (!stmt_opt || !code_opt) { return std::nullopt; }
 
+	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
 
 	try {
@@ -216,10 +347,11 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 			"LEFT JOIN mst_tool AS mt ON ut.basic_tool_id = mt.basic_tool_id "
 			"LEFT JOIN storage_area AS sa ON ut.storage_area_id = sa.storage_area_id "
 			"LEFT JOIN mst_address AS ma ON sa.display_address = ma.display_address "
-			"WHERE ut.unique_tool_id = ?;";
+			"WHERE ut.unique_tool_id = ? AND ut.tool_print_time = ?;";
 
 		stmt.prepare(sql);
-		stmt.bind(1, unique_tool_id);
+		stmt.bind(1, code.id);
+		stmt.bind(2, code.timestamp);
 		stmt.executePrepared();
 
 		auto rows = stmt.fetchAll();
@@ -276,9 +408,11 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 }
 
 std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string) {
+	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
-	if (!stmt_opt) { return std::nullopt; }
+	if (!stmt_opt || !code_opt) { return std::nullopt; }
 
+	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
 
 	try {
@@ -290,11 +424,12 @@ std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string)
 			"FROM program_assignment_list AS pal "
 			"JOIN tool_assignment AS ta ON pal.program_assignment_id = ta.program_assignment_id "
 			"JOIN mst_tool AS mt ON ta.basic_tool_id = mt.basic_tool_id "
-			"WHERE pal.program_assignment_id = ? "
+			"WHERE pal.program_assignment_id = ? AND pal.program_print_time = ? "
 			"ORDER BY ta.tool_assignment_id ASC;";
 
 		stmt.prepare(sql);
-		stmt.bind(1, program_assignment_id);
+		stmt.bind(1, code.id);
+		stmt.bind(2, code.timestamp);
 		stmt.executePrepared();
 
 		auto rows = stmt.fetchAll();

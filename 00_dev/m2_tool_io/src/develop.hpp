@@ -5,7 +5,7 @@
 #pragma once
 
 #ifndef DEV
-#define DEV
+#define DEV	// TODO: リリース時に無効化する
 #endif
 
 #ifdef DEV
