@@ -1707,7 +1707,7 @@ void MainWindow::on_plc_store_container_retrieved(plc::Notification notification
 	// TODO: 扉を開けるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
 		auto result = notification.monitor_result.value();
-		if (result.addr = plc::M_DEVICE_DOOR_OPEND && result.status) {
+		if (result.addr == plc::M_DEVICE_DOOR_OPEND && result.status) {
 			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
 		} else {}	// TODO: エラー処理
 	}
@@ -1796,7 +1796,7 @@ void MainWindow::on_plc_store_read_completed(plc::Notification notification) {
 	// TODO: 扉を閉めるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
 		auto result = notification.monitor_result.value();
-		if (result.addr = plc::M_DEVICE_DOOR_OPEND) {
+		if (result.addr == plc::M_DEVICE_DOOR_OPEND) {
 			update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = !result.status});
 		} else {}	// TODO: エラー処理
 	}

@@ -24,6 +24,17 @@ namespace odbc{
 // 例外クラス
 //============================================
 
+//============================================
+// ヘルパー関数
+//============================================
+
+/**
+ * @brief std::chrono::system_clock::time_point を SQL_TIMESTAMP_STRUCT に変換します。
+ * @param tp 変換元のtime_pointオブジェクト。
+ * @return SQL_TIMESTAMP_STRUCT 変換後のODBCタイムスタンプ構造体。
+ */
+SQL_TIMESTAMP_STRUCT to_sql_timestamp(const std::chrono::system_clock::time_point& tp);
+
 /**
  * @class OdbcException
  * @brief ODBC API呼び出し中にエラーが発生した際にスローされる例外クラス。
@@ -183,35 +194,50 @@ public:
 	void prepare(const std::string& sql);
 
 	/**
-	 * @brief パラメータをバインドします。
+	 * @brief パラメータをバインドします。(NULL対応版)
+	 * @tparam T バインドするパラメータの型。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param opt_value バインドするパラメータの値。NULL をバインドしたければ nullopt。
+	 */
+	template<typename T>
+	void bind(int paramIndex, const std::optional<T>& opt_val) {
+		if (!opt_val.has_value()) { param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA); }
+		bound_params.insert_or_assign(paramIndex, opt_val);
+	}
+
+	/**
+	 * @brief パラメータをバインドします。(NULL対応版)
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param opt_val バインドするパラメータの値。NULL をバインドしたければ nullopt。
+	 */
+	void bind(int paramIndex, const std::optional<std::string>& opt_val);
+
+	/**
+	 * @brief パラメータをバインドします。(NULL対応版)
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param opt_val バインドするパラメータの値。NULL をバインドしたければ nullopt。
+	 */
+	void bind(int paramIndex, const std::optional<std::vector<char>>& opt_val);
+
+	/**
+	 * @brief パラメータをバインドします (NULL対応版、日時型専用のオーバーロード)。
+	 * @details time_pointをODBC用のTIMESTAMP構造体に変換する特別な処理を行ってからバインドします。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param opt_val バインドするパラメータの値 (time_point)。NULL をバインドしたければ nullopt。
+	 */
+	void bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val);
+
+	/**
+	 * @brief パラメータをバインドします。(NULL非対応版)
+	 * @details value を std::optional で包んで、適切な NULL 対応版のオーバーロードへ処理を委譲します。
 	 * @tparam T バインドするパラメータの型。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
 	 * @param value バインドするパラメータの値。
 	 */
 	template<typename T>
-	void bind(int paramIndex, const T& value) { bound_params[paramIndex] = value; }
-
-	/**
-	 * @brief パラメータをバインドします。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param value バインドするパラメータの値。
-	 */
-	void bind(int paramIndex, const std::string& value);
-
-	/**
-	 * @brief パラメータをバインドします。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param value バインドするパラメータの値。
-	 */
-	void bind(int paramIndex, const std::vector<char>& value);
-
-	/**
-	 * @brief パラメータをバインドします (日時型専用のオーバーロード)。
-	 * @details time_pointをODBC用のTIMESTAMP構造体に変換する特別な処理を行ってからバインドします。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param value バインドするパラメータの値 (time_point)。
-	 */
-	void bind(int paramIndex, const std::chrono::system_clock::time_point& value);
+	void bind(int paramIndex, const T& value) {
+		bind(paramIndex, std::make_optional(value));
+	}
 
 	/**
 	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします。
@@ -221,7 +247,29 @@ public:
 	 * @param values バインドするデータのvector。
 	 */
 	template<typename T>
-	void bindColumn(int paramIndex, const std::vector<T>& values) { bulk_param_buffers[paramIndex] = values; }
+	void bindColumn(int paramIndex, const std::vector<T>& values) {
+		bulk_param_indicators.insert_or_assign(paramIndex, std::vector<SQLLEN>(values.size(), 0));
+		bulk_param_buffers.insert_or_assign(paramIndex, values);
+	}
+
+	template<typename T>
+	void bindColumn(int paramIndex, const std::vector<std::optional<T>>& opt_vals) {
+		// 1. データ配列とインジケータ配列を作成
+		std::vector<T> data_buffer(opt_vals.size());
+		bulk_param_indicators[paramIndex].resize(opt_vals.size());
+		for (size_t i = 0; i < opt_vals.size(); i++) {
+			if (opt_vals[i].has_value()) {
+				data_buffer[i] = opt_vals[i].value();
+				// 固定長データの場合、インジケータは0で良い
+				bulk_param_indicators[paramIndex][i] = 0;
+			} else {
+				// data_buffer[i] はデフォルト値(0など)のまま
+				bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
+			}
+		}
+		// 2. 作成したデータ配列をバッファに保存
+		bulk_param_buffers.insert_or_assign(paramIndex, data_buffer);
+	}
 
 	/**
 	 * @brief 一括挿入用に文字列の配列をバインドします (string専用オーバーロード)。
@@ -314,33 +362,36 @@ struct OdbcSession {
 	/**
 	 * @brief このセッションに新しい名前付きステートメントを追加または取得します。
 	 * @param name このステートメントを識別するためのユニークな名前。
-	 * @param overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。デフォルトはfalse（上書きしない）。
+	 * @param overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。
+	 * @param is_new (オプション・出力) 新規に挿入された場合にtrue、既存だった場合にfalseが設定されます。
 	 * @return 作成された、または既存のステートメントへの参照。
 	 */
-	OdbcStatement& add_statement(const std::string& name, bool overwrite = false) {
+	OdbcStatement& add_statement(const std::string& name, bool overwrite = false, bool* is_new = nullptr) {
 		if (!connection) {
 			throw std::runtime_error("Cannot add statement: OdbcConnection is null.");
 		}
 
-		// 1. 指定された名前のステートメントが既に存在するか探す
-		auto it = statements.find(name);
+		// 1. try_emplaceで挿入を試みる
+		auto result = statements.try_emplace(name, new OdbcStatement(*connection));
 
-		// 2. ステートメントが存在する場合
-		if (it != statements.end()) {
-			// 2a. 上書きが要求されていれば、古いものを破棄して新しいものに置き換える
-			if (overwrite) {
-				it->second = std::make_unique<OdbcStatement>(*connection);
-			}
-			// 2b. (上書きしたかどうかにかかわらず) 存在するステートメントへの参照を返す
-			return *it->second;
+		// result.first は要素へのイテレータ
+		// result.second は挿入に成功したか(true=新規, false=既存)
+		auto& stmt_ptr_ref = result.first->second;
+		bool inserted_now = result.second; // try_emplaceの結果(bool)
+
+		// 2. 挿入に失敗（キーが既に存在）し、かつ 'overwrite' がtrueの場合
+		if (!inserted_now && overwrite) {
+			stmt_ptr_ref = std::make_unique<OdbcStatement>(*connection);
 		}
-		// 3. ステートメントが存在しない場合
-		else {
-			// 3a. 新しく作成し、マップに追加する
-			auto& new_stmt_ptr = statements[name] = std::make_unique<OdbcStatement>(*connection);
-			// 3b. 新しく作成したステートメントへの参照を返す
-			return *new_stmt_ptr;
+
+		// 3. 出力引数が指定されていれば、結果を書き込む
+		if (is_new) {
+			*is_new = inserted_now;
 		}
+
+		// 4. ステートメントへの参照を返す
+		return *stmt_ptr_ref;
 	}
 };
+
 } // namespace odbc

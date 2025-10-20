@@ -98,7 +98,7 @@ struct UniqueToolTable {
 	/// @brief ケース内個数
 	int case_pack_num{};
 	/// @brief 保管領域ID (保管領域識別用連番)
-	int storage_area_id{};
+	std::optional<int> storage_area_id{};
 	/// @brief 保管状態 (補充前、保管中、取出)
 	StorageCondition storage_condition{StorageCondition::NOT_STORED};
 	/// @brief 再研磨回数 (工具の再研磨回数)
@@ -159,11 +159,11 @@ struct RecOperationTable {
 	/// @brief 保管領域ID (工具保管領域識別用連番)
 	int storage_area_id{};
 	/// @brief 個別工具ID (工具識別用連番)
-	int unique_tool_id{};
+	std::optional<int> unique_tool_id{};
 	/// @brief 動画パス (動画の保存先リンク)
-	std::string video_path{};
+	std::optional<std::string> video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
-	int tool_num{};
+	std::optional<int> tool_num{};
 };
 
 /**

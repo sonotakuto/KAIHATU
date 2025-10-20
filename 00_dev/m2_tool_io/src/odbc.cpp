@@ -3,9 +3,35 @@
  * @brief odbc.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
 #include "odbc.hpp"
+#include <iostream>
 #include <cstring> // strncpy
 
 using namespace odbc;
+
+//============================================
+// ヘルパー関数
+//============================================
+
+SQL_TIMESTAMP_STRUCT to_sql_timestamp(const std::chrono::system_clock::time_point& tp) {
+	std::time_t timet = std::chrono::system_clock::to_time_t(tp);
+	std::tm timeinfo;
+
+	if (localtime_r(&timet, &timeinfo) == nullptr) {
+		// 失敗することは稀ですが、エラーハンドリング
+		std::cerr << "localtime_r failed" << std::endl;
+		return SQL_TIMESTAMP_STRUCT{};
+	} else {
+		return SQL_TIMESTAMP_STRUCT{
+			.year		= static_cast<SQLSMALLINT>(timeinfo.tm_year + 1900),
+			.month		= static_cast<SQLUSMALLINT>(timeinfo.tm_mon + 1),
+			.day		= static_cast<SQLUSMALLINT>(timeinfo.tm_mday),
+			.hour		= static_cast<SQLUSMALLINT>(timeinfo.tm_hour),
+			.minute		= static_cast<SQLUSMALLINT>(timeinfo.tm_min),
+			.second		= static_cast<SQLUSMALLINT>(timeinfo.tm_sec),
+			.fraction	= static_cast<SQLUINTEGER>(std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count() % 1000000000)
+		};
+	}
+}
 
 //============================================
 // OdbcException
@@ -252,7 +278,7 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 	SQLNumResultCols(hstmt, &columnCount);
 	std::vector<std::string> columnNames;
 	std::vector<SQLSMALLINT> columnTypes;
-	for (SQLUSMALLINT i = 1; i <= columnCount; ++i) {
+	for (SQLUSMALLINT i = 1; i <= columnCount; i++) {
 		SQLCHAR columnName[256];
 		SQLSMALLINT dataType;
 		SQLDescribeCol(hstmt, i, columnName, sizeof(columnName), NULL, &dataType, NULL, NULL, NULL);
@@ -263,8 +289,8 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 	// 2. 全ての行をループし、列の型に応じて適切なgetData<T>を呼び出す
 	while (this->fetch()) {
 		std::map<std::string, std::any> singleRow;
-		for (SQLUSMALLINT i = 1; i <= columnCount; ++i) {
-			std::any value;
+		for (SQLUSMALLINT i = 1; i <= columnCount; i++) {
+			std::any value;	// 空のstd::anyとしてデフォルト構築
 			switch (columnTypes[i - 1]) {
 			case SQL_INTEGER: case SQL_SMALLINT: case SQL_TINYINT: {
 				auto data = this->getData<int>(i);
@@ -297,9 +323,9 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 				break;
 			}
 			}
-			singleRow[columnNames[i - 1]] = value;
+			singleRow.try_emplace(columnNames[i - 1], std::move(value));
 		}
-		allRows.push_back(singleRow);
+		allRows.push_back(std::move(singleRow));
 	}
 	// 3. 処理完了後、カーソルを閉じてステートメントをクリーンな状態にする
 	this->closeCursor();
@@ -324,32 +350,26 @@ void OdbcStatement::prepare(const std::string& sql) {
 	paramset_size = 0;
 }
 
-void OdbcStatement::bind(int paramIndex, const std::string& value) {
-	param_indicators[paramIndex] = value.length();	// 長さ情報をここで保存
-	bound_params[paramIndex] = value;
+void OdbcStatement::bind(int paramIndex, const std::optional<std::string>& opt_val) {
+	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? opt_val.value().length() : SQL_NULL_DATA));
+	bound_params.insert_or_assign(paramIndex, opt_val);
 }
 
-void OdbcStatement::bind(int paramIndex, const std::vector<char>& value) {
-	param_indicators[paramIndex] = value.size();	// 長さ情報をここで保存
-	bound_params[paramIndex] = value;
+void OdbcStatement::bind(int paramIndex, const std::optional<std::vector<char>>& opt_val) {
+	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? opt_val.value().size() : SQL_NULL_DATA));
+	bound_params.insert_or_assign(paramIndex, opt_val);
 }
 
-void OdbcStatement::bind(int paramIndex, const std::chrono::system_clock::time_point& value) {
-	// 1. C++のtime_pointをODBC用のTIMESTAMP構造体に変換する
-	std::time_t timet = std::chrono::system_clock::to_time_t(value);
-	std::tm* timeinfo = std::localtime(&timet);
-	SQL_TIMESTAMP_STRUCT ts {
-		.year		= static_cast<SQLSMALLINT>(timeinfo->tm_year + 1900),
-		.month		= static_cast<SQLUSMALLINT>(timeinfo->tm_mon + 1),
-		.day		= static_cast<SQLUSMALLINT>(timeinfo->tm_mday),
-		.hour		= static_cast<SQLUSMALLINT>(timeinfo->tm_hour),
-		.minute		= static_cast<SQLUSMALLINT>(timeinfo->tm_min),
-		.second		= static_cast<SQLUSMALLINT>(timeinfo->tm_sec),
-		.fraction	= static_cast<SQLUINTEGER>(std::chrono::duration_cast<std::chrono::nanoseconds>(value.time_since_epoch()).count() % 1000000000)
-	};
-	// 2. 変換後の構造体の実体とサイズをマップに格納
-	param_indicators[paramIndex] = sizeof(SQL_TIMESTAMP_STRUCT);	// 長さ情報をここで保存
-	bound_params[paramIndex] = ts;
+void OdbcStatement::bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val) {
+	if (opt_val.has_value()) {
+		// 値がある場合のみ、C++のtime_pointをODBC用のTIMESTAMP構造体に変換して、変換後の構造体の実体とサイズをマップに格納
+		param_indicators.insert_or_assign(paramIndex, sizeof(SQL_TIMESTAMP_STRUCT));	// 長さ情報をここで保存
+		bound_params.insert_or_assign(paramIndex, std::make_optional(to_sql_timestamp(opt_val.value())));
+	} else {
+		param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA);	// 長さ情報をここで保存
+		// 空の optional<SQL_TIMESTAMP_STRUCT> を格納 (型情報を保持するため)
+		bound_params.insert_or_assign(paramIndex, std::optional<SQL_TIMESTAMP_STRUCT>());
+	}
 }
 
 void OdbcStatement::setParamsetSize(size_t size) {
@@ -371,16 +391,16 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::string>& v
 	bulk_param_indicators[paramIndex].resize(values.size());
 
 	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < values.size(); ++i) {
+	for (size_t i = 0; i < values.size(); i++) {
 		// strncpyは安全だが、ここではmemcpyの方がパフォーマンスが良い
 		memcpy(flat_buffer.data() + (i * max_len), values[i].c_str(), values[i].length());
 		bulk_param_indicators[paramIndex][i] = values[i].length();
 	}
 
 	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers[paramIndex] = flat_buffer;
-	bulk_param_strides[paramIndex] = max_len;
-	bulk_param_sql_types[paramIndex] = SQL_VARCHAR;
+	bulk_param_buffers.insert_or_assign(paramIndex, flat_buffer);
+	bulk_param_strides.insert_or_assign(paramIndex, max_len);
+	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_VARCHAR);
 }
 
 // BLOB用のbindColumnを修正
@@ -397,7 +417,7 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::vector<cha
 	bulk_param_indicators[paramIndex].resize(values.size());
 
 	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < values.size(); ++i) {
+	for (size_t i = 0; i < values.size(); i++) {
 		if (!values[i].empty()) {
 			memcpy(flat_buffer.data() + (i * max_len), values[i].data(), values[i].size());
 		}
@@ -405,30 +425,19 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::vector<cha
 	}
 
 	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers[paramIndex] = flat_buffer;
-	bulk_param_strides[paramIndex] = max_len;
-	bulk_param_sql_types[paramIndex] = SQL_LONGVARBINARY;
+	bulk_param_buffers.insert_or_assign(paramIndex, flat_buffer);
+	bulk_param_strides.insert_or_assign(paramIndex, max_len);
+	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_LONGVARBINARY);
 }
 
 void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values) {
 	// time_pointのvectorを、TIMESTAMP_STRUCTのvectorに変換する
 	std::vector<SQL_TIMESTAMP_STRUCT> buffer(values.size());
-	for (size_t i = 0; i < values.size(); ++i) {
-		const auto& tp = values[i];
-		std::time_t timet = std::chrono::system_clock::to_time_t(tp);
-		std::tm* timeinfo = std::localtime(&timet);
-		buffer[i] = SQL_TIMESTAMP_STRUCT{
-			.year		= static_cast<SQLSMALLINT>(timeinfo->tm_year + 1900),
-			.month		= static_cast<SQLUSMALLINT>(timeinfo->tm_mon + 1),
-			.day		= static_cast<SQLUSMALLINT>(timeinfo->tm_mday),
-			.hour		= static_cast<SQLUSMALLINT>(timeinfo->tm_hour),
-			.minute		= static_cast<SQLUSMALLINT>(timeinfo->tm_min),
-			.second		= static_cast<SQLUSMALLINT>(timeinfo->tm_sec),
-			.fraction	= static_cast<SQLUINTEGER>(std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count() % 1000000000)
-		};
+	for (size_t i = 0; i < values.size(); i++) {
+		buffer[i] = to_sql_timestamp(values[i]);
 	}
 	// 変換後のバッファを保存
-	bulk_param_buffers[paramIndex] = buffer;
+	bulk_param_buffers.insert_or_assign(paramIndex, buffer);
 }
 
 int OdbcStatement::executePrepared() {
@@ -443,15 +452,15 @@ int OdbcStatement::executePrepared() {
 			} else if (any_val.type() == typeid(std::vector<unsigned int>)) {
 				auto& vec = std::any_cast<std::vector<unsigned int>&>(bulk_param_buffers.at(index));
 				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_ULONG, SQL_INTEGER, 0, 0, (SQLPOINTER)vec.data(), 0, NULL);
-			} else if (any_val.type() == typeid(std::vector<double>)) {
-				auto& vec = std::any_cast<std::vector<double>&>(bulk_param_buffers.at(index));
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE, 0, 0, (SQLPOINTER)vec.data(), 0, NULL);
 			} else if (any_val.type() == typeid(std::vector<long long>)) {
 				auto& vec = std::any_cast<std::vector<long long>&>(bulk_param_buffers.at(index));
 				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_SBIGINT, SQL_BIGINT, 0, 0, (SQLPOINTER)vec.data(), 0, NULL);
 			} else if (any_val.type() == typeid(std::vector<unsigned long long>)) {
 				auto& vec = std::any_cast<std::vector<unsigned long long>&>(bulk_param_buffers.at(index));
 				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_UBIGINT, SQL_BIGINT, 0, 0, (SQLPOINTER)vec.data(), 0, NULL);
+			} else if (any_val.type() == typeid(std::vector<double>)) {
+				auto& vec = std::any_cast<std::vector<double>&>(bulk_param_buffers.at(index));
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE, 0, 0, (SQLPOINTER)vec.data(), 0, NULL);
 			} else if (any_val.type() == typeid(std::vector<char>)) { // string または BLOB
 				auto& vec = std::any_cast<std::vector<char>&>(bulk_param_buffers.at(index));
 				size_t stride = bulk_param_strides.at(index);
@@ -466,30 +475,30 @@ int OdbcStatement::executePrepared() {
 	} else {
 		// 単一行実行モード: 保持しているパラメータを一つずつ取り出し、SQLBindParameterで紐付ける
 		for (auto const& [index, any_val] : bound_params) {
-			if (any_val.type() == typeid(int)) {
-				const int& value = std::any_cast<const int&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, (SQLPOINTER)&value, 0, NULL);
-			} else if (any_val.type() == typeid(unsigned int)) {
-				const unsigned int& value = std::any_cast<const unsigned int&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_ULONG, SQL_INTEGER, 0, 0, (SQLPOINTER)&value, 0, NULL);
-			} else if (any_val.type() == typeid(double)) {
-				const double& value = std::any_cast<const double&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE, 0, 0, (SQLPOINTER)&value, 0, NULL);
-			} else if (any_val.type() == typeid(long long)) {
-				const long long& value = std::any_cast<const long long&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_SBIGINT, SQL_BIGINT, 0, 0, (SQLPOINTER)&value, 0, NULL);
-			} else if (any_val.type() == typeid(unsigned long long)) {
-				const unsigned long long& value = std::any_cast<const unsigned long long&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_UBIGINT, SQL_BIGINT, 0, 0, (SQLPOINTER)&value, 0, NULL);
-			} else if (any_val.type() == typeid(std::string)) {
-				const std::string& value = std::any_cast<const std::string&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, value.length(), 0, (SQLPOINTER)value.c_str(), 0, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<char>)) {
-				const std::vector<char>& value = std::any_cast<const std::vector<char>&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, value.size(), 0, (SQLPOINTER)value.data(), 0, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(SQL_TIMESTAMP_STRUCT)) {
-				const SQL_TIMESTAMP_STRUCT& ts_ref = std::any_cast<const SQL_TIMESTAMP_STRUCT&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, sizeof(SQL_TIMESTAMP_STRUCT), 0, (SQLPOINTER)&ts_ref, 0, &param_indicators.at(index));
+			if (any_val.type() == typeid(std::optional<int>)) {
+				const std::optional<int>& opt_val = std::any_cast<const std::optional<int>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, ((opt_val.has_value()) ? ((SQLPOINTER)&opt_val.value()) : (NULL)), 0, ((opt_val.has_value()) ? (NULL) : (&param_indicators.at(index))));
+			} else if (any_val.type() == typeid(std::optional<unsigned int>)) {
+				const std::optional<unsigned int>& opt_val = std::any_cast<const std::optional<unsigned int>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_ULONG, SQL_INTEGER, 0, 0, ((opt_val.has_value()) ? ((SQLPOINTER)&opt_val.value()) : (NULL)), 0, ((opt_val.has_value()) ? (NULL) : (&param_indicators.at(index))));
+			} else if (any_val.type() == typeid(std::optional<long long>)) {
+				const std::optional<long long>& opt_val = std::any_cast<const std::optional<long long>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_SBIGINT, SQL_BIGINT, 0, 0, ((opt_val.has_value()) ? ((SQLPOINTER)&opt_val.value()) : (NULL)), 0, ((opt_val.has_value()) ? (NULL) : (&param_indicators.at(index))));
+			} else if (any_val.type() == typeid(std::optional<unsigned long long>)) {
+				const std::optional<unsigned long long>& opt_val = std::any_cast<const std::optional<unsigned long long>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_UBIGINT, SQL_BIGINT, 0, 0, ((opt_val.has_value()) ? ((SQLPOINTER)&opt_val.value()) : (NULL)), 0, ((opt_val.has_value()) ? (NULL) : (&param_indicators.at(index))));
+			} else if (any_val.type() == typeid(std::optional<double>)) {
+				const std::optional<double>& opt_val = std::any_cast<const std::optional<double>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE, 0, 0, ((opt_val.has_value()) ? ((SQLPOINTER)&opt_val.value()) : (NULL)), 0, ((opt_val.has_value()) ? (NULL) : (&param_indicators.at(index))));
+			} else if (any_val.type() == typeid(std::optional<std::string>)) {
+				const std::optional<std::string>& opt_val = std::any_cast<const std::optional<std::string>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value()) ? ((SQLPOINTER)opt_val.value().c_str()) : (NULL)), 0, &param_indicators.at(index));
+			} else if (any_val.type() == typeid(std::optional<std::vector<char>>)) {
+				const std::optional<std::vector<char>>& opt_val = std::any_cast<const std::optional<std::vector<char>>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value()) ? ((SQLPOINTER)opt_val.value().data()) : (NULL)), 0, &param_indicators.at(index));
+			} else if (any_val.type() == typeid(std::optional<SQL_TIMESTAMP_STRUCT>)) {
+				const std::optional<SQL_TIMESTAMP_STRUCT>& opt_val = std::any_cast<const std::optional<SQL_TIMESTAMP_STRUCT>&>(any_val);
+				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value()) ? ((SQLPOINTER)&opt_val.value()) : (NULL)), 0, &param_indicators.at(index));
 			}
 		}
 	}

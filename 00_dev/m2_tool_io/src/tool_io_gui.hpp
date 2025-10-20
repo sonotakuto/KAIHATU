@@ -932,9 +932,6 @@ private:
 
 	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
 	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
-
-	/// @brief ログイン中のユーザー情報を保持する構造体。
-	std::optional<MstUserInfo> g_logged_in_user_info = std::nullopt;
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

@@ -9,3 +9,5 @@
 // inline int sample_variable = 100;
 
 // --- グローバル変数 ---
+/// @brief ログイン中のユーザー情報を保持する構造体。
+inline std::optional<MstUserInfo> g_logged_in_user_info = std::nullopt;
