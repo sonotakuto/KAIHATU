@@ -30,10 +30,17 @@ namespace odbc{
 
 /**
  * @brief std::chrono::system_clock::time_point を SQL_TIMESTAMP_STRUCT に変換します。
- * @param tp 変換元のtime_pointオブジェクト。
- * @return SQL_TIMESTAMP_STRUCT 変換後のODBCタイムスタンプ構造体。
+ * @param tp 変換元の time_point オブジェクト。
+ * @return 成功した場合、SQL_TIMESTAMP_STRUCT へ変換後の構造体。失敗したら std::nullopt。
  */
-SQL_TIMESTAMP_STRUCT to_sql_timestamp(const std::chrono::system_clock::time_point& tp);
+std::optional<SQL_TIMESTAMP_STRUCT> to_sql_timestamp(const std::chrono::system_clock::time_point& tp);
+
+/**
+ * @brief SQL_TIMESTAMP_STRUCT を std::chrono::system_clock::time_point に変換します。
+ * @param tp 変換元の SQL_TIMESTAMP_STRUCT オブジェクト。
+ * @return 成功した場合、std::chrono::system_clock::time_point へ変換後の構造体。失敗したら std::nullopt。
+ */
+std::optional<std::chrono::system_clock::time_point> to_time_point(const SQL_TIMESTAMP_STRUCT& ts);
 
 /**
  * @class OdbcException
@@ -168,7 +175,8 @@ public:
 	 * @param col 取得する列番号 (1から始まる)。
 	 * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
 	 */
-	template<typename T> std::optional<T> getData(int col);
+	template<typename T>
+	std::optional<T> getData(int col);
 
 	/**
 	 * @brief 現在開いているカーソルを閉じ、結果セットを破棄します。
@@ -221,11 +229,13 @@ public:
 
 	/**
 	 * @brief パラメータをバインドします (NULL対応版、日時型専用のオーバーロード)。
-	 * @details time_pointをODBC用のTIMESTAMP構造体に変換する特別な処理を行ってからバインドします。
+	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
+	 * 変換処理に失敗した場合はバインドしません。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
 	 * @param opt_val バインドするパラメータの値 (time_point)。NULL をバインドしたければ nullopt。
+	 * @return TIMESTAMP 構造体への変換に成功した場合はtrue、失敗した場合はfalse。
 	 */
-	void bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val);
+	bool bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val);
 
 	/**
 	 * @brief パラメータをバインドします。(NULL非対応版)
@@ -237,6 +247,18 @@ public:
 	template<typename T>
 	void bind(int paramIndex, const T& value) {
 		bind(paramIndex, std::make_optional(value));
+	}
+
+	/**
+	 * @brief パラメータをバインドします (NULL非対応版、日時型専用のオーバーロード)。
+	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
+	 * 変換処理に失敗した場合はバインドしません。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param value バインドするパラメータの値。
+	 * @return TIMESTAMP 構造体への変換に成功した場合はtrue、失敗した場合はfalse。
+	 */
+	bool bind(int paramIndex, const std::chrono::system_clock::time_point& value) {
+		return bind(paramIndex, std::make_optional(value));
 	}
 
 	/**
@@ -288,12 +310,14 @@ public:
 	void bindColumn(int paramIndex, const std::vector<std::vector<char>>& values);
 
 	/**
-	 * @brief 一括挿入用に日時の配列をバインドします (time_point専用オーバーロード)。
-	 * @details time_pointをTIMESTAMP構造体に変換する特別な処理を行います。
+	 * @brief 一括挿入用に日時の配列をバインドします ( time_point 専用オーバーロード)。
+	 * @details time_point を TIMESTAMP 構造体に変換する処理を行ってからバインドします。
+	 * 変換処理に失敗した場合はバインドしません。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param values バインドするデータのvector。
+	 * @return TIMESTAMP 構造体への変換に全て成功した場合はtrue、一つでも失敗した場合はfalse。
 	 */
-	void bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values);
+	bool bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values);
 
 	/**
 	 * @brief 一括挿入(バルクインサート)で一度に処理する行数を設定します。

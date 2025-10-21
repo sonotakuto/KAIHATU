@@ -12,14 +12,14 @@ using namespace odbc;
 // ヘルパー関数
 //============================================
 
-SQL_TIMESTAMP_STRUCT to_sql_timestamp(const std::chrono::system_clock::time_point& tp) {
+std::optional<SQL_TIMESTAMP_STRUCT> odbc::to_sql_timestamp(const std::chrono::system_clock::time_point& tp) {
 	std::time_t timet = std::chrono::system_clock::to_time_t(tp);
 	std::tm timeinfo;
 
 	if (localtime_r(&timet, &timeinfo) == nullptr) {
 		// 失敗することは稀ですが、エラーハンドリング
 		std::cerr << "localtime_r failed" << std::endl;
-		return SQL_TIMESTAMP_STRUCT{};
+		return std::nullopt;
 	} else {
 		return SQL_TIMESTAMP_STRUCT{
 			.year		= static_cast<SQLSMALLINT>(timeinfo.tm_year + 1900),
@@ -31,6 +31,25 @@ SQL_TIMESTAMP_STRUCT to_sql_timestamp(const std::chrono::system_clock::time_poin
 			.fraction	= static_cast<SQLUINTEGER>(std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count() % 1000000000)
 		};
 	}
+}
+
+std::optional<std::chrono::system_clock::time_point> odbc::to_time_point(const SQL_TIMESTAMP_STRUCT& ts) {
+	// ODBC構造体をC++のtime_pointに変換
+	std::tm timeinfo = {
+		.tm_sec = ts.second,
+		.tm_min = ts.minute,
+		.tm_hour = ts.hour,
+		.tm_mday = ts.day,
+		.tm_mon = ts.month - 1,
+		.tm_year = ts.year - 1900,
+		.tm_isdst = -1,
+	};
+
+	std::time_t timet = std::mktime(&timeinfo);
+	if (timet == -1) {
+		return std::nullopt;
+	}
+	return (std::chrono::system_clock::from_time_t(timet) + std::chrono::nanoseconds(ts.fraction));	// ナノ秒の精度も加える
 }
 
 //============================================
@@ -237,23 +256,7 @@ template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::g
 	if (indicator == SQL_NULL_DATA) {
 		return std::nullopt;
 	}
-	// ODBC構造体をC++のtime_pointに変換
-	std::tm timeinfo = {};
-	timeinfo.tm_year = ts.year - 1900;
-	timeinfo.tm_mon = ts.month - 1;
-	timeinfo.tm_mday = ts.day;
-	timeinfo.tm_hour = ts.hour;
-	timeinfo.tm_min = ts.minute;
-	timeinfo.tm_sec = ts.second;
-	timeinfo.tm_isdst = -1;
-
-	std::time_t timet = std::mktime(&timeinfo);
-	if (timet == -1) {
-		return std::nullopt;
-	}
-	auto timepoint = std::chrono::system_clock::from_time_t(timet);
-	timepoint += std::chrono::nanoseconds(ts.fraction); // ナノ秒の精度も加える
-	return timepoint;
+	return to_time_point(ts);
 }
 
 
@@ -360,16 +363,21 @@ void OdbcStatement::bind(int paramIndex, const std::optional<std::vector<char>>&
 	bound_params.insert_or_assign(paramIndex, opt_val);
 }
 
-void OdbcStatement::bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val) {
+bool OdbcStatement::bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val) {
 	if (opt_val.has_value()) {
 		// 値がある場合のみ、C++のtime_pointをODBC用のTIMESTAMP構造体に変換して、変換後の構造体の実体とサイズをマップに格納
-		param_indicators.insert_or_assign(paramIndex, sizeof(SQL_TIMESTAMP_STRUCT));	// 長さ情報をここで保存
-		bound_params.insert_or_assign(paramIndex, std::make_optional(to_sql_timestamp(opt_val.value())));
+		if(std::optional<SQL_TIMESTAMP_STRUCT> ts_opt = to_sql_timestamp(opt_val.value())) {
+			param_indicators.insert_or_assign(paramIndex, sizeof(SQL_TIMESTAMP_STRUCT));	// 長さ情報をここで保存
+			bound_params.insert_or_assign(paramIndex, std::move(ts_opt));
+		} else {
+			return false;
+		}
 	} else {
 		param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA);	// 長さ情報をここで保存
 		// 空の optional<SQL_TIMESTAMP_STRUCT> を格納 (型情報を保持するため)
 		bound_params.insert_or_assign(paramIndex, std::optional<SQL_TIMESTAMP_STRUCT>());
 	}
+	return true;
 }
 
 void OdbcStatement::setParamsetSize(size_t size) {
@@ -398,8 +406,8 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::string>& v
 	}
 
 	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers.insert_or_assign(paramIndex, flat_buffer);
-	bulk_param_strides.insert_or_assign(paramIndex, max_len);
+	bulk_param_buffers.insert_or_assign(paramIndex, std::move(flat_buffer));
+	bulk_param_strides.insert_or_assign(paramIndex, std::move(max_len));
 	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_VARCHAR);
 }
 
@@ -425,19 +433,23 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::vector<cha
 	}
 
 	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers.insert_or_assign(paramIndex, flat_buffer);
-	bulk_param_strides.insert_or_assign(paramIndex, max_len);
+	bulk_param_buffers.insert_or_assign(paramIndex, std::move(flat_buffer));
+	bulk_param_strides.insert_or_assign(paramIndex, std::move(max_len));
 	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_LONGVARBINARY);
 }
 
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values) {
+bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values) {
 	// time_pointのvectorを、TIMESTAMP_STRUCTのvectorに変換する
 	std::vector<SQL_TIMESTAMP_STRUCT> buffer(values.size());
 	for (size_t i = 0; i < values.size(); i++) {
-		buffer[i] = to_sql_timestamp(values[i]);
+		if (auto ts_opt = to_sql_timestamp(values[i])) {
+			buffer[i] = ts_opt.value();
+		} else {
+			return false;
+		}
 	}
 	// 変換後のバッファを保存
-	bulk_param_buffers.insert_or_assign(paramIndex, buffer);
+	bulk_param_buffers.insert_or_assign(paramIndex, std::move(buffer));
 }
 
 int OdbcStatement::executePrepared() {
