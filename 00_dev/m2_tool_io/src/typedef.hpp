@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <SimpleGtk>
 #include "./parameters.hpp"
 
@@ -15,7 +16,7 @@
  */
 struct MstUserTable {
 	/// @brief ユーザーID (連番、ユニークID)
-	int user_id{};
+	std::int32_t user_id{};
 	/// @brief ユーザー名
 	std::string user_name{};
 	/// @brief 取り出し権限 (常に true)
@@ -32,7 +33,7 @@ struct MstUserTable {
  */
 struct MstToolTable {
 	/// @brief 基本工具ID (工具種別ごとの連番)
-	int basic_tool_id{};
+	std::int32_t basic_tool_id{};
 	/// @brief 型番 (工具の型番)
 	std::string tool_name{};
 	/// @brief メーカー (工具の製造メーカー)
@@ -42,7 +43,7 @@ struct MstToolTable {
 	/// @brief 材質 (工具の材質)
 	std::string tool_material{};
 	/// @brief 在庫数 (現在工具棚に保管されている個数)
-	int stc{};
+	std::int32_t stc{};
 };
 
 /**
@@ -53,7 +54,7 @@ struct MstAddressTable {
 	/// @brief 画面表示住所
 	std::string display_address{};
 	/// @brief PLC制御住所
-	int control_address{};
+	std::string control_address{};
 };
 
 /**
@@ -62,11 +63,11 @@ struct MstAddressTable {
  */
 struct StrageAreaTable {
 	/// @brief 保管領域ID (工具保管領域識別用連番)
-	int storage_area_id{};
+	std::int32_t storage_area_id{};
 	/// @brief 基本工具ID (工具種別ごとの連番)
-	int basic_tool_id{};
+	std::int32_t basic_tool_id{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	int toolcase_stc_num{};
+	std::int16_t toolcase_stc_num{};
 	/// @brief 画面表示住所
 	std::string display_address{};
 };
@@ -90,47 +91,59 @@ enum class StorageCondition {
  */
 struct UniqueToolTable {
 	/// @brief 個別工具ID (個別工具識別用)
-	int unique_tool_id{};
+	std::int64_t unique_tool_id{};
 	/// @brief 基本工具ID (工具種別識別用連番)
-	int basic_tool_id{};
+	std::int32_t basic_tool_id{};
 	/// @brief 個別番号 (個別の連番)
-	int unique_num{};
+	std::int64_t unique_num{};
 	/// @brief ケース内個数
-	int case_pack_num{};
+	std::int16_t case_pack_num{};
 	/// @brief 保管領域ID (保管領域識別用連番)
-	std::optional<int> storage_area_id{};
+	std::optional<std::int32_t> storage_area_id{};
 	/// @brief 保管状態 (補充前、保管中、取出)
 	StorageCondition storage_condition{StorageCondition::NOT_STORED};
 	/// @brief 再研磨回数 (工具の再研磨回数)
-	std::optional<int> regrind_count{};
+	std::optional<std::int16_t> regrind_count{};
 };
 
 /**
- * @struct ToolAssignmentTable
- * @brief ツーリングリストの工具割当情報を保持するテーブルのデータ構造
+ * @struct MstLineTable
+ * @brief プログラム割当一覧表のライン情報を保持するテーブルのデータ構造
  */
-struct ToolAssignmentTable {
-	/// @brief 工具割当ID (工具割当識別用ID)
-	int tool_assignment_id{};
-	/// @brief プログラム割り当てID (ライン、プログラムごとの連番)
-	int program_assignment_id{};
-	/// @brief ツール番号
-	std::string tool_number{};
-	/// @brief 基本工具ID (工具種別識別用連番)
-	int basic_tool_id{};
-};
-
-/**
- * @struct ProgramAssignmentListTable
- * @brief プログラム割当一覧表の情報を保持するテーブルのデータ構造
- */
-struct ProgramAssignmentListTable {
-	/// @brief プログラム割り当てID (ライン、プログラムごとの連番)
-	int program_assignment_id{};
+struct MstLineTable {
+	/// @brief ラインID
+	std::int32_t line_id{};
 	/// @brief ライン名
 	std::string line_name{};
+};
+
+
+/**
+ * @struct MstProgramTable
+ * @brief プログラム割当一覧表のプログラム情報を保持するテーブルのデータ構造
+ */
+struct MstProgramTable {
+	/// @brief プログラム割り当てID (ライン、プログラムごとの連番)
+	std::int32_t program_id{};
+	/// @brief ラインID
+	std::int32_t line_id{};
 	/// @brief プログラム番号
-	std::string program_num{};
+	std::string program_name{};
+};
+
+/**
+ * @struct MstToolAssignmentTable
+ * @brief ツーリングリストの工具割当情報を保持するテーブルのデータ構造
+ */
+struct MstToolAssignmentTable {
+	/// @brief 工具割当ID (工具割当識別用ID)
+	std::int32_t tool_assignment_id{};
+	/// @brief プログラム割り当てID (ライン、プログラムごとの連番)
+	std::int32_t program_id{};
+	/// @brief ツール番号
+	std::string tool_num{};
+	/// @brief 基本工具ID (工具種別識別用連番)
+	std::int32_t basic_tool_id{};
 };
 
 /**
@@ -144,26 +157,26 @@ enum class OperationClass {
 };
 
 /**
- * @struct MstAddressTable
+ * @struct RecOperationTable
  * @brief 操作履歴を保持するテーブルのデータ構造
  */
 struct RecOperationTable {
 	/// @brief 履歴ID (記録用連番)
-	int operation_id{};
+	std::int32_t operation_id{};
 	/// @brief 履歴分類 (履歴分類名称)
 	OperationClass operation_class{OperationClass::OUT};
 	/// @brief ユーザーID (ユーザー識別用連番)
-	int user_id{};
+	std::int32_t user_id{};
 	/// @brief 処理時刻 (処理日時)
 	std::chrono::system_clock::time_point proc_time{};
 	/// @brief 保管領域ID (工具保管領域識別用連番)
-	int storage_area_id{};
+	std::int32_t storage_area_id{};
 	/// @brief 個別工具ID (工具識別用連番)
-	std::optional<int> unique_tool_id{};
+	std::optional<std::int32_t> unique_tool_id{};
 	/// @brief 動画パス (動画の保存先リンク)
 	std::optional<std::string> video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
-	std::optional<int> tool_num{};
+	std::optional<std::int16_t> tool_num{};
 };
 
 /**

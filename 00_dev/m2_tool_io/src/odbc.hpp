@@ -5,17 +5,17 @@
  */
 #pragma once
 
-#include <stdexcept>
-#include <string>
-#include <vector>
-#include <optional>
-#include <map>
-#include <list>
 #include <any>
 #include <chrono>
+#include <cstdint>
 #include <ctime>
-#include <memory>	// std::unique_ptr, std::make_unique
-#include <utility>	// std::move
+#include <stdexcept>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 #include <sqlext.h>	// ODBCのコアヘッダー
 
 namespace odbc{
@@ -202,10 +202,10 @@ public:
 	void prepare(const std::string& sql);
 
 	/**
-	 * @brief パラメータをバインドします。(NULL対応版)
+	 * @brief パラメータをバインドします (NULL対応版)。
 	 * @tparam T バインドするパラメータの型。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_value バインドするパラメータの値。NULL をバインドしたければ nullopt。
+	 * @param opt_value バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	template<typename T>
 	void bind(int paramIndex, const std::optional<T>& opt_val) {
@@ -214,16 +214,16 @@ public:
 	}
 
 	/**
-	 * @brief パラメータをバインドします。(NULL対応版)
+	 * @brief パラメータをバインドします (NULL対応版)。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値。NULL をバインドしたければ nullopt。
+	 * @param opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	void bind(int paramIndex, const std::optional<std::string>& opt_val);
 
 	/**
 	 * @brief パラメータをバインドします。(NULL対応版)
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値。NULL をバインドしたければ nullopt。
+	 * @param opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	void bind(int paramIndex, const std::optional<std::vector<char>>& opt_val);
 
@@ -232,14 +232,14 @@ public:
 	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値 (time_point)。NULL をバインドしたければ nullopt。
+	 * @param opt_val バインドするパラメータの値 (time_point)。NULLをバインドしたければ nullopt。
 	 * @return TIMESTAMP 構造体への変換に成功した場合はtrue、失敗した場合はfalse。
 	 */
 	bool bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val);
 
 	/**
-	 * @brief パラメータをバインドします。(NULL非対応版)
-	 * @details value を std::optional で包んで、適切な NULL 対応版のオーバーロードへ処理を委譲します。
+	 * @brief パラメータをバインドします (NULL非対応版)。
+	 * @details value を std::optional で包んで、適切なNULL対応版のオーバーロードへ処理を委譲します。
 	 * @tparam T バインドするパラメータの型。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
 	 * @param value バインドするパラメータの値。
@@ -262,7 +262,7 @@ public:
 	}
 
 	/**
-	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします。
+	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします (NULL非対応版)。
 	 * @details int, double, long long などの固定長で連続メモリに配置される型を扱うための汎用テンプレートです。
 	 * @tparam T バインドするデータの型 (例: int, std::string)
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
@@ -274,6 +274,13 @@ public:
 		bulk_param_buffers.insert_or_assign(paramIndex, values);
 	}
 
+	/**
+	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします (NULL対応版)。
+	 * @details int, double, long long などの固定長で連続メモリに配置される型を扱うための汎用テンプレートです。
+	 * @tparam T バインドするデータの型 (例: int, std::string)
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 */
 	template<typename T>
 	void bindColumn(int paramIndex, const std::vector<std::optional<T>>& opt_vals) {
 		// 1. データ配列とインジケータ配列を作成
@@ -294,7 +301,7 @@ public:
 	}
 
 	/**
-	 * @brief 一括挿入用に文字列の配列をバインドします (string専用オーバーロード)。
+	 * @brief 一括挿入用に文字列の配列をバインドします (NULL非対応版、string 専用オーバーロード)。
 	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param values バインドするデータのvector。
@@ -302,7 +309,15 @@ public:
 	void bindColumn(int paramIndex, const std::vector<std::string>& values);
 
 	/**
-	 * @brief 一括挿入用にBLOBの配列をバインドします (vector<char>専用オーバーロード)。
+	 * @brief 一括挿入用に文字列の配列をバインドします (NULL対応版、string 専用オーバーロード)。
+	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 */
+	void bindColumn(int paramIndex, const std::vector<std::optional<std::string>>& opt_vals);
+
+	/**
+	 * @brief 一括挿入用にBLOBの配列をバインドします (NULL非対応版、vector<char> 専用オーバーロード)。
 	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param values バインドするデータのvector。
@@ -310,7 +325,15 @@ public:
 	void bindColumn(int paramIndex, const std::vector<std::vector<char>>& values);
 
 	/**
-	 * @brief 一括挿入用に日時の配列をバインドします ( time_point 専用オーバーロード)。
+	 * @brief 一括挿入用にBLOBの配列をバインドします (NULL対応版、vector<char> 専用オーバーロード)。
+	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 */
+	void bindColumn(int paramIndex, const std::vector<std::optional<std::vector<char>>>& opt_vals);
+
+	/**
+	 * @brief 一括挿入用に日時の配列をバインドします (NULL非対応版、time_point 専用オーバーロード)。
 	 * @details time_point を TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
@@ -318,6 +341,16 @@ public:
 	 * @return TIMESTAMP 構造体への変換に全て成功した場合はtrue、一つでも失敗した場合はfalse。
 	 */
 	bool bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values);
+
+	/**
+	 * @brief 一括挿入用に日時の配列をバインドします (NULL対応版、time_point 専用オーバーロード)。
+	 * @details time_point を TIMESTAMP 構造体に変換する処理を行ってからバインドします。
+	 * 変換処理に失敗した場合はバインドしません。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @return TIMESTAMP 構造体への変換に全て成功した場合はtrue、一つでも失敗した場合はfalse。
+	 */
+	bool bindColumn(int paramIndex, const std::vector<std::optional<std::chrono::system_clock::time_point>>& values);
 
 	/**
 	 * @brief 一括挿入(バルクインサート)で一度に処理する行数を設定します。
@@ -357,6 +390,22 @@ private:
 	std::map<int, SQLSMALLINT> bulk_param_sql_types;
 	/// @brief 一括実行で処理する行数。
 	size_t paramset_size = 0;
+
+	/**
+	 * @brief (Helper) 単一行用の固定長パラメータをバインドします。
+	 * @details string, vector<char> 以外の型 (int, double, long, etc.) のバインド処理を共通化します。
+	 * const std::any& を受け取り、中身の変更は行いません。
+	 */
+	template<typename T>
+	void bindFixedSizeParam(int index, const std::any& any_val, SQLLEN* indicator_ptr);
+
+	/**
+	 * @brief (Helper) 一括実行用の固定長パラメータをバインドします。
+	 * @details vector<char> 以外 (vector<int>, vector<double>, etc.) のバインド処理を共通化します。
+	 * std::any& を受け取りますが、中身のデータ変更は行いません。
+	 */
+	template<typename T>
+	void bindFixedSizeColumn(int index, std::any& any_val, std::vector<SQLLEN>& indicators);
 };
 
 //============================================
