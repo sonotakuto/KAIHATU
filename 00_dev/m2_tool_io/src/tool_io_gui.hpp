@@ -298,6 +298,7 @@ public:
 	Glade glade;
 
 	// --- ヘッダー部 ---
+
 	/// @brief 日時を表示するラベル (ID: dateTimeLabel)
 	sgex::Label dateTimeLabel;
 	/// @brief 操作モードを「取り出し」に切り替えるトグルボタン (ID: retrieveToggleButton)
@@ -314,6 +315,7 @@ public:
 	sgex::Entry userIdEntry;
 
 	// --- 中央操作部 ---
+
 	/// @brief ユーザーへの指示などを表示するメッセージラベル (ID: messageLabel)
 	sgex::Label messageLabel;
 	/// @brief "取り出し", "補充", "棚卸し"の各操作パネルを切り替えるスタック (ID: operationStack)
@@ -338,6 +340,7 @@ public:
 	sgex::Entry containerEntry;
 
 	// --- テーブル表示部 ---
+
 	/// @brief 複数のテーブル表示形式を切り替えるスタック (ID: table_stack)
 	sgex::Stack table_stack;
 	/// @brief 3列表示テーブルのボックス (1) (ID: table3column1stBox)
@@ -386,6 +389,7 @@ public:
 	sgex::PaginatedListStoreModel<MainTableData> liststore2columnAll;
 
 	// --- フッター部 ---
+
 	/// @brief テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox)
 	sgex::Box paginationBox;
 	/// @brief 前のページへ移動するボタン (ID: prevButton)
@@ -406,6 +410,7 @@ public:
 	sgex::Button trueButton;
 
 	// --- ダイアログの親ウィジェット ---
+
 	/// @brief インサート枚数確認ダイアログ (ID: confirmInsertCountDialog)
 	sgex::Dialog confirmInsertCountDialog;
 	/// @brief 再研磨確認ダイアログ (ID: confirmRegroundDialog)
@@ -420,6 +425,7 @@ public:
 	sgex::Dialog reconcileFilterDialog;
 
 	// --- インサート枚数確認ダイアログ内のウィジェット ---
+
 	/// @brief ダイアログのメインメッセージラベル (ID: confirmInsertCountLabel)
 	sgex::Label confirmInsertCountLabel;
 	/// @brief 枚数を増やすボタン (ID: incrementButton)
@@ -432,6 +438,7 @@ public:
 	sgex::Button insertCountOkButton;
 
 	// --- 再研磨確認ダイアログ内のウィジェット ---
+
 	/// @brief ダイアログのメインメッセージラベル (ID: confirmRegroundLabel)
 	sgex::Label confirmRegroundLabel;
 	/// @brief 「いいえ」トグルボタン (ID: notRegroundButton)
@@ -442,12 +449,14 @@ public:
 	sgex::Button confirmRegroundOkButton;
 
 	// --- ログアウト確認ダイアログ内のウィジェット ---
+
 	/// @brief 「いいえ」ボタン (ID: logoutNoButton)
 	sgex::Button logoutNoButton;
 	/// @brief 「はい」ボタン (ID: logoutYesButton)
 	sgex::Button logoutYesButton;
 
 	// --- パスワード入力ダイアログ内のウィジェット ---
+
 	/// @brief ダイアログのメインメッセージラベル (ID: passwordEntryLabel)
 	sgex::Label passwordEntryLabel;
 	/// @brief 「キャンセル」ボタン (ID: passwordCancelButton)
@@ -458,10 +467,12 @@ public:
 	sgex::Entry passwordEntry;
 
 	// --- 警告ダイアログ内のウィジェット ---
+
 	/// @brief 警告メッセージを表示するラベル (ID: warningLabel)
 	sgex::Label warningLabel;
 
 	// --- 棚卸し絞り込みダイアログ内のウィジェット ---
+
 	/// @brief 「分類」ラベル (ID: reconcileToolTypeFilterLabel)
 	sgex::Label reconcileToolTypeFilterLabel;
 	/// @brief 「最終棚卸し日時」ラベル (ID: reconcilePeriodFilterLabel)
@@ -726,10 +737,21 @@ private:
 	void on_enter_waiting_for_user_login();
 
 	// --- 取り出しモードの状態遷移関数 ---
+	/**
+	 * @brief RETRIEVE_WAITING_FOR_PROGRAM_QR 状態に入ったときの処理。
+	 * @details プログラム割当一覧表の読み取り準備を行う。
+	 */
+	void on_enter_retrieve_waiting_for_program_qr();
+
+	/**
+	 * @brief RETRIEVE_WAITING_FOR_PROGRAM_QR 状態の qrCodeEntry.on_activate の処理。
+	 * @details プログラム割当一覧表の情報をDBから取得して表示する。
+	 */
+	void on_qrCodeEntry_retrieve_waiting_for_program_qr();
+
 	// TODO: 取り出しモードの状態遷移関数をここに追加
 
 	// --- 補充モードの状態遷移関数 ---
-
 	/**
 	 * @brief STORE_WAITING_FOR_TOOL_QR 状態に入ったときの処理。
 	 * @details 補充する工具の読み取り準備を行う。
@@ -814,7 +836,6 @@ private:
 	void on_plc_store_read_completed(plc::Notification notification);
 
 	// --- 棚卸しモードの状態遷移関数 ---
-
 	/**
 	 * @brief RECONCILE_WAITING_FOR_CONTAINER_SELECTION 状態に入ったときの処理。
 	 * @details DBから取得したコンテナリストをテーブルに表示する。

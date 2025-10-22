@@ -14,15 +14,25 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include <sqlext.h>	// ODBCのコアヘッダー
 
 namespace odbc{
 
-//============================================
-// 例外クラス
-//============================================
+// 符号が曖昧な整数型(char, wchar_t)を除外する
+template<typename T>
+inline constexpr bool is_unambiguous_integral_v =
+	std::is_integral_v<T> &&
+	!std::is_same_v<std::remove_cv_t<T>, char> &&
+	!std::is_same_v<std::remove_cv_t<T>, wchar_t>;
+
+// 浮動小数点型 または 符号が明確な整数型
+template<typename T>
+inline constexpr bool is_explicit_arithmetic_v =
+	std::is_floating_point_v<T> || is_unambiguous_integral_v<T>;
+
 
 //============================================
 // ヘルパー関数
@@ -41,6 +51,10 @@ std::optional<SQL_TIMESTAMP_STRUCT> to_sql_timestamp(const std::chrono::system_c
  * @return 成功した場合、std::chrono::system_clock::time_point へ変換後の構造体。失敗したら std::nullopt。
  */
 std::optional<std::chrono::system_clock::time_point> to_time_point(const SQL_TIMESTAMP_STRUCT& ts);
+
+//============================================
+// 例外クラス
+//============================================
 
 /**
  * @class OdbcException
@@ -130,6 +144,97 @@ private:
 // ステートメントクラス
 //============================================
 
+// 型 T から C型 と SQL型 を決定するための型特性
+template<typename T>
+struct OdbcTypeTraits; // まず基本テンプレートを宣言
+
+// --- 以下、サポートする型ごとに「特殊化」を定義 ---
+
+template<>
+struct OdbcTypeTraits<signed char> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_STINYINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_TINYINT;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned char> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_UTINYINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_TINYINT;
+};
+
+template<>
+struct OdbcTypeTraits<short> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_SSHORT;
+	static constexpr SQLSMALLINT sql_type	= SQL_SMALLINT;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned short> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_USHORT;
+	static constexpr SQLSMALLINT sql_type	= SQL_SMALLINT;
+};
+
+template<>
+struct OdbcTypeTraits<int> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_SLONG;
+	static constexpr SQLSMALLINT sql_type	= SQL_INTEGER;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned int> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_ULONG;
+	static constexpr SQLSMALLINT sql_type	= SQL_INTEGER;
+};
+
+template<>
+struct OdbcTypeTraits<long> {
+	static constexpr SQLSMALLINT c_type		= ((sizeof(long) == 8) ? (SQL_C_SBIGINT)	: (SQL_C_SLONG));
+	static constexpr SQLSMALLINT sql_type	= ((sizeof(long) == 8) ? (SQL_BIGINT)		: (SQL_INTEGER));
+};
+
+template<>
+struct OdbcTypeTraits<unsigned long> {
+	static constexpr SQLSMALLINT c_type		= ((sizeof(unsigned long) == 8) ? (SQL_C_UBIGINT)	: (SQL_C_ULONG));
+	static constexpr SQLSMALLINT sql_type	= ((sizeof(unsigned long) == 8) ? (SQL_BIGINT)		: (SQL_INTEGER));
+};
+
+template<>
+struct OdbcTypeTraits<long long> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_SBIGINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_BIGINT;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned long long> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_UBIGINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_BIGINT;
+};
+
+template<>
+struct OdbcTypeTraits<float> {
+	static constexpr SQLSMALLINT c_type = SQL_C_FLOAT;
+	static constexpr SQLSMALLINT sql_type = SQL_REAL; // (bind用)
+};
+
+template<>
+struct OdbcTypeTraits<double> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_DOUBLE;
+	static constexpr SQLSMALLINT sql_type	= SQL_DOUBLE;
+};
+
+template<>
+struct OdbcTypeTraits<SQL_TIMESTAMP_STRUCT> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_TYPE_TIMESTAMP;
+	static constexpr SQLSMALLINT sql_type	= SQL_TIMESTAMP;
+};
+
+// これ以外の型が来た場合 (例: std::string) にコンパイルエラーにするための仕組み
+template<typename T>
+struct OdbcTypeTraits {
+	// SFINAE や static_assert を使う
+	static_assert(!std::is_same_v<T, T>, "OdbcTypeTraits for this type is not defined.");
+};
+
 /**
  * @class OdbcStatement
  * @brief SQLステートメントの実行と結果の取得を管理する低レベルクラス。
@@ -169,14 +274,30 @@ public:
 	bool fetch();
 
 	/**
-	 * @brief 現在の行から指定列のデータを取得します。(基本テンプレート宣言)
-	 * @details 各データ型に対応する特殊化は odbc.cpp に実装されています。
-	 * @tparam T 取得したいC++のデータ型 (int, std::string, etc.)。
+	 * @brief 現在の行から指定列のデータを取得します (汎用テンプレート定義)。
+	 * @details 数値型やTIMESTAMPのような固定長データ型のための実装です。
+	 * std::string や std::vector<char> のような可変長型は、テンプレート特殊化によって処理されます。
+	 * @tparam T 取得したいC++のデータ型 (int, double, etc.)
 	 * @param col 取得する列番号 (1から始まる)。
 	 * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
 	 */
 	template<typename T>
-	std::optional<T> getData(int col);
+	std::optional<T> getData(int col) {
+		T value;
+		SQLLEN indicator;
+		// OdbcTypeTraits から型情報を取得
+		constexpr SQLSMALLINT c_type = OdbcTypeTraits<T>::c_type;
+		SQLRETURN ret = SQLGetData(hstmt, col, c_type, &value, sizeof(value), &indicator);
+
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			// (エラー処理: 例外をスローする)
+			OdbcException("Failed to get data", hstmt, SQL_HANDLE_STMT);
+		}
+		if (indicator == SQL_NULL_DATA) {
+			return std::nullopt;
+		}
+		return value;
+	}
 
 	/**
 	 * @brief 現在開いているカーソルを閉じ、結果セットを破棄します。
@@ -207,9 +328,18 @@ public:
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
 	 * @param opt_value バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
-	template<typename T>
+	template<typename T,
+			 // SFINAE: Tが数値型(int, double等)またはTIMESTAMP構造体の場合のみ、このテンプレートを有効にする
+			std::enable_if_t<
+				is_explicit_arithmetic_v<T> ||
+				std::is_same_v<std::remove_cv_t<T>, SQL_TIMESTAMP_STRUCT>,
+			int> = 0
+	>
 	void bind(int paramIndex, const std::optional<T>& opt_val) {
-		if (!opt_val.has_value()) { param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA); }
+		param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value())
+			? (sizeof(T))
+			: (SQL_NULL_DATA)
+		));
 		bound_params.insert_or_assign(paramIndex, opt_val);
 	}
 
@@ -277,9 +407,15 @@ public:
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param values バインドするデータのvector。
 	 */
-	template<typename T>
+	template<typename T,
+			 // SFINAE: Tが数値型(int, double等)またはTIMESTAMP構造体の場合のみ、このテンプレートを有効にする
+			std::enable_if_t<
+				is_explicit_arithmetic_v<T> ||
+				std::is_same_v<std::remove_cv_t<T>, SQL_TIMESTAMP_STRUCT>,
+			int> = 0
+	>
 	void bindColumn(int paramIndex, const std::vector<T>& values) {
-		bulk_param_indicators.insert_or_assign(paramIndex, std::vector<SQLLEN>(values.size(), 0));
+		bulk_param_indicators.insert_or_assign(paramIndex, std::vector<SQLLEN>(values.size(), sizeof(T)));
 		bulk_param_buffers.insert_or_assign(paramIndex, values);
 	}
 
@@ -290,7 +426,13 @@ public:
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
-	template<typename T>
+	template<typename T,
+			 // SFINAE: Tが数値型(int, double等)またはTIMESTAMP構造体の場合のみ、このテンプレートを有効にする
+			std::enable_if_t<
+				std::is_arithmetic_v<T> ||
+				std::is_same_v<T, SQL_TIMESTAMP_STRUCT>,
+			int> = 0
+	>
 	void bindColumn(int paramIndex, const std::vector<std::optional<T>>& opt_vals) {
 		// 1. データ配列とインジケータ配列を作成
 		std::vector<T> data_buffer(opt_vals.size());
@@ -299,7 +441,7 @@ public:
 			if (opt_vals[i].has_value()) {
 				data_buffer[i] = opt_vals[i].value();
 				// 固定長データの場合、インジケータは0で良い
-				bulk_param_indicators[paramIndex][i] = 0;
+				bulk_param_indicators[paramIndex][i] = sizeof(T);
 			} else {
 				// data_buffer[i] はデフォルト値(0など)のまま
 				bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
@@ -434,6 +576,31 @@ private:
 	template<typename T>
 	void bindFixedSizeColumn(int index, std::any& any_val, std::vector<SQLLEN>& indicators);
 };
+
+// --- テンプレート特殊化実装群 ---
+/**
+ * @brief 現在の行から指定列のデータを取得します (std::string 専用の特殊化)。
+ * @details SQL_C_CHAR を std::string に変換します。
+ * @param col 取得する列番号 (1から始まる)。
+ * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
+ */
+template<> std::optional<std::string> OdbcStatement::getData<std::string>(int col);
+
+/**
+ * @brief 現在の行から指定列のデータを取得します (std::vector<char> 専用の特殊化)。
+ * @details SQL_C_BINARY を std::vector<char> に変換します。
+ * @param col 取得する列番号 (1から始まる)。
+ * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
+ */
+template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<char>>(int col);
+
+/**
+ * @brief 現在の行から指定列のデータを取得します (time_point 専用の特殊化)。
+ * @details SQL_TIMESTAMP_STRUCT を std::chrono::system_clock::time_point に変換します。
+ * @param col 取得する列番号 (1から始まる)。
+ * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
+ */
+template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::getData<std::chrono::system_clock::time_point>(int col);
 
 //============================================
 // セッション管理クラス

@@ -711,7 +711,7 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&retrieveToggleButton, &storeToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false, .is_visible = true}},
 			{ {&userIdEntry}, {.is_sensitive = true, .is_visible = true} },
-			{ {&messageLabel}, {UiText{"名札のQRコードを\nQRコードリーダーにかざしてください", "なふだの QRコードを\nQRコードリーダーに かざしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"名札のQRコードを\nQRコードリーダーにかざしてください", "なふだの QRコードを\nQRコードリーダーに かざしてください"}} },
 			{ {&paginationBox}, {.is_visible = false} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
@@ -735,7 +735,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&logoutButton}, {.is_sensitive = true} },
-			{ {&messageLabel}, {UiText{"プログラム割当一覧表のQRコードを\nQRコードリーダーにかざしてください", "プログラムわりあていちらんひょうの QRコードを\nQRコードリーダーにかざしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"プログラム割当一覧表のQRコードを\nQRコードリーダーにかざしてください", "プログラムわりあていちらんひょうの QRコードを\nQRコードリーダーにかざしてください"}} },
 			{ {&paginationBox}, {.is_visible = false} },
 			{ {&trueButton, &falseButton}, {UiText{"", ""}, false, true} }
 		},
@@ -743,14 +743,15 @@ MainWindow::MainWindow() :
 		.operationStackPageName = "retrieveOperationPage",
 		.tableStackPageName		= "pageNone",	// 初期ページ
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state	= [](MainWindow* thiz){ /* TODO: テーブルをクリアするなどの初期化処理 */ }
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_waiting_for_program_qr(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_waiting_for_program_qr(); }
 	});
 
 	// --- 状態：取り出し - 工具選択中 ---
 	g_app_state_configs.try_emplace(AppState::RETRIEVE_SELECTING_TOOLS, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"取り出す工具を選択してください", "とりだす こうぐを せんたく してください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"取り出す工具を選択してください", "とりだす こうぐを せんたく してください"}} },
 			{ {&paginationBox}, {.is_visible = true} },
 			{ {&trueButton}, {UiText{"確定", "かくてい"}, true, true} },
 			{ {&falseButton}, {UiText{"全選択解除", "ぜんせんたくかいじょ"}, true, true} }
@@ -771,15 +772,15 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state			= [](MainWindow* thiz){ /* TODO: DBから取得した工具リストをテーブルに表示する */ },
-		.on_falseButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_CONFIRMING_SELECTION); },
-		.on_trueButton_clicked	= [](MainWindow* thiz){ /* TODO: テーブルの全選択を解除する処理 */ }
+		.on_falseButton_clicked	= [](MainWindow* thiz){ /* TODO: テーブルの全選択を解除する処理 */ },
+		.on_trueButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_CONFIRMING_SELECTION); }
 	});
 
 	// --- 状態：取り出し - 選択内容の確認中 ---
 	g_app_state_configs.try_emplace(AppState::RETRIEVE_CONFIRMING_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"選択した工具は以下の通りです\nよろしければ「搬出」を押してください", "せんたくした こうぐは いかのとおりです..."}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"選択した工具は以下の通りです\nよろしければ「搬出」を押してください", "せんたくした こうぐは いかのとおりです..."}} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} },
 			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} }
 		},
@@ -787,8 +788,8 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state			= [](MainWindow* thiz){ /* TODO: 選択された工具のみをテーブルに表示する */ },
-		.on_falseButton_clicked	= [](MainWindow* thiz){ /* TODO: 搬出処理を開始し、次の状態へ */ },
-		.on_trueButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_SELECTING_TOOLS); } // 前の状態に戻る
+		.on_falseButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_SELECTING_TOOLS); },	// 前の状態に戻る
+		.on_trueButton_clicked	= [](MainWindow* thiz){ /* TODO: 搬出処理を開始し、次の状態へ */ }
 	});
 
 	// --- 状態：取り出し - コンテナ搬出待ち ---
@@ -796,7 +797,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false} },
-			{ {&messageLabel}, {UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
@@ -811,7 +812,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RETRIEVE_CONTAINER_RETRIEVED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}} },
 		},
 		//TODO --- 状態の「振る舞い」を定義 ---
 	});
@@ -820,7 +821,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RETRIEVE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"コンテナから工具を取り出して、工具のQRコードを\nQRコードリーダーで読み取ってください", "コンテナから こうぐを とりだして、こうぐの QRコードを\nQRコードリーダーで よみとってください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナから工具を取り出して、工具のQRコードを\nQRコードリーダーで読み取ってください", "コンテナから こうぐを とりだして、こうぐの QRコードを\nQRコードリーダーで よみとってください"}} },
 			{ {&qrCodeEntry}, {.is_sensitive = true} },
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
@@ -895,7 +896,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&logoutButton}, {.is_sensitive = true} },
-			{ {&messageLabel}, {UiText{"補充する工具のQRコードを\nQRコードリーダーにかざしてください", "ほじゅうする こうぐの QRコードを\nQRコードリーダーに かざしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"補充する工具のQRコードを\nQRコードリーダーにかざしてください", "ほじゅうする こうぐの QRコードを\nQRコードリーダーに かざしてください"}} },
 			{ {&paginationBox}, {.is_visible = false} },
 			{ {&qrCodeEntry}, {.is_sensitive = true} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
@@ -912,7 +913,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::STORE_CONFIRMING_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"補充する工具に間違いがなければ\n「搬出」を押してください", "ほじゅうする こうぐに まちがいが なければ\n「はんしゅつ」を おしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"補充する工具に間違いがなければ\n「搬出」を押してください", "ほじゅうする こうぐに まちがいが なければ\n「はんしゅつ」を おしてください"}} },
 			{ {&qrCodeEntry}, {.is_sensitive = false} },
 			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} }
@@ -929,7 +930,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false} },
-			{ {&messageLabel}, {UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
@@ -946,7 +947,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::STORE_CONTAINER_RETRIEVED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}} },
 		},
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieved(); },
@@ -957,7 +958,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::STORE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}} },
 			{ {&qrCodeEntry}, {.is_sensitive = true} },
 			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, false, true} },
 			{ {&trueButton}, {UiText{"続ける", "つづける"}, false, true} }
@@ -988,7 +989,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::STORE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}} },
 			{ {&paginationBox}, {.is_visible = true} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
@@ -1010,7 +1011,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"棚卸しを行うコンテナを選択してください", "たなおろしを おこなう コンテナを\nせんたく してください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"棚卸しを行うコンテナを選択してください", "たなおろしを おこなう コンテナを\nせんたく してください"}} },
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
 			{ {&falseButton}, {UiText{"", ""}, false, true} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, false, true} }
@@ -1041,7 +1042,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &storeToggleButton, &logoutButton}, {.is_sensitive = false} },
-			{ {&messageLabel}, {UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナを搬出しています\nしばらくお待ち下さい", "コンテナを はんしゅつ しています\nしばらく おまちください"}} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
 		.table_states = {
@@ -1059,7 +1060,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RECONCILE_CONTAINER_RETRIEVED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}, true, true} }
+			{ {&messageLabel}, {.text = UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}} }
 		},
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
@@ -1070,7 +1071,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RECONCILE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"コンテナ内の工具をすべてQRコードリーダーで読み取ってください", "コンテナないの こうぐを すべて QRコードリーダーで よみとってください"}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"コンテナ内の工具をすべてQRコードリーダーで読み取ってください", "コンテナないの こうぐを すべて QRコードリーダーで よみとってください"}} },
 			{ {&qrCodeEntryBox}, {.is_visible = true} },
 			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, false, true} },
 			{ {&trueButton}, {UiText{"続ける", "つづける"}, false, true} }
@@ -1102,7 +1103,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RECONCILE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {UiText{"", ""}, true, true} },
+			{ {&messageLabel}, {.text = UiText{"工具を全てスキャンできたら\n工具とコンテナを戻して扉を閉めてください", "こうぐを すべてスキャンできたら\nこうぐと コンテナを もどして とびらを しめてください"}} },
 			{ {&table2column1stBox, &table2column2ndBox}, {.is_visible = true} },
 			{ {&paginationBox}, {.is_visible = true} }
 		},

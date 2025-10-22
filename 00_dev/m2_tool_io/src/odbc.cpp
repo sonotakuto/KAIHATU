@@ -171,102 +171,6 @@ bool OdbcStatement::fetch() {
 
 // --- getData<T>のテンプレート特殊化実装群 ---
 
-template<> std::optional<char> OdbcStatement::getData<char>(int col) {
-	char value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_STINYINT, &value, sizeof(value), &indicator);	// 32bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<unsigned char> OdbcStatement::getData<unsigned char>(int col) {
-	unsigned char value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_UTINYINT, &value, sizeof(value), &indicator);	// 32bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<short> OdbcStatement::getData<short>(int col) {
-	short value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_SSHORT, &value, sizeof(value), &indicator);	// 32bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<unsigned short> OdbcStatement::getData<unsigned short>(int col) {
-	unsigned short value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_USHORT, &value, sizeof(value), &indicator);	// 32bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<int> OdbcStatement::getData<int>(int col) {
-	int value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_SLONG, &value, sizeof(value), &indicator);	// 32bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<unsigned int> OdbcStatement::getData<unsigned int>(int col) {
-	unsigned int value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_ULONG, &value, sizeof(value), &indicator);	// 32bit符号なし整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<long> OdbcStatement::getData<long>(int col) {
-	long value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_SLONG, &value, sizeof(value), &indicator);	// 32bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<unsigned long> OdbcStatement::getData<unsigned long>(int col) {
-	unsigned long value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_ULONG, &value, sizeof(value), &indicator);	// 32bit符号なし整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<long long> OdbcStatement::getData<long long>(int col) {
-	long long value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_SBIGINT, &value, sizeof(value), &indicator);	// 64bit符号付き整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<unsigned long long> OdbcStatement::getData<unsigned long long>(int col) {
-	unsigned long long value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_UBIGINT, &value, sizeof(value), &indicator);	// 64bit符号なし整数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<float> OdbcStatement::getData<float>(int col) {
-	float value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_FLOAT, &value, sizeof(value), &indicator);	// 単精度浮動小数点数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
-template<> std::optional<double> OdbcStatement::getData<double>(int col) {
-	double value;
-	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_DOUBLE, &value, sizeof(value), &indicator);	// 倍精度浮動小数点数
-	if (indicator == SQL_NULL_DATA) { return std::nullopt; }
-	return value;
-}
-
 template<> std::optional<std::string> OdbcStatement::getData<std::string>(int col) {
 	const int BUFFER_SIZE = 1024;
 	char buffer[BUFFER_SIZE];
@@ -416,91 +320,6 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 }
 
 // --- プリペアドステートメント関連 ---
-
-// 型 T から C型 と SQL型 を決定するための型特性
-template<typename T>
-struct OdbcTypeTraits; // まず基本テンプレートを宣言
-
-// --- 以下、サポートする型ごとに「特殊化」を定義 ---
-
-template<>
-struct OdbcTypeTraits<char> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_STINYINT;
-	static constexpr SQLSMALLINT sql_type	= SQL_TINYINT;
-};
-
-template<>
-struct OdbcTypeTraits<unsigned char> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_UTINYINT;
-	static constexpr SQLSMALLINT sql_type	= SQL_TINYINT;
-};
-
-template<>
-struct OdbcTypeTraits<short> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_SSHORT;
-	static constexpr SQLSMALLINT sql_type	= SQL_SMALLINT;
-};
-
-template<>
-struct OdbcTypeTraits<unsigned short> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_USHORT;
-	static constexpr SQLSMALLINT sql_type	= SQL_SMALLINT;
-};
-
-template<>
-struct OdbcTypeTraits<int> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_SLONG;
-	static constexpr SQLSMALLINT sql_type	= SQL_INTEGER;
-};
-
-template<>
-struct OdbcTypeTraits<unsigned int> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_ULONG;
-	static constexpr SQLSMALLINT sql_type	= SQL_INTEGER;
-};
-
-template<>
-struct OdbcTypeTraits<long> {
-	static constexpr SQLSMALLINT c_type		= ((sizeof(long) == 8) ? (SQL_C_SBIGINT)	: (SQL_C_SLONG));
-	static constexpr SQLSMALLINT sql_type	= ((sizeof(long) == 8) ? (SQL_BIGINT)		: (SQL_INTEGER));
-};
-
-template<>
-struct OdbcTypeTraits<unsigned long> {
-	static constexpr SQLSMALLINT c_type		= ((sizeof(unsigned long) == 8) ? (SQL_C_UBIGINT)	: (SQL_C_ULONG));
-	static constexpr SQLSMALLINT sql_type	= ((sizeof(unsigned long) == 8) ? (SQL_BIGINT)		: (SQL_INTEGER));
-};
-
-template<>
-struct OdbcTypeTraits<long long> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_SBIGINT;
-	static constexpr SQLSMALLINT sql_type	= SQL_BIGINT;
-};
-
-template<>
-struct OdbcTypeTraits<unsigned long long> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_UBIGINT;
-	static constexpr SQLSMALLINT sql_type	= SQL_BIGINT;
-};
-
-template<>
-struct OdbcTypeTraits<double> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_DOUBLE;
-	static constexpr SQLSMALLINT sql_type	= SQL_DOUBLE;
-};
-
-template<>
-struct OdbcTypeTraits<SQL_TIMESTAMP_STRUCT> {
-	static constexpr SQLSMALLINT c_type		= SQL_C_TYPE_TIMESTAMP;
-	static constexpr SQLSMALLINT sql_type	= SQL_TIMESTAMP;
-};
-
-// これ以外の型が来た場合 (例: std::string) にコンパイルエラーにするための仕組み
-template<typename T>
-struct OdbcTypeTraits {
-	// SFINAE や static_assert を使う
-	static_assert(!std::is_same_v<T, T>, "OdbcTypeTraits for this type is not defined.");
-};
 
 void OdbcStatement::prepare(const std::string& sql) {
 	// 1. ODBCドライバにSQL文をコンパイルさせる
@@ -694,6 +513,7 @@ bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::chrono::sy
 
 	// 変換後のバッファを保存
 	bulk_param_buffers.insert_or_assign(paramIndex, std::move(buffer));
+	return true;
 }
 
 bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<std::chrono::system_clock::time_point>>& opt_vals) {
@@ -716,6 +536,7 @@ bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<s
 
 	// 変換後のバッファを保存
 	bulk_param_buffers.insert_or_assign(paramIndex, std::move(buffer));
+	return true;
 }
 
 void OdbcStatement::bindColumn(int paramIndex, const std::vector<long double>& values) {
@@ -805,8 +626,8 @@ int OdbcStatement::executePrepared() {
 			std::any& any_val = bulk_param_buffers.at(index);
 
 			// --- 固定長データ (ヘルパー関数) ---
-			if (any_val.type() == typeid(std::vector<char>)) {
-				bindFixedSizeColumn<char>(index, any_val, bulk_param_indicators.at(index));
+			if (any_val.type() == typeid(std::vector<signed char>)) {
+				bindFixedSizeColumn<signed char>(index, any_val, bulk_param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::vector<unsigned char>)) {
 				bindFixedSizeColumn<unsigned char>(index, any_val, bulk_param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::vector<short>)) {
@@ -825,6 +646,8 @@ int OdbcStatement::executePrepared() {
 				bindFixedSizeColumn<long long>(index, any_val, bulk_param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::vector<unsigned long long>)) {
 				bindFixedSizeColumn<unsigned long long>(index, any_val, bulk_param_indicators.at(index));
+			} else if (any_val.type() == typeid(std::vector<float>)) {
+				bindFixedSizeColumn<float>(index, any_val, bulk_param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::vector<double>)) {
 				bindFixedSizeColumn<double>(index, any_val, bulk_param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::vector<SQL_TIMESTAMP_STRUCT>)) {
@@ -843,8 +666,8 @@ int OdbcStatement::executePrepared() {
 		// 単一行実行モード: 保持しているパラメータを一つずつ取り出し、SQLBindParameterで紐付ける
 		for (auto const& [index, any_val] : bound_params) {
 			// --- 固定長データ (ヘルパー関数) ---
-			if (any_val.type() == typeid(std::optional<char>)) {
-				bindFixedSizeParam<char>(index, any_val, &param_indicators.at(index));
+			if (any_val.type() == typeid(std::optional<signed char>)) {
+				bindFixedSizeParam<signed char>(index, any_val, &param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::optional<unsigned char>)) {
 				bindFixedSizeParam<unsigned char>(index, any_val, &param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::optional<short>)) {
@@ -863,6 +686,8 @@ int OdbcStatement::executePrepared() {
 				bindFixedSizeParam<long long>(index, any_val, &param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::optional<unsigned long long>)) {
 				bindFixedSizeParam<unsigned long long>(index, any_val, &param_indicators.at(index));
+			} else if (any_val.type() == typeid(std::optional<float>)) {
+				bindFixedSizeParam<float>(index, any_val, &param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::optional<double>)) {
 				bindFixedSizeParam<double>(index, any_val, &param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::optional<SQL_TIMESTAMP_STRUCT>)) {

@@ -1,0 +1,2 @@
+test_blob_2.txt
+いいいいい？

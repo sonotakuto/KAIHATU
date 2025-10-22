@@ -16,7 +16,7 @@ namespace utils {
  *
  * @note 追跡機能を担保するため、非constなイテレータを返す関数 (begin, end, findなど) や
  * 参照を返す operator[] は意図的に実装していません。
- * 要素の読み取りは at() (コピーを返す)、
+ * 要素の読み取りは at() (コピーを返す), const_iterator、
  * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() などをそれぞれ使用してください。
  *
  * @tparam _Key キーの型
@@ -446,8 +446,8 @@ private:
 	// --- メンバ変数 ---
 	/// @brief 主要なデータを格納する内部マップ
 	map_type map;
-	/// @brief 排他制御用のミューテックス
-	mutable std::mutex mtx;
+	/// @brief 排他制御用のミューテックス (再帰ロックを許可)
+	mutable std::recursive_mutex mtx;
 	/// @brief データ更新を待機するスレッドに通知するための条件変数
 	std::condition_variable cv;
 	/// @brief insertやinsert_or_assignで更新されたキーを格納するセット
@@ -461,7 +461,7 @@ private:
 	 * 他のスレッドによってデータが更新され通知（notify）が来るまで、ロックを解放して待機します。
 	 * @param lock 待機中にアンロック/再ロックされるユニークロック。
 	 */
-	void _wait_for_updates(std::unique_lock<std::mutex>& lock) {
+	void _wait_for_updates(std::unique_lock<std::recursive_mutex>& lock) {
 		cv.wait(lock, [this] { return !updated_keys.empty(); }); // updated_keysがセットされるまで待機
 	}
 
@@ -496,7 +496,7 @@ private:
 	 * @param flag_wait_for_updates 待機するかどうかのフラグ。
 	 * @return flag_wait_for_updatesの値をそのまま返す。
 	 */
-	bool _if_true_wait_for_updates(std::unique_lock<std::mutex> &lock, bool flag_wait_for_updates) {
+	bool _if_true_wait_for_updates(std::unique_lock<std::recursive_mutex> &lock, bool flag_wait_for_updates) {
 		if(flag_wait_for_updates){
 			_wait_for_updates(lock);
 		}
@@ -550,13 +550,145 @@ public:
 	/// @brief コンストラクタ
 	SafeTrackedMap() = default;
 
+	// --- 手動ロック制御 ---
+
 	/**
-	 * @brief 更新が発生するまで待機する。
+	 * @brief 複雑な操作のために、マップのロックを手動で取得する。
+	 * @details
+	 * この関数は std::unique_lock を返します。
+	 * このロックオブジェクトが生存している間、マップはロックされます。
+	 * スコープを抜けると自動的にロックが解放されます (RAII)。
+	 * * mutexが recursive_mutex のため、ロック取得中に他のメンバ関数
+	 * (例: contains, at, insert) を呼び出してもデッドロックしません。
+	 *
+	 * @code
+	 * SafeTrackedMap<int, std::string> myMap;
+	 * // ...
+	 * {
+	 *     auto lock = myMap.acquire_lock(); // ロック取得
+	 *     // 複数の操作をアトミックに実行
+	 *     if (myMap.contains(1)) {
+	 *         auto val = myMap.at(1);
+	 *         myMap.insert_or_assign(2, val + "_new");
+	 *     }
+	 * } // スコープを抜けると 'lock' が破棄され、自動でロック解放
+	 * @endcode
+	 *
+	 * @return マップのミューテックスに対する std::unique_lock
+	 */
+	std::unique_lock<std::recursive_mutex> acquire_lock() {
+		return std::unique_lock<std::recursive_mutex>(mtx);
+	}
+
+/**
+	 * @brief マップを読み取り専用でロックし、指定された処理を実行する。
+	 * @details
+	 * イテレータを外部に漏らさず、安全に内部マップを走査するために使用します。
+	 * この関数に渡されたラムダ式が実行されている間、マップはロックされます。
+	 * @tparam Func 呼び出し可能なオブジェクト (例: ラムダ式)
+	 * @param f 内部の const マップ (const map_type&) を引数に取る関数
+	 */
+	template <typename Func>
+	void inspect_safely(Func f) {
+		std::lock_guard<std::recursive_mutex> lock(mtx);
+		// ロック中に、内部の const map を引数としてラムダを実行
+		f(static_cast<const map_type&>(map));
+	}
+
+	/**
+	 * @brief マップをロックし、安全な読み取り・書き込み操作をアトミックに実行する。
+	 * @details
+	 * この関数に渡されたラムダ式が実行されている間、マップはロックされます。
+	 * ラムダは2つの引数を取ります:
+	 * 1. const map_type& (internal_map_const_ref):
+	 * 内部マップへの *const* 参照。const_iterator を使った
+	 * 効率的な走査 (lower_bound, find など) のために使用します。
+	 * 2. SafeTrackedMap& (self):
+	 * マップインスタンス自身への参照。*書き込み*操作
+	 * (insert_or_assign, erase など) を安全に呼び出すために使用します。
+	 * これにより、updated_keys の追跡が保証されます。
+	 *
+	 * @note internal_map_const_ref を使って値を変更することはできません。
+	 * 変更は必ず self.insert_or_assign(...) などを使用してください。
+	 *
+	 * @code
+	 * myMap.operate_safely( [](const auto& map_const_ref, auto& self) {
+	 * // 効率的な走査 (const_iterator を使用)
+	 * auto it = map_const_ref.lower_bound(10);
+	 * if (it != map_const_ref.end() && it->second == "OldValue") {
+	 * // 安全な書き込み (updated_keys が追跡される)
+	 * self.insert_or_assign(it->first, "NewValue");
+	 * }
+	 * });
+	 * @endcode
+	 *
+	 * @tparam Func 呼び出し可能なオブジェクト (ラムダ式)
+	 * @param f ラムダ式 ( (const map_type&, SafeTrackedMap&) -> void )
+	 */
+	template <typename Func>
+	void operate_safely(Func f) {
+		std::lock_guard<std::recursive_mutex> lock(mtx);
+		// const参照(走査用) と non-constな自分自身(書き込み用) を渡す
+		f(static_cast<const map_type&>(map), *this);
+	}
+
+	/**
+	 * @brief いずれかの要素に更新が発生するまで待機する。
 	 * @details 他のスレッドが要素を挿入/更新するまで、この関数を呼び出したスレッドをブロックします。
 	 */
 	void wait_for_updates() {
-		std::unique_lock<std::mutex> lock(mtx);
+		std::unique_lock<std::recursive_mutex> lock(mtx);
 		_wait_for_updates(lock);
+	}
+
+	/**
+	 * @brief 指定されたキーが更新されるまで待機する。(単一キー)
+	 * @param key 待機対象のキー
+	 */
+	void wait_for_updates(const key_type& key) {
+		std::unique_lock<std::recursive_mutex> lock(mtx);
+		// 指定されたキーが updated_keys セットに見つかるまで待機
+		cv.wait(lock, [this, &key] {
+			return updated_keys.find(key) != updated_keys.end();
+		});
+	}
+
+	/**
+	 * @brief 指定されたキーのいずれかが更新されるまで待機する。(複数キー)
+	 * @details initializer_list (例: {1, 2, 3}) でキーを指定します。
+	 * @param keys 待機対象のキーのリスト
+	 */
+	void wait_for_updates(std::initializer_list<key_type> keys) {
+		std::unique_lock<std::recursive_mutex> lock(mtx);
+		// keys リスト内のどれか1つでも updated_keys に見つかるまで待機
+		cv.wait(lock, [this, &keys] {
+			for (const auto& key : keys) {
+				if (updated_keys.find(key) != updated_keys.end()) {
+					return true; // いずれか1つが見つかれば待機終了
+				}
+			}
+			return false; // 1つも見つからない場合は待機継続
+		});
+	}
+
+	/**
+	 * @brief 指定されたキーのいずれかが更新されるまで待機する。(複数キー、コンテナ版)
+	 * @details std::vector, std::set, std::list などイテレート可能なコンテナでキーを指定します。
+	 * @tparam KeyContainer キーのコンテナの型
+	 * @param keys 待機対象のキーのコンテナ
+	 */
+	template <typename KeyContainer>
+	void wait_for_updates(const KeyContainer& keys) {
+		std::unique_lock<std::recursive_mutex> lock(mtx);
+		// keys コンテナ内のどれか1つでも updated_keys に見つかるまで待機
+		cv.wait(lock, [this, &keys] {
+			for (const auto& key : keys) {
+				if (updated_keys.find(key) != updated_keys.end()) {
+					return true; // いずれか1つが見つかれば待機終了
+				}
+			}
+			return false; // 1つも見つからない場合は待機継続
+		});
 	}
 
 	// --- 要素アクセス ---
@@ -569,7 +701,7 @@ public:
 	 * @throws std::out_of_range キーが存在しない場合。
 	 */
 	mapped_type at(const key_type& key, bool flag_wait_for_updates = false, bool flag_erase_updated_keys = false) {
-		std::unique_lock<std::mutex> lock(mtx);	// ロックを取得
+		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
 		if(flag_wait_for_updates){
 			cv.wait(lock, [this, &key] { return updated_keys.find(key) != updated_keys.end(); }); // keyがセットされるまで待機
 		}
@@ -586,7 +718,7 @@ public:
 	 * @return マップ全体のコピー。
 	 */
 	map_type get_all(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
-		std::unique_lock<std::mutex> lock(mtx);
+		std::unique_lock<std::recursive_mutex> lock(mtx);
 		_if_true_wait_for_updates(lock, flag_wait_for_updates);
 		return _get_all(flag_clear_updated_keys);
 	}
@@ -600,7 +732,7 @@ public:
 	 * @return 更新されたキーのセットのコピー。
 	 */
 	set_type get_updated_keys(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
-		std::unique_lock<std::mutex> lock(mtx);	// ロックを取得
+		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
 		_if_true_wait_for_updates(lock, flag_wait_for_updates);
 		return _get_updated_keys(flag_clear_updated_keys);	// ロックはunique_lockのデストラクタで解放
 	}
@@ -614,7 +746,7 @@ public:
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
-		std::unique_lock<std::mutex> lock(mtx);	// ロックを取得
+		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
 		_if_true_wait_for_updates(lock, flag_wait_for_updates);
 		return _get_updated_elements(flag_clear_updated_keys);	// ロックはunique_lockのデストラクタで解放
 	}
@@ -623,7 +755,7 @@ public:
 	 * @brief 更新済みキーのリストをクリアする。
 	 */
 	void clear_updated_keys() {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		updated_keys.clear();	// ロックはlock_guardのデストラクタで解放
 	}
 
@@ -641,7 +773,7 @@ public:
 		bool inserted = false;
 		std::pair<iterator, bool> result;
 		{
-			std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+			std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 			result = map.insert(std::forward<P>(x));
 			if(result.second){
 				updated_keys.insert(result.first->first);	// 更新されたキーを保存
@@ -668,7 +800,7 @@ public:
 		bool inserted = false;
 		std::pair<iterator, bool> result;
 		{
-			std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+			std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 			result = map.insert_or_assign(key, std::forward<M>(x));
 			updated_keys.insert(key);  // 更新されたキーを保存
 			inserted = result.second;
@@ -687,7 +819,7 @@ public:
 		std::pair<iterator, bool> result;
 		bool inserted = false;
 		{
-			std::lock_guard<std::mutex> lock(mtx);
+			std::lock_guard<std::recursive_mutex> lock(mtx);
 			result = map.emplace(std::forward<Args>(args)...);
 			if (result.second) {
 				updated_keys.insert(result.first->first);
@@ -711,7 +843,7 @@ public:
 		std::pair<iterator, bool> result;
 		bool inserted = false;
 		{
-			std::lock_guard<std::mutex> lock(mtx);
+			std::lock_guard<std::recursive_mutex> lock(mtx);
 			result = map.try_emplace(key, std::forward<Args>(args)...);
 			if (result.second) {
 				updated_keys.insert(result.first->first);
@@ -735,7 +867,7 @@ public:
 		std::pair<iterator, bool> result;
 		bool inserted = false;
 		{
-			std::lock_guard<std::mutex> lock(mtx);
+			std::lock_guard<std::recursive_mutex> lock(mtx);
 			// key はムーブされる可能性があるため、result.first->first を使用
 			result = map.try_emplace(std::move(key), std::forward<Args>(args)...);
 			if (result.second) {
@@ -755,7 +887,7 @@ public:
 	 * @return 削除された要素の数 (0または1)。
 	 */
 	size_type erase(const key_type& key) {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		updated_keys.erase(key);	// 更新リストからも削除
 		return map.erase(key);	// ロックはlock_guardのデストラクタで解放
 	}
@@ -764,7 +896,7 @@ public:
 	 * @brief 全ての要素を削除する。
 	 */
 	void clear() {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		updated_keys.clear();
 		map.clear();	// ロックはlock_guardのデストラクタで解放
 	}
@@ -786,8 +918,8 @@ public:
 		std::lock(mtx, other.mtx);
 
 		// ロックが取得されたことを保証するために std::lock_guard を adopt モードで使用
-		std::lock_guard<std::mutex> lock_this(mtx, std::adopt_lock);
-		std::lock_guard<std::mutex> lock_other(other.mtx, std::adopt_lock);
+		std::lock_guard<std::recursive_mutex> lock_this(mtx, std::adopt_lock);
+		std::lock_guard<std::recursive_mutex> lock_other(other.mtx, std::adopt_lock);
 
 		using std::swap;
 		swap(map, other.map);
@@ -805,7 +937,7 @@ public:
 	 * @return キーが存在すればtrue, そうでなければfalse。
 	 */
 	bool contains(const key_type& key) {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		return map.find(key) != map.end();	// ロックはlock_guardのデストラクタで解放
 	}
 
@@ -815,8 +947,60 @@ public:
 	 * @return 要素の数。
 	 */
 	size_type count(const key_type& key) {
-		std::lock_guard<std::mutex> lock(mtx);
+		std::lock_guard<std::recursive_mutex> lock(mtx);
 		return map.count(key);
+	}
+
+	/**
+	 * @brief 指定されたキーと等価なキーの範囲を返す。
+	 * @details
+	 * std::map (非multimap) のため、範囲には最大1つの要素が含まれます。
+	 * @param key キー
+	 * @return lower_boundの結果とupper_boundの結果のペア (コピー)。
+	 */
+	std::pair<std::optional<value_type>, std::optional<value_type>> equal_range(const key_type& key) {
+		std::lock_guard<std::recursive_mutex> lock(mtx);
+		auto range = map.equal_range(key);
+
+		std::optional<value_type> first;
+		if (range.first != map.end()) {
+			first = *(range.first);
+		}
+
+		std::optional<value_type> second;
+		if (range.second != map.end()) {
+			second = *(range.second);
+		}
+
+		return {first, second};
+	}
+
+	/**
+	 * @brief 指定されたキーより小さくない最初の要素を返す。
+	 * @param key キー
+	 * @return 見つかった要素のコピー。見つからなければ std::nullopt。
+	 */
+	std::optional<value_type> lower_bound(const key_type& key) {
+		std::lock_guard<std::recursive_mutex> lock(mtx);
+		auto it = map.lower_bound(key);
+		if (it != map.end()) {
+			return *it;
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 指定されたキーより大きい最初の要素を返す。
+	 * @param key キー
+	 * @return 見つかった要素のコピー。見つからなければ std::nullopt。
+	 */
+	std::optional<value_type> upper_bound(const key_type& key) {
+		std::lock_guard<std::recursive_mutex> lock(mtx);
+		auto it = map.upper_bound(key);
+		if (it != map.end()) {
+			return *it;
+		}
+		return std::nullopt;
 	}
 
 	// --- 容量 ---
@@ -825,7 +1009,7 @@ public:
 	 * @return 空の場合はtrue。
 	 */
 	bool empty() const {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		return map.empty();	// ロックはlock_guardのデストラクタで解放
 	}
 
@@ -834,7 +1018,7 @@ public:
 	 * @return 要素数。
 	 */
 	size_type size() const {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		return map.size();	// ロックはlock_guardのデストラクタで解放
 	}
 
@@ -844,7 +1028,7 @@ public:
 	 * @return キー比較オブジェクト。
 	 */
 	key_compare key_comp() const {
-		std::lock_guard<std::mutex> lock(mtx);
+		std::lock_guard<std::recursive_mutex> lock(mtx);
 		return map.key_comp();
 	}
 
@@ -853,14 +1037,14 @@ public:
 	 * @return 値比較オブジェクト。
 	 */
 	typename map_type::value_compare value_comp() const {
-		std::lock_guard<std::mutex> lock(mtx);
+		std::lock_guard<std::recursive_mutex> lock(mtx);
 		return map.value_comp();
 	}
 };
 
 // --- (グローバル) swap ---
 /**
- * @brief 2つのTrackedMapの内容を交換する。
+ * @brief 2つのSafeTrackedMapの内容を交換する。
  * @tparam _Key キーの型
  * @tparam _Tp 値の型
  * @tparam _Compare キーの比較関数の型
