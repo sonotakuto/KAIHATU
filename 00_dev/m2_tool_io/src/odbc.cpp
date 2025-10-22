@@ -417,6 +417,91 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 
 // --- プリペアドステートメント関連 ---
 
+// 型 T から C型 と SQL型 を決定するための型特性
+template<typename T>
+struct OdbcTypeTraits; // まず基本テンプレートを宣言
+
+// --- 以下、サポートする型ごとに「特殊化」を定義 ---
+
+template<>
+struct OdbcTypeTraits<char> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_STINYINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_TINYINT;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned char> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_UTINYINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_TINYINT;
+};
+
+template<>
+struct OdbcTypeTraits<short> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_SSHORT;
+	static constexpr SQLSMALLINT sql_type	= SQL_SMALLINT;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned short> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_USHORT;
+	static constexpr SQLSMALLINT sql_type	= SQL_SMALLINT;
+};
+
+template<>
+struct OdbcTypeTraits<int> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_SLONG;
+	static constexpr SQLSMALLINT sql_type	= SQL_INTEGER;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned int> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_ULONG;
+	static constexpr SQLSMALLINT sql_type	= SQL_INTEGER;
+};
+
+template<>
+struct OdbcTypeTraits<long> {
+	static constexpr SQLSMALLINT c_type		= ((sizeof(long) == 8) ? (SQL_C_SBIGINT)	: (SQL_C_SLONG));
+	static constexpr SQLSMALLINT sql_type	= ((sizeof(long) == 8) ? (SQL_BIGINT)		: (SQL_INTEGER));
+};
+
+template<>
+struct OdbcTypeTraits<unsigned long> {
+	static constexpr SQLSMALLINT c_type		= ((sizeof(unsigned long) == 8) ? (SQL_C_UBIGINT)	: (SQL_C_ULONG));
+	static constexpr SQLSMALLINT sql_type	= ((sizeof(unsigned long) == 8) ? (SQL_BIGINT)		: (SQL_INTEGER));
+};
+
+template<>
+struct OdbcTypeTraits<long long> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_SBIGINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_BIGINT;
+};
+
+template<>
+struct OdbcTypeTraits<unsigned long long> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_UBIGINT;
+	static constexpr SQLSMALLINT sql_type	= SQL_BIGINT;
+};
+
+template<>
+struct OdbcTypeTraits<double> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_DOUBLE;
+	static constexpr SQLSMALLINT sql_type	= SQL_DOUBLE;
+};
+
+template<>
+struct OdbcTypeTraits<SQL_TIMESTAMP_STRUCT> {
+	static constexpr SQLSMALLINT c_type		= SQL_C_TYPE_TIMESTAMP;
+	static constexpr SQLSMALLINT sql_type	= SQL_TIMESTAMP;
+};
+
+// これ以外の型が来た場合 (例: std::string) にコンパイルエラーにするための仕組み
+template<typename T>
+struct OdbcTypeTraits {
+	// SFINAE や static_assert を使う
+	static_assert(!std::is_same_v<T, T>, "OdbcTypeTraits for this type is not defined.");
+};
+
 void OdbcStatement::prepare(const std::string& sql) {
 	// 1. ODBCドライバにSQL文をコンパイルさせる
 	SQLRETURN ret = SQLPrepare(hstmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
@@ -460,6 +545,16 @@ bool OdbcStatement::bind(int paramIndex, const std::optional<std::chrono::system
 	return true;
 }
 
+void OdbcStatement::bind(int paramIndex, const std::optional<long double>& opt_val) {
+	std::cerr << "Warning: 'long double' is truncated to 'double' for ODBC binding." << std::endl;
+	if (opt_val.has_value()) {
+		bound_params.insert_or_assign(paramIndex, std::make_optional(static_cast<double>(opt_val.value())));
+	} else {
+		param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA);
+		bound_params.insert_or_assign(paramIndex, std::optional<double>());
+	}
+}
+
 void OdbcStatement::setParamsetSize(size_t size) {
 	paramset_size = size;
 	// SQL_ATTR_PARAMSET_SIZEを設定し、一括実行モードをドライバに通知する
@@ -470,7 +565,9 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::string>& v
 	// 1. 全ての文字列を格納できる最大の長さを特定（+1は終端文字用）
 	size_t max_len = 0;
 	for (const auto& value : values) {
-		if (value.length() > max_len) max_len = value.length();
+		if (value.length() > max_len) {
+			max_len = value.length();
+		}
 	}
 	max_len += 1;	// 終端文字('\0')のためのスペースを確保
 
@@ -525,7 +622,9 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::vector<cha
 	// 1. 全てのBLOBを格納できる最大の長さを特定
 	size_t max_len = 0;
 	for (const auto& value : values) {
-		if (value.size() > max_len) max_len = value.size();
+		if (value.size() > max_len) {
+			max_len = value.size();
+		}
 	}
 	if (max_len == 0) max_len = 1;
 
@@ -619,6 +718,29 @@ bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<s
 	bulk_param_buffers.insert_or_assign(paramIndex, std::move(buffer));
 }
 
+void OdbcStatement::bindColumn(int paramIndex, const std::vector<long double>& values) {
+	bulk_param_indicators.insert_or_assign(paramIndex, std::vector<SQLLEN>(values.size(), 0));
+	bulk_param_buffers.insert_or_assign(paramIndex, std::vector<double>(values.begin(), values.end()));
+}
+
+void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<long double>>& opt_vals) {
+	// 1. データ配列とインジケータ配列を作成
+	std::vector<double> data_buffer(opt_vals.size());
+	bulk_param_indicators[paramIndex].resize(opt_vals.size());
+	for (size_t i = 0; i < opt_vals.size(); i++) {
+		if (opt_vals[i].has_value()) {
+			data_buffer[i] = static_cast<double>(opt_vals[i].value());
+			// 固定長データの場合、インジケータは0で良い
+			bulk_param_indicators[paramIndex][i] = 0;
+		} else {
+			// data_buffer[i] はデフォルト値(0など)のまま
+			bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
+		}
+	}
+	// 2. 作成したデータ配列をバッファに保存
+	bulk_param_buffers.insert_or_assign(paramIndex, data_buffer);
+}
+
 /**
  * @brief (Helper) 単一行用の固定長パラメータをバインドします。
  */
@@ -634,45 +756,15 @@ void OdbcStatement::bindFixedSizeParam(int index, const std::any& any_val, SQLLE
 	// インジケータポインタは、値がNULLの場合(data_ptrがNULL)のみ使用されます。
 	SQLLEN* final_indicator_ptr = (opt_val.has_value()) ? NULL : indicator_ptr;
 
+	// ★ 型特性を使って C型 と SQL型 を取得
+	constexpr SQLSMALLINT c_type = OdbcTypeTraits<T>::c_type;
+	constexpr SQLSMALLINT sql_type = OdbcTypeTraits<T>::sql_type;
 	SQLULEN col_size = 0;
 	SQLSMALLINT decimal_digits = 0;
-	SQLSMALLINT c_type;
-	SQLSMALLINT sql_type;
 
-	// if constexpr でコンパイル時に型を解決
-	if constexpr (std::is_same_v<T, char>) {
-		c_type = SQL_C_STINYINT;	sql_type = SQL_TINYINT;
-	} else if constexpr (std::is_same_v<T, unsigned char>) {
-		c_type = SQL_C_UTINYINT;	sql_type = SQL_TINYINT;
-	} else if constexpr (std::is_same_v<T, short>) {
-		c_type = SQL_C_SSHORT;		sql_type = SQL_SMALLINT;
-	} else if constexpr (std::is_same_v<T, unsigned short>) {
-		c_type = SQL_C_USHORT;		sql_type = SQL_SMALLINT;
-	} else if constexpr (std::is_same_v<T, int>) {
-		c_type = SQL_C_SLONG;		sql_type = SQL_INTEGER;
-	} else if constexpr (std::is_same_v<T, unsigned int>) {
-		c_type = SQL_C_ULONG;		sql_type = SQL_INTEGER;
-	} else if constexpr (std::is_same_v<T, long>) {
-		// ★ サイズによってC型とSQL型を切り替え
-		if constexpr (sizeof(long) == 8) { c_type = SQL_C_SBIGINT;	sql_type = SQL_BIGINT; }
-		else { c_type = SQL_C_SLONG;	sql_type = SQL_INTEGER; }
-	} else if constexpr (std::is_same_v<T, unsigned long>) {
-		// ★ サイズによってC型とSQL型を切り替え
-		if constexpr (sizeof(unsigned long) == 8) { c_type = SQL_C_UBIGINT;	sql_type = SQL_BIGINT; }
-		else { c_type = SQL_C_ULONG;	sql_type = SQL_INTEGER; }
-	} else if constexpr (std::is_same_v<T, long long>) {
-		c_type = SQL_C_SBIGINT;		sql_type = SQL_BIGINT;
-	} else if constexpr (std::is_same_v<T, unsigned long long>) {
-		c_type = SQL_C_UBIGINT;		sql_type = SQL_BIGINT;
-	} else if constexpr (std::is_same_v<T, double>) {
-		c_type = SQL_C_DOUBLE;		sql_type = SQL_DOUBLE;
-	} else if constexpr (std::is_same_v<T, SQL_TIMESTAMP_STRUCT>) {
-		c_type = SQL_C_TYPE_TIMESTAMP;	sql_type = SQL_TIMESTAMP;
-		// 日時型の場合、サイズはインジケータから取得 (bind() で設定済みの値)
+	// 日時型の場合のみ、インジケータからサイズを取得
+	if constexpr (std::is_same_v<T, SQL_TIMESTAMP_STRUCT>) {
 		col_size = (opt_val.has_value()) ? *indicator_ptr : 0;
-	} else {
-		// このヘルパーがサポートしていない型がTに来た場合、コンパイル時アサート
-		static_assert(std::is_void_v<T>, "Unsupported type in bindFixedSizeParam");
 	}
 
 	SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, c_type, sql_type, col_size, decimal_digits, data_ptr, 0, final_indicator_ptr);
@@ -690,42 +782,15 @@ void OdbcStatement::bindFixedSizeColumn(int index, std::any& any_val, std::vecto
 
 	SQLPOINTER data_ptr = (SQLPOINTER)vec.data();	// T* が返る
 
+	// ★ 型特性を使って C型 と SQL型 を取得
+	constexpr SQLSMALLINT c_type = OdbcTypeTraits<T>::c_type;
+	constexpr SQLSMALLINT sql_type = OdbcTypeTraits<T>::sql_type;
 	SQLULEN col_size = 0;
-	SQLSMALLINT c_type;
-	SQLSMALLINT sql_type;
 
-	// if constexpr でコンパイル時に型を解決
-	if constexpr (std::is_same_v<T, char>) {
-		c_type = SQL_C_STINYINT;	sql_type = SQL_TINYINT;
-	} else if constexpr (std::is_same_v<T, unsigned char>) {
-		c_type = SQL_C_UTINYINT;	sql_type = SQL_TINYINT;
-	} else if constexpr (std::is_same_v<T, short>) {
-		c_type = SQL_C_SSHORT;		sql_type = SQL_SMALLINT;
-	} else if constexpr (std::is_same_v<T, unsigned short>) {
-		c_type = SQL_C_USHORT;		sql_type = SQL_SMALLINT;
-	} else if constexpr (std::is_same_v<T, int>) {
-		c_type = SQL_C_LONG;		sql_type = SQL_INTEGER;
-	} else if constexpr (std::is_same_v<T, unsigned int>) {
-		c_type = SQL_C_ULONG;		sql_type = SQL_INTEGER;
-	} else if constexpr (std::is_same_v<T, long>) {
-		// ★ サイズによってC型とSQL型を切り替え
-		if constexpr (sizeof(long) == 8) { c_type = SQL_C_SBIGINT;	sql_type = SQL_BIGINT; }
-		else { c_type = SQL_C_LONG;	sql_type = SQL_INTEGER; }
-	} else if constexpr (std::is_same_v<T, unsigned long>) {
-		// ★ サイズによってC型とSQL型を切り替え
-		if constexpr (sizeof(unsigned long) == 8) { c_type = SQL_C_UBIGINT;	sql_type = SQL_BIGINT; }
-		else { c_type = SQL_C_ULONG;	sql_type = SQL_INTEGER; }
-	} else if constexpr (std::is_same_v<T, long long>) {
-		c_type = SQL_C_SBIGINT;		sql_type = SQL_BIGINT;
-	} else if constexpr (std::is_same_v<T, unsigned long long>) {
-		c_type = SQL_C_UBIGINT;		sql_type = SQL_BIGINT;
-	} else if constexpr (std::is_same_v<T, double>) {
-		c_type = SQL_C_DOUBLE;		sql_type = SQL_DOUBLE;
-	} else if constexpr (std::is_same_v<T, SQL_TIMESTAMP_STRUCT>) {
-		c_type = SQL_C_TYPE_TIMESTAMP;	sql_type = SQL_TIMESTAMP;
+
+	// 日時型の場合のみ、構造体のサイズを設定
+	if constexpr (std::is_same_v<T, SQL_TIMESTAMP_STRUCT>) {
 		col_size = sizeof(SQL_TIMESTAMP_STRUCT);
-	} else {
-		static_assert(std::is_void_v<T>, "Unsupported type in bindFixedSizeColumn");
 	}
 
 	SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, c_type, sql_type, col_size, 0, data_ptr, 0, indicators.data());

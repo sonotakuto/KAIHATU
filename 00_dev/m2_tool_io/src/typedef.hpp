@@ -67,7 +67,7 @@ struct StrageAreaTable {
 	/// @brief 基本工具ID (工具種別ごとの連番)
 	std::int32_t basic_tool_id{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	std::int16_t toolcase_stc_num{};
+	std::int32_t toolcase_stc_num{};
 	/// @brief 画面表示住所
 	std::string display_address{};
 };
@@ -91,19 +91,19 @@ enum class StorageCondition {
  */
 struct UniqueToolTable {
 	/// @brief 個別工具ID (個別工具識別用)
-	std::int64_t unique_tool_id{};
+	std::int32_t unique_tool_id{};
 	/// @brief 基本工具ID (工具種別識別用連番)
 	std::int32_t basic_tool_id{};
 	/// @brief 個別番号 (個別の連番)
-	std::int64_t unique_num{};
+	std::int32_t unique_num{};
 	/// @brief ケース内個数
-	std::int16_t case_pack_num{};
+	std::int32_t case_pack_num{};
 	/// @brief 保管領域ID (保管領域識別用連番)
 	std::optional<std::int32_t> storage_area_id{};
 	/// @brief 保管状態 (補充前、保管中、取出)
 	StorageCondition storage_condition{StorageCondition::NOT_STORED};
 	/// @brief 再研磨回数 (工具の再研磨回数)
-	std::optional<std::int16_t> regrind_count{};
+	std::optional<std::int32_t> regrind_count{};
 };
 
 /**
@@ -116,7 +116,6 @@ struct MstLineTable {
 	/// @brief ライン名
 	std::string line_name{};
 };
-
 
 /**
  * @struct MstProgramTable
@@ -176,20 +175,44 @@ struct RecOperationTable {
 	/// @brief 動画パス (動画の保存先リンク)
 	std::optional<std::string> video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
-	std::optional<std::int16_t> tool_num{};
+	std::optional<std::int32_t> tool_num{};
 };
 
 /**
  * @struct MstUserInfo
  * @brief ユーザー情報を保持する構造体
  */
-using MstUserInfo = MstUserTable;
+struct MstUserInfo {
+	/// @brief ユーザーID (連番、ユニークID)
+	std::int32_t id{};
+	/// @brief ユーザー名
+	std::string name{};
+	/// @brief 取り出し権限 (常に true)
+	bool per_out{true};
+	/// @brief 補充権限
+	bool per_add{};
+	/// @brief 棚卸し権限
+	bool per_inventory{};
+};
 
 /**
  * @struct MstToolInfo
  * @brief 工具の基本情報を保持する構造体
  */
-using MstToolInfo = MstToolTable;
+struct MstToolInfo {
+	/// @brief 基本工具ID (工具種別ごとの連番)
+	std::int32_t id{};
+	/// @brief 型番 (工具の型番)
+	std::string name{};
+	/// @brief メーカー (工具の製造メーカー)
+	std::string maker{};
+	/// @brief 工具分類 (工具の分類)
+	std::string category{};
+	/// @brief 材質 (工具の材質)
+	std::string material{};
+	/// @brief 在庫数 (現在工具棚に保管されている個数)
+	std::int32_t stc{};
+};
 
 /**
  * @struct MstAddressInfo
@@ -203,34 +226,56 @@ using MstAddressInfo = MstAddressTable;
  */
 struct StrageAreaInfo {
 	/// @brief 保管領域ID (工具保管領域識別用連番)
-	int storage_area_id{};
+	std::int32_t id{};
 	/// @brief 保管している工具の基本情報
 	MstToolInfo item{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	int toolcase_stc_num{};
+	std::int32_t toolcase_stc_num{};
 	/// @brief 住所 (画面表示住所とPLC制御住所)
-	MstAddressInfo mst_address{};
+	MstAddressInfo mst_address_info{};
 };
 
 /**
  * @struct UniqueToolInfo
- * @brief 工具の個別情報を保持する構造体(インサート以外)
+ * @brief 工具の個別情報を保持する構造体
  */
 struct UniqueToolInfo {
 	/// @brief 個別工具ID (個別工具識別用)
-	int unique_tool_id{};
+	std::int32_t id{};
 	/// @brief 工具の基本情報
-	MstToolInfo mst_tool{};
+	MstToolInfo mst_tool_info{};
 	/// @brief 個別番号 (個別の連番)
-	int unique_num{};
+	std::int32_t unique_num{};
 	/// @brief ケース内個数
-	int case_pack_num{};
+	std::int32_t case_pack_num{};
 	/// @brief 保管領域の情報
-	std::optional<StrageAreaInfo> storage_area{};
+	std::optional<StrageAreaInfo> storage_area_info{};
 	/// @brief 保管状態 (補充前、保管中、取出)
 	StorageCondition storage_condition{StorageCondition::NOT_STORED};
 	/// @brief 再研磨回数 (工具の再研磨回数)
-	std::optional<int> regrind_count{};
+	std::optional<std::int32_t> regrind_count{};
+};
+
+/**
+ * @struct MstLineInfo
+ * @brief プログラム割当一覧表のライン情報を保持する構造体
+ */
+struct MstLineInfo {
+	/// @brief ラインID
+	std::int32_t id{};
+	/// @brief ライン名
+	std::string name{};
+};
+
+/**
+ * @struct MstLineInfo
+ * @brief プログラム割当一覧表のプログラム情報を保持する構造体
+ */
+struct MstProgramInfo {
+	/// @brief プログラム割り当てID (ライン、プログラムごとの連番)
+	std::int32_t id{};
+	/// @brief プログラム番号
+	std::string name{};
 };
 
 /**
@@ -239,11 +284,11 @@ struct UniqueToolInfo {
  */
 struct ToolAssignmentInfo {
 	/// @brief 工具割当ID (工具割当識別用ID)
-	int tool_assignment_id{};
+	std::int32_t id{};
 	/// @brief ツール番号
-	std::string tool_number{};
+	std::string tool_num{};
 	/// @brief 工具基本情報
-	MstToolInfo mst_tool{};
+	MstToolInfo mst_tool_info{};
 };
 
 /**
@@ -251,12 +296,10 @@ struct ToolAssignmentInfo {
  * @brief ツーリングリスト全体の情報を保持する構造体
  */
 struct ToolingListInfo {
-	/// @brief プログラム割り当てID (ライン、プログラムごとの連番)
-	int program_assignment_id{};
-	/// @brief ライン名
-	std::string line_name{};
-	/// @brief プログラム番号
-	std::string program_num{};
+	/// @brief ライン情報
+	MstLineInfo line{};
+	/// @brief プログラム情報
+	MstProgramInfo program{};
 	/// @brief ツーリングリストに含まれる工具のリスト
 	std::vector<ToolAssignmentInfo> tool_assignments{};
 };

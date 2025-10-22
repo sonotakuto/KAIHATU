@@ -4,12 +4,21 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <utility> // std::forward, std::pair
+#include <functional> // std::less
+#include <memory> // std::allocator, std::allocator_traits
 
 namespace utils {
 
 /**
  * @class TrackedMap
  * @brief 更新されたキーを追跡する機能を持つ、シングルスレッド用のマップクラス。
+ *
+ * @note 追跡機能を担保するため、非constなイテレータを返す関数 (begin, end, findなど) や
+ * 参照を返す operator[] は意図的に実装していません。
+ * 要素の読み取りは at() (コピーを返す)、
+ * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() などをそれぞれ使用してください。
+ *
  * @tparam _Key キーの型
  * @tparam _Tp 値の型
  * @tparam _Compare キーの比較関数の型
@@ -19,18 +28,21 @@ template <typename _Key, typename _Tp, typename _Compare = std::less<_Key>,
 		typename _Alloc = std::allocator<std::pair<const _Key, _Tp>>>
 class TrackedMap {
 public:
-	// 型定義
-	typedef std::map<_Key, _Tp, _Compare, _Alloc>	map_type;
-	typedef typename map_type::key_type				key_type;
-	typedef typename map_type::mapped_type			mapped_type;
-	typedef typename map_type::value_type			value_type;
-	typedef typename map_type::key_compare			key_compare;
-	typedef typename map_type::allocator_type		allocator_type;
-	typedef typename map_type::size_type			size_type;
-	typedef typename map_type::iterator				iterator;
+	// --- 型定義 ---
+	typedef std::map<_Key, _Tp, _Compare, _Alloc>		map_type;
+	typedef typename map_type::key_type					key_type;
+	typedef typename map_type::mapped_type				mapped_type;
+	typedef typename map_type::value_type				value_type;
+	typedef typename map_type::key_compare				key_compare;
+	typedef typename map_type::allocator_type			allocator_type;
+	typedef typename map_type::size_type				size_type;
+	typedef typename map_type::iterator					iterator;
+	typedef typename map_type::const_iterator			const_iterator;
+	typedef typename map_type::reverse_iterator			reverse_iterator;
+	typedef typename map_type::const_reverse_iterator	const_reverse_iterator;
 
 	typedef std::set<key_type, _Compare, typename std::allocator_traits<_Alloc>::template rebind_alloc<key_type>>	set_type;
-	typedef typename set_type::key_type				set_key_type;
+	typedef typename set_type::key_type					set_key_type;
 
 private:
 	// --- メンバ変数 ---
@@ -40,44 +52,20 @@ private:
 	set_type updated_keys;
 
 public:
-	// デフォルトコンストラクタ
+	// --- コンストラクタ ---
 	TrackedMap() = default;
 
-	/**
-	 * @brief マップに要素を挿入する。
-	 * @details
-	 * 指定された要素をマップに挿入します。挿入が成功した場合（キーが既存でなかった場合）、
-	 * そのキーを `updated_keys` に追加し、待機中のスレッドに通知します。
-	 * @tparam P 挿入する値の型
-	 * @param x 挿入する値 (std::pair)
-	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
-	 */
-	template <class P>
-	bool insert(P&& x) {
-		auto result = map.insert(std::forward<P>(x));
-		if (result.second) {
-			updated_keys.insert(result.first->first); // 更新されたキーを保存
-		}
-		return result.second;
-	}
+	// --- イテレータ ---
+	const_iterator begin() const noexcept { return map.begin(); }
+	const_iterator end() const noexcept { return map.end(); }
+	const_reverse_iterator rbegin() const noexcept { return map.rbegin(); }
+	const_reverse_iterator rend() const noexcept { return map.rend(); }
+	const_iterator cbegin() const noexcept { return map.cbegin(); }
+	const_iterator cend() const noexcept { return map.cend(); }
+	const_reverse_iterator crbegin() const noexcept { return map.crbegin(); }
+	const_reverse_iterator crend() const noexcept { return map.crend(); }
 
-	/**
-	 * @brief マップに要素を挿入または代入する。
-	 * @details
-	 * 指定されたキーが存在すれば値を上書きし、存在しなければ新しい要素として挿入します。
-	 * どちらの場合でもキーは「更新された」とみなし、`updated_keys` に追加して待機中のスレッドに通知します。
-	 * @tparam M 挿入/代入する値の型
-	 * @param key キー
-	 * @param x 値
-	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
-	 */
-	template <class M>
-	bool insert_or_assign(const key_type& key, M&& x) {
-		auto result = map.insert_or_assign(key, std::forward<M>(x));
-		updated_keys.insert(key); // キーが更新されたことを記録
-		return result.second;
-	}
-
+	// --- 要素アクセス ---
 	/**
 	 * @brief 指定されたキーに対応する値を取得する。
 	 * @param key キー
@@ -93,6 +81,7 @@ public:
 		return value;
 	}
 
+	// --- ゲッター (TrackedMap固有) ---
 	/**
 	 * @brief 全ての要素のコピーを取得する。
 	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
@@ -139,19 +128,121 @@ public:
 	}
 
 	/**
-	 * @brief 指定されたキーがマップに存在するかを確認する。
-	 * @param key 確認するキー
-	 * @return キーが存在すればtrue, そうでなければfalse。
-	 */
-	bool contains(const key_type& key) const {
-		return map.find(key) != map.end();
-	}
-
-	/**
 	 * @brief 更新済みキーのリストをクリアする。
 	 */
 	void clear_updated_keys() {
 		updated_keys.clear();
+	}
+
+	// --- 修飾子 ---
+	/**
+	 * @brief マップに要素を挿入する。
+	 * @details
+	 * 挿入が成功した場合、そのキーを `updated_keys` に追加します。
+	 * @tparam P 挿入する値の型
+	 * @param x 挿入する値 (std::pair)
+	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
+	 */
+	template <class P>
+	bool insert(P&& x) {
+		auto result = map.insert(std::forward<P>(x));
+		if (result.second) {
+			updated_keys.insert(result.first->first); // 更新されたキーを保存
+		}
+		return result.second;
+	}
+
+	/**
+	 * @brief マップに要素を挿入または代入する。
+	 * @details
+	 * 挿入・代入どちらの場合でもキーは `updated_keys` に追加されます。
+	 * @tparam M 挿入/代入する値の型
+	 * @param key キー
+	 * @param x 値
+	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
+	 */
+	template <class M>
+	bool insert_or_assign(const key_type& key, M&& x) {
+		auto result = map.insert_or_assign(key, std::forward<M>(x));
+		updated_keys.insert(key); // キーが更新されたことを記録
+		return result.second;
+	}
+
+	/**
+	 * @brief 要素をインプレース構築する。
+	 * @param args 値の構築引数
+	 * @return 挿入された要素へのイテレータと、挿入が成功したか(true)を示すペア。
+	 */
+	template <class... Args>
+	std::pair<const_iterator, bool> emplace(Args&&... args) {
+		auto result = map.emplace(std::forward<Args>(args)...);
+		if (result.second) {
+			updated_keys.insert(result.first->first);
+		}
+		return result;
+	}
+
+	/**
+	 * @brief ヒント付きで要素をインプレース構築する。
+	 * @param hint 挿入位置のヒント
+	 * @param args 値の構築引数
+	 * @return 挿入された要素へのイテレータ。
+	 */
+	template <class... Args>
+	const_iterator emplace_hint(const_iterator hint, Args&&... args) {
+		auto old_size = map.size();
+		auto it = map.emplace_hint(hint, std::forward<Args>(args)...);
+		if (map.size() > old_size) {
+			updated_keys.insert(it->first); // 新規挿入
+		}
+		return it;
+	}
+
+	/**
+	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
+	 * @param key キー
+	 * @param args 値の構築引数
+	 * @return 挿入された(または既存の)要素へのイテレータと、挿入が成功したか(true)を示すペア。
+	 */
+	template <class... Args>
+	std::pair<const_iterator, bool> try_emplace(const key_type& key, Args&&... args) {
+		auto result = map.try_emplace(key, std::forward<Args>(args)...);
+		if (result.second) {
+			updated_keys.insert(result.first->first);
+		}
+		return result;
+	}
+
+	/**
+	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
+	 * @param key キー
+	 * @param args 値の構築引数
+	 * @return 挿入された(または既存の)要素へのイテレータと、挿入が成功したか(true)を示すペア。
+	 */
+	template <class... Args>
+	std::pair<const_iterator, bool> try_emplace(key_type&& key, Args&&... args) {
+		auto result = map.try_emplace(std::move(key), std::forward<Args>(args)...);
+		if (result.second) {
+			updated_keys.insert(result.first->first);
+		}
+		return result;
+	}
+
+	/**
+	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
+	 * @param hint 挿入位置のヒント
+	 * @param key キー
+	 * @param args 値の構築引数
+	 * @return 挿入された(または既存の)要素へのイテレータと、挿入が成功したか(true)を示すペア。
+	 */
+	template <class... Args>
+	const_iterator try_emplace(const_iterator hint, key_type&& key, Args&&... args) {
+		auto old_size = map.size();
+		auto it = map.try_emplace(hint, std::move(key), std::forward<Args>(args)...);
+		if (map.size() > old_size) {
+			updated_keys.insert(it->first);
+		}
+		return it;
 	}
 
 	/**
@@ -165,6 +256,29 @@ public:
 	}
 
 	/**
+	 * @brief イテレータが指す要素を削除する。
+	 * @param pos 削除する要素を指すイテレータ。
+	 * @return 削除された要素の次の要素を指すイテレータ。
+	 */
+	const_iterator erase(const_iterator pos) {
+		updated_keys.erase(pos->first);
+		return map.erase(pos);
+	}
+
+	/**
+	 * @brief 範囲 [first, last) の要素を削除する。
+	 * @param first 範囲の開始イテレータ
+	 * @param last 範囲の終了イテレータ
+	 * @return 削除された最後の要素の次の要素を指すイテレータ。
+	 */
+	const_iterator erase(const_iterator first, const_iterator last) {
+		for (auto it = first; it != last; ++it) {
+			updated_keys.erase(it->first);
+		}
+		return map.erase(first, last);
+	}
+
+	/**
 	 * @brief 全ての要素を削除する。
 	 */
 	void clear() {
@@ -172,6 +286,75 @@ public:
 		map.clear();
 	}
 
+	/**
+	 * @brief 別のTrackedMapと内容を交換する。
+	 * @param other 交換対象のマップ
+	 */
+	void swap(TrackedMap& other) noexcept(
+		std::allocator_traits<allocator_type>::is_always_equal::value
+		&& std::is_nothrow_swappable<key_compare>::value)
+	{
+		using std::swap;
+		swap(map, other.map);
+		swap(updated_keys, other.updated_keys);
+	}
+
+	// --- ルックアップ ---
+	/**
+	 * @brief 指定されたキーがマップに存在するかを確認する。
+	 * @param key 確認するキー
+	 * @return キーが存在すればtrue, そうでなければfalse。
+	 */
+	bool contains(const key_type& key) const {
+		return map.find(key) != map.end();
+	}
+
+	/**
+	 * @brief 指定されたキーを持つ要素の数を返す (0または1)。
+	 * @param key 確認するキー
+	 * @return 要素の数。
+	 */
+	size_type count(const key_type& key) const {
+		return map.count(key);
+	}
+
+	/**
+	 * @brief 指定されたキーを持つ要素を検索する。
+	 * @param key 検索するキー
+	 * @return 要素を指すイテレータ。見つからなければend()。
+	 */
+	const_iterator find(const key_type& key) const {
+		return map.find(key);
+	}
+
+	/**
+	 * @brief 指定されたキーと等価なキーの範囲を返す。
+	 * @param key 検索するキー
+	 * @return 等価なキーの範囲を示すイテレータのペア。
+	 */
+	std::pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
+		return map.equal_range(key);
+	}
+
+	/**
+	 * @brief 指定されたキーより小さくない最初の要素を指すイテレータを返す。
+	 * @param key キー
+	 * @return 指定されたキー以上の最初の要素を指すイテレータ。
+	 */
+	const_iterator lower_bound(const key_type& key) const {
+		return map.lower_bound(key);
+	}
+
+	/**
+	 * @brief 指定されたキーより大きい最初の要素を指すイテレータを返す。
+	 * @param key キー
+	 * @return 指定されたキーより大きい最初の要素を指すイテレータ。
+	 */
+	const_iterator upper_bound(const key_type& key) const {
+		return map.upper_bound(key);
+	}
+
+	// --- 容量 ---
 	/**
 	 * @brief マップが空かどうかを確認する。
 	 * @return 空の場合はtrue。
@@ -187,7 +370,41 @@ public:
 	size_type size() const {
 		return map.size();
 	}
+
+	// --- オブザーバ ---
+	/**
+	 * @brief キー比較オブジェクトを取得する。
+	 * @return キー比較オブジェクト。
+	 */
+	key_compare key_comp() const {
+		return map.key_comp();
+	}
+
+	/**
+	 * @brief 値比較オブジェクト (value_type用) を取得する。
+	 * @return 値比較オブジェクト。
+	 */
+	typename map_type::value_compare value_comp() const {
+		return map.value_comp();
+	}
 };
+
+// --- (グローバル) swap ---
+/**
+ * @brief 2つのTrackedMapの内容を交換する。
+ * @tparam _Key キーの型
+ * @tparam _Tp 値の型
+ * @tparam _Compare キーの比較関数の型
+ * @tparam _Alloc アロケータの型
+ * @param lhs 交換対象の左側のマップ
+ * @param rhs 交換対象の右側のマップ
+ */
+template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
+void swap(TrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
+		TrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+	lhs.swap(rhs);
+}
+
 
 /**
  * @class SafeTrackedMap
@@ -196,6 +413,12 @@ public:
  * 内部でstd::mutexを用いて排他制御を行うことで、複数のスレッドからの同時アクセスを安全に処理します。
  * 要素が追加または更新されると、そのキーが内部のセットに記録されます。
  * さらに、std::condition_variableを利用して、データが更新されるまで待機する機能も提供します。
+ *
+ * @note スレッドセーフ性を担保するため、イテレータを返す関数 (begin, end, findなど) や
+ * 参照を返す operator[] は意図的に実装していません。
+ * 要素の読み取りは at() (コピーを返す)、
+ * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() を使用してください。
+ *
  * @tparam _Key キーの型
  * @tparam _Tp 値の型
  * @tparam _Compare キーの比較関数の型
@@ -205,17 +428,19 @@ template <typename _Key, typename _Tp, typename _Compare = std::less<_Key>,
 	typename _Alloc = std::allocator<std::pair<const _Key, _Tp> > >
 class SafeTrackedMap {
 public:
+	// --- 型定義 ---
 	typedef std::map<_Key, _Tp, _Compare, _Alloc>	map_type;
-	typedef typename map_type::key_type			key_type;
-	typedef typename map_type::mapped_type		mapped_type;
-	typedef typename map_type::value_type		value_type;
-	typedef typename map_type::key_compare		key_compare;
-	typedef typename map_type::allocator_type	allocator_type;
-	typedef typename map_type::size_type		size_type;
-	typedef typename map_type::iterator			iterator;
+	typedef typename map_type::key_type				key_type;
+	typedef typename map_type::mapped_type			mapped_type;
+	typedef typename map_type::value_type			value_type;
+	typedef typename map_type::key_compare			key_compare;
+	typedef typename map_type::allocator_type		allocator_type;
+	typedef typename map_type::size_type			size_type;
+	// iterator 型は、内部でのみ使用 (e.g., insert結果のfirst)
+	typedef typename map_type::iterator				iterator;
 
 	typedef std::set<key_type, key_compare, typename std::allocator_traits<allocator_type>::template rebind_alloc<key_type>>	set_type;
-	typedef typename set_type::key_type			set_key_type;
+	typedef typename set_type::key_type				set_key_type;
 
 private:
 	// --- メンバ変数 ---
@@ -228,6 +453,7 @@ private:
 	/// @brief insertやinsert_or_assignで更新されたキーを格納するセット
 	set_type updated_keys;
 
+	// --- 内部ヘルパー関数 (ロック取得済み前提) ---
 	/**
 	 * @brief データが更新されるまで待機するプライベート関数。
 	 * @details
@@ -277,20 +503,37 @@ private:
 		return flag_wait_for_updates;
 	}
 
+	/**
+	 * @brief 全ての要素のコピーを取得する。
+	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @return マップ全体のコピー。
+	 */
 	map_type _get_all(bool flag_clear_updated_keys) {
 		map_type copy = map;
 		_if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
 		return copy;
 	}
 
-	// updated_keysのコピーを取得する関数
+	/**
+	 * @brief 更新されたキーのリストを取得する。
+	 * @details
+	 * 現在 `updated_keys` に記録されている全てのキーのコピーを返します。
+	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @return 更新されたキーのセットのコピー。
+	 */
 	set_type _get_updated_keys(bool flag_clear_updated_keys) {
 		set_type copy = updated_keys;
 		_if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
 		return copy;
 	}
 
-	// updateされた全てのキーについての要素一覧を取得
+	/**
+	 * @brief 更新された要素（キーと値のペア）のマップを取得する。
+	 * @details
+	 * `updated_keys` に記録されているキーに対応する要素を全て抽出し、新しいマップとして返します。
+	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @return 更新された要素のみを含む新しいマップ。
+	 */
 	map_type _get_updated_elements(bool flag_clear_updated_keys) {
 		map_type updated_elements;
 		for (const auto& key : updated_keys) {
@@ -316,63 +559,13 @@ public:
 		_wait_for_updates(lock);
 	}
 
-	/**
-	 * @brief マップに要素を挿入する。
-	 * @details
-	 * 指定された要素をマップに挿入します。挿入が成功した場合（キーが既存でなかった場合）、
-	 * そのキーを `updated_keys` に追加し、待機中のスレッドに通知します。
-	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
-	 * @param x 挿入する値
-	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
-	 */
-	template <class P>
-	bool insert(P&& x) {
-		bool inserted = false;
-		std::pair<iterator, bool> result;
-		{
-			std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
-			result = map.insert(std::forward<P>(x));
-			if(result.second){
-				updated_keys.insert(result.first->first);	// 更新されたキーを保存
-				inserted = true;
-			}
-		} // ロックを解放
-		if(inserted){
-			cv.notify_all();	// 更新を待機しているスレッドに通知
-		}
-		return inserted;
-	}
-
-	/**
-	 * @brief マップに要素を挿入または代入する。
-	 * @details
-	 * 指定されたキーが存在すれば値を上書きし、存在しなければ新しい要素として挿入します。
-	 * どちらの場合でもキーは「更新された」とみなし、`updated_keys` に追加して待機中のスレッドに通知します。
-	 * @tparam M 挿入/代入する値の型
-	 * @param key キー
-	 * @param x 値
-	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
-	 */
-	template <class M>
-	bool insert_or_assign(const key_type& key, M&& x) {
-		bool inserted = false;
-		std::pair<iterator, bool> result;
-		{
-			std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
-			result = map.insert_or_assign(key, std::forward<M>(x));
-			updated_keys.insert(key);  // 更新されたキーを保存
-			inserted = result.second;
-		} // ロックを解放
-		cv.notify_all();	// 更新を待機しているスレッドに通知
-		return inserted;
-	}
-
+	// --- 要素アクセス ---
 	/**
 	 * @brief 指定されたキーに対応する値を取得する。
 	 * @param key キー
 	 * @param flag_wait_for_updates trueの場合、キーが更新されるまで待機する。
 	 * @param flag_erase_updated_keys trueの場合、取得したキーを更新済みリストから削除する。
-	 * @return キーに対応する値。
+	 * @return キーに対応する値 (コピー)。
 	 * @throws std::out_of_range キーが存在しない場合。
 	 */
 	mapped_type at(const key_type& key, bool flag_wait_for_updates = false, bool flag_erase_updated_keys = false) {
@@ -380,11 +573,12 @@ public:
 		if(flag_wait_for_updates){
 			cv.wait(lock, [this, &key] { return updated_keys.find(key) != updated_keys.end(); }); // keyがセットされるまで待機
 		}
-		mapped_type value = map.at(key);
+		mapped_type value = map.at(key); // コピーを取得
 		_if_true_erase_updated_keys(key, flag_erase_updated_keys);	// 更新情報を解除
 		return value; // ロックはunique_lockのデストラクタで解放
 	}
 
+	// --- ゲッター (SafeTrackedMap固有) ---
 	/**
 	 * @brief 全ての要素のコピーを取得する。
 	 * @param flag_wait_for_updates trueの場合、更新キーが発生するまで待機する。
@@ -426,21 +620,133 @@ public:
 	}
 
 	/**
-	 * @brief 指定されたキーがマップに存在するかを確認する。
-	 * @param key 確認するキー
-	 * @return キーが存在すればtrue, そうでなければfalse。
-	 */
-	bool contains(const key_type& key) {
-		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
-		return map.find(key) != map.end();	// ロックはlock_guardのデストラクタで解放
-	}
-
-	/**
 	 * @brief 更新済みキーのリストをクリアする。
 	 */
 	void clear_updated_keys() {
 		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
 		updated_keys.clear();	// ロックはlock_guardのデストラクタで解放
+	}
+
+	// --- 修飾子 ---
+	/**
+	 * @brief マップに要素を挿入する。
+	 * @details
+	 * 挿入が成功した場合、そのキーを `updated_keys` に追加し、待機中のスレッドに通知します。
+	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
+	 * @param x 挿入する値
+	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
+	 */
+	template <class P>
+	bool insert(P&& x) {
+		bool inserted = false;
+		std::pair<iterator, bool> result;
+		{
+			std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+			result = map.insert(std::forward<P>(x));
+			if(result.second){
+				updated_keys.insert(result.first->first);	// 更新されたキーを保存
+				inserted = true;
+			}
+		} // ロックを解放
+		if(inserted){
+			cv.notify_all();	// 更新を待機しているスレッドに通知
+		}
+		return inserted;
+	}
+
+	/**
+	 * @brief マップに要素を挿入または代入する。
+	 * @details
+	 * 挿入・代入どちらの場合でもキーは `updated_keys` に追加し、待機中のスレッドに通知します。
+	 * @tparam M 挿入/代入する値の型
+	 * @param key キー
+	 * @param x 値
+	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
+	 */
+	template <class M>
+	bool insert_or_assign(const key_type& key, M&& x) {
+		bool inserted = false;
+		std::pair<iterator, bool> result;
+		{
+			std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+			result = map.insert_or_assign(key, std::forward<M>(x));
+			updated_keys.insert(key);  // 更新されたキーを保存
+			inserted = result.second;
+		} // ロックを解放
+		cv.notify_all();	// 更新を待機しているスレッドに通知
+		return inserted;
+	}
+
+	/**
+	 * @brief 要素をインプレース構築する。
+	 * @param args 値の構築引数
+	 * @return 挿入が成功した場合はtrue、キーが既に存在した場合はfalse。
+	 */
+	template <class... Args>
+	bool emplace(Args&&... args) {
+		std::pair<iterator, bool> result;
+		bool inserted = false;
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			result = map.emplace(std::forward<Args>(args)...);
+			if (result.second) {
+				updated_keys.insert(result.first->first);
+				inserted = true;
+			}
+		}
+		if (inserted) {
+			cv.notify_all();
+		}
+		return inserted;
+	}
+
+	/**
+	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
+	 * @param key キー
+	 * @param args 値の構築引数
+	 * @return 挿入が成功した場合はtrue、キーが既に存在した場合はfalse。
+	 */
+	template <class... Args>
+	bool try_emplace(const key_type& key, Args&&... args) {
+		std::pair<iterator, bool> result;
+		bool inserted = false;
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			result = map.try_emplace(key, std::forward<Args>(args)...);
+			if (result.second) {
+				updated_keys.insert(result.first->first);
+				inserted = true;
+			}
+		}
+		if (inserted) {
+			cv.notify_all();
+		}
+		return inserted;
+	}
+
+	/**
+	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
+	 * @param key キー
+	 * @param args 値の構築引数
+	 * @return 挿入が成功した場合はtrue、キーが既に存在した場合はfalse。
+	 */
+	template <class... Args>
+	bool try_emplace(key_type&& key, Args&&... args) {
+		std::pair<iterator, bool> result;
+		bool inserted = false;
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			// key はムーブされる可能性があるため、result.first->first を使用
+			result = map.try_emplace(std::move(key), std::forward<Args>(args)...);
+			if (result.second) {
+				updated_keys.insert(result.first->first);
+				inserted = true;
+			}
+		}
+		if (inserted) {
+			cv.notify_all();
+		}
+		return inserted;
 	}
 
 	/**
@@ -464,6 +770,57 @@ public:
 	}
 
 	/**
+	 * @brief 別のSafeTrackedMapと内容を交換する。
+	 * @details std::lockを使いデッドロックセーフに両方のmutexをロックしてswapする。
+	 * @param other 交換対象のマップ
+	 */
+	void swap(SafeTrackedMap& other) noexcept(
+		std::allocator_traits<allocator_type>::is_always_equal::value
+		&& std::is_nothrow_swappable<key_compare>::value)
+	{
+		if (this == &other) {
+			return;
+		}
+
+		// デッドロックを回避するために std::lock を使用
+		std::lock(mtx, other.mtx);
+
+		// ロックが取得されたことを保証するために std::lock_guard を adopt モードで使用
+		std::lock_guard<std::mutex> lock_this(mtx, std::adopt_lock);
+		std::lock_guard<std::mutex> lock_other(other.mtx, std::adopt_lock);
+
+		using std::swap;
+		swap(map, other.map);
+		swap(updated_keys, other.updated_keys);
+
+		// 両方のマップが更新された可能性があるため、両方の待機スレッドに通知
+		cv.notify_all();
+		other.cv.notify_all();
+	}
+
+	// --- ルックアップ ---
+	/**
+	 * @brief 指定されたキーがマップに存在するかを確認する。
+	 * @param key 確認するキー
+	 * @return キーが存在すればtrue, そうでなければfalse。
+	 */
+	bool contains(const key_type& key) {
+		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
+		return map.find(key) != map.end();	// ロックはlock_guardのデストラクタで解放
+	}
+
+	/**
+	 * @brief 指定されたキーを持つ要素の数を返す (0または1)。
+	 * @param key 確認するキー
+	 * @return 要素の数。
+	 */
+	size_type count(const key_type& key) {
+		std::lock_guard<std::mutex> lock(mtx);
+		return map.count(key);
+	}
+
+	// --- 容量 ---
+	/**
 	 * @brief マップが空かどうかをスレッドセーフに確認する。
 	 * @return 空の場合はtrue。
 	 */
@@ -480,6 +837,42 @@ public:
 		std::lock_guard<std::mutex> lock(mtx);	// ロックを取得
 		return map.size();	// ロックはlock_guardのデストラクタで解放
 	}
+
+	// --- オブザーバ ---
+	/**
+	 * @brief キー比較オブジェクトを取得する。
+	 * @return キー比較オブジェクト。
+	 */
+	key_compare key_comp() const {
+		std::lock_guard<std::mutex> lock(mtx);
+		return map.key_comp();
+	}
+
+	/**
+	 * @brief 値比較オブジェクト (value_type用) を取得する。
+	 * @return 値比較オブジェクト。
+	 */
+	typename map_type::value_compare value_comp() const {
+		std::lock_guard<std::mutex> lock(mtx);
+		return map.value_comp();
+	}
 };
+
+// --- (グローバル) swap ---
+/**
+ * @brief 2つのTrackedMapの内容を交換する。
+ * @tparam _Key キーの型
+ * @tparam _Tp 値の型
+ * @tparam _Compare キーの比較関数の型
+ * @tparam _Alloc アロケータの型
+ * @param lhs 交換対象の左側のマップ
+ * @param rhs 交換対象の右側のマップ
+ */
+template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
+void swap(SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
+		SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+	lhs.swap(rhs);
+}
+
 
 } // namespace utils

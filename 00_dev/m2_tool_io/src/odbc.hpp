@@ -228,7 +228,7 @@ public:
 	void bind(int paramIndex, const std::optional<std::vector<char>>& opt_val);
 
 	/**
-	 * @brief パラメータをバインドします (NULL対応版、日時型専用のオーバーロード)。
+	 * @brief パラメータをバインドします (NULL対応版、time_point 専用オーバーロード)。
 	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
@@ -236,6 +236,15 @@ public:
 	 * @return TIMESTAMP 構造体への変換に成功した場合はtrue、失敗した場合はfalse。
 	 */
 	bool bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val);
+
+	/**
+	 * @brief パラメータをバインドします (NULL対応版、long double 専用オーバーロード)。
+	 * @details long double を double に丸めてからバインドします。
+	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
+	 */
+	[[deprecated("Warning: 'long double' is truncated to 'double' for ODBC binding.")]]
+	void bind(int paramIndex, const std::optional<long double>& opt_val);
 
 	/**
 	 * @brief パラメータをバインドします (NULL非対応版)。
@@ -250,7 +259,7 @@ public:
 	}
 
 	/**
-	 * @brief パラメータをバインドします (NULL非対応版、日時型専用のオーバーロード)。
+	 * @brief パラメータをバインドします (NULL非対応版、time_point 専用オーバーロード)。
 	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
 	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
@@ -302,7 +311,7 @@ public:
 
 	/**
 	 * @brief 一括挿入用に文字列の配列をバインドします (NULL非対応版、string 専用オーバーロード)。
-	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする処理を行います。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param values バインドするデータのvector。
 	 */
@@ -310,7 +319,7 @@ public:
 
 	/**
 	 * @brief 一括挿入用に文字列の配列をバインドします (NULL対応版、string 専用オーバーロード)。
-	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする処理を行います。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
@@ -318,7 +327,7 @@ public:
 
 	/**
 	 * @brief 一括挿入用にBLOBの配列をバインドします (NULL非対応版、vector<char> 専用オーバーロード)。
-	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする処理を行います。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param values バインドするデータのvector。
 	 */
@@ -326,7 +335,7 @@ public:
 
 	/**
 	 * @brief 一括挿入用にBLOBの配列をバインドします (NULL対応版、vector<char> 専用オーバーロード)。
-	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする特別な処理を行います。
+	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする処理を行います。
 	 * @param paramIndex パラメータのインデックス (1から始まる)。
 	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
@@ -351,6 +360,24 @@ public:
 	 * @return TIMESTAMP 構造体への変換に全て成功した場合はtrue、一つでも失敗した場合はfalse。
 	 */
 	bool bindColumn(int paramIndex, const std::vector<std::optional<std::chrono::system_clock::time_point>>& values);
+
+	/**
+	 * @brief 一括挿入用に long double の配列をバインドします (NULL非対応版、long double 専用オーバーロード)。
+	 * @details long double を double に丸めてからバインドします。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 */
+	[[deprecated("Warning: 'long double' is truncated to 'double' for ODBC binding.")]]
+	void bindColumn(int paramIndex, const std::vector<long double>& opt_vals);
+
+	/**
+	 * @brief 一括挿入用に long double の配列をバインドします (NULL対応版、long double 専用オーバーロード)。
+	 * @details long double を double に丸めてからバインドします。
+	 * @param paramIndex パラメータのインデックス (1から始まる)。
+	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 */
+	[[deprecated("Warning: 'long double' is truncated to 'double' for ODBC binding.")]]
+	void bindColumn(int paramIndex, const std::vector<std::optional<long double>>& opt_vals);
 
 	/**
 	 * @brief 一括挿入(バルクインサート)で一度に処理する行数を設定します。

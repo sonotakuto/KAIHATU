@@ -2,9 +2,11 @@
  * @file db_client.cpp
  * @brief db_client.hppで宣言された関数の実装ファイル。
  */
+#include <cstdint>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
+#include "./any_extension.hpp"
 #include "./odbc.hpp"
 #include "./includes.hpp"
 #include "./db_client.hpp"
@@ -232,12 +234,12 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 
 		// 5. `records` (vector of struct) から各列の `vector` (struct of vector) にデータを変換
 		std::vector<std::string> op_class_strs;
-		std::vector<int> user_ids;
+		std::vector<std::int32_t> user_ids;
 		std::vector<std::chrono::system_clock::time_point> proc_times;
-		std::vector<int> storage_area_ids;
-		std::vector<int> unique_tool_ids;
-		std::vector<std::string> video_paths;
-		std::vector<int> tool_nums;
+		std::vector<std::int32_t> storage_area_ids;
+		std::vector<std::optional<std::int32_t>> unique_tool_ids;
+		std::vector<std::optional<std::string>> video_paths;
+		std::vector<std::optional<std::int32_t>> tool_nums;
 
 		op_class_strs.reserve(records.size());
 		user_ids.reserve(records.size());
@@ -310,11 +312,11 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 
 		const auto& row = rows[0];
 		MstUserInfo user_info;
-		user_info.user_id		= std::any_cast<int>		(row.at("user_id"));
-		user_info.user_name		= std::any_cast<std::string>(row.at("user_name"));
-		// TINYINT(1) は int として取得し、boolに変換
-		user_info.per_add		= (std::any_cast<int>		(row.at("per_add"))			!= 0);
-		user_info.per_inventory	= (std::any_cast<int>		(row.at("per_inventory"))	!= 0);
+		user_info.id			= std::any_cast<std::int32_t>		(row.at("user_id"));
+		user_info.name			= std::any_cast<std::string>(row.at("user_name"));
+		// TINYINT(1) は int8_t として取得し、boolに変換
+		user_info.per_add		= (std::any_cast<std::int8_t>	(row.at("per_add"))			!= 0);
+		user_info.per_inventory	= (std::any_cast<std::int8_t>	(row.at("per_inventory"))	!= 0);
 		// per_outはtypedef.hppでデフォルトtrueのため、DBスキーマに合わせて他の権限も追加
 
 		return user_info;
@@ -360,43 +362,63 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 		}
 
 		const auto& row = rows[0];
-		UniqueToolInfo tool_info;
 
-		// unique_tool テーブルの情報を詰める
-		tool_info.unique_tool_id	= std::any_cast<int>(row.at("unique_tool_id"));
-		tool_info.unique_num		= std::any_cast<int>(row.at("unique_num"));
-		tool_info.case_pack_num		= std::any_cast<int>(row.at("case_pack_num"));
-
-		// enumは文字列として取得
+		// enum を文字列として取得しておく
 		std::string condition_str	= std::any_cast<std::string>(row.at("storage_condition"));
-		if		(condition_str == "保管中")	{tool_info.storage_condition = StorageCondition::USABLE;}
-		else if	(condition_str == "取出")	{tool_info.storage_condition = StorageCondition::TAKEN_OUT;}
-		else								{tool_info.storage_condition = StorageCondition::NOT_STORED;}
 
-		if (row.count("regrind_count") && row.at("regrind_count").has_value()) {
-			tool_info.regrind_count = std::any_cast<int>(row.at("regrind_count"));
-		}
+		// mst_tool テーブルの情報を詰めて用意しておく
+		MstToolInfo mst_tool_info{
+			.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
+			.name		= std::any_cast<std::string>	(row.at("tool_name")),
+			.maker		= std::any_cast<std::string>	(row.at("maker")),
+			.category	= std::any_cast<std::string>	(row.at("tool_category")),
+			.material	= std::any_cast<std::string>	(row.at("tool_material")),
+			.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+		};
 
-		// mst_tool テーブルの情報を詰める
-		tool_info.mst_tool.basic_tool_id	= std::any_cast<int>		(row.at("basic_tool_id"));
-		tool_info.mst_tool.tool_name		= std::any_cast<std::string>(row.at("tool_name"));
-		tool_info.mst_tool.maker			= std::any_cast<std::string>(row.at("maker"));
-		tool_info.mst_tool.tool_category	= std::any_cast<std::string>(row.at("tool_category"));
-		tool_info.mst_tool.tool_material	= std::any_cast<std::string>(row.at("tool_material"));
-		tool_info.mst_tool.stc				= std::any_cast<int>		(row.at("stc"));
+		// unique_tool テーブルの情報を詰めて返す
+		return UniqueToolInfo{
 
-		// storage_area と mst_address の情報を詰める (LEFT JOINなのでNULLの可能性がある)
-		if (row.count("storage_area_id") && row.at("storage_area_id").has_value()) {
-			StrageAreaInfo area_info;
-			area_info.storage_area_id				= std::any_cast<int>		(row.at("storage_area_id"));
-			area_info.toolcase_stc_num				= std::any_cast<int>		(row.at("toolcase_stc_num"));
-			area_info.mst_address.display_address	= std::any_cast<std::string>(row.at("display_address"));
-			area_info.mst_address.control_address	= std::any_cast<int>		(row.at("control_address"));
-			area_info.item = tool_info.mst_tool;	// StrageAreaInfo内のitemは、この工具の基本情報と同じ
-			tool_info.storage_area = area_info;
-		}
+			.id = std::any_cast<std::int32_t>(row.at("unique_tool_id")),
 
-		return tool_info;
+			// 用意しておいた mst_tool テーブルの情報を詰める
+			.mst_tool_info = mst_tool_info,
+
+			.unique_num		= std::any_cast<std::int32_t>(row.at("unique_num")),
+			.case_pack_num	= std::any_cast<std::int32_t>(row.at("case_pack_num")),
+
+			// storage_area と mst_address の情報を詰める (LEFT JOINなのでNULLの可能性がある)
+			.storage_area_info = (
+				(row.count("storage_area_id") && row.at("storage_area_id").has_value()) ? (
+					std::make_optional<StrageAreaInfo>(StrageAreaInfo{
+						.id					= std::any_cast<std::int32_t>(row.at("storage_area_id")),
+						.item				= mst_tool_info,	// StrageAreaInfo内のitemは、この工具の基本情報と同じ
+						.toolcase_stc_num	= std::any_cast<std::int32_t>(row.at("toolcase_stc_num")),
+
+						.mst_address_info = MstAddressInfo{
+							.display_address	= std::any_cast<std::string>(row.at("display_address")),
+							.control_address	= std::any_cast<std::string>(row.at("control_address"))
+						}
+					})
+				) : (
+					std::nullopt
+				)
+			),
+
+			.storage_condition = (
+				(condition_str == "保管中") ? (
+					StorageCondition::USABLE
+				) : (
+					(condition_str == "取出") ? (
+						StorageCondition::TAKEN_OUT
+					) : (
+						StorageCondition::NOT_STORED
+					)
+				)
+			),
+
+			.regrind_count = stdex::any_cast_optional<std::int32_t>(row.at("regrind_count")),
+		};
 
 	} catch (const odbc::OdbcException& e) {
 		DEV_PRINT(stderr, "DB Error in get_UniqueToolInfo: {}\n", e.what());
@@ -418,13 +440,15 @@ std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string)
 	try {
 		const std::string sql =
 			"SELECT "
-			"    pal.program_assignment_id, pal.line_name, pal.program_num, "
+			"    pal.program_id, pal.program_name, "
+			"    ml.line_id, ml.line_name, "
 			"    ta.tool_assignment_id, ta.tool_num, "
 			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
-			"FROM program_assignment_list AS pal "
-			"JOIN tool_assignment AS ta ON pal.program_assignment_id = ta.program_assignment_id "
-			"JOIN mst_tool AS mt ON ta.basic_tool_id = mt.basic_tool_id "
-			"WHERE pal.program_assignment_id = ? AND pal.program_print_time = ? "
+			"FROM mst_program AS pal "
+			"LEFT JOIN mst_line AS ml ON pal.line_id = ml.line_id"
+			"LEFT JOIN mst_tool_assignment AS ta ON pal.program_id = ta.program_id "
+			"LEFT JOIN mst_tool AS mt ON ta.basic_tool_id = mt.basic_tool_id "
+			"WHERE pal.program_id = ? AND pal.program_print_time = ? "
 			"ORDER BY ta.tool_assignment_id ASC;";
 
 		stmt.prepare(sql);
@@ -438,25 +462,34 @@ std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string)
 		}
 
 		// 最初の行からリスト全体の情報を作成
-		ToolingListInfo list_info;
-		list_info.program_assignment_id	= std::any_cast<int>		(rows[0].at("program_assignment_id"));
-		list_info.line_name				= std::any_cast<std::string>(rows[0].at("line_name"));
-		list_info.program_num			= std::any_cast<std::string>(rows[0].at("program_num"));
+		ToolingListInfo list_info{
+			.line = MstLineInfo{
+				.id		= std::any_cast<std::int32_t>	(rows[0].at("line_id")),
+				.name	= std::any_cast<std::string>	(rows[0].at("line_name"))
+			},
+
+			.program = MstProgramInfo{
+				.id		= std::any_cast<std::int32_t>	(rows[0].at("program_id")),
+				.name	= std::any_cast<std::string>	(rows[0].at("program_name"))
+			}
+		};
 
 		// 全ての行をループして、工具のリストを作成
+		list_info.tool_assignments.reserve(rows.size());
 		for (const auto& row : rows) {
-			ToolAssignmentInfo item;
-			item.tool_assignment_id	= std::any_cast<int>		(row.at("tool_assignment_id"));
-			item.tool_number		= std::any_cast<std::string>(row.at("tool_num"));
+			list_info.tool_assignments.push_back(ToolAssignmentInfo{
+				.id			= std::any_cast<std::int32_t>	(row.at("tool_assignment_id")),
+				.tool_num	= std::any_cast<std::string>	(row.at("tool_num")),
 
-			item.mst_tool.basic_tool_id	= std::any_cast<int>		(row.at("basic_tool_id"));
-			item.mst_tool.tool_name		= std::any_cast<std::string>(row.at("tool_name"));
-			item.mst_tool.maker			= std::any_cast<std::string>(row.at("maker"));
-			item.mst_tool.tool_category	= std::any_cast<std::string>(row.at("tool_category"));
-			item.mst_tool.tool_material	= std::any_cast<std::string>(row.at("tool_material"));
-			item.mst_tool.stc			= std::any_cast<int>		(row.at("stc"));
-
-			list_info.tool_assignments.push_back(item);
+				.mst_tool_info = MstToolInfo{
+					.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
+					.name		= std::any_cast<std::string>	(row.at("tool_name")),
+					.maker		= std::any_cast<std::string>	(row.at("maker")),
+					.category	= std::any_cast<std::string>	(row.at("tool_category")),
+					.material	= std::any_cast<std::string>	(row.at("tool_material")),
+					.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+				}
+			});
 		}
 
 		return list_info;
