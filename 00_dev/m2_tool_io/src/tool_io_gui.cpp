@@ -1713,6 +1713,8 @@ void MainWindow::on_enter_waiting_for_user_login() {
 	userIdEntry.grab_focus();
 }
 
+//取り出し
+
 void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	storingToolListstore.clear();
 	storingToolListstore.append(MstToolInfo{});

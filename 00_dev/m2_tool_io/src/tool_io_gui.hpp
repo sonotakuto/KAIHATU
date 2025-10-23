@@ -939,6 +939,12 @@ private:
 	/// @brief 現在のテキストモード(かな/漢字)を保持するメンバ変数。
 	TextMode m_text_mode;
 
+	/// @brief 取り出しの操作で利用する工具リストのメンバ変数。
+	std::vector<MstToolInfo> m_opreating_tools;
+	
+	/// @brief m_opreating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
+	size_t m_operating_index;
+
 	/// @brief ウィジェットの状態を保持し、変更があったウィジェットを追跡するマップ。
 	utils::TrackedMap<sg::Widget*, WidgetStateUpdater> m_widget_states;
 
