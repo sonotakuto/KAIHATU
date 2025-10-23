@@ -748,6 +748,18 @@ private:
 	 * @details プログラム割当一覧表の情報をDBから取得して表示する。
 	 */
 	void on_qrCodeEntry_retrieve_waiting_for_program_qr();
+	
+	/**
+	 * @brief　RETRIEVE_SELECTING_TOOLS　状態で工具選択するときの処理。
+	 * @details 選択された工具の表示と取り出し工具の抽出を行う。
+	 */
+	 void on_mainTableSelection_retrieve_selecting_tools()
+	
+	 /**
+	 * @brief　RETRIEVE_CONFIRMING_SELECTION　状態に入った時の処理。
+	 * @details 抽出された選択済み行の表示する。
+	 */
+	void on_enter_reading_of_selected_tools()
 
 	// TODO: 取り出しモードの状態遷移関数をここに追加
 
@@ -944,6 +956,9 @@ private:
 	
 	/// @brief m_operating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	size_t m_operating_index;
+
+	/// @brief 工具選択画面で選択されている行のグローバルインデックスを保持するセット
+    std::set<size_type> m_selected_tool_indices;
 
 	/// @brief ウィジェットの状態を保持し、変更があったウィジェットを追跡するマップ。
 	utils::TrackedMap<sg::Widget*, WidgetStateUpdater> m_widget_states;

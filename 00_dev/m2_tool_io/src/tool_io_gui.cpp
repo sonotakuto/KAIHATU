@@ -1715,6 +1715,220 @@ void MainWindow::on_enter_waiting_for_user_login() {
 
 //取り出し
 
+void MainWindow::on_mainTableSelection_retrieve_selecting_tools(){
+
+	/*----------------------------------------------------------------------------------------*/
+						//QRコードで読み取ったプログラム割当一覧の受け取り(始め)
+	/*----------------------------------------------------------------------------------------*/
+	
+	auto tooling_list_info_opt = db::get_ToolingListInfo(qrCodeEntry.get_text());
+
+	if (tooling_list_info_opt.has_value()){
+		ToolingListInfo tooling_list = tooling_list_info_opt.value();
+
+		// 2. ToolAssignmentInfo のリストを MainTableData のリストに変換
+		std::vector<gui::MainWindow::MainTableData> table_data_list;
+		table_data_list.reserve(tooling_list.tool_assignments.size()); // 事前にメモリ確保
+
+		for (const auto& tool_assignment : tooling_list.tool_assignments) {
+			gui::MainWindow::MainTableData row; // 1行分のデータ構造
+
+			// ToolAssignmentInfo と MstToolInfo から MainTableData に値をコピー
+			row.id = tool_assignment.id; // 行の識別に使う (今回は tool_assignment_id を流用)
+			row.data_columns[0] = tool_assignment.tool_num;              // ツール番号
+			row.data_columns[1] = tool_assignment.mst_tool_info.category; // 分類
+			row.data_columns[2] = tool_assignment.mst_tool_info.maker;    // メーカー
+			row.data_columns[3] = tool_assignment.mst_tool_info.name;     // 型番
+			row.data_columns[4] = tool_assignment.mst_tool_info.material; // 材質
+			row.data_columns[5] = std::to_string(tool_assignment.mst_tool_info.stc); // 在庫数 (文字列に変換)
+			row.cell_state_0to4 = gui::MainWindow::TableCellState::NORMAL; // 初期状態は通常色
+			// row.cell_state_5 はデフォルト(NONE)のまま
+
+			table_data_list.push_back(row); // リストに追加
+		}
+
+		// 3. 変換したデータをページネーションモデルにセット (これで表示が更新される)
+		liststore2columnAll.set_master_data(table_data_list); //
+
+		// 4. 次の状態へ遷移
+		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS); //
+
+	} else {
+		// 取得失敗時の処理 (エラーメッセージ表示など)
+		DEV_PRINT("ツーリングリストの取得に失敗しました。\n");
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"有効なプログラム割当一覧表QRコードではありません。", "ゆうこうな プログラムわりあていちらんひょう QRコードではありません。"}
+		});
+		refresh_ui(false); //
+	}
+
+	/*----------------------------------------------------------------------------------------*/
+						//QRコードで読み取ったプログラム割当一覧の受け取り(終わり)
+	/*----------------------------------------------------------------------------------------*/	
+
+	
+	/*----------------------------------------------------------------------------------------*/
+						////テーブル選択時の背景色変更(始め)
+	/*----------------------------------------------------------------------------------------*/	
+	// 現在のアプリケーション状態を取得
+    const auto& state_config = g_app_state_configs.at(m_app_state);
+
+    // 現在の状態に対応するコールバック関数が登録されていれば実行
+    if (state_config.on_mainTableSelection_changed) {
+        state_config.on_mainTableSelection_changed(this);
+        return; // 状態固有の処理があればそれを優先
+    }
+
+    // --- 以下は状態固有の処理がない場合のデフォルト動作 ---
+
+    // 現在アクティブなページネーションモデルを取得
+    sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
+    const auto& page_name = state_config.tableStackPageName;
+    if (page_name == "table3column") {
+        active_paginator = &liststore3columnAll;
+    } else if (page_name == "table2column") {
+        active_paginator = &liststore2columnAll;
+    }
+
+    if (!active_paginator) {
+        return; // 対象モデルがなければ何もしない
+    }
+
+    // 選択された行のグローバルインデックスを取得
+    std::optional<size_type> selected_global_index_opt = active_paginator->get_selected_index(); //
+
+    if (selected_global_index_opt.has_value()) {
+        size_type selected_global_index = selected_global_index_opt.value();
+
+        // 選択された行の現在のデータを取得
+        MainTableData current_row_data = active_paginator->get_row(selected_global_index); //
+
+        // 選択状態をトグルする
+        if (m_selected_tool_indices.count(selected_global_index)) {
+            // --- すでに選択されていた場合：選択解除 ---
+            m_selected_tool_indices.erase(selected_global_index); // セットから削除
+            // 背景色を通常に戻す
+            current_row_data.cell_state_0to4 = TableCellState::NORMAL; //
+            DEV_PRINT("行 {} を選択解除しました。\n", selected_global_index);
+
+        } else {
+            // --- まだ選択されていなかった場合：選択 ---
+            m_selected_tool_indices.insert(selected_global_index); // セットに追加
+            // 背景色を選択状態にする
+            current_row_data.cell_state_0to4 = TableCellState::SELECTED; //
+            DEV_PRINT("行 {} を選択しました。\n", selected_global_index);
+        }
+
+        // 変更をモデルに反映させて表示を更新
+        active_paginator->update(selected_global_index, current_row_data); //
+
+        // (オプション) trueButton (確定ボタンなど) の有効/無効状態を更新
+        // 例: 選択されている行が1つ以上あれば有効にする
+        update_widget_state(&trueButton, WidgetState{ .is_sensitive = !m_selected_tool_indices.empty() }); //
+        refresh_ui(false); //
+
+    } else {
+        // 何も選択されていない状態になった場合 (通常はあまり発生しない)
+        DEV_PRINT("選択が解除されました (選択なし)。\n");
+        // (オプション) trueButton を無効化するなど
+        update_widget_state(&trueButton, WidgetState{ .is_sensitive = false }); //
+        refresh_ui(false); //
+    }
+
+	/*----------------------------------------------------------------------------------------*/
+						////テーブル選択時の背景色変更(終わり)
+	/*----------------------------------------------------------------------------------------*/
+	/*----------------------------------------------------------------------------------------*/
+						////確定ボタンの処理(始め)
+	/*----------------------------------------------------------------------------------------*/
+
+	// tool_io_gui.hpp の MainWindow クラス内に以下を追加
+	// private:
+	//     // ...
+	//     /// @brief 確認画面用に選択された工具データを保持するリスト
+	//     std::vector<MainTableData> m_confirmed_selection;
+	// tool_io_gui.cpp 内の g_app_state_configs の RETRIEVE_SELECTING_TOOLS の on_trueButton_clicked ラムダ内
+	.on_trueButton_clicked = [](MainWindow* thiz){
+		// 1. アクティブなページネーションモデルを取得 (エラーチェックは省略)
+		sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
+		if (thiz->table_stack.get_visible_child_name() == "table2column") { //
+			active_paginator = &(thiz->liststore2columnAll); //
+		} else if (thiz->table_stack.get_visible_child_name() == "table3column") {
+			active_paginator = &(thiz->liststore3columnAll); //
+		} else {
+			return; // 想定外
+		}
+
+		// 2. 選択されたインデックスに基づいてマスターデータからデータを抽出
+		thiz->m_confirmed_selection.clear(); // 前回のデータをクリア
+		thiz->m_confirmed_selection.reserve(thiz->m_selected_tool_indices.size()); // メモリ確保
+
+		for (const auto& index : thiz->m_selected_tool_indices) {
+			if (index < active_paginator->size()) { // インデックスが有効か確認
+				// get_row でマスターデータからコピーを取得
+				thiz->m_confirmed_selection.push_back(active_paginator->get_row(index));
+			}
+		}
+
+		// 3. 抽出したデータが空でないか確認 (選択なしで確定は押せないはずだが念のため)
+		if (thiz->m_confirmed_selection.empty()) {
+			DEV_PRINT("エラー: 選択された工具がありません。\n");
+			// 必要ならメッセージ表示
+			return;
+		}
+
+		DEV_PRINT("{} 件の工具データを選択しました。\n", thiz->m_confirmed_selection.size());
+
+		// 4. 次の状態 (選択確認画面) へ遷移
+		thiz->set_app_state(AppState::RETRIEVE_CONFIRMING_SELECTION); //
+	},
+
+	/*----------------------------------------------------------------------------------------*/
+						////確定ボタンの処理(終わり)
+	/*----------------------------------------------------------------------------------------*/
+	/*----------------------------------------------------------------------------------------*/
+						////全選択解除ボタンの処理(始め)
+	/*----------------------------------------------------------------------------------------*/
+	
+		// tool_io_gui.cpp 内の g_app_state_configs の RETRIEVE_SELECTING_TOOLS の on_falseButton_clicked ラムダ内
+		.on_falseButton_clicked = [](MainWindow* thiz){
+			DEV_PRINT("全選択解除ボタンがクリックされました。\n");
+
+			// 1. アクティブなページネーションモデルを取得 (エラーチェックは省略)
+			sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
+			if (thiz->table_stack.get_visible_child_name() == "table2column") { //
+				active_paginator = &(thiz->liststore2columnAll); //
+			} else if (thiz->table_stack.get_visible_child_name() == "table3column") {
+				active_paginator = &(thiz->liststore3columnAll); //
+			} else {
+				return; // 想定外
+			}
+
+			// 2. 以前に選択されていた行の背景色を通常に戻す
+			for (const auto& index : thiz->m_selected_tool_indices) {
+				if (index < active_paginator->size()) { // インデックスが有効か確認
+					MainTableData row_data = active_paginator->get_row(index); // データ取得
+					if (row_data.cell_state_0to4 == TableCellState::SELECTED) { // 選択状態なら
+						row_data.cell_state_0to4 = TableCellState::NORMAL; // 通常状態に戻す
+						active_paginator->update(index, row_data); // モデルと表示を更新
+					}
+				}
+			}
+
+			// 3. 選択インデックスのセットをクリア
+			thiz->m_selected_tool_indices.clear();
+			DEV_PRINT("選択をクリアしました。\n");
+
+			// 4. 確定ボタンを無効化
+			thiz->update_widget_state(&(thiz->trueButton), WidgetState{ .is_sensitive = false }); //
+			thiz->refresh_ui(false); //
+		},
+	/*----------------------------------------------------------------------------------------*/
+						////全選択解除ボタンの処理(終わり)
+	/*----------------------------------------------------------------------------------------*/
+}
+
+
 void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	storingToolListstore.clear();
 	storingToolListstore.append(MstToolInfo{});
