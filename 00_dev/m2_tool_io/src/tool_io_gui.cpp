@@ -287,6 +287,9 @@ MainWindow::MainWindow() :
 	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });
 	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
+	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
+	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
+	insertCountOkButton.on_clicked([this]() { confirmInsertCountDialog.response(GTK_RESPONSE_OK); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	confirmRegroundOkButton.on_clicked([this]() { confirmRegroundDialog.response(GTK_RESPONSE_OK); });
@@ -297,333 +300,501 @@ MainWindow::MainWindow() :
 
 	// --- 「取り出し」トグルボタン ---
 	m_widget_states.try_emplace(&retrieveToggleButton, WidgetStateUpdater{
-		{UiText{"取り出し", "とりだし"}, false, true},
+		{
+			.text = UiText{"取り出し", "とりだし"},
+			.can_focus		= false,
+			.is_sensitive	= false,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->retrieveToggleButton.set_label(get_display_text(state.text.value()).c_str());
-			this->retrieveToggleButton.set_sensitive(state.is_sensitive.value());
-			this->retrieveToggleButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->retrieveToggleButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->retrieveToggleButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->retrieveToggleButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->retrieveToggleButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「補充」トグルボタン ---
 	m_widget_states.try_emplace(&storeToggleButton, WidgetStateUpdater{
-		{UiText{"補充", "ほじゅう"}, false, true},
+		{
+			.text = UiText{"補充", "ほじゅう"},
+			.can_focus		= false,
+			.is_sensitive	= false,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->storeToggleButton.set_label(get_display_text(state.text.value()).c_str());
-			this->storeToggleButton.set_sensitive(state.is_sensitive.value());
-			this->storeToggleButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->storeToggleButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->storeToggleButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->storeToggleButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->storeToggleButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「棚卸し」トグルボタン ---
 	m_widget_states.try_emplace(&reconcileToggleButton, WidgetStateUpdater{
-		{UiText{"棚卸し", "たなおろし"}, false, true},
+		{
+			.text = UiText{"棚卸し", "たなおろし"},
+			.can_focus		= false,
+			.is_sensitive	= false,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->reconcileToggleButton.set_label(get_display_text(state.text.value()).c_str());
-			this->reconcileToggleButton.set_sensitive(state.is_sensitive.value());
-			this->reconcileToggleButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->reconcileToggleButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->reconcileToggleButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->reconcileToggleButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->reconcileToggleButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「かな/漢字」ボタン ---
 	m_widget_states.try_emplace(&kanaKanjiButton, WidgetStateUpdater{
-		{UiText{"かな/漢字", "かな/漢字"}, true, true},
+		{
+			.text = UiText{"かな/漢字", "かな/漢字"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->kanaKanjiButton.set_label(get_display_text(state.text.value()).c_str());
-			this->kanaKanjiButton.set_sensitive(state.is_sensitive.value());
-			this->kanaKanjiButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->kanaKanjiButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->kanaKanjiButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->kanaKanjiButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->kanaKanjiButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「ログアウト」ボタン ---
 	m_widget_states.try_emplace(&logoutButton, WidgetStateUpdater{
-		{UiText{"ログアウト", "ログアウト"}, false, true},
+		{
+			.text = UiText{"ログアウト", "ログアウト"},
+			.can_focus		= false,
+			.is_sensitive	= false,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->logoutButton.set_label(get_display_text(state.text.value()).c_str());
-			this->logoutButton.set_sensitive(state.is_sensitive.value());
-			this->logoutButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->logoutButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->logoutButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->logoutButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->logoutButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- ユーザーIDエントリ ---
 	m_widget_states.try_emplace(&userIdEntry, WidgetStateUpdater{
-		{nullopt, true, true},
+		{
+			.can_focus		= true,
+			.is_sensitive	= true,
+			.is_visible		= true,
+			.is_editable	= true
+		},
 		[this](const WidgetState& state){
-			this->userIdEntry.set_sensitive(state.is_sensitive.value());
-			this->userIdEntry.set_visible(state.is_visible.value());
+			if (state.can_focus.has_value()		) { this->userIdEntry.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->userIdEntry.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->userIdEntry.set_visible(state.is_visible.value()); }
+			if (state.is_editable.has_value()	) { this->userIdEntry.set_editable(state.is_editable.value()); }
 		}
 	});
 
 	// --- 「ライン番号」ラベル ---
 	m_widget_states.try_emplace(&lineLabel, WidgetStateUpdater{
-		{UiText{"ライン番号：", "ラインばんごう："}, true, true},
+		{
+			.text = UiText{"ライン番号：", "ラインばんごう："},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->lineLabel.set_label(get_display_text(state.text.value()).c_str());
-			// ラベルのsensitiveは通常操作しない
-			this->lineLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->lineLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->lineLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「プログラム番号」ラベル ---
 	m_widget_states.try_emplace(&programLabel, WidgetStateUpdater{
-		{UiText{"プログラム番号：", "プログラムばんごう："}, true, true},
+		{
+			.text = UiText{"プログラム番号：", "プログラムばんごう："},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->programLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->programLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->programLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->programLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「絞り込み」ボタン ---
 	m_widget_states.try_emplace(&filterButton, WidgetStateUpdater{
-		{UiText{"絞り込み", "しぼりこみ"}, true, true},
+		{
+			.text = UiText{"絞り込み", "しぼりこみ"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->filterButton.set_label(get_display_text(state.text.value()).c_str());
-			this->filterButton.set_sensitive(state.is_sensitive.value());
-			this->filterButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->filterButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->filterButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->filterButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->filterButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「コンテナ番号」ラベル ---
 	m_widget_states.try_emplace(&containerLabel, WidgetStateUpdater{
-		{UiText{"コンテナ番号：", "コンテナばんごう："}, true, true},
+		{
+			.text = UiText{"コンテナ番号：", "コンテナばんごう："},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->containerLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->containerLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->containerLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->containerLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- メッセージラベル ---
 	m_widget_states.try_emplace(&messageLabel, WidgetStateUpdater{
-		{UiText{"", ""}, true, true},
+		{
+			.text = UiText{"", ""},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->messageLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->messageLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->messageLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->messageLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 3列表示テーブルのボックス (1) ---
 	m_widget_states.try_emplace(&table3column1stBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->table3column1stBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->table3column1stBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 3列表示テーブルのボックス (2) ---
 	m_widget_states.try_emplace(&table3column2ndBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->table3column2ndBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->table3column2ndBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 3列表示テーブルのボックス (3) ---
 	m_widget_states.try_emplace(&table3column3rdBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->table3column3rdBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->table3column3rdBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 2列表示テーブルのボックス (1) ---
 	m_widget_states.try_emplace(&table2column1stBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->table2column1stBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->table2column1stBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 2列表示テーブルのボックス (2) ---
 	m_widget_states.try_emplace(&table2column2ndBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->table2column2ndBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->table2column2ndBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- テーブルのページネーション(ページ送り)UIを格納するボックス ---
 	m_widget_states.try_emplace(&paginationBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->paginationBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->paginationBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- QRコード受付UIのボックス ---
 	m_widget_states.try_emplace(&qrCodeEntryBox, WidgetStateUpdater{
-		{nullopt, nullopt, false},
+		{
+			.is_visible		= false
+		},
 		[this](const WidgetState& state){
-			this->qrCodeEntryBox.set_visible(state.is_visible.value());
+			if (state.is_visible.has_value()	) { this->qrCodeEntryBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 「QRコード受付」ラベル ---
 	m_widget_states.try_emplace(&qrCodeEntryLabel, WidgetStateUpdater{
-		{UiText{"QRコード受付：", "QRコード うけつけ："}, true, true},
+		{
+			.text = UiText{"QRコード受付：", "QRコード うけつけ："},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->qrCodeEntryLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->qrCodeEntryLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->qrCodeEntryLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->qrCodeEntryLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- QRコードを入力するエントリ ---
 	m_widget_states.try_emplace(&qrCodeEntry, WidgetStateUpdater{
-		{nullopt, false, true},
+		{
+			.can_focus		= false,
+			.is_sensitive	= false,
+			.is_visible		= true,
+			.is_editable	= false
+		},
 		[this](const WidgetState& state){
-			this->qrCodeEntry.set_sensitive(state.is_sensitive.value());
-			this->qrCodeEntry.set_visible(state.is_visible.value());
+			if (state.can_focus.has_value()		) { this->qrCodeEntry.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->qrCodeEntry.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->qrCodeEntry.set_visible(state.is_visible.value()); }
+			if (state.is_editable.has_value()	) { this->qrCodeEntry.set_editable(state.is_editable.value()); }
 		}
 	});
 
 	// --- true/falseボタン（ラベルは動的に変わるため空） ---
 	m_widget_states.try_emplace(&falseButton, WidgetStateUpdater{
-		{UiText{"", ""}, true, true},
+		{
+			.text = UiText{"", ""},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->falseButton.set_label(get_display_text(state.text.value()).c_str());
-			this->falseButton.set_sensitive(state.is_sensitive.value());
-			this->falseButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->falseButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->falseButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->falseButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->falseButton.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&trueButton, WidgetStateUpdater{
-		{UiText{"", ""}, true, true},
+		{
+			.text = UiText{"", ""},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->trueButton.set_label(get_display_text(state.text.value()).c_str());
-			this->trueButton.set_sensitive(state.is_sensitive.value());
-			this->trueButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->trueButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->trueButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->trueButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->trueButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- インサート枚数確認ダイアログ ---
 	m_widget_states.try_emplace(&confirmInsertCountLabel, WidgetStateUpdater{
-		{UiText{"使用するインサートの枚数を\n入力してください", "しようする インサートの まいすうを\nにゅうりょく してください"}, true, true},
+		{
+			.text = UiText{"使用するインサートの枚数を\n入力してください", "しようする インサートの まいすうを\nにゅうりょく してください"},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->confirmInsertCountLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->confirmInsertCountLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->confirmInsertCountLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->confirmInsertCountLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&insertCountOkButton, WidgetStateUpdater{
-		{UiText{"OK", "OK"}, true, true},
+		{
+			.text = UiText{"OK", "OK"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->insertCountOkButton.set_label(get_display_text(state.text.value()).c_str());
-			this->insertCountOkButton.set_sensitive(state.is_sensitive.value());
-			this->insertCountOkButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->insertCountOkButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->insertCountOkButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->insertCountOkButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->insertCountOkButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 再研磨確認ダイアログ ---
 	m_widget_states.try_emplace(&confirmRegroundLabel, WidgetStateUpdater{
-		{UiText{"一度取り出された工具を検出しました。\n再研磨された工具ですか？", "いちど とりだされた こうぐを けんしゅつしました。\nさいけんま された こうぐですか？"}, true, true},
+		{
+			.text = UiText{"一度取り出された工具を検出しました。\n再研磨された工具ですか？", "いちど とりだされた こうぐを けんしゅつしました。\nさいけんま された こうぐですか？"},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->confirmRegroundLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->confirmRegroundLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->confirmRegroundLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->confirmRegroundLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&confirmRegroundOkButton, WidgetStateUpdater{
-		{UiText{"OK", "OK"}, true, true},
+		{
+			.text = UiText{"OK", "OK"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->confirmRegroundOkButton.set_label(get_display_text(state.text.value()).c_str());
-			this->confirmRegroundOkButton.set_sensitive(state.is_sensitive.value());
-			this->confirmRegroundOkButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->confirmRegroundOkButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->confirmRegroundOkButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->confirmRegroundOkButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->confirmRegroundOkButton.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&notRegroundButton, WidgetStateUpdater{
-		{UiText{"いいえ", "いいえ"}, true, true},
+		{
+			.text = UiText{"いいえ", "いいえ"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->notRegroundButton.set_label(get_display_text(state.text.value()).c_str());
-			this->notRegroundButton.set_sensitive(state.is_sensitive.value());
-			this->notRegroundButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->notRegroundButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->notRegroundButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->notRegroundButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->notRegroundButton.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&regroundButton, WidgetStateUpdater{
-		{UiText{"はい", "はい"}, true, true},
+		{
+			.text = UiText{"はい", "はい"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->regroundButton.set_label(get_display_text(state.text.value()).c_str());
-			this->regroundButton.set_sensitive(state.is_sensitive.value());
-			this->regroundButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->regroundButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->regroundButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->regroundButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->regroundButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- ログアウト確認ダイアログ ---
 	m_widget_states.try_emplace(&logoutNoButton, WidgetStateUpdater{
-		{UiText{"いいえ", "いいえ"}, true, true},
+		{
+			.text = UiText{"いいえ", "いいえ"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->logoutNoButton.set_label(get_display_text(state.text.value()).c_str());
-			this->logoutNoButton.set_sensitive(state.is_sensitive.value());
-			this->logoutNoButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->logoutNoButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->logoutNoButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->logoutNoButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->logoutNoButton.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&logoutYesButton, WidgetStateUpdater{
-		{UiText{"はい", "はい"}, true, true},
+		{
+			.text = UiText{"はい", "はい"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->logoutYesButton.set_label(get_display_text(state.text.value()).c_str());
-			this->logoutYesButton.set_sensitive(state.is_sensitive.value());
-			this->logoutYesButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->logoutYesButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->logoutYesButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->logoutYesButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->logoutYesButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- パスワード入力ダイアログ ---
 	m_widget_states.try_emplace(&passwordEntryLabel, WidgetStateUpdater{
-		{UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"}, true, true},
+		{
+			.text = UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->passwordEntryLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->passwordEntryLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->passwordEntryLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->passwordEntryLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&passwordCancelButton, WidgetStateUpdater{
-		{UiText{"キャンセル", "キャンセル"}, true, true},
+		{
+			.text = UiText{"キャンセル", "キャンセル"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->passwordCancelButton.set_label(get_display_text(state.text.value()).c_str());
-			this->passwordCancelButton.set_sensitive(state.is_sensitive.value());
-			this->passwordCancelButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->passwordCancelButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->passwordCancelButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->passwordCancelButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->passwordCancelButton.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&passwordEnterButton, WidgetStateUpdater{
-		{UiText{"確定", "かくてい"}, true, true},
+		{
+			.text = UiText{"確定", "かくてい"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->passwordEnterButton.set_label(get_display_text(state.text.value()).c_str());
-			this->passwordEnterButton.set_sensitive(state.is_sensitive.value());
-			this->passwordEnterButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->passwordEnterButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->passwordEnterButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->passwordEnterButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->passwordEnterButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 棚卸し絞り込みダイアログ ---
 	m_widget_states.try_emplace(&reconcileToolTypeFilterLabel, WidgetStateUpdater{
-		{UiText{"分類", "ぶんるい"}, true, true},
+		{
+			.text = UiText{"分類", "ぶんるい"},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->reconcileToolTypeFilterLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->reconcileToolTypeFilterLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->reconcileToolTypeFilterLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileToolTypeFilterLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&reconcilePeriodFilterLabel, WidgetStateUpdater{
-		{UiText{"最終棚卸し日時", "さいしゅうたなおろしにちじ"}, true, true},
+		{
+			.text = UiText{"最終棚卸し日時", "さいしゅうたなおろしにちじ"},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->reconcilePeriodFilterLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->reconcilePeriodFilterLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->reconcilePeriodFilterLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcilePeriodFilterLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&reconcileFilterEnterButton, WidgetStateUpdater{
-		{UiText{"決定", "けってい"}, true, true},
+		{
+			.text = UiText{"決定", "けってい"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->reconcileFilterEnterButton.set_label(get_display_text(state.text.value()).c_str());
-			this->reconcileFilterEnterButton.set_sensitive(state.is_sensitive.value());
-			this->reconcileFilterEnterButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->reconcileFilterEnterButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->reconcileFilterEnterButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->reconcileFilterEnterButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterEnterButton.set_visible(state.is_visible.value()); }
 		}
 	});
 	m_widget_states.try_emplace(&reconcileFilterResetButton, WidgetStateUpdater{
-		{UiText{"期間リセット", "きかんリセット"}, true, true},
+		{
+			.text = UiText{"期間リセット", "きかんリセット"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->reconcileFilterResetButton.set_label(get_display_text(state.text.value()).c_str());
-			this->reconcileFilterResetButton.set_sensitive(state.is_sensitive.value());
-			this->reconcileFilterResetButton.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->reconcileFilterResetButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->reconcileFilterResetButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->reconcileFilterResetButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterResetButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 警告ダイアログ（ラベルは動的に変わるため空） ---
 	m_widget_states.try_emplace(&warningLabel, WidgetStateUpdater{
-		{UiText{"", ""}, true, true},
+		{
+			.text = UiText{"", ""},
+			.is_visible		= true
+		},
 		[this](const WidgetState& state){
-			this->warningLabel.set_label(get_display_text(state.text.value()).c_str());
-			this->warningLabel.set_visible(state.is_visible.value());
+			if (state.text.has_value()			) { this->warningLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->warningLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 	// TODO: 他のかな/漢字切替や、状態遷移での表示切替が必要なウィジェットも同様に追加
@@ -710,7 +881,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&retrieveToggleButton, &storeToggleButton, &reconcileToggleButton, &logoutButton}, {.is_sensitive = false, .is_visible = true}},
-			{ {&userIdEntry}, {.is_sensitive = true, .is_visible = true} },
+			{ {&userIdEntry}, {.can_focus = true, .is_visible = true, .is_editable = true} },
 			{ {&messageLabel}, {.text = UiText{"名札のQRコードを\nQRコードリーダーにかざしてください", "なふだの QRコードを\nQRコードリーダーに かざしてください"}} },
 			{ {&paginationBox}, {.is_visible = false} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
@@ -822,7 +993,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"コンテナから工具を取り出して、工具のQRコードを\nQRコードリーダーで読み取ってください", "コンテナから こうぐを とりだして、こうぐの QRコードを\nQRコードリーダーで よみとってください"}} },
-			{ {&qrCodeEntry}, {.is_sensitive = true} },
+			{ {&qrCodeEntry}, {.can_focus = true, .is_sensitive = true, .is_editable = true} },
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName	= "pageNone",
@@ -858,7 +1029,8 @@ MainWindow::MainWindow() :
 				}, .is_sensitive = true
 			});
 		},
-		//TODO 他の振る舞いを定義
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_ready_for_reading(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_ready_for_reading(); }
 	});
 
 	// --- 状態：取り出し - 実際に補充を行う - 工具読み取り後 ---
@@ -878,7 +1050,11 @@ MainWindow::MainWindow() :
 				)
 			});
 		},
-		//TODO 他の振る舞いを定義
+		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_read_completed(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_read_completed(); },
+		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_read_completed(); },
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_retrieve_read_completed(); },
+		.on_plc_notified			= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_retrieve_read_completed(notification); }
 	});
 
 	// --- 状態：補充 - 移行 ---
@@ -898,7 +1074,7 @@ MainWindow::MainWindow() :
 			{ {&logoutButton}, {.is_sensitive = true} },
 			{ {&messageLabel}, {.text = UiText{"補充する工具のQRコードを\nQRコードリーダーにかざしてください", "ほじゅうする こうぐの QRコードを\nQRコードリーダーに かざしてください"}} },
 			{ {&paginationBox}, {.is_visible = false} },
-			{ {&qrCodeEntry}, {.is_sensitive = true} },
+			{ {&qrCodeEntry}, {.can_focus = true, .is_sensitive = true, .is_editable = true} },
 			{ {&falseButton, &trueButton}, {UiText{"", ""}, false, true} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
@@ -914,7 +1090,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"補充する工具に間違いがなければ\n「搬出」を押してください", "ほじゅうする こうぐに まちがいが なければ\n「はんしゅつ」を おしてください"}} },
-			{ {&qrCodeEntry}, {.is_sensitive = false} },
+			{ {&qrCodeEntry}, {.can_focus = false, .is_sensitive = false, .is_editable = false} },
 			{ {&falseButton}, {UiText{"キャンセル", "キャンセル"}, true, true} },
 			{ {&trueButton}, {UiText{"搬出", "はんしゅつ"}, true, true} }
 		},
@@ -959,7 +1135,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"工具のQRコードを QRコードリーダーで\n読み取ってからコンテナに収納してください", "こうぐの QRコードを QRコードリーダーで\nよみとってから コンテナに しゅうのうしてください"}} },
-			{ {&qrCodeEntry}, {.is_sensitive = true} },
+			{ {&qrCodeEntry}, {.can_focus = true, .is_sensitive = true, .is_editable = true} },
 			{ {&falseButton}, {UiText{"終了", "しゅうりょう"}, false, true} },
 			{ {&trueButton}, {UiText{"続ける", "つづける"}, false, true} }
 		},
@@ -1591,7 +1767,7 @@ void MainWindow::userIdEntry_on_activate() {
 		DEV_PRINT("ユーザー認証成功\n");
 
 		// ユーザーIDエントリにログインユーザー名を表示して固定
-		update_widget_state(&userIdEntry, WidgetState{.is_sensitive = false});
+		update_widget_state(&userIdEntry, WidgetState{.can_focus = false, .is_editable = false});
 
 		reset_header_buttons();
 
@@ -1684,6 +1860,27 @@ void MainWindow::passwordEntryDialog_on_show() {
 	passwordEntry.grab_focus();
 }
 
+void MainWindow::insertCountIncrementButton_on_clicked() {
+	try {
+		int current_count = std::stoi(insertCountEntry.get_text());
+		// TODO: 必要であれば上限チェック
+		insertCountEntry.set_text(std::to_string(current_count + 1).c_str());
+	} catch (...) {
+		/* 数値変換エラーは無視 or ログ表示 */
+	}
+}
+
+void MainWindow::insertCountDecrementButton_on_clicked() {
+	try {
+		int current_count = std::stoi(insertCountEntry.get_text());
+		if (current_count > 0) { // 0未満にならないように
+			insertCountEntry.set_text(std::to_string(current_count - 1).c_str());
+		}
+	} catch (...) {
+		/* 数値変換エラーは無視 or ログ表示 */
+	}
+}
+
 void MainWindow::regroundButton_on_toggled() {
 	if (m_isProgrammaticallyChangingToggle) return;	// プログラムによる変更は無視
 
@@ -1714,6 +1911,92 @@ void MainWindow::on_enter_waiting_for_user_login() {
 }
 
 //取り出し
+
+void MainWindow::on_enter_retrieve_ready_for_reading() {
+	liststore2columnAll.clear();
+	qrCodeEntry.set_text("");
+	qrCodeEntry.grab_focus();
+}
+
+void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
+	if (on_qrCodeEntry_store_read_completed()) {
+		set_app_state(AppState::RETRIEVE_READ_COMPLETED);
+	}
+}
+
+void MainWindow::on_enter_retrieve_read_completed() {
+	// TODO: 扉を閉めるまで待機する処理を実装
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.flags = plc::WatchFlags{
+			.enable_fall_notification = true,
+			.enable_rise_notification = true,
+			.fall_is_one_shot = false,
+			.rise_is_one_shot = false
+		}
+	});
+}
+
+bool MainWindow::on_qrCodeEntry_retrieve_read_completed() {
+	bool result = false;
+	bool is_reground = false;
+	MstToolInfo operating_tool = m_operating_tools.at(m_operating_index.value());
+
+	auto unique_info = db::get_UniqueToolInfo(qrCodeEntry.get_text());
+
+	if (unique_info.has_value()) {
+		if (unique_info.value().mst_tool_info.id != operating_tool.id) {
+			update_widget_state(&messageLabel, WidgetState{
+				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
+			});
+			refresh_ui(false); // ラベルのテキストを更新
+			return false;
+		}
+
+		if (m_is_insert_operation) {
+			confirmInsertCountDialog.run(this);
+		}
+		liststore2columnAll.append(MainTableData{
+			.id = unique_info.value().id,
+			.data_columns = {
+				to_string(unique_info.value().id),
+				unique_info.value().mst_tool_info.category,
+				unique_info.value().mst_tool_info.maker,
+				unique_info.value().mst_tool_info.name,
+				unique_info.value().mst_tool_info.material,
+				to_string(((m_is_insert_operation)
+					? (unique_info.value().case_pack_num)
+					: (unique_info.value().regrind_count)
+				).value())
+			}
+		});
+		update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
+		result = true;
+	} else {
+		// TODO: 該当データが無い場合の処理
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
+		});
+		refresh_ui(false); // ラベルのテキストを更新
+		result = false;
+	}
+	qrCodeEntry.set_text("");
+	qrCodeEntry.grab_focus();
+	return result;
+}
+
+void MainWindow::on_falseButton_retrieve_read_completed() {
+
+}
+
+void MainWindow::on_trueButton_retrieve_read_completed() {
+
+}
+
+void MainWindow::on_plc_retrieve_read_completed(plc::Notification notification) {
+
+}
+
 
 void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	storingToolListstore.clear();
@@ -1785,8 +2068,7 @@ void MainWindow::on_plc_store_container_retrieved(plc::Notification notification
 }
 
 void MainWindow::on_enter_store_ready_for_reading() {
-	liststore2column1st.clear();
-	liststore2column2nd.clear();
+	liststore2columnAll.clear();
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
@@ -1813,7 +2095,6 @@ void MainWindow::on_enter_store_read_completed() {
 bool MainWindow::on_qrCodeEntry_store_read_completed() {
 	bool result = false;
 	bool is_reground = false;
-	MstToolInfo mst_tool;
 	auto unique_info = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
 	if (unique_info.has_value()) {

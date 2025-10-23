@@ -256,57 +256,57 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 			switch (columnTypes[i - 1]) {
 			case SQL_TINYINT: {
 				auto data = this->getData<SQLSCHAR>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_SMALLINT: {
 				auto data = this->getData<SQLSMALLINT>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_INTEGER: {
 				auto data = this->getData<SQLINTEGER>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_BIGINT: {
 				auto data = this->getData<SQLBIGINT>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_REAL: {
 				auto data = this->getData<SQLREAL>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_FLOAT: {
 				auto data = this->getData<SQLFLOAT>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_DOUBLE: {
 				auto data = this->getData<SQLDOUBLE>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_DECIMAL: case SQL_NUMERIC: {
 				auto data = this->getData<double>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_TYPE_DATE: case SQL_TYPE_TIME: case SQL_TYPE_TIMESTAMP: {
 				auto data = this->getData<std::chrono::system_clock::time_point>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			case SQL_BINARY: case SQL_VARBINARY: case SQL_LONGVARBINARY: {
 				auto data = this->getData<std::vector<char>>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			default: { // 不明な型は文字列として取得を試みる
 				auto data = this->getData<std::string>(i);
-				if (data.has_value()) value = data.value();
+				if (data.has_value()) { value = data.value(); }
 				break;
 			}
 			}
@@ -338,12 +338,12 @@ void OdbcStatement::prepare(const std::string& sql) {
 }
 
 void OdbcStatement::bind(int paramIndex, const std::optional<std::string>& opt_val) {
-	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? opt_val.value().length() : SQL_NULL_DATA));
+	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? (opt_val.value().length()) : (SQL_NULL_DATA)));
 	bound_params.insert_or_assign(paramIndex, opt_val);
 }
 
 void OdbcStatement::bind(int paramIndex, const std::optional<std::vector<char>>& opt_val) {
-	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? opt_val.value().size() : SQL_NULL_DATA));
+	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? (opt_val.value().size()) : (SQL_NULL_DATA)));
 	bound_params.insert_or_assign(paramIndex, opt_val);
 }
 
@@ -572,7 +572,7 @@ void OdbcStatement::bindFixedSizeParam(int index, const std::any& any_val, SQLLE
 
 	// SQLBindParameter は void* (SQLPOINTER) を要求するため、const_cast が必要です。
 	// このポインタ経由で値が変更されることはありません。
-	SQLPOINTER data_ptr = (opt_val.has_value()) ? static_cast<SQLPOINTER>(const_cast<T*>(&opt_val.value())) : NULL;
+	SQLPOINTER data_ptr = (opt_val.has_value()) ? (static_cast<SQLPOINTER>(const_cast<T*>(&opt_val.value()))) : (NULL);
 
 	// インジケータポインタは、値がNULLの場合(data_ptrがNULL)のみ使用されます。
 	SQLLEN* final_indicator_ptr = (opt_val.has_value()) ? NULL : indicator_ptr;

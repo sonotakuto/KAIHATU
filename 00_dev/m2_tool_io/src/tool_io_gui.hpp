@@ -152,10 +152,14 @@ public:
 	struct WidgetState {
 		/// @brief ウィジェットのテキスト (UiText)
 		std::optional<UiText> text{};
+		/// @brief ウィジェットのフォーカス可否 (true: 可能, false: 不可)
+		std::optional<bool> can_focus{};
 		/// @brief ウィジェットの感応 (true: 有効, false: 無効)
 		std::optional<bool> is_sensitive{};
 		/// @brief ウィジェットの表示 (true: 表示, false: 非表示)
 		std::optional<bool> is_visible{};
+		/// @brief エントリの編集可否 (GtkEntry限定, true: 可能, false: 不可)
+		std::optional<bool> is_editable{};
 
 		/**
 		 * @brief 他のWidgetStateの値でこのインスタンスを更新する。
@@ -718,6 +722,18 @@ private:
 	void passwordEntryDialog_on_show();
 
 	/**
+	 * @brief insertCountIncrementButton の "clicked" シグナルに対応するハンドラ。
+	 * @details insertCountEntry の数値をインクリメントする。
+	 */
+	void insertCountIncrementButton_on_clicked();
+
+	/**
+	 * @brief insertCountDecrementButton の "clicked" シグナルに対応するハンドラ。
+	 * @details insertCountEntry の数値をデクリメントする。
+	 */
+	void insertCountDecrementButton_on_clicked();
+
+	/**
 	 * @brief regroundButton の "toggled" シグナルに対応するハンドラ。
 	 * @details 「はい」が選択された状態への切り替えを試みる。
 	 */
@@ -750,6 +766,51 @@ private:
 	void on_qrCodeEntry_retrieve_waiting_for_program_qr();
 
 	// TODO: 取り出しモードの状態遷移関数をここに追加
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態に入ったときの処理
+	 * @details 表をクリアして、次の読み取り準備を行う。
+	 */
+	void on_enter_retrieve_ready_for_reading();
+
+	/**
+	 * @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @details on_qrCodeEntry_retrieve_read_completed() の処理に加え、
+	 * 読み取りに成功した場合は次の画面に遷移する。
+	 */
+	void on_qrCodeEntry_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READ_COMPLETED 状態に入ったときの処理
+	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
+	 */
+	void on_enter_retrieve_read_completed();
+
+	/**
+	 * @brief RETRIEVE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
+	 * @details 読み取られた工具情報をDBから取得して表に追加する。
+	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
+	 */
+	bool on_qrCodeEntry_retrieve_read_completed();
+
+	/**
+	 * @brief RETRIEVE_READ_COMPLETED 状態の falseButton.on_clicked の処理
+	 * @details 取り出し機能を終了する。
+	 */
+	void on_falseButton_retrieve_read_completed();
+
+	/**
+	 * @brief RETRIEVE_READ_COMPLETED 状態の trueButton.on_clicked の処理
+	 * @details 次の工具の取り出しへ遷移、もしくは、取り出し機能の最初の画面に戻る。
+	 */
+	void on_trueButton_retrieve_read_completed();
+
+	/**
+	 * @brief RETRIEVE_READ_COMPLETED 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
+	 * @param notification PLCリスナースレッドからの通知。
+	 */
+	void on_plc_retrieve_read_completed(plc::Notification notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -941,9 +1002,12 @@ private:
 
 	/// @brief 取り出しの操作で利用する工具リストのメンバ変数。
 	std::vector<MstToolInfo> m_operating_tools;
-	
+
 	/// @brief m_operating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
-	size_t m_operating_index;
+	std::optional<size_t> m_operating_index;
+
+	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
+	std::vector<RecOperationTable> m_operated_records;
 
 	/// @brief ウィジェットの状態を保持し、変更があったウィジェットを追跡するマップ。
 	utils::TrackedMap<sg::Widget*, WidgetStateUpdater> m_widget_states;

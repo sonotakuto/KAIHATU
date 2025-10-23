@@ -32,6 +32,37 @@ static return_type on_##c_signal_name##_static para_static { \
 }
 
 /**
+ * @brief GTKプロパティ名にハイフンが含まれる場合に対応した、プロパティのゲッターとセッターを定義するマクロ。
+ * @details
+ * g_object_get/set関数はプロパティ名を文字列で受け取るためハイフンがあっても動作しますが、
+ * C++の関数名（ゲッター/セッター名）にはハイフンを使えません。
+ * このマクロは、GTKプロパティ名とC++関数名の一部を別々に指定できるようにすることで、この問題を解決します。
+ *
+ * @param gtk_property_name GTKオブジェクトのプロパティ名 (例: "can-focus")。文字列リテラルで指定します。
+ * @param cpp_suffix 生成されるC++関数名の一部 (例: can_focus)。識別子として有効な名前を指定します。
+ * ゲッターは `get_<cpp_suffix>()`、セッターは `set_<cpp_suffix>()` という名前になります。
+ * @param PropertyType プロパティのC++におけるデータ型 (例: bool, int, const char*)。
+ *
+ * @par 使用例:
+ * @code
+ * // クラス定義内で使用
+ * DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
+ * // これにより、以下のメンバ関数が自動的に定義されます:
+ * // bool get_can_focus() const;
+ * // void set_can_focus(bool value);
+ * @endcode
+ */
+#define DEFINE_PROPERTY_ACCESSORS_WITH_NAME(gtk_property_name, cpp_suffix, PropertyType) \
+	PropertyType get_##cpp_suffix() const { \
+		PropertyType value; \
+		g_object_get(G_OBJECT(this->object), gtk_property_name, &value, NULL); \
+		return value; \
+	} \
+	void set_##cpp_suffix(PropertyType value) { \
+		g_object_set(G_OBJECT(this->object), gtk_property_name, value, NULL); \
+	}
+
+/**
  * @namespace sgex
  * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
  */
@@ -160,6 +191,7 @@ public:
 	// メソッド
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
 
 	// シグナル
@@ -178,8 +210,10 @@ public:
 	DEFINE_METHOD(widget, grab_focus, void)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
 	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_PROPERTY_ACCESSORS(Widget, editable, bool)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
@@ -214,6 +248,7 @@ public:
 	DEFINE_METHOD(toggle_button, get_active, bool)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
@@ -233,6 +268,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("state-set", state_set, Switch, GtkSwitch* self, bool state)
@@ -252,6 +288,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(combo_box, set_active, void, (gint index), index)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
@@ -268,6 +305,7 @@ public:
 	// メソッド
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
 
 	// シグナル
@@ -311,6 +349,7 @@ public:
 	}
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 
 	// シグナル
 };
@@ -383,8 +422,6 @@ public:
 
 	// シグナル
 };
-
-// SimpleGtk_extension.hpp の sgex 名前空間内に追記
 
 /**
  * @class TreeViewColumn
@@ -1252,6 +1289,14 @@ public:
 
 	/**
 	 * @brief 条件に一致する全ての行のグローバルインデックスを検索します。
+	 *
+	 * @code
+	 * // 例: ageフィールドが30以上の行のインデックスを取得
+	 * auto indices = find_indices([](const RowStruct& row) {
+	 *     return row.age >= 30;
+	 * });
+	 * @endcode
+	 *
 	 * @param predicate 検索条件となる述語関数。
 	 * @return 条件に一致した行のグローバルインデックスのリスト。
 	 */

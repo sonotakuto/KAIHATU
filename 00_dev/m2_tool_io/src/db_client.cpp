@@ -148,7 +148,7 @@ bool user_authenticate(const std::string& qr_string) {
 bool save_history(const RecOperationTable& record) {
 	// 1. リトライ処理付きでステートメントオブジェクトを取得します。
 	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
-	if (!stmt_opt) {
+	if (!stmt_opt.has_value()) {
 		DEV_PRINT(stderr, "Error: Failed to create statement for saving history after multiple retries.\n");
 		// TODO: ユーザーにエラーを通知する処理
 		return false;
@@ -216,7 +216,7 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 	try {
 		// 3. ステートメントを準備
 		optional<OdbcStatement> stmt_opt = create_statement_with_retry();
-		if (!stmt_opt) {
+		if (!stmt_opt.has_value()) {
 			DEV_PRINT(stderr, "Error: Failed to create statement for saving history after multiple retries.\n");
 			// TODO: ユーザーにエラーを通知する処理
 			return false;
@@ -293,7 +293,9 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
-	if (!stmt_opt || !code_opt) { return std::nullopt; }
+	if (!stmt_opt.has_value() || !code_opt.has_value()) {
+		return std::nullopt;
+	}
 
 	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
@@ -333,7 +335,9 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
-	if (!stmt_opt || !code_opt) { return std::nullopt; }
+	if (!stmt_opt.has_value() || !code_opt.has_value()) {
+		return std::nullopt;
+	}
 
 	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
@@ -432,7 +436,9 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string) {
 	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
-	if (!stmt_opt || !code_opt) { return std::nullopt; }
+	if (!stmt_opt.has_value() || !code_opt.has_value()) {
+		return std::nullopt;
+	}
 
 	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
