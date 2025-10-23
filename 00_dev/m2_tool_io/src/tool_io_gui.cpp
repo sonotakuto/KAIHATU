@@ -289,7 +289,7 @@ MainWindow::MainWindow() :
 	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
-	insertCountOkButton.on_clicked([this]() { confirmInsertCountDialog.response(GTK_RESPONSE_OK); });
+	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	confirmRegroundOkButton.on_clicked([this]() { confirmRegroundDialog.response(GTK_RESPONSE_OK); });
@@ -1862,23 +1862,30 @@ void MainWindow::passwordEntryDialog_on_show() {
 
 void MainWindow::insertCountIncrementButton_on_clicked() {
 	try {
-		int current_count = std::stoi(insertCountEntry.get_text());
-		// TODO: 必要であれば上限チェック
-		insertCountEntry.set_text(std::to_string(current_count + 1).c_str());
+		// 最大値 >= 0 のとき、最大値を超えないようにチェック
+		if (m_confirmInsertCountDialog_max_count >= 0 && m_insertCountEntry_current_count < m_confirmInsertCountDialog_max_count) {
+			insertCountEntry.set_text(std::to_string(++m_insertCountEntry_current_count).c_str());
+		}
 	} catch (...) {
-		/* 数値変換エラーは無視 or ログ表示 */
+		/* 数値変換エラーなら0にリセット */
 	}
 }
 
 void MainWindow::insertCountDecrementButton_on_clicked() {
 	try {
-		int current_count = std::stoi(insertCountEntry.get_text());
-		if (current_count > 0) { // 0未満にならないように
-			insertCountEntry.set_text(std::to_string(current_count - 1).c_str());
+		// 0未満にならないようにチェック
+		if (m_insertCountEntry_current_count > 0) {
+			insertCountEntry.set_text(std::to_string(--m_insertCountEntry_current_count).c_str());
 		}
 	} catch (...) {
-		/* 数値変換エラーは無視 or ログ表示 */
+		/* 数値変換エラーなら0にリセット */
 	}
+}
+
+void MainWindow::insertCountOkButton_on_clicked() {
+	m_confirmInsertCountDialog_max_count = -1;
+	insertCountEntry.set_text("");
+	confirmInsertCountDialog.response(GTK_RESPONSE_OK);
 }
 
 void MainWindow::regroundButton_on_toggled() {
@@ -1968,69 +1975,69 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(){
 						////テーブル選択時の背景色変更(始め)
 	/*----------------------------------------------------------------------------------------*/
 	// 現在のアプリケーション状態を取得
-    const auto& state_config = g_app_state_configs.at(m_app_state);
+	const auto& state_config = g_app_state_configs.at(m_app_state);
 
-    // 現在の状態に対応するコールバック関数が登録されていれば実行
-    if (state_config.on_mainTableSelection_changed) {
-        state_config.on_mainTableSelection_changed(this);
-        return; // 状態固有の処理があればそれを優先
-    }
+	// 現在の状態に対応するコールバック関数が登録されていれば実行
+	if (state_config.on_mainTableSelection_changed) {
+		state_config.on_mainTableSelection_changed(this);
+		return; // 状態固有の処理があればそれを優先
+	}
 
-    // --- 以下は状態固有の処理がない場合のデフォルト動作 ---
+	// --- 以下は状態固有の処理がない場合のデフォルト動作 ---
 
-    // 現在アクティブなページネーションモデルを取得
-    sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
-    const auto& page_name = state_config.tableStackPageName;
-    if (page_name == "table3column") {
-        active_paginator = &liststore3columnAll;
-    } else if (page_name == "table2column") {
-        active_paginator = &liststore2columnAll;
-    }
+	// 現在アクティブなページネーションモデルを取得
+	sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
+	const auto& page_name = state_config.tableStackPageName;
+	if (page_name == "table3column") {
+		active_paginator = &liststore3columnAll;
+	} else if (page_name == "table2column") {
+		active_paginator = &liststore2columnAll;
+	}
 
-    if (!active_paginator) {
-        return; // 対象モデルがなければ何もしない
-    }
+	if (!active_paginator) {
+		return; // 対象モデルがなければ何もしない
+	}
 
-    // 選択された行のグローバルインデックスを取得
-    std::optional<size_type> selected_global_index_opt = active_paginator->get_selected_index(); //
+	// 選択された行のグローバルインデックスを取得
+	auto selected_global_index_opt = active_paginator->get_selected_index(); //
 
-    if (selected_global_index_opt.has_value()) {
-        size_type selected_global_index = selected_global_index_opt.value();
+	if (selected_global_index_opt.has_value()) {
+		auto selected_global_index = selected_global_index_opt.value();
 
-        // 選択された行の現在のデータを取得
-        MainTableData current_row_data = active_paginator->get_row(selected_global_index); //
+		// 選択された行の現在のデータを取得
+		MainTableData current_row_data = active_paginator->get_row(selected_global_index); //
 
-        // 選択状態をトグルする
-        if (m_selected_tool_indices.count(selected_global_index)) {
-            // --- すでに選択されていた場合：選択解除 ---
-            m_selected_tool_indices.erase(selected_global_index); // セットから削除
-            // 背景色を通常に戻す
-            current_row_data.cell_state_0to4 = TableCellState::NORMAL; //
-            DEV_PRINT("行 {} を選択解除しました。\n", selected_global_index);
+		// 選択状態をトグルする
+		if (m_selected_tool_indices.count(selected_global_index)) {
+			// --- すでに選択されていた場合：選択解除 ---
+			m_selected_tool_indices.erase(selected_global_index); // セットから削除
+			// 背景色を通常に戻す
+			current_row_data.cell_state_0to4 = TableCellState::NORMAL; //
+			DEV_PRINT("行 {} を選択解除しました。\n", selected_global_index);
 
-        } else {
-            // --- まだ選択されていなかった場合：選択 ---
-            m_selected_tool_indices.insert(selected_global_index); // セットに追加
-            // 背景色を選択状態にする
-            current_row_data.cell_state_0to4 = TableCellState::SELECTED; //
-            DEV_PRINT("行 {} を選択しました。\n", selected_global_index);
-        }
+		} else {
+			// --- まだ選択されていなかった場合：選択 ---
+			m_selected_tool_indices.insert(selected_global_index); // セットに追加
+			// 背景色を選択状態にする
+			current_row_data.cell_state_0to4 = TableCellState::SELECTED; //
+			DEV_PRINT("行 {} を選択しました。\n", selected_global_index);
+		}
 
-        // 変更をモデルに反映させて表示を更新
-        active_paginator->update(selected_global_index, current_row_data); //
+		// 変更をモデルに反映させて表示を更新
+		active_paginator->update(selected_global_index, current_row_data); //
 
-        // (オプション) trueButton (確定ボタンなど) の有効/無効状態を更新
-        // 例: 選択されている行が1つ以上あれば有効にする
-        update_widget_state(&trueButton, WidgetState{ .is_sensitive = !m_selected_tool_indices.empty() }); //
-        refresh_ui(false); //
+		// (オプション) trueButton (確定ボタンなど) の有効/無効状態を更新
+		// 例: 選択されている行が1つ以上あれば有効にする
+		update_widget_state(&trueButton, WidgetState{ .is_sensitive = !m_selected_tool_indices.empty() }); //
+		refresh_ui(false); //
 
-    } else {
-        // 何も選択されていない状態になった場合 (通常はあまり発生しない)
-        DEV_PRINT("選択が解除されました (選択なし)。\n");
-        // (オプション) trueButton を無効化するなど
-        update_widget_state(&trueButton, WidgetState{ .is_sensitive = false }); //
-        refresh_ui(false); //
-    }
+	} else {
+		// 何も選択されていない状態になった場合 (通常はあまり発生しない)
+		DEV_PRINT("選択が解除されました (選択なし)。\n");
+		// (オプション) trueButton を無効化するなど
+		update_widget_state(&trueButton, WidgetState{ .is_sensitive = false }); //
+		refresh_ui(false); //
+	}
 
 	/*----------------------------------------------------------------------------------------*/
 						////テーブル選択時の背景色変更(終わり)
@@ -2125,7 +2132,6 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(){
 	/*----------------------------------------------------------------------------------------*/
 }
 
-
 void MainWindow::on_enter_retrieve_ready_for_reading() {
 	liststore2columnAll.clear();
 	qrCodeEntry.set_text("");
@@ -2168,7 +2174,13 @@ bool MainWindow::on_qrCodeEntry_retrieve_read_completed() {
 		}
 
 		if (m_is_insert_operation) {
+			update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
+				"使用するインサートの枚数を\n入力してください",
+				"しようする インサートの まいすうを\nにゅうりょく してください"
+			}});
+			m_confirmInsertCountDialog_max_count = unique_info.value().case_pack_num;
 			confirmInsertCountDialog.run(this);
+
 		}
 		liststore2columnAll.append(MainTableData{
 			.id = unique_info.value().id,
