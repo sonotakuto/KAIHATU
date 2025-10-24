@@ -716,6 +716,12 @@ private:
 	void trueButton_on_clicked();
 
 	/**
+	 * @brief confirmInsertCountDialog の "show" シグナルに対応するハンドラ。
+	 * @details ダイアログが表示された直後に呼び出され、insertCountEntry に初期値を設定する。
+	 */
+	void confirmInsertCountDialog_on_show();
+
+	/**
 	 * @brief passwordEntryDialog の "show" シグナルに対応するハンドラ。
 	 * @details ダイアログが表示された直後に呼び出され、パスワード入力欄にフォーカスを当てる。
 	 */
@@ -1020,6 +1026,9 @@ private:
 
 	/// @brief 取り出しの操作で利用する工具リストのメンバ変数。
 	std::vector<MstToolInfo> m_operating_tools;
+
+	/// @brief 操作している保管領域。
+	StrageAreaInfo m_operating_area;
 
 	/// @brief m_operating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	std::optional<size_t> m_operating_index;
