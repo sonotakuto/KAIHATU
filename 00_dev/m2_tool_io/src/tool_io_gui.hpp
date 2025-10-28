@@ -131,6 +131,8 @@ public:
 		TableCellState cell_state_0to4 = TableCellState::NORMAL;
 		/// @brief セルの状態 (5列目)
 		TableCellState cell_state_5 = TableCellState::NONE;
+		/// @brief その行が表示している情報の元データ
+		std::any data{};
 	};
 
 	/**
@@ -778,13 +780,29 @@ private:
 	void on_qrCodeEntry_retrieve_waiting_for_program_qr();
 
 	/**
-	 * @brief　RETRIEVE_SELECTING_TOOLS　状態で工具選択するときの処理。
-	 * @details 選択された工具の表示と取り出し工具の抽出を行う。
+	 * @brief　RETRIEVE_SELECTING_TOOLS 状態に入った時の処理。
+	 * @details QRコードで取得した情報をリストに表示する。
 	 */
-	 void on_mainTableSelection_retrieve_selecting_tools();
+	void on_enter_retrieve_selecting_tools();
 
-	 /**
-	 * @brief　RETRIEVE_CONFIRMING_SELECTION　状態に入った時の処理。
+	/**
+	 * @brief　RETRIEVE_SELECTING_TOOLS 状態でリストを選択した時の処理。
+	 * @details 選択されたリストの行の背景色の状態を変更しリストを更新する。
+	 */
+	void on_mainTableSelection_retrieve_selecting_tools();
+
+	/**
+	 * @brief　RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
+	 * @details 抽出された情報を取得し、リストに表示する。
+	 */
+	void on_enter_retrieve_confirming_selection();
+		/**
+	 * @brief　RETRIEVE_SELECTING_TOOLS 全選択解除ボタンを押下した時の処理。
+	 * @details 選択されたリストの行の背景色の状態を元の状態変更しリストを更新する。
+	 */
+	void on_deselect_all_tools();
+	/**
+	 * @brief RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
 	 * @details 抽出された選択済み行の表示する。
 	 */
 	void on_enter_reading_of_selected_tools();
@@ -1038,6 +1056,8 @@ private:
 
 	/// @brief 工具選択画面で選択されている行のグローバルインデックスを保持するセット。
 	std::set<sgex::PaginatedListStoreModel<MainTableData>::size_type> m_selected_tool_indices;
+
+	std::vector<MainTableData> tooling_store_List;
 
 	/// @brief insertCountEntry の現在個数を格納しておくダイアログ。
 	int m_insertCountEntry_current_count;
