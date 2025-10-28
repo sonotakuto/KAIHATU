@@ -3,6 +3,7 @@
  * @brief
  */
 #include "./includes.hpp"
+#include "./url_transfer.hpp"
 #include "./tracking_communicator.hpp"
 
 namespace tracker {
