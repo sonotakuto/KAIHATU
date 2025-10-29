@@ -950,7 +950,7 @@ MainWindow::MainWindow() :
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_retrieve_selecting_tools(); },
 		.on_mainTableSelection_changed	= [](MainWindow* thiz){ thiz->on_mainTableSelection_retrieve_selecting_tools(); },
-		.on_falseButton_clicked			= [](MainWindow* thiz){ thiz->on_deselect_all_tools(); },
+		.on_falseButton_clicked			= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_confirming_selection(); },
 		.on_trueButton_clicked			= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_CONFIRMING_SELECTION); }
 	});
 
@@ -966,7 +966,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state			= [](MainWindow* thiz){ thiz->on_enter_retrieve_confirming_selection(); },
-		.on_falseButton_clicked	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_SELECTING_TOOLS); },	// 前の状態に戻る
+		.on_falseButton_clicked	= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_confirming_selection(); },
 		.on_trueButton_clicked	= [](MainWindow* thiz){ /* TODO: 搬出処理を開始し、次の状態へ */ }
 	});
 
@@ -1216,7 +1216,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_reconcile_waiting_for_container_selection(); },
-		.on_mainTableSelection_changed	= [](MainWindow* thiz){ thiz->on_mainTable_reconcile_waiting_for_container_selection(); },
+		.on_mainTableSelection_changed	= [](MainWindow* thiz){ thiz->on_mainTableSelection_reconcile_waiting_for_container_selection(); },
 		.on_trueButton_clicked			= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_CONTAINER_RETRIEVING); }
 	});
 
@@ -1359,7 +1359,7 @@ void MainWindow::on_plc_notified(plc::Notification notification) {
 			}
 		} else {
 			// TODO: nullopt対応
-			DEV_PRINT(stderr, "PLC監視スレッドからMONITOR通知を受け取りましたが、monitor_result が空でした\n")
+			DEV_PRINT(stderr, "PLC監視スレッドからMONITOR通知を受け取りましたが、monitor_result が空でした\n");
 		}
 		break;
 	default :
@@ -1926,11 +1926,11 @@ void MainWindow::on_enter_waiting_for_user_login() {
 
 // --- 取り出し ---
 
-void MainWindow::on_enter_retrieve_selecting_tools(){
+void MainWindow::on_enter_retrieve_selecting_tools() {
 	update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
 }
 
-void MainWindow::on_mainTableSelection_retrieve_selecting_tools(){
+void MainWindow::on_mainTableSelection_retrieve_selecting_tools() {
 	auto selected = liststore2columnAll.get_selected_index_and_row();
 	if (selected.has_value()) {
 		selected.value().second.cell_state_0to4 = ((selected.value().second.cell_state_0to4 == TableCellState::SELECTED)
@@ -1938,27 +1938,38 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(){
 			: (TableCellState::SELECTED)
 		);
 		liststore2columnAll.update({selected.value()});
-
 	}
 }
-void MainWindow::on_deselect_all_tools(){
-	auto vec = liststore2columnAll.find_indices_and_rows([](const MainTableData& row) {
-		return row.cell_state_0to4 == TableCellState::SELECTED;
-	});
-	for (auto [idx, row] : vec) {
-		row.cell_state_0to4 = TableCellState::NORMAL;
-	}
-	liststore2columnAll.update(std::map<size_t, MainTableData>(vec.begin(), vec.end()));
+
+void MainWindow::on_falseButton_retrieve_selecting_tools() {
+	liststore2columnAll.modify_master_data(
+		// ラムダ式にマスターデータへの参照(master_data)が渡される
+		[](std::vector<MainTableData>& master_data) {
+			// マスターデータを直接ループ処理
+			for (auto& row : master_data) {
+				// 条件に一致する行を見つけたら
+				if (row.cell_state_0to4 == TableCellState::SELECTED) {
+					// その行の状態を直接変更する
+					row.cell_state_0to4 = TableCellState::NORMAL;
+				}
+			}
+			// ラムダ式が終了すると、modify_master_data が display_page を呼び出し、変更がUIに反映される
+		},
+		true // true を指定して、現在のページを再表示
+	);
 }
 
-void MainWindow::on_enter_retrieve_confirming_selection(){
+void MainWindow::on_enter_retrieve_confirming_selection() {
 	auto vec = liststore2columnAll.find_rows([](const MainTableData& row) {
 		return row.cell_state_0to4 == TableCellState::SELECTED;
 	});
 
-	//tooling_store_List =更新前のテーブルのデータをコピーする。
+	m_backup_table = liststore2columnAll.replace_master_data(std::move(vec));
+}
 
-	liststore2columnAll.set_master_data(vec);
+void MainWindow::on_falseButton_retrieve_confirming_selection() {
+	liststore2columnAll.set_master_data(std::move(m_backup_table));
+	set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 }
 
 void MainWindow::on_enter_retrieve_ready_for_reading() {
@@ -2248,7 +2259,7 @@ void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
 
 }
 
-void MainWindow::on_mainTable_reconcile_waiting_for_container_selection() {
+void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection() {
 
 }
 

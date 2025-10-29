@@ -786,21 +786,29 @@ private:
 	void on_enter_retrieve_selecting_tools();
 
 	/**
-	 * @brief　RETRIEVE_SELECTING_TOOLS 状態でリストを選択した時の処理。
-	 * @details 選択されたリストの行の背景色の状態を変更しリストを更新する。
+	 * @brief RETRIEVE_SELECTING_TOOLS 状態の mainTableSelection_on_changed の処理。
+	 * @details 選択された行の選択/非選択の状態を切り替える。
 	 */
 	void on_mainTableSelection_retrieve_selecting_tools();
 
 	/**
+	 * @brief brief　RETRIEVE_SELECTING_TOOLS 状態の falseButton.on_clicked の処理
+	 * @details 選択状態の行を非選択状態に戻す。
+	 */
+	void on_falseButton_retrieve_selecting_tools();
+
+	/**
 	 * @brief　RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
-	 * @details 抽出された情報を取得し、リストに表示する。
+	 * @details 選択状態の行を抽出し、リストに表示する。
 	 */
 	void on_enter_retrieve_confirming_selection();
-		/**
-	 * @brief　RETRIEVE_SELECTING_TOOLS 全選択解除ボタンを押下した時の処理。
-	 * @details 選択されたリストの行の背景色の状態を元の状態変更しリストを更新する。
+
+	/**
+	 * @brief RETRIEVE_CONFIRMING_SELECTION 状態の falseButton.on_clicked の処理
+	 * @details 選択されたリストの行の背景色の状態を元の状態に変更しリストを更新する。
 	 */
-	void on_deselect_all_tools();
+	void on_falseButton_retrieve_confirming_selection();
+
 	/**
 	 * @brief RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
 	 * @details 抽出された選択済み行の表示する。
@@ -949,7 +957,7 @@ private:
 	 * @brief RECONCILE_WAITING_FOR_CONTAINER_SELECTION 状態の mainTableSelection_on_changed の処理。
 	 * @details 選択中の状態に選択行を変化させ、trueButton を有効化する。
 	 */
-	void on_mainTable_reconcile_waiting_for_container_selection();
+	void on_mainTableSelection_reconcile_waiting_for_container_selection();
 
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態に入ったときの処理。
@@ -1022,6 +1030,8 @@ private:
 	// プライベートメンバ変数 (状態管理用)
 	//=========================================================================
 
+	// --- 二重処理防止用 ---
+
 	/// @brief ウィンドウが初回表示かどうかを判定するフラグ
 	bool m_is_first_show;
 
@@ -1030,6 +1040,8 @@ private:
 	 * @details trueの間、toggledイベントハンドラは何もしません。
 	 */
 	bool m_isProgrammaticallyChangingToggle;
+
+	// --- 状態遷移管理用 ---
 
 	/// @brief パスワード認証が成功したかどうかのフラグ。
 	bool m_password_authenticated;
@@ -1041,29 +1053,6 @@ private:
 	bool m_is_insert_operation;
 	/// @brief 現在のテキストモード(かな/漢字)を保持するメンバ変数。
 	TextMode m_text_mode;
-
-	/// @brief 取り出しの操作で利用する工具リストのメンバ変数。
-	std::vector<MstToolInfo> m_operating_tools;
-
-	/// @brief 操作している保管領域。
-	StrageAreaInfo m_operating_area;
-
-	/// @brief m_operating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
-	std::optional<size_t> m_operating_index;
-
-	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
-	std::vector<RecOperationTable> m_operated_records;
-
-	/// @brief 工具選択画面で選択されている行のグローバルインデックスを保持するセット。
-	std::set<sgex::PaginatedListStoreModel<MainTableData>::size_type> m_selected_tool_indices;
-
-	std::vector<MainTableData> tooling_store_List;
-
-	/// @brief insertCountEntry の現在個数を格納しておくダイアログ。
-	int m_insertCountEntry_current_count;
-
-	/// @brief confirmInsertCountDialog の最大個数を格納しておくダイアログ。0未満の時は最大値無し。
-	int m_confirmInsertCountDialog_max_count;
 
 	/// @brief ウィジェットの状態を保持し、変更があったウィジェットを追跡するマップ。
 	utils::TrackedMap<sg::Widget*, WidgetStateUpdater> m_widget_states;
@@ -1079,6 +1068,33 @@ private:
 
 	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
 	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
+
+	// --- ウィジェット制御用 ---
+
+	/// @brief insertCountEntry の現在個数を格納しておくダイアログ。
+	int m_insertCountEntry_current_count;
+
+	/// @brief confirmInsertCountDialog の最大個数を格納しておくダイアログ。0未満の時は最大値無し。
+	int m_confirmInsertCountDialog_max_count;
+
+	// --- 操作中の状態保持用 (複数場面共通) ---
+
+	/// @brief 操作中工具のリスト。
+	std::vector<MstToolInfo> m_operating_tools;
+
+	/// @brief m_operating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
+	std::optional<size_t> m_operating_index;
+
+	/// @brief 操作している保管領域。
+	StrageAreaInfo m_operating_area;
+
+	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
+	std::vector<RecOperationTable> m_operated_records;
+
+	// --- 操作中の状態保持用 (取り出し専用) ---
+
+	/// @brief 確認画面移行前の表の状態を退避しておく vector。
+	std::vector<MainTableData> m_backup_table;
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

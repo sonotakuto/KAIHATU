@@ -751,7 +751,7 @@ protected:
 	 * @brief C++モデル内の全ての行データを取得します。
 	 * @return 全ての行データを含むvectorのコピー。
 	 */
-	std::vector<RowStruct> get_all_rows() const {
+	const std::vector<RowStruct>& get_data_model() const {
 		return m_data_model;
 	}
 
@@ -961,19 +961,37 @@ public:
 			model->clear();
 		}
 
+		int total_pages = get_total_pages(); // 現在の総ページ数を取得
+
+		// ページインデックスが範囲外かチェックし、範囲内に丸める (Clamp)
+		if (page_index < 0) {
+			page_index = 0; // 0未満なら0ページ目に
+		} else if (page_index >= total_pages) {
+			// 総ページ数以上なら最終ページに (ページがない場合は0)
+			page_index = std::max(0, total_pages - 1);
+		}
+
 		// 1ページあたりが表示できる合計行数
 		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+
+		if (total_rows_per_page == 0) { // モデルが登録されていない場合は何もしない
+			m_current_page_index = 0; // ページ番号をリセット
+			return;
+		}
+
 		// 表示を開始するマスターデータのインデックス
 		size_t start_index = page_index * total_rows_per_page;
 
 		// マスターデータから現在のページに表示すべき部分を切り出して表示
-		for (size_t i = 0; i < total_rows_per_page; ++i) {
+		for (size_t i = 0; i < total_rows_per_page; i++) {
 			size_t master_index = start_index + i;
-			if (master_index >= m_master_data.size()) break;
+			if (master_index >= m_master_data.size()) { break; }	// マスターデータの終端を超えたらループ終了
 
 			// どのTreeViewに表示するかを計算
 			int view_index = i / m_rows_per_view;
-			m_page_models[view_index]->append(m_master_data[master_index]);
+			if (view_index < m_page_models.size()) {	// 念のため範囲チェック
+				m_page_models[view_index]->append(m_master_data[master_index]);
+			}
 		}
 		m_current_page_index = page_index;
 	}
@@ -1016,13 +1034,74 @@ public:
 	}
 
 	/**
-	 * @brief 全てのページの元となるマスターデータをセットします。
-	 * @details この関数を呼び出すと、データがセットされ、最初のページが表示されます。
-	 * @param all_data 全てのデータを含むvector。
+	 * @brief 全てのページの元となるマスターデータをコピーしてセットします。
+	 * @details この関数を呼び出すと、データが内部にコピーされ、最初のページが表示されます。
+	 * @param all_data 全てのデータを含むvector (コピー元)。
+	 * @param refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
 	 */
-	void set_master_data(const std::vector<RowStruct>& all_data) {
-		m_master_data = all_data;
-		display_page(0);
+	void set_master_data(const std::vector<RowStruct>& all_data, bool refresh_current_page = false) {
+		m_master_data = all_data; // コピーが発生
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+	}
+
+	/**
+	 * @brief 全てのページの元となるマスターデータをムーブしてセットします。
+	 * @details この関数を呼び出すと、データの所有権が効率的に移動され、最初のページが表示されます。
+	 * 呼び出し元のvectorは空になります。
+	 * @param all_data 全てのデータを含むvector (ムーブ元)。
+	 * @param refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 */
+	void set_master_data(std::vector<RowStruct>&& all_data, bool refresh_current_page = false) {
+		m_master_data = std::move(all_data); // ムーブ (効率的)
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+	}
+
+	/**
+	 * @brief マスターデータに新しいデータセットをコピーし、古いマスターデータを効率的に返します。
+	 * @details
+	 * 内部のマスターデータに `new_data` をコピーします。
+	 * 置き換え前の古いマスターデータはムーブされて返されます。
+	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
+	 * @param new_data 新しく設定するマスターデータ。関数内でマスターデータにコピーされます。
+	 * @param refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
+	 */
+	std::vector<RowStruct> replace_master_data(const std::vector<RowStruct>& new_data, bool refresh_current_page = false) {
+		// 1. 現在のマスターデータを一時変数にムーブして退避
+		std::vector<RowStruct> old_data = std::move(m_master_data);
+
+		// 2. 引数で受け取った新しいデータをマスターデータにコピー
+		m_master_data = new_data;
+
+		// 3. UIを更新
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+
+		// 4. 退避しておいた古いデータを返す (これもムーブされる)
+		return old_data;
+	}
+
+	/**
+	 * @brief マスターデータを新しいデータセットに置き換え、古いマスターデータを効率的に返します。
+	 * @details
+	 * 内部のマスターデータを `new_data` に置き換えます。この操作はムーブセマンティクスを利用するため、
+	 * データのコピーは最小限に抑えられます。置き換え前の古いマスターデータはムーブされて返されます。
+	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
+	 * @param new_data 新しく設定するマスターデータ (ムーブ元)。この関数の呼び出し後、`new_data` は空（または有効だが未定義の状態）になります。
+	 * @param refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
+	 */
+	std::vector<RowStruct> replace_master_data(std::vector<RowStruct>&& new_data, bool refresh_current_page = false) {
+		// 1. 現在のマスターデータを一時変数にムーブして退避
+		std::vector<RowStruct> old_data = std::move(m_master_data);
+
+		// 2. 引数で受け取った新しいデータをマスターデータにムーブ
+		m_master_data = std::move(new_data);
+
+		// 3. UIを更新
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+
+		// 4. 退避しておいた古いデータを返す (これもムーブされる)
+		return old_data;
 	}
 
 	/**
@@ -1265,6 +1344,26 @@ public:
 		return true;
 	}
 
+
+	/**
+	 * @brief マスターデータを直接編集するための関数オブジェクトを受け付けます。
+	 * @details
+	 * この関数に渡されたラムダ式などの関数オブジェクト内で、マスターデータ(vector)を
+	 * 直接変更できます (ソート、フィルタリング、要素の変更など)。
+	 * 関数オブジェクトの実行が完了した後、自動的にUIが更新されます。
+	 * @param modifier マスターデータへの非const参照を受け取り、編集を行う関数オブジェクト。
+	 * @param refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * ページが存在しなくなっていれば最終ページが表示されます。falseの場合は0ページ目を表示します。デフォルトはfalse。
+	 */
+	void modify_master_data(std::function<void(std::vector<RowStruct>&)> modifier, bool refresh_current_page = false) {
+		// 1. 渡された関数を実行し、m_master_data を直接変更してもらう
+		modifier(m_master_data);
+
+		// 2. 変更が完了したら、表示を更新する
+		// display_page が範囲チェックと丸めを行うため、ここでは単純にページ番号を渡すだけでOK
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+	}
+
 	/**
 	 * @brief 指定したグローバルインデックスの行データをマスターデータから取得します。
 	 * @param global_position 取得する行のグローバルインデックス。
@@ -1278,7 +1377,7 @@ public:
 	 * @brief マスターデータ内の全ての行データを取得します。
 	 * @return 全ての行データを含むvectorのコピー。
 	 */
-	std::vector<RowStruct> get_all_rows() const {
+	const std::vector<RowStruct>& get_master_data() const {
 		return m_master_data;
 	}
 
