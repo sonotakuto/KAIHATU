@@ -916,6 +916,10 @@ MainWindow::MainWindow() :
 		.operationStackPageName = "retrieveOperationPage",
 		.tableStackPageName		= "pageNone",	// 初期ページ
 		// --- 状態の「振る舞い」を定義 ---
+		/*	池ノ上のメモ
+		*	.on_enter_state: その状態に入ったときに呼ばれる関数
+		*	.on_qrCodeEntry_activate: QRコードエントリでEnterキーが押されたときに呼ばれる関数
+		*/
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_waiting_for_program_qr(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_waiting_for_program_qr(); }
 	});
@@ -2297,6 +2301,76 @@ void MainWindow::on_falseButton_reconcile_read_completed() {
 void MainWindow::on_trueButton_reconcile_read_completed() {
 	// TODO: 棚卸し結果をDBに保存
 	set_mode(GuiMode::RECONCILE);
+}
+
+//=========================================================================
+//	池ノ上の関数宣言
+//=========================================================================
+/*
+*	状態取出し：プログラムQRコード待ち状態の開始処理
+*	注：liststore2columnAll.clear();は直接テーブルを非表示にすることはない
+*/
+void MainWindow::on_enter_retrieve_waiting_for_program_qr() {
+	liststore2columnAll.clear();	// テーブルを空にする
+	qrCodeEntry.set_text("");		// QRコード入力欄を空にする
+	qrCodeEntry.grab_focus();		// QRコード入力欄にフォーカスを設定
+}
+
+/*
+*	状態取出し：プログラムQRコード待ち状態のQRコード入力処理
+*	ここで用いるfow文は範囲ベースforを使用している
+*/
+void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
+	// QRコードからプログラム割当一覧を取得
+	// qrCodeEntry.get_text()：QRコード入力欄のテキスト取得
+	// get_ToolingListInfo(qrCode)：DBからツーリングリスト情報を取得する関数
+	// tooling_list_info_opt：取得結果のオプション
+	// tooling_list_info_opt: ToolingListInfoかnullのいずれか
+	auto tooling_list_info_opt = db::get_ToolingListInfo(qrCodeEntry.get_text());
+
+	// 取得成功時の処理(ToolingListInfoが存在する場合)
+	if (tooling_list_info_opt.has_value()) {
+		// 1. tooling_list_info_opt.value()：オプションから実際のToolingListInfoを取得
+		ToolingListInfo tooling_list = tooling_list_info_opt.value();
+
+		// 2. ToolAssignmentInfo のリストを MainTableData のリストに変換
+		std::vector<gui::MainWindow::MainTableData> table_data_list;
+		table_data_list.reserve(tooling_list.tool_assignments.size()); // 事前にメモリ確保
+
+		// ツーリングリストのデータ構造(ToolingListInfo)をGUI表示用のデータ構造(MainTableData)に変換
+		// 右側の値は、処理したい要素のリスト 左側の変数に順次代入される
+		for (const auto& tool_assignment : tooling_list.tool_assignments) {
+			gui::MainWindow::MainTableData row; // 1行分のデータ構造
+
+			// ToolAssignmentInfo と MstToolInfo から MainTableData に値をコピー
+			row.id = tool_assignment.id; // 行の識別に使う (今回は tool_assignment_id を流用)
+			row.data_columns[0] = tool_assignment.tool_num;								// ツール番号
+			row.data_columns[1] = tool_assignment.mst_tool_info.category;				// 分類
+			row.data_columns[2] = tool_assignment.mst_tool_info.maker;					// メーカー
+			row.data_columns[3] = tool_assignment.mst_tool_info.name;					// 型番
+			row.data_columns[4] = tool_assignment.mst_tool_info.material;				// 材質
+			row.data_columns[5] = std::to_string(tool_assignment.mst_tool_info.stc);	// 在庫数 (文字列に変換)
+			row.cell_state_0to4 = gui::MainWindow::TableCellState::NORMAL;				// 初期状態は通常色
+			// row.cell_state_5 はデフォルト(NONE)のまま
+
+			table_data_list.push_back(row); // リストに追加
+		}
+
+		// 3. 変換したデータをページネーションモデルにセット (これで表示が更新される)
+		liststore2columnAll.set_master_data(table_data_list);
+
+		// 4. 次の状態へ遷移
+		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
+
+	// 取得失敗時の処理
+	} else {
+		// 取得失敗時の処理 (エラーメッセージ表示など)
+		DEV_PRINT("ツーリングリストの取得に失敗しました。\n");
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"有効なプログラム割当一覧表QRコードではありません。", "ゆうこうな プログラムわりあていちらんひょう QRコードではありません。"}
+		});
+		refresh_ui(false);
+	}
 }
 
 } // namespace gui
