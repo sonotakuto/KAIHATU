@@ -50,6 +50,81 @@ static optional<OdbcStatement> create_statement_with_retry() {
 	return nullopt;
 }
 
+/**
+ * @brief get_StrageAreaInfo_with_min_cases と get_StrageAreaInfo_with_max_cases の共通実装部分。
+ * @param basic_tool_id 検索対象の基本工具ID。
+ * @param order ソート順 ("ASC" または "DESC")。
+ * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::int32_t basic_tool_id, const std::string& order) {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt) {
+		DEV_PRINT(stderr, "Error: Failed to create statement in get_StrageAreaInfo_ordered_by_cases after multiple retries.\n");
+		return std::nullopt;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// storage_area テーブルを mst_address, mst_tool と結合し、
+		// 指定された basic_tool_id で絞り込み、toolcase_stc_num でソートして最初の1件を取得するSQL
+		const std::string sql = fmt::format(
+			"SELECT "
+			"    sa.storage_area_id, sa.toolcase_stc_num, "
+			"    ma.display_address, ma.control_address, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
+			"FROM storage_area AS sa "
+			"JOIN mst_address AS ma ON sa.display_address = ma.display_address "
+			"JOIN mst_tool AS mt ON sa.basic_tool_id = mt.basic_tool_id "
+			"WHERE sa.basic_tool_id = ? "
+			"ORDER BY sa.toolcase_stc_num {} " // ソート順をプレースホルダで指定
+			"LIMIT 1;",
+			order // order ("ASC" or "DESC") を直接埋め込む (SQLインジェクションのリスクはないため安全)
+		);
+
+		stmt.prepare(sql);
+		stmt.bind(1, basic_tool_id);
+		stmt.executePrepared();
+
+		auto rows = stmt.fetchAll();
+		if (rows.empty()) {
+			return std::nullopt; // 条件に合う領域が見つからない
+		}
+
+		const auto& row = rows[0];
+
+		// 取得したデータを StrageAreaInfo 構造体に詰める
+		return StrageAreaInfo{
+			.id	= std::any_cast<std::int32_t>(row.at("storage_area_id")),
+
+			.item	= MstToolInfo{
+				.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
+				.name		= std::any_cast<std::string>	(row.at("tool_name")),
+				.maker		= std::any_cast<std::string>	(row.at("maker")),
+				.category	= std::any_cast<std::string>	(row.at("tool_category")),
+				.material	= std::any_cast<std::string>	(row.at("tool_material")),
+				.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+			},
+
+			.toolcase_stc_num	= std::any_cast<std::int32_t>(row.at("toolcase_stc_num")),
+
+			.mst_address_info	= MstAddressInfo{
+				.display_address	= std::any_cast<std::string>(row.at("display_address")),
+				.control_address	= std::any_cast<std::string>(row.at("control_address"))
+			}
+		};
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_StrageAreaInfo_ordered_by_cases: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_StrageAreaInfo_ordered_by_cases: {}\n", e.what());
+		return std::nullopt;
+	} catch (const fmt::format_error& e) {
+		DEV_PRINT(stderr, "Formatting Error in get_StrageAreaInfo_ordered_by_cases: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
 // --- 公開関数 ---
 
 std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
@@ -89,13 +164,17 @@ std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 			return std::nullopt; // 'U', 'T', 'P' 以外は無効
 	}
 
-	// ID文字列をlong longに変換
+	// ID文字列を数値に変換
 	try {
-		result.id = std::stoll(id_str);
+		if constexpr (sizeof(signed long) == 8){
+			result.id = std::stol(id_str);
+		} else {
+			result.id = std::stoll(id_str);
+		}
 	} catch (const std::invalid_argument& e) {
 		return std::nullopt; // 数値に変換できないIDは無効
 	} catch (const std::out_of_range& e) {
-		return std::nullopt; // IDがlong longの範囲外
+		return std::nullopt; // IDが数値型の範囲外
 	}
 
 	// タイムスタンプ文字列(YYYYMMDDHHMMSS)をtime_pointに変換
@@ -237,7 +316,7 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		std::vector<std::int32_t> user_ids;
 		std::vector<std::chrono::system_clock::time_point> proc_times;
 		std::vector<std::int32_t> storage_area_ids;
-		std::vector<std::optional<std::int32_t>> unique_tool_ids;
+		std::vector<std::optional<std::int64_t>> unique_tool_ids;
 		std::vector<std::optional<std::string>> video_paths;
 		std::vector<std::optional<std::int32_t>> tool_nums;
 
@@ -314,8 +393,8 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 
 		const auto& row = rows[0];
 		MstUserInfo user_info;
-		user_info.id			= std::any_cast<std::int32_t>		(row.at("user_id"));
-		user_info.name			= std::any_cast<std::string>(row.at("user_name"));
+		user_info.id			= std::any_cast<std::int32_t>	(row.at("user_id"));
+		user_info.name			= std::any_cast<std::string>	(row.at("user_name"));
 		// TINYINT(1) は int8_t として取得し、boolに変換
 		user_info.per_add		= (std::any_cast<std::int8_t>	(row.at("per_add"))			!= 0);
 		user_info.per_inventory	= (std::any_cast<std::int8_t>	(row.at("per_inventory"))	!= 0);
@@ -383,7 +462,7 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 		// unique_tool テーブルの情報を詰めて返す
 		return UniqueToolInfo{
 
-			.id = std::any_cast<std::int32_t>(row.at("unique_tool_id")),
+			.id = std::any_cast<std::int64_t>(row.at("unique_tool_id")),
 
 			// 用意しておいた mst_tool テーブルの情報を詰める
 			.mst_tool_info = mst_tool_info,
@@ -507,6 +586,16 @@ std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string)
 		DEV_PRINT(stderr, "DB Cast Error in get_ToolingListInfo: {}\n", e.what());
 		return std::nullopt;
 	}
+}
+
+std::optional<StrageAreaInfo> get_StrageAreaInfo_with_min_cases(int basic_tool_id) {
+	// 共通関数を呼び出し、ソート順に "ASC" (昇順) を指定
+	return get_StrageAreaInfo_ordered_by_cases(basic_tool_id, "ASC");
+}
+
+std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_id) {
+	// 共通関数を呼び出し、ソート順に "DESC" (降順) を指定
+	return get_StrageAreaInfo_ordered_by_cases(basic_tool_id, "DESC");
 }
 
 } // namespace db

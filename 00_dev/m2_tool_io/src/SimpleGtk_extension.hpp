@@ -988,7 +988,7 @@ public:
 			if (master_index >= m_master_data.size()) { break; }	// マスターデータの終端を超えたらループ終了
 
 			// どのTreeViewに表示するかを計算
-			int view_index = i / m_rows_per_view;
+			size_t view_index = i / m_rows_per_view;
 			if (view_index < m_page_models.size()) {	// 念のため範囲チェック
 				m_page_models[view_index]->append(m_master_data[master_index]);
 			}
@@ -1135,9 +1135,9 @@ public:
 	 * @return 総ページ数 (1から始まる)。
 	 */
 	int get_total_pages() const {
-		if (m_master_data.empty()) return 1;
+		if (m_master_data.empty()) { return 1; }
 		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
-		if (total_rows_per_page == 0) return 1;
+		if (total_rows_per_page == 0) { return 1; }
 		return (m_master_data.size() + total_rows_per_page - 1) / total_rows_per_page;
 	}
 

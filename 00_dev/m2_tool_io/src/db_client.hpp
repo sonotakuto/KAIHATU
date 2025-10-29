@@ -3,6 +3,7 @@
  * @brief データベースにアクセスするための関数をまとめたヘッダファイル。
  */
 #pragma once
+#include <cstdint>
 #include <SimpleGtk>
 #include "./typedef.hpp"
 #include "./parameters.hpp"
@@ -33,7 +34,7 @@ enum class QrCodeType {
  */
 struct QrCodeData {
 	QrCodeType type;
-	long long id;
+	std::int64_t id;
 	std::chrono::system_clock::time_point timestamp;
 };
 
@@ -105,5 +106,19 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string);
  * @return ツーリングリストが見つかった場合はその構造体、見つからなければ std::nullopt。
  */
 std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string);
+
+/**
+ * @brief 指定された基本工具IDを持つ工具が保管されている領域のうち、保管ケース数が最も少ない保管領域の情報を取得します。
+ * @param basic_tool_id 検索対象の基本工具ID。
+ * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<StrageAreaInfo> get_StrageAreaInfo_with_min_cases(int basic_tool_id);
+
+/**
+ * @brief 指定された基本工具IDを持つ工具が保管されている領域のうち、保管ケース数が最も多い保管領域の情報を取得します。
+ * @param basic_tool_id 検索対象の基本工具ID。
+ * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_id);
 
 } // namespace db

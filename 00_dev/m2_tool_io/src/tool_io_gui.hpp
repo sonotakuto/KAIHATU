@@ -3,6 +3,7 @@
  * @brief アプリケーションのメインウィンドウクラスを定義したヘッダファイル。
  */
 #pragma once
+#include <cstdint>
 #include <SimpleGtk>
 #include "./typedef.hpp"
 #include "./parameters.hpp"
@@ -124,7 +125,7 @@ public:
 	 */
 	struct MainTableData {
 		/// @brief ID
-		int id{};
+		std::int64_t id{};
 		/// @brief 各列のデータ (6列固定)
 		std::array<std::string, 6> data_columns{};
 		/// @brief セルの状態 (0～4列目)
@@ -132,7 +133,7 @@ public:
 		/// @brief セルの状態 (5列目)
 		TableCellState cell_state_5 = TableCellState::NONE;
 		/// @brief その行が表示している情報の元データ
-		std::any data{};
+		std::any row_data{};
 	};
 
 	/**
@@ -810,12 +811,30 @@ private:
 	void on_falseButton_retrieve_confirming_selection();
 
 	/**
-	 * @brief RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
-	 * @details 抽出された選択済み行の表示する。
+	 * @brief RETRIEVE_CONTAINER_RETRIEVING 状態に入ったときの処理。
+	 * @details 取り出す工具が入ったコンテナを搬出し、搬出中のコンテナを強調表示する。
 	 */
-	void on_enter_reading_of_selected_tools();
+	void on_enter_retrieve_container_retrieving();
 
-	// TODO: 取り出しモードの状態遷移関数をここに追加
+	/**
+	 * @brief RETRIEVE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
+	 * @param notification PLCリスナースレッドからの通知。
+	 */
+	void on_plc_retrieve_container_retrieving(plc::Notification notification);
+
+	/**
+	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態に入ったときの処理。
+	 * @details 利用者が扉を開けるまで待機する。
+	 */
+	void on_enter_retrieve_container_retrieved();
+
+	/**
+	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
+	 * @param notification PLCリスナースレッドからの通知。
+	 */
+	void on_plc_retrieve_container_retrieved(plc::Notification notification);
 
 	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態に入ったときの処理
@@ -1079,12 +1098,6 @@ private:
 
 	// --- 操作中の状態保持用 (複数場面共通) ---
 
-	/// @brief 操作中工具のリスト。
-	std::vector<MstToolInfo> m_operating_tools;
-
-	/// @brief m_operating_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
-	std::optional<size_t> m_operating_index;
-
 	/// @brief 操作している保管領域。
 	StrageAreaInfo m_operating_area;
 
@@ -1094,7 +1107,14 @@ private:
 	// --- 操作中の状態保持用 (取り出し専用) ---
 
 	/// @brief 確認画面移行前の表の状態を退避しておく vector。
-	std::vector<MainTableData> m_backup_table;
+	std::vector<MainTableData> m_retrieve_backup_table;
+
+	/// @brief 操作中工具のリスト。
+	std::vector<ToolAssignmentInfo> m_retrieving_tools;
+
+	/// @brief m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
+	std::optional<size_t> m_retrieving_index;
+
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

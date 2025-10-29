@@ -5,15 +5,18 @@
 # C++コンパイラを指定
 CXX = g++
 
+# 使用するパッケージを指定
+PACKAGES = libcurl SimpleGtk
+
 # コンパイル時の共通オプション
 # -std=c++17	: C++17規格を使用
 # -Wall			: 主要な警告をすべて有効にする
-# `pkg-config --cflags SimpleGtk` : SimpleGtkライブラリに必要なコンパイルフラグを取得
-CXXFLAGS = -std=c++17 -Wall `pkg-config --cflags SimpleGtk`
+# `pkg-config --cflags $(PACKAGES)` : 各パッケージに必要なコンパイルフラグを取得
+CXXFLAGS = -std=c++17 -Wall `pkg-config --cflags $(PACKAGES)`
 
 # リンク時のオプション
-# `pkg-config --libs SimpleGtk` : SimpleGtkライブラリに必要なライブラリフラグを取得
-LDFLAGS = `pkg-config --libs SimpleGtk`
+# `pkg-config --libs $(PACKAGES)` : 各パッケージに必要なライブラリフラグを取得
+LDFLAGS = `pkg-config --libs $(PACKAGES)`
 
 # デバッグビルド時のみ追加されるオプション
 # -g	: デバッグ情報（シンボルなど）を埋め込む
@@ -86,13 +89,13 @@ $(DEBUG_TARGET): $(DEBUG_OBJECTS)
 # 通常版のオブジェクトファイル（.o）を生成するルール
 # $<: 最初の依存ファイル名（.cppファイル）
 # オブジェクトディレクトリが無い場合は作成する
-$(OBJECTS_DIR)/%.o: %.cpp $(HEADERS)
+$(OBJECTS_DIR)/%.o: %.cpp $(HEADERS) $(MAKEFILE_LIST)
 	@mkdir -p $(OBJECTS_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # デバッグ版のオブジェクトファイル（_debug.o）を生成するルール
 # オブジェクトディレクトリが無い場合は作成する
-$(OBJECTS_DIR)/%_debug.o: %.cpp $(HEADERS)
+$(OBJECTS_DIR)/%_debug.o: %.cpp $(HEADERS) $(MAKEFILE_LIST)
 	@mkdir -p $(OBJECTS_DIR)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -c $< -o $@
 

@@ -983,7 +983,9 @@ MainWindow::MainWindow() :
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName		= "table2column",
-		//TODO --- 状態の「振る舞い」を定義 ---
+		// --- 状態の「振る舞い」を定義 ---
+		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_retrieve_container_retrieving(); },
+		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_retrieve_container_retrieving(notification); }
 	});
 
 	// --- 状態：取り出し - コンテナ搬出完了 ---
@@ -992,7 +994,9 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}} },
 		},
-		//TODO --- 状態の「振る舞い」を定義 ---
+		// --- 状態の「振る舞い」を定義 ---
+		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_retrieve_container_retrieved(); },
+		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_retrieve_container_retrieved(notification); }
 	});
 
 	// --- 状態：取り出し - 実際に補充を行う - 工具読み取り前 ---
@@ -1926,13 +1930,76 @@ void MainWindow::on_enter_waiting_for_user_login() {
 
 // --- 取り出し ---
 
+void MainWindow::on_enter_retrieve_waiting_for_program_qr() {
+	liststore2columnAll.clear();	// テーブルを空にする
+	qrCodeEntry.set_text("");		// QRコード入力欄を空にする
+	qrCodeEntry.grab_focus();		// QRコード入力欄にフォーカスを設定
+}
+
+void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
+	// QRコードからプログラム割当一覧を取得
+	// qrCodeEntry.get_text()：QRコード入力欄のテキスト取得
+	// get_ToolingListInfo(qrCode)：DBからツーリングリスト情報を取得する関数
+	// tooling_list_info_opt：取得結果のオプション
+	// tooling_list_info_opt: ToolingListInfoかnullのいずれか
+	auto tooling_list_info_opt = db::get_ToolingListInfo(qrCodeEntry.get_text());
+
+	// 取得成功時の処理(ToolingListInfoが存在する場合)
+	if (tooling_list_info_opt.has_value()) {
+		// 1. tooling_list_info_opt.value()：オプションから実際のToolingListInfoを取得
+		ToolingListInfo tooling_list = tooling_list_info_opt.value();
+
+		// 2. ToolAssignmentInfo のリストを MainTableData のリストに変換
+		std::vector<MainTableData> table_data_list;
+		table_data_list.reserve(tooling_list.tool_assignments.size()); // 事前にメモリ確保
+
+		// ツーリングリストのデータ構造(ToolingListInfo)をGUI表示用のデータ構造(MainTableData)に変換
+		// 右側の値は、処理したい要素のリスト 左側の変数に順次代入される
+		for (const auto& tool_assignment : tooling_list.tool_assignments) {
+			table_data_list.push_back(MainTableData{
+				// ToolAssignmentInfo と MstToolInfo から MainTableData に値をコピー
+				.id = tool_assignment.id,	// 行の識別に使う (今回は tool_assignment_id を流用)
+				.data_columns = {
+					tool_assignment.tool_num,							// ツール番号
+					tool_assignment.mst_tool_info.category,				// 分類
+					tool_assignment.mst_tool_info.maker,				// メーカー
+					tool_assignment.mst_tool_info.name,					// 型番
+					tool_assignment.mst_tool_info.material,				// 材質
+					std::to_string(tool_assignment.mst_tool_info.stc),	// 在庫数 (文字列に変換)
+				},
+				.cell_state_0to4 = ((tool_assignment.mst_tool_info.stc > 0)
+					? (TableCellState::NORMAL)	// 在庫があれば通常状態
+					: (TableCellState::FADED)	// 在庫が無ければ無効
+				),
+				// row.cell_state_5 はデフォルト(NONE)のまま
+				.row_data = tool_assignment	// 生データを入れておく
+			}); // リストに追加
+		}
+
+		// 3. 変換したデータをページネーションモデルにセット (これで表示が更新される)
+		liststore2columnAll.set_master_data(std::move(table_data_list));
+
+		// 4. 次の状態へ遷移
+		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
+
+	// 取得失敗時の処理
+	} else {
+		// 取得失敗時の処理 (エラーメッセージ表示など)
+		DEV_PRINT("ツーリングリストの取得に失敗しました。\n");
+		update_widget_state(&messageLabel, WidgetState{
+			.text = UiText{"有効なプログラム割当一覧表QRコードではありません。", "ゆうこうな プログラムわりあていちらんひょう QRコードではありません。"}
+		});
+		refresh_ui(false);
+	}
+}
+
 void MainWindow::on_enter_retrieve_selecting_tools() {
 	update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
 }
 
 void MainWindow::on_mainTableSelection_retrieve_selecting_tools() {
 	auto selected = liststore2columnAll.get_selected_index_and_row();
-	if (selected.has_value()) {
+	if (selected.has_value() && selected.value().second.cell_state_0to4 != TableCellState::FADED) {
 		selected.value().second.cell_state_0to4 = ((selected.value().second.cell_state_0to4 == TableCellState::SELECTED)
 			? (TableCellState::NORMAL)
 			: (TableCellState::SELECTED)
@@ -1940,6 +2007,7 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools() {
 		liststore2columnAll.update({selected.value()});
 	}
 }
+
 
 void MainWindow::on_falseButton_retrieve_selecting_tools() {
 	liststore2columnAll.modify_master_data(
@@ -1964,12 +2032,79 @@ void MainWindow::on_enter_retrieve_confirming_selection() {
 		return row.cell_state_0to4 == TableCellState::SELECTED;
 	});
 
-	m_backup_table = liststore2columnAll.replace_master_data(std::move(vec));
+	m_retrieve_backup_table = liststore2columnAll.replace_master_data(std::move(vec));
 }
 
 void MainWindow::on_falseButton_retrieve_confirming_selection() {
-	liststore2columnAll.set_master_data(std::move(m_backup_table));
+	liststore2columnAll.set_master_data(std::move(m_retrieve_backup_table));
 	set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
+}
+
+void MainWindow::on_enter_retrieve_container_retrieving() {
+	auto area_info_opt = db::get_StrageAreaInfo_with_max_cases(m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info.id);	// TODO: nullopt対応
+	m_operating_area = area_info_opt.value();	// TODO: nullopt対応
+	plc::retrieve_container(std::stoi(m_operating_area.mst_address_info.control_address));	// TODO: 例外処理
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
+	});
+
+	std::vector<MainTableData> vec;
+	vec.reserve(m_retrieving_tools.size());
+	for (size_t i = 0; i < m_retrieving_tools.size(); ++i) {
+		// 現在の要素への参照を取得
+		const auto& retrieving_tool = m_retrieving_tools[i];
+
+		vec.push_back(MainTableData{
+			.id = retrieving_tool.id,
+			.data_columns = {
+				retrieving_tool.tool_num,							// ツール番号
+				retrieving_tool.mst_tool_info.category,				// 分類
+				retrieving_tool.mst_tool_info.maker,				// メーカー
+				retrieving_tool.mst_tool_info.name,					// 型番
+				retrieving_tool.mst_tool_info.material,				// 材質
+				std::to_string(retrieving_tool.mst_tool_info.stc),	// 在庫数 (文字列に変換)
+			},
+			.cell_state_0to4 = ((i == m_retrieving_index)
+				? (TableCellState::HIGHLIGHT)
+				: (TableCellState::FADED)
+			),
+			.row_data = retrieving_tool
+		});
+	}
+}
+
+void MainWindow::on_plc_retrieve_container_retrieving(plc::Notification notification) {
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
+		auto result = notification.monitor_result.value();
+		if (result.addr == plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
+			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
+		} else {}	// TODO: エラー処理
+	}
+}
+
+void MainWindow::on_enter_retrieve_container_retrieved() {
+	// TODO: 扉を開けるまで待機する処理を実装
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
+	});
+}
+
+void MainWindow::on_plc_retrieve_container_retrieved(plc::Notification notification) {
+	// TODO: 扉を開けるまで待機する処理を実装
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
+		auto result = notification.monitor_result.value();
+		if (result.addr == plc::M_DEVICE_DOOR_OPEND && result.status) {
+			set_app_state(AppState::STORE_CONTAINER_RETRIEVED);
+		} else {}	// TODO: エラー処理
+	}
 }
 
 void MainWindow::on_enter_retrieve_ready_for_reading() {
@@ -2000,12 +2135,12 @@ void MainWindow::on_enter_retrieve_read_completed() {
 bool MainWindow::on_qrCodeEntry_retrieve_read_completed() {
 	bool result = false;
 	bool is_reground = false;
-	MstToolInfo operating_tool = m_operating_tools.at(m_operating_index.value());	// TODO: nullopt対応
+	MstToolInfo retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// TODO: nullopt対応
 	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
 	if (unique_info_opt.has_value()) {
 		UniqueToolInfo& unique_info = unique_info_opt.value();
-		if (unique_info.mst_tool_info.id != operating_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
+		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
 			update_widget_state(&messageLabel, WidgetState{
 				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
 			});
@@ -2037,7 +2172,8 @@ bool MainWindow::on_qrCodeEntry_retrieve_read_completed() {
 					? (m_insertCountEntry_current_count)
 					: (unique_info.regrind_count.value_or(0))	// TODO: nullopt対応
 				))
-			}
+			},
+			.row_data = unique_info
 		});
 
 		m_operated_records.push_back(RecOperationTable{
@@ -2068,19 +2204,19 @@ bool MainWindow::on_qrCodeEntry_retrieve_read_completed() {
 
 void MainWindow::on_falseButton_retrieve_read_completed() {
 	db::save_history(m_operated_records);
-	m_operating_index.reset();
+	m_retrieving_index.reset();
 	set_mode(GuiMode::NONE);
 }
 
 void MainWindow::on_trueButton_retrieve_read_completed() {
 	db::save_history(m_operated_records);
-	if (m_operating_index.has_value() && m_operating_index.value() + 1 < m_operating_tools.size()) {
+	if (m_retrieving_index.has_value() && m_retrieving_index.value() + 1 < m_retrieving_tools.size()) {
 		// 次の工具の搬出処理へ
-		m_operating_index.value()++;
+		m_retrieving_index.value()++;
 		set_app_state(AppState::RETRIEVE_CONTAINER_RETRIEVING);
 	} else {
 		// 選択された中で最後の工具の時
-		m_operating_index.reset();
+		m_retrieving_index.reset();
 		set_mode(GuiMode::RETRIEVE);
 	}
 }
@@ -2217,7 +2353,8 @@ bool MainWindow::on_qrCodeEntry_store_read_completed() {
 					? (unique_info.case_pack_num)
 					: (unique_info.regrind_count)
 				).value())
-			}
+			},
+			.row_data = unique_info
 		});
 		update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
 		result = true;
@@ -2312,76 +2449,6 @@ void MainWindow::on_falseButton_reconcile_read_completed() {
 void MainWindow::on_trueButton_reconcile_read_completed() {
 	// TODO: 棚卸し結果をDBに保存
 	set_mode(GuiMode::RECONCILE);
-}
-
-//=========================================================================
-//	池ノ上の関数宣言
-//=========================================================================
-/*
-*	状態取出し：プログラムQRコード待ち状態の開始処理
-*	注：liststore2columnAll.clear();は直接テーブルを非表示にすることはない
-*/
-void MainWindow::on_enter_retrieve_waiting_for_program_qr() {
-	liststore2columnAll.clear();	// テーブルを空にする
-	qrCodeEntry.set_text("");		// QRコード入力欄を空にする
-	qrCodeEntry.grab_focus();		// QRコード入力欄にフォーカスを設定
-}
-
-/*
-*	状態取出し：プログラムQRコード待ち状態のQRコード入力処理
-*	ここで用いるfow文は範囲ベースforを使用している
-*/
-void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
-	// QRコードからプログラム割当一覧を取得
-	// qrCodeEntry.get_text()：QRコード入力欄のテキスト取得
-	// get_ToolingListInfo(qrCode)：DBからツーリングリスト情報を取得する関数
-	// tooling_list_info_opt：取得結果のオプション
-	// tooling_list_info_opt: ToolingListInfoかnullのいずれか
-	auto tooling_list_info_opt = db::get_ToolingListInfo(qrCodeEntry.get_text());
-
-	// 取得成功時の処理(ToolingListInfoが存在する場合)
-	if (tooling_list_info_opt.has_value()) {
-		// 1. tooling_list_info_opt.value()：オプションから実際のToolingListInfoを取得
-		ToolingListInfo tooling_list = tooling_list_info_opt.value();
-
-		// 2. ToolAssignmentInfo のリストを MainTableData のリストに変換
-		std::vector<gui::MainWindow::MainTableData> table_data_list;
-		table_data_list.reserve(tooling_list.tool_assignments.size()); // 事前にメモリ確保
-
-		// ツーリングリストのデータ構造(ToolingListInfo)をGUI表示用のデータ構造(MainTableData)に変換
-		// 右側の値は、処理したい要素のリスト 左側の変数に順次代入される
-		for (const auto& tool_assignment : tooling_list.tool_assignments) {
-			gui::MainWindow::MainTableData row; // 1行分のデータ構造
-
-			// ToolAssignmentInfo と MstToolInfo から MainTableData に値をコピー
-			row.id = tool_assignment.id; // 行の識別に使う (今回は tool_assignment_id を流用)
-			row.data_columns[0] = tool_assignment.tool_num;              // ツール番号
-			row.data_columns[1] = tool_assignment.mst_tool_info.category; // 分類
-			row.data_columns[2] = tool_assignment.mst_tool_info.maker;    // メーカー
-			row.data_columns[3] = tool_assignment.mst_tool_info.name;     // 型番
-			row.data_columns[4] = tool_assignment.mst_tool_info.material; // 材質
-			row.data_columns[5] = std::to_string(tool_assignment.mst_tool_info.stc); // 在庫数 (文字列に変換)
-			row.cell_state_0to4 = gui::MainWindow::TableCellState::NORMAL; // 初期状態は通常色
-			// row.cell_state_5 はデフォルト(NONE)のまま
-
-			table_data_list.push_back(row); // リストに追加
-		}
-
-		// 3. 変換したデータをページネーションモデルにセット (これで表示が更新される)
-		liststore2columnAll.set_master_data(table_data_list);
-
-		// 4. 次の状態へ遷移
-		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
-
-	// 取得失敗時の処理
-	} else {
-		// 取得失敗時の処理 (エラーメッセージ表示など)
-		DEV_PRINT("ツーリングリストの取得に失敗しました。\n");
-		update_widget_state(&messageLabel, WidgetState{
-			.text = UiText{"有効なプログラム割当一覧表QRコードではありません。", "ゆうこうな プログラムわりあていちらんひょう QRコードではありません。"}
-		});
-		refresh_ui(false);
-	}
 }
 
 } // namespace gui

@@ -91,7 +91,7 @@ enum class StorageCondition {
  */
 struct UniqueToolTable {
 	/// @brief 個別工具ID (個別工具識別用)
-	std::int32_t unique_tool_id{};
+	std::int64_t unique_tool_id{};
 	/// @brief 基本工具ID (工具種別識別用連番)
 	std::int32_t basic_tool_id{};
 	/// @brief 個別番号 (個別の連番)
@@ -171,7 +171,7 @@ struct RecOperationTable {
 	/// @brief 保管領域ID (工具保管領域識別用連番)
 	std::int32_t storage_area_id{};
 	/// @brief 個別工具ID (工具識別用連番)
-	std::optional<std::int32_t> unique_tool_id{};
+	std::optional<std::int64_t> unique_tool_id{};
 	/// @brief 動画パス (動画の保存先リンク)
 	std::optional<std::string> video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
@@ -241,7 +241,7 @@ struct StrageAreaInfo {
  */
 struct UniqueToolInfo {
 	/// @brief 個別工具ID (個別工具識別用)
-	std::int32_t id{};
+	std::int64_t id{};
 	/// @brief 工具の基本情報
 	MstToolInfo mst_tool_info{};
 	/// @brief 個別番号 (個別の連番)
