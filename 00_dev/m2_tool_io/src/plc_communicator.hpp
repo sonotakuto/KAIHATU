@@ -85,7 +85,7 @@ struct Notification {
 
 // --- 定数定義 ---
 
-constexpr const char*	HOST	= "10.19.133.181";	// PLCのホスト名
+constexpr const char*	HOST	= "10.19.106.181";	// PLCのホスト名
 constexpr int			PORT	= 10000;			// PLCのポート番号
 
 constexpr std::chrono::milliseconds	POLLING_INTERVAL_MS(100);	// PLCのポーリング間隔 (ミリ秒)
