@@ -2521,13 +2521,13 @@ void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
 
 			// ToolAssignmentInfo と MstToolInfo から MainTableData に値をコピー
 			row.id = tool_assignment.id; // 行の識別に使う (今回は tool_assignment_id を流用)
-			row.data_columns[0] = tool_assignment.tool_num;								// ツール番号
-			row.data_columns[1] = tool_assignment.mst_tool_info.category;				// 分類
-			row.data_columns[2] = tool_assignment.mst_tool_info.maker;					// メーカー
-			row.data_columns[3] = tool_assignment.mst_tool_info.name;					// 型番
-			row.data_columns[4] = tool_assignment.mst_tool_info.material;				// 材質
-			row.data_columns[5] = std::to_string(tool_assignment.mst_tool_info.stc);	// 在庫数 (文字列に変換)
-			row.cell_state_0to4 = gui::MainWindow::TableCellState::NORMAL;				// 初期状態は通常色
+			row.data_columns[0] = tool_assignment.tool_num;              // ツール番号
+			row.data_columns[1] = tool_assignment.mst_tool_info.category; // 分類
+			row.data_columns[2] = tool_assignment.mst_tool_info.maker;    // メーカー
+			row.data_columns[3] = tool_assignment.mst_tool_info.name;     // 型番
+			row.data_columns[4] = tool_assignment.mst_tool_info.material; // 材質
+			row.data_columns[5] = std::to_string(tool_assignment.mst_tool_info.stc); // 在庫数 (文字列に変換)
+			row.cell_state_0to4 = gui::MainWindow::TableCellState::NORMAL; // 初期状態は通常色
 			// row.cell_state_5 はデフォルト(NONE)のまま
 
 			table_data_list.push_back(row); // リストに追加
