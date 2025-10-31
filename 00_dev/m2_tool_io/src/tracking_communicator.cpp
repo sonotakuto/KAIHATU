@@ -233,6 +233,7 @@ bool RecorderClient::stop_recording() {
 std::optional<int> get_insert_count(const char* ip, int port, int timeout_ms) {
 	sg::Socket local_socket; // ローカル変数としてソケットを作成 (RAII)
 	std::optional<int> result = std::nullopt;
+	DEV_PRINT("インサート個数取得サーバーと通信します\n");
 
 	try {
 		// 1. 接続

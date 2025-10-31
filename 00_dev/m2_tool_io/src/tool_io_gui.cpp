@@ -5,8 +5,8 @@
 #include "./SimpleGtk_extension.hpp"
 #include "./includes.hpp"
 #include "./db_client.hpp"
+#include "./tracking_communicator.hpp"
 #include "./tool_io_gui.hpp"
-#include "tool_io_gui.hpp"
 
 namespace gui {
 
@@ -205,6 +205,7 @@ MainWindow::MainWindow() :
 	confirmInsertCountDialog(glade, "confirmInsertCountDialog"),
 	confirmRegroundDialog(glade, "confirmRegroundDialog"),
 	logoutDialog(glade, "logoutDialog"),
+	messageDialog(glade, "messageDialog"),
 	passwordEntryDialog(glade, "passwordEntryDialog"),
 	warningDialog(glade, "warningDialog"),
 	// インサート枚数確認ダイアログ内
@@ -212,6 +213,7 @@ MainWindow::MainWindow() :
 	insertCountIncrementButton(glade, "insertCountIncrementButton"),
 	insertCountDecrementButton(glade, "insertCountDecrementButton"),
 	insertCountEntry(glade, "insertCountEntry"),
+	insertCountDetectButton(glade, "insertCountDetectButton"),
 	insertCountOkButton(glade, "insertCountOkButton"),
 	// 再研磨確認ダイアログ内
 	confirmRegroundLabel(glade, "confirmRegroundLabel"),
@@ -221,6 +223,8 @@ MainWindow::MainWindow() :
 	// ログアウト確認ダイアログ内
 	logoutNoButton(glade, "logoutNoButton"),
 	logoutYesButton(glade, "logoutYesButton"),
+	// メッセージダイアログ内
+	messageDialogLabel(glade, "messageDialogLabel"),
 	// パスワード入力ダイアログ内
 	passwordEntryLabel(glade, "passwordEntryLabel"),
 	passwordCancelButton(glade, "passwordCancelButton"),
@@ -272,6 +276,12 @@ MainWindow::MainWindow() :
 	this->liststore2columnAll.add_model({&liststore2column1st, &liststore2column2nd});
 
 	//=========================================================================
+	// プロパティの設定
+	//=========================================================================
+
+	confirmInsertCountDialog.set_deletable(false);
+
+	//=========================================================================
 	// イベントハンドラの登録
 	//=========================================================================
 	this->on_show([this](){ this->on_window_show(); });
@@ -303,6 +313,7 @@ MainWindow::MainWindow() :
 	warningDialog.on_show([this]() { this->refresh_ui(false); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
+	insertCountDetectButton.on_clicked([this]() { this->insertCountDetectButton_on_clicked(); });
 	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
@@ -614,6 +625,20 @@ MainWindow::MainWindow() :
 			if (state.is_visible.has_value()	) { this->confirmInsertCountLabel.set_visible(state.is_visible.value()); }
 		}
 	});
+	m_widget_states.try_emplace(&insertCountDetectButton, WidgetStateUpdater{
+		{
+			.text = UiText{"自動検出", "じどうけんしゅつ"},
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->insertCountDetectButton.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.can_focus.has_value()		) { this->insertCountDetectButton.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->insertCountDetectButton.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->insertCountDetectButton.set_visible(state.is_visible.value()); }
+		}
+	});
 	m_widget_states.try_emplace(&insertCountOkButton, WidgetStateUpdater{
 		{
 			.text = UiText{"OK", "OK"},
@@ -710,6 +735,18 @@ MainWindow::MainWindow() :
 			if (state.can_focus.has_value()		) { this->logoutYesButton.set_can_focus(state.can_focus.value()); }
 			if (state.is_sensitive.has_value()	) { this->logoutYesButton.set_sensitive(state.is_sensitive.value()); }
 			if (state.is_visible.has_value()	) { this->logoutYesButton.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- メッセージダイアログ（ラベルは動的に変わるため空） ---
+	m_widget_states.try_emplace(&messageDialogLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"", ""},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->messageDialogLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->messageDialogLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
@@ -1991,6 +2028,30 @@ void MainWindow::insertCountDecrementButton_on_clicked() {
 	if (m_insertCountEntry_current_count > 0) {
 		insertCountEntry.set_text(std::to_string(--m_insertCountEntry_current_count).c_str());
 	}
+}
+
+void MainWindow::insertCountDetectButton_on_clicked() {
+	update_widget_state(&messageDialogLabel, WidgetState{
+		.text = UiText{"検出中です\nしばらくお待ちください。", "けんしゅつちゅうです\nしばらく おまちください"}
+	}, true);
+	messageDialog.show_all();
+
+	auto* func = new std::function<void()>([this]() {
+		// このラムダ式はアイドル時に GUI スレッドで実行される
+		if (auto count_opt = tracker::get_insert_count()) {
+			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = count_opt.value()).c_str());
+			update_widget_state(&confirmInsertCountLabel, WidgetState{
+				.text = UiText{"検出に成功しました\n個数を確認して下さい", "けんしゅつに せいこうしました\nこすうを かくにん してください"}
+			}, true);
+		} else {
+			update_widget_state(&confirmInsertCountLabel, WidgetState{
+				.text = UiText{"検出に失敗しました\n手動で入力して下さい", "けんしゅつに しっぱいしました\nしゅどうで にゅうりょく してください"}
+			}, true);
+		}
+		messageDialog.hide();
+	});
+
+	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
 }
 
 void MainWindow::insertCountOkButton_on_clicked() {

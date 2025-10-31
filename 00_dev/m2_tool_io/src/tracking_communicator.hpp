@@ -82,7 +82,7 @@ constexpr const char* RECORDER_USERNAME		= "yourUsername";
 constexpr const char* RECORDER_PASSWORD		= "yourPassword";
 
 // --- インサート個数取得クライアント 定数 ---
-constexpr const char* COUNTER_IP	= "127.0.0.1";
+constexpr const char* COUNTER_IP	= "10.19.133.3";
 constexpr int COUNTER_PORT			= 12345;
 constexpr int COUNTER_TIMEOUT_MS	= 5000;
 

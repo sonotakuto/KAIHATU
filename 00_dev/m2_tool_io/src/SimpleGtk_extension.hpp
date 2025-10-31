@@ -80,6 +80,7 @@ public:
 	DEFINE_METHOD(window, fullscreen, void)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS(Widget, deletable, bool)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWindow* self)
@@ -99,6 +100,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS(Widget, deletable, bool)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)

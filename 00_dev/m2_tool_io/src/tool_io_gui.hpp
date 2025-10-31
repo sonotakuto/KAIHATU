@@ -424,6 +424,8 @@ public:
 	sgex::Dialog confirmRegroundDialog;
 	/// @brief ログアウト確認ダイアログ (ID: logoutDialog)
 	sgex::Dialog logoutDialog;
+	/// @brief メッセージダイアログ (ID: messageDialog)
+	sgex::Dialog messageDialog;
 	/// @brief パスワード入力ダイアログ (ID: passwordEntryDialog)
 	sgex::Dialog passwordEntryDialog;
 	/// @brief 警告表示ダイアログ (ID: warningDialog)
@@ -441,6 +443,8 @@ public:
 	sgex::Button insertCountDecrementButton;
 	/// @brief 枚数を入力するエントリ (ID: countEntry)
 	sgex::Entry insertCountEntry;
+	/// @brief 個数自動検出ボタン (ID: insertCountDetectButton)
+	sgex::Button insertCountDetectButton;
 	/// @brief 「OK」ボタン (ID: insertCountOkButton)
 	sgex::Button insertCountOkButton;
 
@@ -461,6 +465,11 @@ public:
 	sgex::Button logoutNoButton;
 	/// @brief 「はい」ボタン (ID: logoutYesButton)
 	sgex::Button logoutYesButton;
+
+	// --- メッセージダイアログ内のウィジェット ---
+
+	/// @brief メッセージを表示するラベル (ID: messageDialogLabel)
+	sgex::Label messageDialogLabel;
 
 	// --- パスワード入力ダイアログ内のウィジェット ---
 
@@ -763,8 +772,14 @@ private:
 	void insertCountDecrementButton_on_clicked();
 
 	/**
+	 * @brief insertCountDetectButton の "clicked" シグナルに対応するハンドラ。
+	 * @details インサート個数検出サーバーに問い合わせた結果を、insertCountEntry に適用する。
+	 */
+	void insertCountDetectButton_on_clicked();
+
+	/**
 	 * @brief insertCountOkButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 次回のための変数の初期化を行ってから、insertCountOkButtonを返す。
+	 * @details 次回のための変数の初期化を行ってから、GTK_RESPONSE_OK を返す。
 	 */
 	void insertCountOkButton_on_clicked();
 
