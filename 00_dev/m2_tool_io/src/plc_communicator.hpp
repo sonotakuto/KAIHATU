@@ -5,6 +5,7 @@
 #pragma once
 #include <any>
 #include <cstdint>
+#include <SimpleGtk>
 #include "safe_queue.hpp"
 
 // PLCを使わずにテストしたいときに定義する。

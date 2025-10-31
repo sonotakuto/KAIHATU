@@ -12,7 +12,7 @@ namespace tracker {
 // ToolTrackerClient クラス実装
 // =================================
 
-ToolTrackerClient::ToolTrackerClient(std::function<void(EventNotification)> callback)
+ToolTrackerClient::ToolTrackerClient(std::function<void(Notification)> callback)
 	: keep_listening(false), notification_callback(callback) {}
 
 ToolTrackerClient::~ToolTrackerClient() {
@@ -85,21 +85,21 @@ bool ToolTrackerClient::is_connected() {
 bool ToolTrackerClient::notify_qr_scan() {
 	if (!is_connected()) {
 		DEV_PRINT(stderr, "[ToolTrackerClient] Error: Not connected to send QR scan notification.\n");
-		// notification_callback({EventType::ERROR, {}, "Not connected"}); // 必要ならコールバックで通知
+		// notification_callback({NotificationType::ERROR, {}, "Not connected"}); // 必要ならコールバックで通知
 		return false;
 	}
 	try {
 		if (socket.send(TRACKER_MSG_QR_SCAN.data(), TRACKER_MSG_QR_SCAN.size()) < 0) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
 			disconnect();
-			notification_callback({EventType::ERROR, {}, "Send failed"});
+			notification_callback({NotificationType::ERROR, {}, "Send failed"});
 			return false;
 		}
 		return true;
 	} catch (const std::exception& e) {
 		DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification: {}\n", e.what());
 		disconnect();
-		notification_callback({EventType::ERROR, {}, std::string("Send error: ") + e.what()});
+		notification_callback({NotificationType::ERROR, {}, std::string("Send error: ") + e.what()});
 		return false;
 	}
 }
@@ -112,17 +112,17 @@ void ToolTrackerClient::listener_thread_func() {
 			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
 
 			if (bytes_read == TRACKER_MSG_LENGTH) {
-				EventNotification notification;
+				Notification notification;
 
 				// 固定長メッセージの比較を行い、通知タイプを判別、設定
-				if		(std::memcmp(buffer.data(),	TRACKER_MSG_SCAN_S		.data(),	TRACKER_MSG_SCAN_S		.size()) == 0) { notification.type = EventType::SCAN_SUCCESS;			}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_SCAN_F		.data(),	TRACKER_MSG_SCAN_F		.size()) == 0) { notification.type = EventType::SCAN_FAIL;				}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_1	.data(),	TRACKER_MSG_C_ANOMALY_1	.size()) == 0) { notification.type = EventType::ANOMALY_UNSCANNED_OUT;	}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_1	.data(),	TRACKER_MSG_C_BACK_1	.size()) == 0) { notification.type = EventType::BACK_UNSCANNED_IN;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_2	.data(),	TRACKER_MSG_C_ANOMALY_2	.size()) == 0) { notification.type = EventType::ANOMALY_SCANNED_IN;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_2	.data(),	TRACKER_MSG_C_BACK_2	.size()) == 0) { notification.type = EventType::BACK_SCANNED_OUT;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_ACK			.data(),	TRACKER_MSG_ACK			.size()) == 0) { notification.type = EventType::ACK;					}
-				else notification.type = EventType::UNKNOWN;
+				if		(std::memcmp(buffer.data(),	TRACKER_MSG_SCAN_S		.data(),	TRACKER_MSG_SCAN_S		.size()) == 0) { notification.type = NotificationType::SCAN_SUCCESS;			}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_SCAN_F		.data(),	TRACKER_MSG_SCAN_F		.size()) == 0) { notification.type = NotificationType::SCAN_FAIL;				}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_1	.data(),	TRACKER_MSG_C_ANOMALY_1	.size()) == 0) { notification.type = NotificationType::ANOMALY_UNSCANNED_OUT;	}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_1	.data(),	TRACKER_MSG_C_BACK_1	.size()) == 0) { notification.type = NotificationType::BACK_UNSCANNED_IN;		}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_2	.data(),	TRACKER_MSG_C_ANOMALY_2	.size()) == 0) { notification.type = NotificationType::ANOMALY_SCANNED_IN;		}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_2	.data(),	TRACKER_MSG_C_BACK_2	.size()) == 0) { notification.type = NotificationType::BACK_SCANNED_OUT;		}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_ACK			.data(),	TRACKER_MSG_ACK			.size()) == 0) { notification.type = NotificationType::ACK;					}
+				else notification.type = NotificationType::UNKNOWN;
 
 				notification.raw_message = std::move(buffer);	// 固定長配列をムーブ
 				notification_callback(notification);
@@ -130,13 +130,13 @@ void ToolTrackerClient::listener_thread_func() {
 			} else if (bytes_read <= 0) {
 				// receive が 0 (正常切断) または負数 (エラー) を返した場合
 				if (keep_listening) {	// disconnect()以外での切断
-					notification_callback({EventType::CONNECTION_LOST, {}, (bytes_read == 0 ? "Connection closed by peer (EOF)" : "Receive error")});
+					notification_callback({NotificationType::CONNECTION_LOST, {}, (bytes_read == 0 ? "Connection closed by peer (EOF)" : "Receive error")});
 				}
 				break;
 
 			} else {
-				EventNotification notification;
-				notification.type = EventType::ERROR;
+				Notification notification;
+				notification.type = NotificationType::ERROR;
 				notification.error_details = fmt::format("Received unexpected data length: {}", bytes_read);
 				notification_callback(notification);
 				// break; // エラーなら終了する場合
@@ -146,7 +146,7 @@ void ToolTrackerClient::listener_thread_func() {
 			// タイムアウト例外は無視
 		} catch (const std::exception& e) {
 			if (keep_listening) {
-				notification_callback({EventType::ERROR, {}, std::string("Listener error: ") + e.what()});
+				notification_callback({NotificationType::ERROR, {}, std::string("Listener error: ") + e.what()});
 				DEV_PRINT(stderr, "[ToolTrackerClient] Listener error: {}\n", e.what());
 			}
 			break;

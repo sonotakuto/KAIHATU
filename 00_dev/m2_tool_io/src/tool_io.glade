@@ -7,9 +7,10 @@
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -250,9 +251,10 @@
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -391,9 +393,10 @@
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -499,7 +502,9 @@
     <property name="height_request">1080</property>
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
+    <property name="window_position">center-always</property>
     <property name="decorated">False</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -1997,9 +2002,10 @@ message message message message message</property>
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -2062,8 +2068,9 @@ message message message</property>
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -2207,7 +2214,9 @@ message message message</property>
   <object class="GtkDialog" id="reconcileFilterDialog">
     <property name="can_focus">False</property>
     <property name="modal">True</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>
@@ -2883,9 +2892,10 @@ message message message</property>
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center</property>
+    <property name="window_position">center-on-parent</property>
     <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
+    <property name="gravity">center</property>
     <child type="titlebar">
       <placeholder/>
     </child>

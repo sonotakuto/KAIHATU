@@ -11,6 +11,11 @@
 
 namespace tracker {
 
+// --- クラスの前方宣言 ---
+
+class ToolTrackerClient;
+class RecorderClient;
+
 // --- 工具追跡クライアント 定数 ---
 constexpr const char* TRACKER_IP	= "10.19.133.122";
 constexpr int TRACKER_PORT			= 5000;
@@ -52,7 +57,7 @@ constexpr auto TRACKER_MSG_C_BACK_2		= make_fixed_message("C_Back_2");
 /**
  * @brief 工具追跡サーバーからのメッセージ種別
  */
-enum class EventType {
+enum class NotificationType {
 	SCAN_SUCCESS,			// スキャン成功
 	SCAN_FAIL,				// スキャン失敗
 	ANOMALY_UNSCANNED_OUT,	// 未スキャンがフレーム外へ
@@ -66,11 +71,11 @@ enum class EventType {
 };
 
 /**
- * @struct EventNotification
+ * @struct Notification
  * @brief 工具追跡サーバーからの通知内容
  */
-struct EventNotification {
-	EventType type = EventType::UNKNOWN;
+struct Notification {
+	NotificationType type = NotificationType::UNKNOWN;
 	std::array<char, TRACKER_MSG_LENGTH> raw_message{};
 	std::string error_details;
 };
@@ -86,6 +91,9 @@ constexpr const char* COUNTER_IP	= "10.19.133.3";
 constexpr int COUNTER_PORT			= 12345;
 constexpr int COUNTER_TIMEOUT_MS	= 5000;
 
+inline std::unique_ptr<tracker::ToolTrackerClient> g_tool_tracker;	// 工具追跡クライアントのグローバルインスタンス
+inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画クライアントのグローバルインスタンス
+
 /**
  * @class ToolTrackerClient
  * @brief 工具追跡システムのイベント通知サーバーとのTCP通信を管理するクラス。
@@ -96,7 +104,7 @@ public:
 	 * @brief コンストラクタ。
 	 * @param[in] callback イベント受信時に呼び出されるコールバック関数。
 	 */
-	explicit ToolTrackerClient(std::function<void(EventNotification)> callback); // IPとPortを削除
+	explicit ToolTrackerClient(std::function<void(Notification)> callback); // IPとPortを削除
 	~ToolTrackerClient();
 
 	// コピー禁止
@@ -135,7 +143,7 @@ private:
 	sg::Socket socket;
 	std::thread listener_thread;
 	std::atomic<bool> keep_listening;
-	std::function<void(EventNotification)> notification_callback;
+	std::function<void(Notification)> notification_callback;
 };
 
 /**

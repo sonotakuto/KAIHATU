@@ -4,6 +4,7 @@
  * @details ToggleButton, Stack, Boxの3クラスを提供します。
  */
 #pragma once
+#include <optional>
 #include <SimpleGtk> // インストール済みのSimpleGtkライブラリをインクルード
 
 /**
@@ -77,6 +78,7 @@ public:
 	using sg::Window::Window; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(window, set_position, void, (GtkWindowPosition position), position)
 	DEFINE_METHOD(window, fullscreen, void)
 
 	// プロパティ
@@ -97,6 +99,7 @@ public:
 	using sg::Dialog::Dialog;
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(window, set_position, void, (GtkWindowPosition position), position)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 
 	// プロパティ

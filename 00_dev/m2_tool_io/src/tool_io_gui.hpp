@@ -262,8 +262,10 @@ public:
 		std::function<void(MainWindow*)> on_falseButton_clicked = nullptr;
 		/// @brief trueButton がクリックされたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_trueButton_clicked = nullptr;
-		/// @brief PLCリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
+		/// @brief PLCモニタースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*, plc::Notification)> on_plc_notified = nullptr;
+		/// @brief 工具追跡システムのリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
+		std::function<void(MainWindow*, tracker::Notification)> on_tracker_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -292,10 +294,16 @@ public:
 	static gboolean dispatch_to_gui_thread(gpointer user_data);
 
 	/**
-	 * @brief PLCリスナースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @brief PLCモニタースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void plc_on_notified(plc::Notification notification);
+
+	/**
+	 * @brief 工具追跡システムのリスナースレッドから通知を受け取り、GUIスレッドで実行されるコールバック。
+	 * @param[in] notification 工具追跡システムのリスナースレッドからの通知。
+	 */
+	void tracker_on_notified(tracker::Notification notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)

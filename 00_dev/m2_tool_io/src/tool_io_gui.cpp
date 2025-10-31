@@ -276,12 +276,6 @@ MainWindow::MainWindow() :
 	this->liststore2columnAll.add_model({&liststore2column1st, &liststore2column2nd});
 
 	//=========================================================================
-	// プロパティの設定
-	//=========================================================================
-
-	confirmInsertCountDialog.set_deletable(false);
-
-	//=========================================================================
 	// イベントハンドラの登録
 	//=========================================================================
 	this->on_show([this](){ this->on_window_show(); });
@@ -1425,6 +1419,18 @@ void MainWindow::plc_on_notified(plc::Notification notification) {
 	}
 }
 
+void MainWindow::tracker_on_notified(tracker::Notification notification) {
+	try {
+		auto state_config = g_app_state_configs.at(m_app_state);
+		if (state_config.on_tracker_notified) {
+			state_config.on_tracker_notified(this, notification);
+		}
+	} catch (const std::out_of_range& e) {
+		DEV_PRINT(stderr, "Error: 未定義の状態で追跡システム通知を受け取りました (AppState={})\n", static_cast<int>(m_app_state));
+		// 例外を無視して処理を続行
+	}
+}
+
 //=============================================================================
 // プライベートメンバ関数 (ヘルパー関数) 実装
 //=============================================================================
@@ -2024,8 +2030,8 @@ void MainWindow::insertCountIncrementButton_on_clicked() {
 }
 
 void MainWindow::insertCountDecrementButton_on_clicked() {
-	// 0未満にならないようにチェック
-	if (m_insertCountEntry_current_count > 0) {
+	// 0以下にならないようにチェック
+	if (m_insertCountEntry_current_count > 1) {
 		insertCountEntry.set_text(std::to_string(--m_insertCountEntry_current_count).c_str());
 	}
 }
