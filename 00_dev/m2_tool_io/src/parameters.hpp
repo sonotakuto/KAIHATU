@@ -8,13 +8,14 @@
 
 //constexpr int	SAMPLE	= 0;	// 説明
 
+constexpr const char* TOOL_CATEGORY_INSERT = "インサート";	// インサート専用の処理を行う必要がある、データベース上の工具種別名
+
 constexpr int	DISPLAY_ROWS_PER_COLUMN = 11;	// 表1列あたりの表示行数
 
 // 色定義
-// TODO: 色は後で調整する
-constexpr GdkRGBA TABLE_BGCOLOR_NORMAL				= {0.914, 0.922, 0.961, 1.0};	// テーブルの通常背景色
-constexpr GdkRGBA TABLE_BGCOLOR_HIGHLIGHT			= {0.914, 0.922, 0.961, 1.0};	// テーブルの強調表示背景色
-constexpr GdkRGBA TABLE_BGCOLOR_FADED				= {0.914, 0.922, 0.961, 1.0};	// テーブルの薄く表示された背景色
-constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MATCH		= {0.914, 0.922, 0.961, 1.0};	// テーブルの棚卸し一致行背景色
-constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MISMATCH	= {0.850, 0.850, 0.850, 1.0};	// テーブルの棚卸し不一致行背景色
-constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_UNREAD	= {0.914, 0.922, 0.961, 1.0};	// テーブルの棚卸し未読行背景色
+constexpr GdkRGBA TABLE_BGCOLOR_NORMAL				= {0.69, 0.77, 0.87, 1.0};	// テーブルの通常背景色
+constexpr GdkRGBA TABLE_BGCOLOR_HIGHLIGHT			= {1.00, 0.56, 0.00, 1.0};	// テーブルの強調表示背景色
+constexpr GdkRGBA TABLE_BGCOLOR_FADED				= {0.97, 0.97, 1.00, 1.0};	// テーブルの薄く表示された背景色
+constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MATCH		= {0.00, 0.88, 0.00, 1.0};	// テーブルの棚卸し一致行背景色
+constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MISMATCH	= {1.00, 0.65, 0.00, 1.0};	// テーブルの棚卸し不一致行背景色
+constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_UNREAD	= {0.97, 0.97, 1.00, 1.0};	// テーブルの棚卸し未読行背景色

@@ -48,12 +48,12 @@ bool WatchFlags::merge(const WatchFlags& other) {
 
 /**
  * @brief PLCモニタースレッドからGUIスレッドに通知を送るためのヘルパー関数。
- * @param notification GUIに送る通知内容。
+ * @param[in] notification GUIに送る通知内容。
  */
 static void notify_gui_thread(const Notification& notification) {
 	auto* func = new std::function<void()>([=]() {
 		if (gui::mainWindow) {
-			gui::mainWindow->on_plc_notified(notification);
+			gui::mainWindow->plc_on_notified(notification);
 		}
 	});
 	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
@@ -61,8 +61,8 @@ static void notify_gui_thread(const Notification& notification) {
 
 /**
  * @brief Mデバイスのビット書き込みコマンド（1点）を生成します。
- * @param addr 書き込み対象のMデバイスアドレス。
- * @param on 書き込む値 (true=ON, false=OFF)。
+ * @param[in] addr 書き込み対象のMデバイスアドレス。
+ * @param[in] on 書き込む値 (true=ON, false=OFF)。
  * @return 書き込みコマンドのバイト列。
  */
 static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool on) {
@@ -77,7 +77,7 @@ static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool o
 
 /**
  * @brief Mデバイスのビット読み出しコマンド（1点）を生成します。
- * @param addr 読み出し対象のMデバイスアドレス。
+ * @param[in] addr 読み出し対象のMデバイスアドレス。
  * @return 読み出しコマンドのバイト列。
  */
 static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
@@ -91,7 +91,7 @@ static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 
 /**
  * @brief コマンドを送信し、PLCからの正常応答（エラーコード0x0000）を待ちます。
- * @param cmd 送信するコマンドのバイト列。
+ * @param[in] cmd 送信するコマンドのバイト列。
  * @return 応答が正常終了した場合はtrue、エラーが発生した場合はfalse。
  */
 static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
@@ -128,8 +128,8 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 
 /**
  * @brief Mデバイスの状態を読み出し、その結果を返します。
- * @param addr 読み出し対象のMデバイスアドレス。
- * @param is_on 読み出されたMデバイスの状態を格納する参照。
+ * @param[in] addr 読み出し対象のMデバイスアドレス。
+ * @param[out] is_on 読み出されたMデバイスの状態を格納する参照。
  * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
  */
 static bool read_M_status(std::uint16_t addr, bool& is_on) {
@@ -182,7 +182,7 @@ static bool connect_to_plc() {
 /**
  * @brief 指定されたMデバイスがONになるのを待機します。
  * @details PLCからの完了信号を待つために使用します。ポーリング間隔は0.1秒です。
- * @param address 監視対象のMデバイスのアドレス。
+ * @param[in] address 監視対象のMデバイスのアドレス。
  * @return 待機が成功（ONを検出）した場合はtrue、通信エラー等で失敗した場合はfalse。
  */
 static bool waiting_for_completion(std::uint16_t address) {

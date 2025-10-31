@@ -20,8 +20,8 @@ class CurlException : public std::runtime_error {
 public:
 	/**
 	 * @brief CurlException を構築します。
-	 * @param message エラーメッセージ。
-	 * @param code libcurlのエラーコード (CURLcode)。
+	 * @param[in] message エラーメッセージ。
+	 * @param[in] code libcurlのエラーコード (CURLcode)。
 	 */
 	CurlException(const std::string& message, CURLcode code)
 		: std::runtime_error(message + " (libcurl error: " + curl_easy_strerror(code) + ")"),
@@ -69,14 +69,14 @@ public:
 
 	/**
 	 * @brief リクエスト先のURLを設定します。
-	 * @param url URL文字列。
+	 * @param[in] url URL文字列。
 	 */
 	void set_url(const std::string& url);
 
 	/**
 	 * @brief HTTP POSTメソッドを使用し、送信するデータを設定します。
-	 * @param post_data URLエンコードされたPOSTデータ文字列 (例: "key1=value1&key2=value2") や JSON 文字列など。
-	 * @param content_type 送信するデータの Content-Type ヘッダー値。デフォルトは "application/x-www-form-urlencoded"。
+	 * @param[in] post_data URLエンコードされたPOSTデータ文字列 (例: "key1=value1&key2=value2") や JSON 文字列など。
+	 * @param[in] content_type 送信するデータの Content-Type ヘッダー値。デフォルトは "application/x-www-form-urlencoded"。
 	 */
 	void set_post_data(const std::string& post_data, const std::string& content_type = "application/x-www-form-urlencoded");
 
@@ -84,14 +84,14 @@ public:
 	 * @brief Basic認証用のユーザー名とパスワードを設定します。
 	 * @details 認証情報が "Authorization: Basic <base64>" ヘッダーとして追加されます。
 	 * 既に Authorization ヘッダーが存在する場合、このメソッドの呼び出しにより上書きされます (将来の拡張)。
-	 * @param username ユーザー名。
-	 * @param password パスワード。
+	 * @param[in] username ユーザー名。
+	 * @param[in] password パスワード。
 	 */
 	void set_basic_auth(const std::string& username, const std::string& password);
 
 	/**
 	 * @brief カスタムHTTPヘッダーを追加します (例: "X-Custom-Header: value")。
-	 * @param header 完全なヘッダー文字列。
+	 * @param[in] header 完全なヘッダー文字列。
 	 * @warning Content-Type や Authorization など、他のメソッドで設定されるヘッダーを
 	 * この関数で追加すると、予期しない動作を引き起こす可能性があります。
 	 * 将来のバージョンでは、特定のヘッダー名が禁止され、例外がスローされる可能性があります。
@@ -100,8 +100,8 @@ public:
 
 	/**
 	 * @brief カスタムHTTPヘッダーを追加します (キーと値で指定)。
-	 * @param header_name ヘッダー名 (例: "X-Custom-Header")。
-	 * @param header_value ヘッダー値 (例: "MyValue")。
+	 * @param[in] header_name ヘッダー名 (例: "X-Custom-Header")。
+	 * @param[in] header_value ヘッダー値 (例: "MyValue")。
 	 * @warning Content-Type や Authorization など、他のメソッドで設定されるヘッダーを
 	 * この関数で追加すると、予期しない動作を引き起こす可能性があります。
 	 * 将来のバージョンでは、特定のヘッダー名が禁止され、例外がスローされる可能性があります。
@@ -110,7 +110,7 @@ public:
 
 	/**
 	 * @brief カスタムHTTPヘッダーを追加します (std::pairで指定)。
-	 * @param header_pair ヘッダー名と値のペア。
+	 * @param[in] header_pair ヘッダー名と値のペア。
 	 * @warning Content-Type や Authorization など、他のメソッドで設定されるヘッダーを
 	 * この関数で追加すると、予期しない動作を引き起こす可能性があります。
 	 * 将来のバージョンでは、特定のヘッダー名が禁止され、例外がスローされる可能性があります。
@@ -120,7 +120,7 @@ public:
 
 	/**
 	 * @brief リクエストのタイムアウト時間を秒単位で設定します。
-	 * @param timeout_seconds タイムアウト時間(秒)。0はタイムアウトなしを意味します。
+	 * @param[in] timeout_seconds タイムアウト時間(秒)。0はタイムアウトなしを意味します。
 	 */
 	void set_timeout(long timeout_seconds);
 
@@ -145,10 +145,10 @@ public:
 private:
 	/**
 	 * @brief libcurl がレスポンスボディを受信したときに呼び出す静的コールバック関数。
-	 * @param contents 受信データへのポインタ。
-	 * @param size データ要素のサイズ。
-	 * @param nmemb データ要素の数。
-	 * @param userp CURLOPT_WRITEDATA で渡されたポインタ (ここでは CurlRequest*)。
+	 * @param[in] contents 受信データへのポインタ。
+	 * @param[in] size データ要素のサイズ。
+	 * @param[in] nmemb データ要素の数。
+	 * @param[in] userp CURLOPT_WRITEDATA で渡されたポインタ (ここでは CurlRequest*)。
 	 * @return 処理したバイト数。
 	 */
 	static size_t write_callback_static(void* contents, size_t size, size_t nmemb, void* userp);

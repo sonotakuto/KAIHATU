@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
 		gui::mainWindow->show_all();
 	});
 
+	plc::initialize();	// PLC連携用スレッドを起動
+
 	// メッセージループを開始
 	// この関数内でイベントの待受が行われ、終了するまで制御は戻らない
 	return app.run(argc, argv);

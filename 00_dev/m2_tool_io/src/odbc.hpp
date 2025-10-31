@@ -40,14 +40,14 @@ inline constexpr bool is_explicit_arithmetic_v =
 
 /**
  * @brief std::chrono::system_clock::time_point を SQL_TIMESTAMP_STRUCT に変換します。
- * @param tp 変換元の time_point オブジェクト。
+ * @param[in] tp 変換元の time_point オブジェクト。
  * @return 成功した場合、SQL_TIMESTAMP_STRUCT へ変換後の構造体。失敗したら std::nullopt。
  */
 std::optional<SQL_TIMESTAMP_STRUCT> to_sql_timestamp(const std::chrono::system_clock::time_point& tp);
 
 /**
  * @brief SQL_TIMESTAMP_STRUCT を std::chrono::system_clock::time_point に変換します。
- * @param tp 変換元の SQL_TIMESTAMP_STRUCT オブジェクト。
+ * @param[in] tp 変換元の SQL_TIMESTAMP_STRUCT オブジェクト。
  * @return 成功した場合、std::chrono::system_clock::time_point へ変換後の構造体。失敗したら std::nullopt。
  */
 std::optional<std::chrono::system_clock::time_point> to_time_point(const SQL_TIMESTAMP_STRUCT& ts);
@@ -64,16 +64,16 @@ class OdbcException : public std::runtime_error {
 public:
 	/**
 	 * @brief OdbcExceptionを構築します。
-	 * @param msg エラーの状況を示すメッセージ。
-	 * @param handle エラーが発生したODBCハンドル (HENV, HDBC, HSTMT)。
-	 * @param handleType エラーが発生したハンドルの種別。
+	 * @param[in] msg エラーの状況を示すメッセージ。
+	 * @param[in] handle エラーが発生したODBCハンドル (HENV, HDBC, HSTMT)。
+	 * @param[in] handleType エラーが発生したハンドルの種別。
 	 */
 	OdbcException(const std::string& msg, SQLHANDLE handle, SQLSMALLINT handleType);
 private:
 	/**
 	 * @brief ODBCドライバから詳細なエラー情報を取得する静的ヘルパー関数。
-	 * @param handle エラーが発生したODBCハンドル。
-	 * @param handleType ハンドルの種別。
+	 * @param[in] handle エラーが発生したODBCハンドル。
+	 * @param[in] handleType ハンドルの種別。
 	 * @return SQLSTATE, Native Error, Messageを含む整形されたエラー文字列。
 	 */
 	static std::string getOdbcError(SQLHANDLE handle, SQLSMALLINT handleType);
@@ -93,9 +93,9 @@ class OdbcConnection {
 public:
 	/**
 	 * @brief データベースへの接続を確立するコンストラクタ。
-	 * @param dsn データソース名。
-	 * @param user ユーザー名。
-	 * @param pass パスワード。
+	 * @param[in] dsn データソース名。
+	 * @param[in] user ユーザー名。
+	 * @param[in] pass パスワード。
 	 * @throw OdbcException 接続に失敗した場合。
 	 */
 	OdbcConnection(const std::string& dsn, const std::string& user, const std::string& pass);
@@ -245,7 +245,7 @@ class OdbcStatement {
 public:
 	/**
 	 * @brief OdbcConnectionからステートメントハンドルを生成するコンストラクタ。
-	 * @param conn 親となるOdbcConnectionオブジェクト。
+	 * @param[in] conn 親となるOdbcConnectionオブジェクト。
 	 */
 	explicit OdbcStatement(const OdbcConnection& conn);
 
@@ -260,7 +260,7 @@ public:
 	/**
 	 * @brief SQL文を直接実行します。
 	 * @details 結果セットを返さないINSERT/UPDATE/DELETE文や、パラメータを含まないSELECT文に使用します。
-	 * @param sql 実行するSQL文字列。
+	 * @param[in] sql 実行するSQL文字列。
 	 * @return 影響を受けた行数。
 	 * @throw OdbcException クエリの実行に失敗した場合。
 	 */
@@ -278,7 +278,7 @@ public:
 	 * @details 数値型やTIMESTAMPのような固定長データ型のための実装です。
 	 * std::string や std::vector<char> のような可変長型は、テンプレート特殊化によって処理されます。
 	 * @tparam T 取得したいC++のデータ型 (int, double, etc.)
-	 * @param col 取得する列番号 (1から始まる)。
+	 * @param[in] col 取得する列番号 (1から始まる)。
 	 * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
 	 */
 	template<typename T>
@@ -317,7 +317,7 @@ public:
 
 	/**
 	 * @brief プリペアドステートメント用のSQL文を準備（コンパイル）します。
-	 * @param sql プレースホルダ(?)を含むSQL文。
+	 * @param[in] sql プレースホルダ(?)を含むSQL文。
 	 * @throw OdbcException SQL文の準備に失敗した場合。
 	 */
 	void prepare(const std::string& sql);
@@ -325,8 +325,8 @@ public:
 	/**
 	 * @brief パラメータをバインドします (NULL対応版)。
 	 * @tparam T バインドするパラメータの型。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_value バインドするパラメータの値。NULLをバインドしたければ nullopt。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] opt_value バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	template<typename T,
 			 // SFINAE: Tが数値型(int, double等)またはTIMESTAMP構造体の場合のみ、このテンプレートを有効にする
@@ -345,15 +345,15 @@ public:
 
 	/**
 	 * @brief パラメータをバインドします (NULL対応版)。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	void bind(int paramIndex, const std::optional<std::string>& opt_val);
 
 	/**
 	 * @brief パラメータをバインドします。(NULL対応版)
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	void bind(int paramIndex, const std::optional<std::vector<char>>& opt_val);
 
@@ -361,8 +361,8 @@ public:
 	 * @brief パラメータをバインドします (NULL対応版、time_point 専用オーバーロード)。
 	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値 (time_point)。NULLをバインドしたければ nullopt。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] opt_val バインドするパラメータの値 (time_point)。NULLをバインドしたければ nullopt。
 	 * @return TIMESTAMP 構造体への変換に成功した場合はtrue、失敗した場合はfalse。
 	 */
 	bool bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val);
@@ -370,8 +370,8 @@ public:
 	/**
 	 * @brief パラメータをバインドします (NULL対応版、long double 専用オーバーロード)。
 	 * @details long double を double に丸めてからバインドします。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] opt_val バインドするパラメータの値。NULLをバインドしたければ nullopt。
 	 */
 	[[deprecated("Warning: 'long double' is truncated to 'double' for ODBC binding.")]]
 	void bind(int paramIndex, const std::optional<long double>& opt_val);
@@ -380,8 +380,8 @@ public:
 	 * @brief パラメータをバインドします (NULL非対応版)。
 	 * @details value を std::optional で包んで、適切なNULL対応版のオーバーロードへ処理を委譲します。
 	 * @tparam T バインドするパラメータの型。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param value バインドするパラメータの値。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] value バインドするパラメータの値。
 	 */
 	template<typename T>
 	void bind(int paramIndex, const T& value) {
@@ -392,8 +392,8 @@ public:
 	 * @brief パラメータをバインドします (NULL非対応版、time_point 専用オーバーロード)。
 	 * @details time_point を ODBC用の TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
-	 * @param paramIndex バインドするパラメータの位置（1から始まる）。
-	 * @param value バインドするパラメータの値。
+	 * @param[in] paramIndex バインドするパラメータの位置（1から始まる）。
+	 * @param[in] value バインドするパラメータの値。
 	 * @return TIMESTAMP 構造体への変換に成功した場合はtrue、失敗した場合はfalse。
 	 */
 	bool bind(int paramIndex, const std::chrono::system_clock::time_point& value) {
@@ -404,8 +404,8 @@ public:
 	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします (NULL非対応版)。
 	 * @details int, double, long long などの固定長で連続メモリに配置される型を扱うための汎用テンプレートです。
 	 * @tparam T バインドするデータの型 (例: int, std::string)
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param values バインドするデータのvector。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] values バインドするデータのvector。
 	 */
 	template<typename T,
 			 // SFINAE: Tが数値型(int, double等)またはTIMESTAMP構造体の場合のみ、このテンプレートを有効にする
@@ -423,8 +423,8 @@ public:
 	 * @brief 一括挿入(バルクインサート)用に、パラメータの配列を列単位でバインドします (NULL対応版)。
 	 * @details int, double, long long などの固定長で連続メモリに配置される型を扱うための汎用テンプレートです。
 	 * @tparam T バインドするデータの型 (例: int, std::string)
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
 	template<typename T,
 			 // SFINAE: Tが数値型(int, double等)またはTIMESTAMP構造体の場合のみ、このテンプレートを有効にする
@@ -454,32 +454,32 @@ public:
 	/**
 	 * @brief 一括挿入用に文字列の配列をバインドします (NULL非対応版、string 専用オーバーロード)。
 	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする処理を行います。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param values バインドするデータのvector。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] values バインドするデータのvector。
 	 */
 	void bindColumn(int paramIndex, const std::vector<std::string>& values);
 
 	/**
 	 * @brief 一括挿入用に文字列の配列をバインドします (NULL対応版、string 専用オーバーロード)。
 	 * @details 可変長の文字列をODBCが要求する固定長の連続メモリにコピーする処理を行います。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
 	void bindColumn(int paramIndex, const std::vector<std::optional<std::string>>& opt_vals);
 
 	/**
 	 * @brief 一括挿入用にBLOBの配列をバインドします (NULL非対応版、vector<char> 専用オーバーロード)。
 	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする処理を行います。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param values バインドするデータのvector。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] values バインドするデータのvector。
 	 */
 	void bindColumn(int paramIndex, const std::vector<std::vector<char>>& values);
 
 	/**
 	 * @brief 一括挿入用にBLOBの配列をバインドします (NULL対応版、vector<char> 専用オーバーロード)。
 	 * @details 可変長のバイナリデータをODBCが要求する固定長の連続メモリにコピーする処理を行います。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
 	void bindColumn(int paramIndex, const std::vector<std::optional<std::vector<char>>>& opt_vals);
 
@@ -487,8 +487,8 @@ public:
 	 * @brief 一括挿入用に日時の配列をバインドします (NULL非対応版、time_point 専用オーバーロード)。
 	 * @details time_point を TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param values バインドするデータのvector。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] values バインドするデータのvector。
 	 * @return TIMESTAMP 構造体への変換に全て成功した場合はtrue、一つでも失敗した場合はfalse。
 	 */
 	bool bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values);
@@ -497,8 +497,8 @@ public:
 	 * @brief 一括挿入用に日時の配列をバインドします (NULL対応版、time_point 専用オーバーロード)。
 	 * @details time_point を TIMESTAMP 構造体に変換する処理を行ってからバインドします。
 	 * 変換処理に失敗した場合はバインドしません。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 * @return TIMESTAMP 構造体への変換に全て成功した場合はtrue、一つでも失敗した場合はfalse。
 	 */
 	bool bindColumn(int paramIndex, const std::vector<std::optional<std::chrono::system_clock::time_point>>& values);
@@ -506,8 +506,8 @@ public:
 	/**
 	 * @brief 一括挿入用に long double の配列をバインドします (NULL非対応版、long double 専用オーバーロード)。
 	 * @details long double を double に丸めてからバインドします。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
 	[[deprecated("Warning: 'long double' is truncated to 'double' for ODBC binding.")]]
 	void bindColumn(int paramIndex, const std::vector<long double>& opt_vals);
@@ -515,15 +515,15 @@ public:
 	/**
 	 * @brief 一括挿入用に long double の配列をバインドします (NULL対応版、long double 専用オーバーロード)。
 	 * @details long double を double に丸めてからバインドします。
-	 * @param paramIndex パラメータのインデックス (1から始まる)。
-	 * @param opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
+	 * @param[in] paramIndex パラメータのインデックス (1から始まる)。
+	 * @param[in] opt_vals バインドするデータのvector。NULLをバインドしたければ、そのデータは nullopt にする。
 	 */
 	[[deprecated("Warning: 'long double' is truncated to 'double' for ODBC binding.")]]
 	void bindColumn(int paramIndex, const std::vector<std::optional<long double>>& opt_vals);
 
 	/**
 	 * @brief 一括挿入(バルクインサート)で一度に処理する行数を設定します。
-	 * @param size 挿入する行数。
+	 * @param[in] size 挿入する行数。
 	 */
 	void setParamsetSize(size_t size);
 
@@ -581,7 +581,7 @@ private:
 /**
  * @brief 現在の行から指定列のデータを取得します (std::string 専用の特殊化)。
  * @details SQL_C_CHAR を std::string に変換します。
- * @param col 取得する列番号 (1から始まる)。
+ * @param[in] col 取得する列番号 (1から始まる)。
  * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
  */
 template<> std::optional<std::string> OdbcStatement::getData<std::string>(int col);
@@ -589,7 +589,7 @@ template<> std::optional<std::string> OdbcStatement::getData<std::string>(int co
 /**
  * @brief 現在の行から指定列のデータを取得します (std::vector<char> 専用の特殊化)。
  * @details SQL_C_BINARY を std::vector<char> に変換します。
- * @param col 取得する列番号 (1から始まる)。
+ * @param[in] col 取得する列番号 (1から始まる)。
  * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
  */
 template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<char>>(int col);
@@ -597,7 +597,7 @@ template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<c
 /**
  * @brief 現在の行から指定列のデータを取得します (time_point 専用の特殊化)。
  * @details SQL_TIMESTAMP_STRUCT を std::chrono::system_clock::time_point に変換します。
- * @param col 取得する列番号 (1から始まる)。
+ * @param[in] col 取得する列番号 (1から始まる)。
  * @return データを格納したoptional。データがNULLまたは取得失敗の場合は空。
  */
 template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::getData<std::chrono::system_clock::time_point>(int col);
@@ -621,16 +621,16 @@ struct OdbcSession {
 
 	/**
 	 * @brief コンストラクタ。与えられた接続の所有権を移動します。
-	 * @param conn OdbcConnectionへのunique_ptr。
+	 * @param[in] conn OdbcConnectionへのunique_ptr。
 	 */
 	OdbcSession(std::unique_ptr<OdbcConnection> conn)
 		: connection(std::move(conn)) {}
 
 	/**
 	 * @brief このセッションに新しい名前付きステートメントを追加または取得します。
-	 * @param name このステートメントを識別するためのユニークな名前。
-	 * @param overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。
-	 * @param is_new (オプション・出力) 新規に挿入された場合にtrue、既存だった場合にfalseが設定されます。
+	 * @param[in] name このステートメントを識別するためのユニークな名前。
+	 * @param[in] overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。
+	 * @param[out] is_new (オプション) 新規に挿入された場合にtrue、既存だった場合にfalseが設定されます。
 	 * @return 作成された、または既存のステートメントへの参照。
 	 */
 	OdbcStatement& add_statement(const std::string& name, bool overwrite = false, bool* is_new = nullptr) {

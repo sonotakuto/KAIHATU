@@ -18,8 +18,8 @@ public:
 	 * @brief 次の周期の開始時刻まで待機します。
 	 * @tparam Rep durationの内部表現の型
 	 * @tparam Period durationの比率の型
-	 * @param period 待機したい周期
-	 * @param skip_on_overrun trueの場合、処理が周期を超えたら超過分をスキップする
+	 * @param[in] period 待機したい周期
+	 * @param[in] skip_on_overrun (オプション) trueの場合、処理が周期を超えたら超過分をスキップする
 	 * @return スキップした周期の回数。超過しなかった場合は0。
 	 */template<typename Rep, typename Period>
 	size_t wait_for_next(const std::chrono::duration<Rep, Period>& period, bool skip_on_overrun = false) {

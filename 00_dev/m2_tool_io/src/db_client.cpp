@@ -28,6 +28,7 @@ static optional<OdbcStatement> create_statement_with_retry() {
 	// グローバルなDBセッションまたは接続が存在しない場合は即座に失敗させる
 	if (!db_session || !db_session->connection) {
 		// TODO: 接続がない旨のエラーメッセージを表示する
+		DEV_PRINT("ステートメント生成：接続がありません\n");
 		return nullopt;
 	}
 
@@ -51,9 +52,118 @@ static optional<OdbcStatement> create_statement_with_retry() {
 }
 
 /**
+ * @brief DBから取得した行データ (mapのvector) を ToolingListInfo 構造体に変換します。
+ * @param[in] rows OdbcStatement::fetchAll() で取得したDBの行データ。
+ * @return 変換に成功した場合は ToolingListInfo を含む optional、失敗した場合は nullopt。
+ */
+static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
+	const std::vector<std::map<std::string, std::any>>& rows)
+{
+	if (rows.empty()) {
+		return std::nullopt; // データがない
+	}
+
+	try {
+		// 最初の行からリスト全体の情報を作成
+		const auto& first_row = rows[0];
+		ToolingListInfo list_info{
+			.line = MstLineInfo{
+				.id		= std::any_cast<std::int32_t>	(first_row.at("line_id")),
+				.name	= std::any_cast<std::string>	(first_row.at("line_name"))
+			},
+			.program = MstProgramInfo{
+				.id		= std::any_cast<std::int32_t>	(first_row.at("program_id")),
+				.name	= std::any_cast<std::string>	(first_row.at("program_name"))
+			}
+		};
+
+		// 全ての行をループして、工具のリストを作成
+		list_info.tool_assignments.reserve(rows.size());
+		for (const auto& row : rows) {
+			// tool_assignment_id が NULL でない場合のみ (LEFT JOIN 対策)
+			if (row.count("tool_assignment_id") && row.at("tool_assignment_id").has_value()) {
+				list_info.tool_assignments.push_back(ToolAssignmentInfo{
+					.id			= std::any_cast<std::int32_t>(row.at("tool_assignment_id")),
+					.tool_num	= std::any_cast<std::string>(row.at("tool_num")),
+					.mst_tool_info = MstToolInfo{
+						.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
+						.name		= std::any_cast<std::string>	(row.at("tool_name")),
+						.maker		= std::any_cast<std::string>	(row.at("maker")),
+						.category	= std::any_cast<std::string>	(row.at("tool_category")),
+						.material	= std::any_cast<std::string>	(row.at("tool_material")),
+						.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+					}
+				});
+			}
+		}
+		return list_info;
+
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in populate_tooling_list_from_rows: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
+/**
+ * @brief program_id と (オプションの) print_time でDBを検索し、ToolingListInfo を構築する共通ヘルパー
+ * @param[in] program_id 検索キーとなるプログラムID
+ * @param[in] print_time 認証に使うQRコードの印刷時刻。nulloptの場合は program_id のみで検索
+ * @return 成功した場合は ToolingListInfo、失敗した場合は nullopt
+ */
+static std::optional<ToolingListInfo> query_and_populate_tooling_list(
+	std::int64_t program_id,
+	std::optional<std::chrono::system_clock::time_point> print_time)
+{
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt) {
+		return std::nullopt;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// SQLの基本部分
+		std::string sql =
+			"SELECT "
+			"    pal.program_id, pal.program_name, "
+			"    ml.line_id, ml.line_name, "
+			"    ta.tool_assignment_id, ta.tool_num, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
+			"FROM mst_program AS pal "
+			"LEFT JOIN mst_line AS ml ON pal.line_id = ml.line_id "
+			"LEFT JOIN mst_tool_assignment AS ta ON pal.program_id = ta.program_id "
+			"LEFT JOIN mst_tool AS mt ON ta.basic_tool_id = mt.basic_tool_id "
+			"WHERE pal.program_id = ? "; // program_id は必須
+
+		// print_time があれば WHERE 句に追加
+		if (print_time.has_value()) {
+			sql += "AND pal.program_print_time = ? ";
+		}
+		sql += "ORDER BY ta.tool_assignment_id ASC;";
+
+		stmt.prepare(sql);
+		stmt.bind(1, program_id);
+		// print_time があればバインド
+		if (print_time.has_value()) {
+			stmt.bind(2, print_time.value());
+		}
+		stmt.executePrepared();
+
+		auto rows = stmt.fetchAll();
+		return populate_tooling_list_from_rows(rows); // 簡略化されたヘルパーを呼ぶ
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in query_and_populate_tooling_list: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in query_and_populate_tooling_list: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
+/**
  * @brief get_StrageAreaInfo_with_min_cases と get_StrageAreaInfo_with_max_cases の共通実装部分。
- * @param basic_tool_id 検索対象の基本工具ID。
- * @param order ソート順 ("ASC" または "DESC")。
+ * @param[in] basic_tool_id 検索対象の基本工具ID。
+ * @param[in] order ソート順 ("ASC" または "DESC")。
  * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
  */
 static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::int32_t basic_tool_id, const std::string& order) {
@@ -129,12 +239,14 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 
 std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 	if (qr_string.empty()) {
+		DEV_PRINT("QR解析失敗\n");
 		return std::nullopt; // 空の文字列は無効
 	}
 
 	// ハイフンでID部とタイムスタンプ部を分割
 	const size_t hyphen_pos = qr_string.find('-');
 	if (hyphen_pos == std::string::npos) {
+		DEV_PRINT("QR解析失敗\n");
 		return std::nullopt; // ハイフンがない形式は無効
 	}
 
@@ -148,20 +260,30 @@ std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 
 	// 最初の文字でタイプを判別し、各IDの桁数と文字列長を検証
 	switch (type_char) {
-		case 'U':
-			if (id_str.length() != 4 || qr_string.length() != 20) { return std::nullopt; }
-			result.type = QrCodeType::User;
-			break;
-		case 'T':
-			if (id_str.length() != 10 || qr_string.length() != 26) { return std::nullopt; }
-			result.type = QrCodeType::Tool;
-			break;
-		case 'P':
-			if (id_str.length() != 3 || qr_string.length() != 19) { return std::nullopt; }
-			result.type = QrCodeType::Program;
-			break;
-		default:
-			return std::nullopt; // 'U', 'T', 'P' 以外は無効
+	case 'U':
+		if (id_str.length() != 4 || qr_string.length() != 20) {
+			DEV_PRINT("QR解析失敗\n");
+			return std::nullopt;
+		}
+		result.type = QrCodeType::User;
+		break;
+	case 'T':
+		if (id_str.length() != 10 || qr_string.length() != 26) {
+			DEV_PRINT("QR解析失敗\n");
+			return std::nullopt;
+		}
+		result.type = QrCodeType::Tool;
+		break;
+	case 'P':
+		if (id_str.length() != 3 || qr_string.length() != 19) {
+			DEV_PRINT("QR解析失敗\n");
+			return std::nullopt;
+		}
+		result.type = QrCodeType::Program;
+		break;
+	default:
+		DEV_PRINT("QR解析失敗\n");
+		return std::nullopt; // 'U', 'T', 'P' 以外は無効
 	}
 
 	// ID文字列を数値に変換
@@ -172,8 +294,10 @@ std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 			result.id = std::stoll(id_str);
 		}
 	} catch (const std::invalid_argument& e) {
+		DEV_PRINT("QR解析失敗\n");
 		return std::nullopt; // 数値に変換できないIDは無効
 	} catch (const std::out_of_range& e) {
+		DEV_PRINT("QR解析失敗\n");
 		return std::nullopt; // IDが数値型の範囲外
 	}
 
@@ -182,9 +306,12 @@ std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 	std::stringstream ss(time_str);
 	ss >> std::get_time(&tm, "%Y%m%d%H%M%S");
 	if (ss.fail()) {
+		DEV_PRINT("QR解析失敗\n");
 		return std::nullopt; // タイムスタンプのフォーマットが不正
 	}
 	result.timestamp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+	DEV_PRINT("QR解析結果 種別：{}, ID：{}, 日時：{:%Y-%m-%d %H:%M:%S}\n", ((result.type == QrCodeType::User) ? ("User") : ((result.type == QrCodeType::User) ? ("Tool") : ("Program"))), result.id, result.timestamp);
 
 	return result;
 }
@@ -304,8 +431,8 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 
 		const std::string sql =
 			"INSERT INTO rec_operation "
-			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_id) "
-			"VALUES (?, ?, ?, ?, ?, ? ?);";
+			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_num) "
+			"VALUES (?, ?, ?, ?, ?, ?, ?);";
 		stmt.prepare(sql);
 
 		// 4. 一括挿入する行数を設定
@@ -373,11 +500,18 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
 	if (!stmt_opt.has_value() || !code_opt.has_value()) {
+		DEV_PRINT("ユーザ情報取得：必要オブジェクト生成失敗\n");
 		return std::nullopt;
 	}
 
 	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
+
+	// QRコードのタイプが間違っていればば失敗
+	if (code.type != QrCodeType::User) {
+		DEV_PRINT(stderr, "QR Error in get_MstUserInfo: Not a User QR code.\n");
+		return std::nullopt;
+	}
 
 	try {
 		const std::string sql = "SELECT * FROM mst_user WHERE user_id = ? AND user_print_time = ?;";
@@ -388,6 +522,7 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 
 		auto rows = stmt.fetchAll();
 		if (rows.empty()) {
+			DEV_PRINT("ユーザ情報取得：不明なユーザー\n");
 			return std::nullopt; // ユーザーが見つからない
 		}
 
@@ -420,6 +555,12 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 
 	auto& code = code_opt.value();
 	auto& stmt = stmt_opt.value();
+
+	// QRコードのタイプが間違っていればば失敗
+	if (code.type != QrCodeType::Tool) {
+		DEV_PRINT(stderr, "QR Error in get_UniqueToolInfo: Not a Tool QR code.\n");
+		return std::nullopt;
+	}
 
 	try {
 		const std::string sql =
@@ -514,77 +655,31 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 
 std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string) {
 	auto code_opt = parse_qr(qr_string);
-	auto stmt_opt = create_statement_with_retry();
-	if (!stmt_opt.has_value() || !code_opt.has_value()) {
+	if (!code_opt.has_value()) {
 		return std::nullopt;
 	}
 
 	auto& code = code_opt.value();
-	auto& stmt = stmt_opt.value();
-
-	try {
-		const std::string sql =
-			"SELECT "
-			"    pal.program_id, pal.program_name, "
-			"    ml.line_id, ml.line_name, "
-			"    ta.tool_assignment_id, ta.tool_num, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
-			"FROM mst_program AS pal "
-			"LEFT JOIN mst_line AS ml ON pal.line_id = ml.line_id"
-			"LEFT JOIN mst_tool_assignment AS ta ON pal.program_id = ta.program_id "
-			"LEFT JOIN mst_tool AS mt ON ta.basic_tool_id = mt.basic_tool_id "
-			"WHERE pal.program_id = ? AND pal.program_print_time = ? "
-			"ORDER BY ta.tool_assignment_id ASC;";
-
-		stmt.prepare(sql);
-		stmt.bind(1, code.id);
-		stmt.bind(2, code.timestamp);
-		stmt.executePrepared();
-
-		auto rows = stmt.fetchAll();
-		if (rows.empty()) {
-			return std::nullopt; // リストが見つからない
-		}
-
-		// 最初の行からリスト全体の情報を作成
-		ToolingListInfo list_info{
-			.line = MstLineInfo{
-				.id		= std::any_cast<std::int32_t>	(rows[0].at("line_id")),
-				.name	= std::any_cast<std::string>	(rows[0].at("line_name"))
-			},
-
-			.program = MstProgramInfo{
-				.id		= std::any_cast<std::int32_t>	(rows[0].at("program_id")),
-				.name	= std::any_cast<std::string>	(rows[0].at("program_name"))
-			}
-		};
-
-		// 全ての行をループして、工具のリストを作成
-		list_info.tool_assignments.reserve(rows.size());
-		for (const auto& row : rows) {
-			list_info.tool_assignments.push_back(ToolAssignmentInfo{
-				.id			= std::any_cast<std::int32_t>	(row.at("tool_assignment_id")),
-				.tool_num	= std::any_cast<std::string>	(row.at("tool_num")),
-
-				.mst_tool_info = MstToolInfo{
-					.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
-					.name		= std::any_cast<std::string>	(row.at("tool_name")),
-					.maker		= std::any_cast<std::string>	(row.at("maker")),
-					.category	= std::any_cast<std::string>	(row.at("tool_category")),
-					.material	= std::any_cast<std::string>	(row.at("tool_material")),
-					.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
-				}
-			});
-		}
-
-		return list_info;
-
-	} catch (const odbc::OdbcException& e) {
-		DEV_PRINT(stderr, "DB Error in get_ToolingListInfo: {}\n", e.what());
+	if (code.type != QrCodeType::Program) {
+		DEV_PRINT(stderr, "QR Error in get_ToolingListInfo: Not a Program QR code.\n");
 		return std::nullopt;
-	} catch (const std::bad_any_cast& e) {
-		DEV_PRINT(stderr, "DB Cast Error in get_ToolingListInfo: {}\n", e.what());
-		return std::nullopt;
+	}
+
+	// 共通ヘルパーを呼び出す (ID と print_time の両方を渡す)
+	return query_and_populate_tooling_list(code.id, code.timestamp);
+}
+
+bool update_ToolingListInfo(ToolingListInfo& list_info) {
+	// 共通ヘルパーを呼び出す (ID のみ渡し、print_time は nullopt)
+	auto new_list_info_opt = query_and_populate_tooling_list(list_info.program.id, std::nullopt);
+
+	if (new_list_info_opt.has_value()) {
+		// 更新に成功した場合、中身をムーブで入れ替える
+		list_info = std::move(new_list_info_opt.value());
+		return true;
+	} else {
+		// DBからデータが取得できなかった場合
+		return false;
 	}
 }
 

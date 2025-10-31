@@ -201,7 +201,7 @@
 	font-size: 15px;
 	font-family: 'Noto Sans CJK JP';
 	font-weight: normal;
-	background-color: #E9EBF5;
+	background-image: none; /* デフォルトのグラデーションなどを無効化 */
 	border: 1px solid black;
 }
 /* 表のヘッダー部分のスタイル */
@@ -216,15 +216,8 @@
 
 /* 選択可能な表のスタイル */
 /* :disabled = 表が非アクティブな時のスタイル */
-.selectableTree-style:disabled {
-	background-color: #F2F2F2;
-}
 .selectableTree-style:disabled header button {
 	background-color: #A6A6A6;
-}
-/* :selected = 行が選択された時のスタイル */
-.selectableTree-style:selected {
-	background-color: #F4B183;
 }
 
 /* 表のヘッダーの高さ調整用クラス */

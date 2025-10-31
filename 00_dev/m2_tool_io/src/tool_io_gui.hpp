@@ -133,7 +133,7 @@ public:
 		/// @brief セルの状態 (5列目)
 		TableCellState cell_state_5 = TableCellState::NONE;
 		/// @brief その行が表示している情報の元データ
-		std::any row_data{};
+		std::any raw_data{};
 	};
 
 	/**
@@ -166,7 +166,7 @@ public:
 
 		/**
 		 * @brief 他のWidgetStateの値でこのインスタンスを更新する。
-		 * @param other 更新に使用するWidgetStateインスタンス。
+		 * @param[in] other 更新に使用するWidgetStateインスタンス。
 		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
 		 */
 		bool merge(const WidgetState& other);
@@ -190,7 +190,7 @@ public:
 
 		/**
 		 * @brief 他のTableStateの値でこのインスタンスを更新する。
-		 * @param other 更新に使用するTableStateインスタンス。
+		 * @param[in] other 更新に使用するTableStateインスタンス。
 		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
 		 */
 		bool merge(const TableState& other);
@@ -286,16 +286,16 @@ public:
 	 * C言語形式のコールバックである g_idle_add と C++ のラムダ式やメンバー関数を繋ぐための汎用的な糊（グルー）コード。
 	 * ワーカースレッドは、実行したい処理を std::function オブジェクトとしてヒープに作成し、
 	 * そのポインタをこの関数に渡すことで、GUIスレッドでの安全な実行を予約します。
-	 * @param user_data std::function<void()>* にキャストされるポインタ。
+	 * @param[in] user_data std::function<void()>* にキャストされるポインタ。
 	 * @return G_SOURCE_REMOVE (一度だけ実行して解除)。
 	 */
 	static gboolean dispatch_to_gui_thread(gpointer user_data);
 
 	/**
 	 * @brief PLCリスナースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
-	void on_plc_notified(plc::Notification notification);
+	void plc_on_notified(plc::Notification notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -524,7 +524,7 @@ private:
 
 	/**
 	 * @brief 現在のテキストモードに応じて表示用の文字列を取得します。
-	 * @param ui_text かな/漢字両方のテキストを持つUiText構造体。
+	 * @param[in] ui_text かな/漢字両方のテキストを持つUiText構造体。
 	 * @return 表示用の文字列 (かな or 漢字)。
 	 * @details m_text_mode メンバ変数に基づいて、ui_text の適切なフィールドを返します。
 	 */
@@ -543,72 +543,77 @@ private:
 	/**
 	 * @brief ヘッダーのボタン群を初期状態にリセットする変数。
 	 * @details GUI操作モードの変更時に呼び出されます。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 */
-	void reset_header_buttons();
+	void reset_header_buttons(bool update_ui = true);
 
 	/**
 	 * @brief ウィジェットの状態を更新するヘルパー関数。
-	 * @param widget 更新対象のウィジェット。
-	 * @param state 適用する状態 (WidgetState)。
+	 * @param[out] widget 更新対象のウィジェット。
+	 * @param[in] state 適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
 	 */
-	void update_widget_state(sg::Widget* widget, WidgetState state);
+	void update_widget_state(sg::Widget* widget, WidgetState state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のウィジェットの状態を更新するヘルパー関数。
-	 * @param widgets 更新対象のウィジェットのリスト。
-	 * @param state 適用する状態 (WidgetState)。
+	 * @param[out] widgets 更新対象のウィジェットのリスト。
+	 * @param[in] state 適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
 	 */
-	void update_widget_state(std::vector<sg::Widget*> widgets, WidgetState state);
+	void update_widget_state(std::vector<sg::Widget*> widgets, WidgetState state, bool update_ui = true);
 
 	/**
 	 * @brief テーブルの状態を更新するヘルパー関数。
-	 * @param table 更新対象のテーブルウィジェット。
-	 * @param state 適用する状態 (TableState)。
+	 * @param[out] table 更新対象のテーブルウィジェット。
+	 * @param[in] state 適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
 	 */
-	void update_table_state(sgex::TreeView* table, TableState state);
+	void update_table_state(sgex::TreeView* table, TableState state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のテーブルの状態を更新するヘルパー関数。
-	 * @param tables 更新対象のテーブルウィジェットのリスト。
-	 * @param state 適用する状態 (TableState)。
+	 * @param[out] tables 更新対象のテーブルウィジェットのリスト。
+	 * @param[in] state 適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
 	 */
-	void update_table_state(std::vector<sgex::TreeView*> tables, TableState state);
+	void update_table_state(std::vector<sgex::TreeView*> tables, TableState state, bool update_ui = true);
 
 	/**
 	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
-	 * @param force_redraw_all trueなら全ウィジェットを、falseなら変更があったウィジェットのみを更新。
+	 * @param[in] force_redraw_all trueなら全ウィジェットを、falseなら変更があったウィジェットのみを更新。
 	 */
 	void refresh_ui(bool force_redraw_all = false);
 
 	/**
 	 * @brief アプリケーションの状態を更新し、UI（メッセージ、ボタン等）を再描画します。
-	 * @param state 新しいアプリケーションの状態。
+	 * @param[in] state 新しいアプリケーションの状態。
 	 * @details 状態遷移の唯一の窓口となる関数です。
 	 */
 	void set_app_state(AppState state);
 
 	/**
 	 * @brief アプリケーションの操作モードを設定します。
-	 * @param mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
+	 * @param[in] mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 * @details この関数がモードに対応する全てのUI状態（モード変数、ボタン排他、画面表示）を更新します。
 	 */
 	void set_mode(GuiMode mode);
 
 	/**
 	 * @brief MainTableData構造体の内容をGtkListStoreに設定するセッター関数。
-	 * @param store 更新対象の sgex::ListStore。
-	 * @param iter 更新する行のイテレータ。
-	 * @param row 設定する MainTableData 構造体。
+	 * @param[out] store 更新対象の sgex::ListStore。
+	 * @param[out] iter 更新する行のイテレータ。
+	 * @param[in] row 設定する MainTableData 構造体。
 	 */
 	void main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
-	 * @param action 実行したい操作の種類。
+	 * @param[in] action 実行したい操作の種類。
 	 */
 	void update_and_handle_pagination(PaginationAction action);
 
@@ -617,6 +622,13 @@ private:
 	 * @return 認証に成功した場合はtrue、失敗またはキャンセルの場合はfalseを返します。
 	 */
 	bool authenticate_with_password();
+
+	/**
+	 * @brief ツール割当情報のリストをテーブル表示用データに変換してページネーションモデルにセットする
+	 * @param[out] list_store_model セット対象のページネーションモデル
+	 * @param[in] tool_assignments ツール割当情報のリスト
+	 */
+	void set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWindow::MainTableData>& list_store_model, const std::vector<ToolAssignmentInfo> &tool_assignments);
 
 	/**
 	 * @brief 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
@@ -681,6 +693,14 @@ private:
 	 * @details ユーザーIDの入力が完了したときに呼び出され、ユーザー認証を試みる。
 	 */
 	void userIdEntry_on_activate();
+
+	/**
+	 * @brief メインテーブルの "button-press-event" シグナルに対応するハンドラ。
+	 * @details メインテーブルの上でクリックされた時に呼び出され、現在の状態に応じたコールバックを実行する。
+	 * @param[in] event GdkEventButton構造体へのポインタ。
+	 * @return trueを返すとイベントが消費され、falseを返すと他のハンドラに伝播される。
+	 */
+	bool mainTable_on_button_press(GdkEventButton* event);
 
 	/**
 	 * @brief メインテーブルの Selection オブジェクトの "changed" シグナルに対応するハンドラ。
@@ -781,7 +801,7 @@ private:
 	void on_qrCodeEntry_retrieve_waiting_for_program_qr();
 
 	/**
-	 * @brief　RETRIEVE_SELECTING_TOOLS 状態に入った時の処理。
+	 * @brief RETRIEVE_SELECTING_TOOLS 状態に入った時の処理。
 	 * @details QRコードで取得した情報をリストに表示する。
 	 */
 	void on_enter_retrieve_selecting_tools();
@@ -793,13 +813,13 @@ private:
 	void on_mainTableSelection_retrieve_selecting_tools();
 
 	/**
-	 * @brief brief　RETRIEVE_SELECTING_TOOLS 状態の falseButton.on_clicked の処理
+	 * @brief brief RETRIEVE_SELECTING_TOOLS 状態の falseButton.on_clicked の処理
 	 * @details 選択状態の行を非選択状態に戻す。
 	 */
 	void on_falseButton_retrieve_selecting_tools();
 
 	/**
-	 * @brief　RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
+	 * @brief RETRIEVE_CONFIRMING_SELECTION 状態に入った時の処理。
 	 * @details 選択状態の行を抽出し、リストに表示する。
 	 */
 	void on_enter_retrieve_confirming_selection();
@@ -811,6 +831,12 @@ private:
 	void on_falseButton_retrieve_confirming_selection();
 
 	/**
+	 * @brief RETRIEVE_CONFIRMING_SELECTION 状態の trueButton.on_clicked の処理
+	 * @details 確定された選択済み工具を保存し、次の画面に遷移する。
+	 */
+	void on_trueButton_retrieve_confirming_selection();
+
+	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVING 状態に入ったときの処理。
 	 * @details 取り出す工具が入ったコンテナを搬出し、搬出中のコンテナを強調表示する。
 	 */
@@ -819,7 +845,7 @@ private:
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_retrieve_container_retrieving(plc::Notification notification);
 
@@ -832,7 +858,7 @@ private:
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_retrieve_container_retrieved(plc::Notification notification);
 
@@ -864,7 +890,7 @@ private:
 
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態の falseButton.on_clicked の処理
-	 * @details 取り出し機能を終了する。
+	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
 	 */
 	void on_falseButton_retrieve_read_completed();
 
@@ -877,7 +903,7 @@ private:
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_retrieve_read_completed(plc::Notification notification);
 
@@ -903,7 +929,7 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_store_container_retrieving(plc::Notification notification);
 
@@ -916,7 +942,7 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_store_container_retrieved(plc::Notification notification);
 
@@ -961,7 +987,7 @@ private:
 	/**
 	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_store_read_completed(plc::Notification notification);
 
@@ -987,7 +1013,7 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_reconcile_container_retrieving(plc::Notification notification);
 
@@ -1000,7 +1026,7 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCリスナースレッドからの通知。
 	 */
 	void on_plc_reconcile_container_retrieved(plc::Notification notification);
 
@@ -1056,9 +1082,17 @@ private:
 
 	/**
 	 * @brief プログラムが内部的にトグルボタンの状態を変更しているかを示すフラグ。
-	 * @details trueの間、toggledイベントハンドラは何もしません。
+	 * @details trueの間、toggled イベントハンドラは何もしない。
 	 */
-	bool m_isProgrammaticallyChangingToggle;
+	bool m_is_programmatically_changing_toggle;
+
+	/**
+	 * @brief ユーザー起因により表の選択状態が変更されようとしていることを示すフラグ。
+	 * @details
+	 * 表の上で button-release-event シグナルが発生したときにtrueになり、選択処理が開始するとfalseになる。
+	 * trueの間のみ、TreeSelection の changed イベントハンドラは処理を行う。
+	 */
+	bool m_user_initiated_selection;
 
 	// --- 状態遷移管理用 ---
 
@@ -1106,10 +1140,13 @@ private:
 
 	// --- 操作中の状態保持用 (取り出し専用) ---
 
+	/// @brief 現在取り出し中のツーリングリスト
+	std::optional<ToolingListInfo> m_retrieving_list;
+
 	/// @brief 確認画面移行前の表の状態を退避しておく vector。
 	std::vector<MainTableData> m_retrieve_backup_table;
 
-	/// @brief 操作中工具のリスト。
+	/// @brief 取り出し中工具のリスト。
 	std::vector<ToolAssignmentInfo> m_retrieving_tools;
 
 	/// @brief m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。

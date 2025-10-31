@@ -350,7 +350,7 @@ void OdbcStatement::bind(int paramIndex, const std::optional<std::vector<char>>&
 bool OdbcStatement::bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val) {
 	if (opt_val.has_value()) {
 		// 値がある場合のみ、C++のtime_pointをODBC用のTIMESTAMP構造体に変換して、変換後の構造体の実体とサイズをマップに格納
-		if(std::optional<SQL_TIMESTAMP_STRUCT> ts_opt = to_sql_timestamp(opt_val.value())) {
+		if (std::optional<SQL_TIMESTAMP_STRUCT> ts_opt = to_sql_timestamp(opt_val.value())) {
 			param_indicators.insert_or_assign(paramIndex, sizeof(SQL_TIMESTAMP_STRUCT));	// 長さ情報をここで保存
 			bound_params.insert_or_assign(paramIndex, std::move(ts_opt));
 		} else {

@@ -68,8 +68,8 @@ public:
 	// --- 要素アクセス ---
 	/**
 	 * @brief 指定されたキーに対応する値を取得する。
-	 * @param key キー
-	 * @param flag_erase_updated_keys trueの場合、取得したキーを更新済みリストから削除する。
+	 * @param[in] key キー
+	 * @param[in] flag_erase_updated_keys (オプション) trueの場合、取得したキーを更新済みリストから削除する。
 	 * @return キーに対応する値。
 	 * @throws std::out_of_range キーが存在しない場合。
 	 */
@@ -84,7 +84,7 @@ public:
 	// --- ゲッター (TrackedMap固有) ---
 	/**
 	 * @brief 全ての要素のコピーを取得する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return マップ全体のコピー。
 	 */
 	map_type get_all(bool flag_clear_updated_keys = false) {
@@ -97,7 +97,7 @@ public:
 
 	/**
 	 * @brief 更新されたキーのセットを取得する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新されたキーのセットのコピー。
 	 */
 	set_type get_updated_keys(bool flag_clear_updated_keys = false) {
@@ -110,7 +110,7 @@ public:
 
 	/**
 	 * @brief 更新された要素（キーと値のペア）のマップを取得する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements(bool flag_clear_updated_keys = false) {
@@ -140,7 +140,7 @@ public:
 	 * @details
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加します。
 	 * @tparam P 挿入する値の型
-	 * @param x 挿入する値 (std::pair)
+	 * @param[in] x 挿入する値 (std::pair)。左辺値ならコピー、右辺値ならムーブされます。
 	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
 	template <class P>
@@ -157,8 +157,8 @@ public:
 	 * @details
 	 * 挿入・代入どちらの場合でもキーは `updated_keys` に追加されます。
 	 * @tparam M 挿入/代入する値の型
-	 * @param key キー
-	 * @param x 値
+	 * @param[in] key キー
+	 * @param[in] x 値
 	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
 	 */
 	template <class M>
@@ -170,7 +170,7 @@ public:
 
 	/**
 	 * @brief 要素をインプレース構築する。
-	 * @param args 値の構築引数
+	 * @param[in] args 値の構築引数
 	 * @return 挿入された要素へのイテレータと、挿入が成功したか(true)を示すペア。
 	 */
 	template <class... Args>
@@ -184,8 +184,8 @@ public:
 
 	/**
 	 * @brief ヒント付きで要素をインプレース構築する。
-	 * @param hint 挿入位置のヒント
-	 * @param args 値の構築引数
+	 * @param[in] hint 挿入位置のヒント
+	 * @param[in] args 値の構築引数
 	 * @return 挿入された要素へのイテレータ。
 	 */
 	template <class... Args>
@@ -200,8 +200,8 @@ public:
 
 	/**
 	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
-	 * @param key キー
-	 * @param args 値の構築引数
+	 * @param[in] key キー
+	 * @param[in] args 値の構築引数
 	 * @return 挿入された(または既存の)要素へのイテレータと、挿入が成功したか(true)を示すペア。
 	 */
 	template <class... Args>
@@ -215,8 +215,8 @@ public:
 
 	/**
 	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
-	 * @param key キー
-	 * @param args 値の構築引数
+	 * @param[in] key キー (ムーブされます)
+	 * @param[in] args 値の構築引数
 	 * @return 挿入された(または既存の)要素へのイテレータと、挿入が成功したか(true)を示すペア。
 	 */
 	template <class... Args>
@@ -230,9 +230,9 @@ public:
 
 	/**
 	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
-	 * @param hint 挿入位置のヒント
-	 * @param key キー
-	 * @param args 値の構築引数
+	 * @param[in] hint 挿入位置のヒント
+	 * @param[in] key キー (ムーブされます)
+	 * @param[in] args 値の構築引数
 	 * @return 挿入された(または既存の)要素へのイテレータと、挿入が成功したか(true)を示すペア。
 	 */
 	template <class... Args>
@@ -247,7 +247,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーの要素を削除する。
-	 * @param key 削除するキー
+	 * @param[in] key 削除するキー
 	 * @return 削除された要素の数 (0または1)。
 	 */
 	size_type erase(const key_type& key) {
@@ -257,7 +257,7 @@ public:
 
 	/**
 	 * @brief イテレータが指す要素を削除する。
-	 * @param pos 削除する要素を指すイテレータ。
+	 * @param[in] pos 削除する要素を指すイテレータ。
 	 * @return 削除された要素の次の要素を指すイテレータ。
 	 */
 	const_iterator erase(const_iterator pos) {
@@ -267,8 +267,8 @@ public:
 
 	/**
 	 * @brief 範囲 [first, last) の要素を削除する。
-	 * @param first 範囲の開始イテレータ
-	 * @param last 範囲の終了イテレータ
+	 * @param[in] first 範囲の開始イテレータ
+	 * @param[in] last 範囲の終了イテレータ
 	 * @return 削除された最後の要素の次の要素を指すイテレータ。
 	 */
 	const_iterator erase(const_iterator first, const_iterator last) {
@@ -288,7 +288,7 @@ public:
 
 	/**
 	 * @brief 別のTrackedMapと内容を交換する。
-	 * @param other 交換対象のマップ
+	 * @param[in, out] other 交換対象のマップ
 	 */
 	void swap(TrackedMap& other) noexcept(
 		std::allocator_traits<allocator_type>::is_always_equal::value
@@ -302,7 +302,7 @@ public:
 	// --- ルックアップ ---
 	/**
 	 * @brief 指定されたキーがマップに存在するかを確認する。
-	 * @param key 確認するキー
+	 * @param[in] key 確認するキー
 	 * @return キーが存在すればtrue, そうでなければfalse。
 	 */
 	bool contains(const key_type& key) const {
@@ -311,7 +311,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーを持つ要素の数を返す (0または1)。
-	 * @param key 確認するキー
+	 * @param[in] key 確認するキー
 	 * @return 要素の数。
 	 */
 	size_type count(const key_type& key) const {
@@ -320,7 +320,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーを持つ要素を検索する。
-	 * @param key 検索するキー
+	 * @param[in] key 検索するキー
 	 * @return 要素を指すイテレータ。見つからなければend()。
 	 */
 	const_iterator find(const key_type& key) const {
@@ -329,7 +329,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーと等価なキーの範囲を返す。
-	 * @param key 検索するキー
+	 * @param[in] key 検索するキー
 	 * @return 等価なキーの範囲を示すイテレータのペア。
 	 */
 	std::pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
@@ -338,7 +338,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーより小さくない最初の要素を指すイテレータを返す。
-	 * @param key キー
+	 * @param[in] key キー
 	 * @return 指定されたキー以上の最初の要素を指すイテレータ。
 	 */
 	const_iterator lower_bound(const key_type& key) const {
@@ -347,7 +347,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーより大きい最初の要素を指すイテレータを返す。
-	 * @param key キー
+	 * @param[in] key キー
 	 * @return 指定されたキーより大きい最初の要素を指すイテレータ。
 	 */
 	const_iterator upper_bound(const key_type& key) const {
@@ -396,8 +396,8 @@ public:
  * @tparam _Tp 値の型
  * @tparam _Compare キーの比較関数の型
  * @tparam _Alloc アロケータの型
- * @param lhs 交換対象の左側のマップ
- * @param rhs 交換対象の右側のマップ
+ * @param[in, out] lhs 交換対象の左側のマップ
+ * @param[in, out] rhs 交換対象の右側のマップ
  */
 template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
 void swap(TrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
@@ -459,7 +459,7 @@ private:
 	 * @details
 	 * この関数は、updated_keysセットが空の場合に呼び出され、
 	 * 他のスレッドによってデータが更新され通知（notify）が来るまで、ロックを解放して待機します。
-	 * @param lock 待機中にアンロック/再ロックされるユニークロック。
+	 * @param[in, out] lock 待機中にアンロック/再ロックされるユニークロック。
 	 */
 	void _wait_for_updates(std::unique_lock<std::recursive_mutex>& lock) {
 		cv.wait(lock, [this] { return !updated_keys.empty(); }); // updated_keysがセットされるまで待機
@@ -467,7 +467,7 @@ private:
 
 	/**
 	 * @brief flagがTRUEならupdated_keysをクリアする。
-	 * @param flag_clear_updated_keys updated_keysをクリアするかどうかのフラグ。
+	 * @param[in] flag_clear_updated_keys updated_keysをクリアするかどうかのフラグ。
 	 * @return flag_clear_updated_keysの値をそのまま返す。
 	 */
 	bool _if_true_clear_updated_keys(bool flag_clear_updated_keys) {
@@ -479,8 +479,8 @@ private:
 
 	/**
 	 * @brief flagがTRUEならupdated_keysからkeyをeraseする。
-	 * @param key 削除するキー。
-	 * @param flag_erase_updated_keys 削除するかどうかのフラグ。
+	 * @param[in] key 削除するキー。
+	 * @param[in] flag_erase_updated_keys 削除するかどうかのフラグ。
 	 * @return flag_erase_updated_keysの値をそのまま返す。
 	 */
 	bool _if_true_erase_updated_keys(const set_key_type& key, bool flag_erase_updated_keys) {
@@ -492,8 +492,8 @@ private:
 
 	/**
 	 * @brief flagがTRUEならupdated_keysが発生するまで待機する。
-	 * @param lock 待機中にアンロック/再ロックされるユニークロック。
-	 * @param flag_wait_for_updates 待機するかどうかのフラグ。
+	 * @param[in, out] lock 待機中にアンロック/再ロックされるユニークロック。
+	 * @param[in] flag_wait_for_updates 待機するかどうかのフラグ。
 	 * @return flag_wait_for_updatesの値をそのまま返す。
 	 */
 	bool _if_true_wait_for_updates(std::unique_lock<std::recursive_mutex> &lock, bool flag_wait_for_updates) {
@@ -505,7 +505,7 @@ private:
 
 	/**
 	 * @brief 全ての要素のコピーを取得する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return マップ全体のコピー。
 	 */
 	map_type _get_all(bool flag_clear_updated_keys) {
@@ -518,7 +518,7 @@ private:
 	 * @brief 更新されたキーのリストを取得する。
 	 * @details
 	 * 現在 `updated_keys` に記録されている全てのキーのコピーを返します。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新されたキーのセットのコピー。
 	 */
 	set_type _get_updated_keys(bool flag_clear_updated_keys) {
@@ -531,7 +531,7 @@ private:
 	 * @brief 更新された要素（キーと値のペア）のマップを取得する。
 	 * @details
 	 * `updated_keys` に記録されているキーに対応する要素を全て抽出し、新しいマップとして返します。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type _get_updated_elements(bool flag_clear_updated_keys) {
@@ -561,20 +561,20 @@ public:
 	 * * mutexが recursive_mutex のため、ロック取得中に他のメンバ関数
 	 * (例: contains, at, insert) を呼び出してもデッドロックしません。
 	 *
-	 * @code
+	 * @return マップのミューテックスに対する std::unique_lock
+	 *
+	 * ```cpp
 	 * SafeTrackedMap<int, std::string> myMap;
 	 * // ...
 	 * {
-	 *     auto lock = myMap.acquire_lock(); // ロック取得
-	 *     // 複数の操作をアトミックに実行
-	 *     if (myMap.contains(1)) {
-	 *         auto val = myMap.at(1);
-	 *         myMap.insert_or_assign(2, val + "_new");
-	 *     }
+	 * auto lock = myMap.acquire_lock(); // ロック取得
+	 * // 複数の操作をアトミックに実行
+	 * if (myMap.contains(1)) {
+	 * auto val = myMap.at(1);
+	 * myMap.insert_or_assign(2, val + "_new");
+	 * }
 	 * } // スコープを抜けると 'lock' が破棄され、自動でロック解放
-	 * @endcode
-	 *
-	 * @return マップのミューテックスに対する std::unique_lock
+	 * ```
 	 */
 	std::unique_lock<std::recursive_mutex> acquire_lock() {
 		return std::unique_lock<std::recursive_mutex>(mtx);
@@ -586,7 +586,7 @@ public:
 	 * イテレータを外部に漏らさず、安全に内部マップを走査するために使用します。
 	 * この関数に渡されたラムダ式が実行されている間、マップはロックされます。
 	 * @tparam Func 呼び出し可能なオブジェクト (例: ラムダ式)
-	 * @param f 内部の const マップ (const map_type&) を引数に取る関数
+	 * @param[in] f 内部の const マップ (const map_type&) を引数に取る関数
 	 */
 	template <typename Func>
 	void inspect_safely(Func f) {
@@ -611,7 +611,10 @@ public:
 	 * @note internal_map_const_ref を使って値を変更することはできません。
 	 * 変更は必ず self.insert_or_assign(...) などを使用してください。
 	 *
-	 * @code
+	 * @tparam Func 呼び出し可能なオブジェクト (ラムダ式)
+	 * @param[in] f ラムダ式 ( (const map_type&, SafeTrackedMap&) -> void )
+	 *
+	 * ```cpp
 	 * myMap.operate_safely( [](const auto& map_const_ref, auto& self) {
 	 * // 効率的な走査 (const_iterator を使用)
 	 * auto it = map_const_ref.lower_bound(10);
@@ -620,10 +623,7 @@ public:
 	 * self.insert_or_assign(it->first, "NewValue");
 	 * }
 	 * });
-	 * @endcode
-	 *
-	 * @tparam Func 呼び出し可能なオブジェクト (ラムダ式)
-	 * @param f ラムダ式 ( (const map_type&, SafeTrackedMap&) -> void )
+	 * ```
 	 */
 	template <typename Func>
 	void operate_safely(Func f) {
@@ -643,7 +643,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーが更新されるまで待機する。(単一キー)
-	 * @param key 待機対象のキー
+	 * @param[in] key 待機対象のキー
 	 */
 	void wait_for_updates(const key_type& key) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
@@ -656,7 +656,7 @@ public:
 	/**
 	 * @brief 指定されたキーのいずれかが更新されるまで待機する。(複数キー)
 	 * @details initializer_list (例: {1, 2, 3}) でキーを指定します。
-	 * @param keys 待機対象のキーのリスト
+	 * @param[in] keys 待機対象のキーのリスト
 	 */
 	void wait_for_updates(std::initializer_list<key_type> keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
@@ -675,7 +675,7 @@ public:
 	 * @brief 指定されたキーのいずれかが更新されるまで待機する。(複数キー、コンテナ版)
 	 * @details std::vector, std::set, std::list などイテレート可能なコンテナでキーを指定します。
 	 * @tparam KeyContainer キーのコンテナの型
-	 * @param keys 待機対象のキーのコンテナ
+	 * @param[in] keys 待機対象のキーのコンテナ
 	 */
 	template <typename KeyContainer>
 	void wait_for_updates(const KeyContainer& keys) {
@@ -694,9 +694,9 @@ public:
 	// --- 要素アクセス ---
 	/**
 	 * @brief 指定されたキーに対応する値を取得する。
-	 * @param key キー
-	 * @param flag_wait_for_updates trueの場合、キーが更新されるまで待機する。
-	 * @param flag_erase_updated_keys trueの場合、取得したキーを更新済みリストから削除する。
+	 * @param[in] key キー
+	 * @param[in] flag_wait_for_updates (オプション) trueの場合、キーが更新されるまで待機する。
+	 * @param[in] flag_erase_updated_keys (オプション) trueの場合、取得したキーを更新済みリストから削除する。
 	 * @return キーに対応する値 (コピー)。
 	 * @throws std::out_of_range キーが存在しない場合。
 	 */
@@ -713,8 +713,8 @@ public:
 	// --- ゲッター (SafeTrackedMap固有) ---
 	/**
 	 * @brief 全ての要素のコピーを取得する。
-	 * @param flag_wait_for_updates trueの場合、更新キーが発生するまで待機する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_wait_for_updates (オプション) trueの場合、更新キーが発生するまで待機する。
+	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return マップ全体のコピー。
 	 */
 	map_type get_all(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
@@ -727,8 +727,8 @@ public:
 	 * @brief 更新されたキーのリストを取得する。
 	 * @details
 	 * 現在 `updated_keys` に記録されている全てのキーのコピーを返します。
-	 * @param flag_wait_for_updates trueの場合、更新キーが発生するまで待機する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_wait_for_updates (オプション) trueの場合、更新キーが発生するまで待機する。
+	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新されたキーのセットのコピー。
 	 */
 	set_type get_updated_keys(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
@@ -741,8 +741,8 @@ public:
 	 * @brief 更新された要素（キーと値のペア）のマップを取得する。
 	 * @details
 	 * `updated_keys` に記録されているキーに対応する要素を全て抽出し、新しいマップとして返します。
-	 * @param flag_wait_for_updates trueの場合、更新キーが発生するまで待機する。
-	 * @param flag_clear_updated_keys trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_wait_for_updates (オプション) trueの場合、更新キーが発生するまで待機する。
+	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
@@ -765,7 +765,7 @@ public:
 	 * @details
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加し、待機中のスレッドに通知します。
 	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
-	 * @param x 挿入する値
+	 * @param[in] x 挿入する値。左辺値ならコピー、右辺値ならムーブされます。
 	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
 	template <class P>
@@ -791,8 +791,8 @@ public:
 	 * @details
 	 * 挿入・代入どちらの場合でもキーは `updated_keys` に追加し、待機中のスレッドに通知します。
 	 * @tparam M 挿入/代入する値の型
-	 * @param key キー
-	 * @param x 値
+	 * @param[in] key キー
+	 * @param[in] x 値
 	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
 	 */
 	template <class M>
@@ -811,7 +811,7 @@ public:
 
 	/**
 	 * @brief 要素をインプレース構築する。
-	 * @param args 値の構築引数
+	 * @param[in] args 値の構築引数
 	 * @return 挿入が成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
 	template <class... Args>
@@ -834,8 +834,8 @@ public:
 
 	/**
 	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
-	 * @param key キー
-	 * @param args 値の構築引数
+	 * @param[in] key キー
+	 * @param[in] args 値の構築引数
 	 * @return 挿入が成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
 	template <class... Args>
@@ -858,8 +858,8 @@ public:
 
 	/**
 	 * @brief キーが存在しない場合のみ要素をインプレース構築する (C++17)。
-	 * @param key キー
-	 * @param args 値の構築引数
+	 * @param[in] key キー (ムーブされます)
+	 * @param[in] args 値の構築引数
 	 * @return 挿入が成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
 	template <class... Args>
@@ -883,7 +883,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーの要素を削除する。
-	 * @param key 削除するキー
+	 * @param[in] key 削除するキー
 	 * @return 削除された要素の数 (0または1)。
 	 */
 	size_type erase(const key_type& key) {
@@ -904,7 +904,7 @@ public:
 	/**
 	 * @brief 別のSafeTrackedMapと内容を交換する。
 	 * @details std::lockを使いデッドロックセーフに両方のmutexをロックしてswapする。
-	 * @param other 交換対象のマップ
+	 * @param[in, out] other 交換対象のマップ
 	 */
 	void swap(SafeTrackedMap& other) noexcept(
 		std::allocator_traits<allocator_type>::is_always_equal::value
@@ -933,7 +933,7 @@ public:
 	// --- ルックアップ ---
 	/**
 	 * @brief 指定されたキーがマップに存在するかを確認する。
-	 * @param key 確認するキー
+	 * @param[in] key 確認するキー
 	 * @return キーが存在すればtrue, そうでなければfalse。
 	 */
 	bool contains(const key_type& key) {
@@ -943,7 +943,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーを持つ要素の数を返す (0または1)。
-	 * @param key 確認するキー
+	 * @param[in] key 確認するキー
 	 * @return 要素の数。
 	 */
 	size_type count(const key_type& key) {
@@ -955,7 +955,7 @@ public:
 	 * @brief 指定されたキーと等価なキーの範囲を返す。
 	 * @details
 	 * std::map (非multimap) のため、範囲には最大1つの要素が含まれます。
-	 * @param key キー
+	 * @param[in] key キー
 	 * @return lower_boundの結果とupper_boundの結果のペア (コピー)。
 	 */
 	std::pair<std::optional<value_type>, std::optional<value_type>> equal_range(const key_type& key) {
@@ -977,7 +977,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーより小さくない最初の要素を返す。
-	 * @param key キー
+	 * @param[in] key キー
 	 * @return 見つかった要素のコピー。見つからなければ std::nullopt。
 	 */
 	std::optional<value_type> lower_bound(const key_type& key) {
@@ -991,7 +991,7 @@ public:
 
 	/**
 	 * @brief 指定されたキーより大きい最初の要素を返す。
-	 * @param key キー
+	 * @param[in] key キー
 	 * @return 見つかった要素のコピー。見つからなければ std::nullopt。
 	 */
 	std::optional<value_type> upper_bound(const key_type& key) {
@@ -1049,8 +1049,8 @@ public:
  * @tparam _Tp 値の型
  * @tparam _Compare キーの比較関数の型
  * @tparam _Alloc アロケータの型
- * @param lhs 交換対象の左側のマップ
- * @param rhs 交換対象の右側のマップ
+ * @param[in, out] lhs 交換対象の左側のマップ
+ * @param[in, out] rhs 交換対象の右側のマップ
  */
 template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
 void swap(SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,

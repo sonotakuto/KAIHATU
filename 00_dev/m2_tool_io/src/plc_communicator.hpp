@@ -27,12 +27,12 @@ struct WatchFlags {
 	std::optional<bool>	rise_is_one_shot{};			// trueの場合、一度条件が成立したら rise_is_one_shot をfalseにする
 
 	bool is_active() const {
-		return enable_fall_notification.value_or(false) && enable_rise_notification.value_or(false);
+		return enable_fall_notification.value_or(false) || enable_rise_notification.value_or(false);
 	}
 
 	/**
 	 * @brief 他の WatchFlags の値でこのインスタンスを更新する。
-	 * @param other 更新に使用する WatchFlags インスタンス。
+	 * @param[in] other 更新に使用する WatchFlags インスタンス。
 	 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
 	 */
 	bool merge(const WatchFlags& other);
@@ -138,7 +138,7 @@ bool end_session();
 /**
  * @brief PLCにコンテナの搬出を要求します。
  * @details 指定されたコンテナ番号に対応するMデバイスと、搬出開始を指示するM91をONにします。
- * @param container_number 搬出するコンテナ番号。
+ * @param[in] container_number 搬出するコンテナ番号。
  * @return 処理が成功した場合はtrue、失敗した場合はfalse。
  */
 bool retrieve_container(std::uint16_t container_number);

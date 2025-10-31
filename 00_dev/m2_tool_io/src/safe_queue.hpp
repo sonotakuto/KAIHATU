@@ -30,7 +30,7 @@ public:
 
 	/**
 	 * @brief キューに要素を追加（プッシュ）し、待機中のスレッドに通知する（スレッドセーフ）。
-	 * @param value 追加する要素。
+	 * @param[in] value 追加する要素。
 	 */
 	void push(const value_type& value){
 		{
@@ -71,7 +71,7 @@ public:
 	/**
 	 * @brief キューから要素を取り出す（タイムアウト付きブロッキング）。
 	 * @details キューが空の場合、指定されたタイムアウト時間まで要素が追加されるのを待機する。
-	 * @param timeout 待機する最大時間。
+	 * @param[in] timeout 待機する最大時間。
 	 * @return 要素が取り出せた場合はその値、タイムアウトした場合はstd::nullopt。
 	 */
 	template<typename Rep, typename Period>
@@ -92,7 +92,7 @@ public:
 	/**
 	 * @brief キューから要素を取り出す（タイムアウト付きブロッキング）。
 	 * @details キューが空の場合、指定された時刻まで要素が追加されるのを待機する。
-	 * @param timeout_time 待機を打ち切る絶対時刻。
+	 * @param[in] timeout_time 待機を打ち切る絶対時刻。
 	 * @return 要素が取り出せた場合はその値、タイムアウトした場合はstd::nullopt。
 	 */
 	template<class Clock, class Duration>
