@@ -160,13 +160,13 @@ void ToolTrackerClient::listener_thread_func() {
 // =================================
 
 // コンストラクタ: 定数を使ってメンバ変数を初期化
-RecorderClient::RecorderClient()
-	: base_url(RECORDER_BASE_URL),
-	  context_path(RECORDER_CONTEXT_PATH),
-	  username(RECORDER_USERNAME),
-	  password(RECORDER_PASSWORD) {}
-
-// generate_timestamp_filename は public に移動したので private から削除
+RecorderClient::RecorderClient() :
+	base_url(RECORDER_BASE_URL),
+	context_path(RECORDER_CONTEXT_PATH),
+	username(RECORDER_USERNAME),
+	password(RECORDER_PASSWORD),
+	m_current_filename(std::nullopt)
+{}
 
 std::string RecorderClient::generate_timestamp_filename() const {
 	return fmt::format("recording_{:%Y%m%d_%H%M%S}.mp4", sg::now());
@@ -193,7 +193,12 @@ std::optional<std::string> RecorderClient::start_recording(std::string filename 
 
 		// 成功した場合 (HTTP 2xx) はファイル名を返す
 		if (http_code >= 200 && http_code < 300) {
-			return filename; // ★★★ 成功時にファイル名を返す ★★★
+			// 成功時にファイル名を保存して返す
+			{
+				std::lock_guard<std::mutex> lock(m_filename_mutex);
+				m_current_filename = filename;
+			}
+			return filename;
 		} else {
 			// 失敗した場合はエラーログを出力して nullopt を返す
 			DEV_PRINT(stderr, "[RecorderClient] Start recording failed with HTTP status code: {}\nResponse: {}\n", http_code, request.get_response_body());
@@ -207,6 +212,7 @@ std::optional<std::string> RecorderClient::start_recording(std::string filename 
 }
 
 bool RecorderClient::stop_recording() {
+	bool success = false;
 	try {
 		url_transfer::CurlRequest request;
 		std::string url = base_url + context_path + "/record/stop";
@@ -218,12 +224,24 @@ bool RecorderClient::stop_recording() {
 		request.perform();
 
 		long http_code = request.get_response_code();
-		return (http_code >= 200 && http_code < 300);
+		success = (http_code >= 200 && http_code < 300);
 
 	} catch (const std::exception& e) {
 		DEV_PRINT(stderr, "[RecorderClient] Error stopping recording: {}\n", e.what());
-		return false;
+		success = false;
 	}
+
+	// 成功時にファイル名をクリア
+	if (success) {
+		std::lock_guard<std::mutex> lock(m_filename_mutex);
+		m_current_filename = std::nullopt;
+	}
+	return success;
+}
+
+std::optional<std::string> RecorderClient::get_current_filename() const {
+	std::lock_guard<std::mutex> lock(m_filename_mutex);
+	return m_current_filename; // 現在のファイル名 (または nullopt) を返す
 }
 
 // =================================

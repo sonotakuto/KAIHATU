@@ -180,11 +180,22 @@ public:
 	 */
 	bool stop_recording();
 
+	/**
+	 * @brief 現在録画中のファイル名を取得します。(スレッドセーフ)
+	 * @return 録画中の場合はファイル名、録画中でない場合は std::nullopt。
+	 */
+	std::optional<std::string> get_current_filename() const;
+
 private:
 	std::string base_url;
 	std::string context_path;
 	std::string username;
 	std::string password;
+
+	/// @brief 現在録画中のファイル名を保持 (録画中でなければ nullopt)
+	std::optional<std::string> m_current_filename;
+	/// @brief m_current_filename へのスレッドセーフなアクセスを保証するミューテックス
+	mutable std::mutex m_filename_mutex;
 };
 
 /**

@@ -78,10 +78,16 @@ public:
 	using sg::Window::Window; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD_WITH_ARGS(window, set_position, void, (GtkWindowPosition position), position)
 	DEFINE_METHOD(window, fullscreen, void)
+	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
+	DEFINE_PROPERTY_ACCESSORS(Widget, modal, bool)
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
 	DEFINE_PROPERTY_ACCESSORS(Widget, deletable, bool)
 
 	// シグナル
@@ -99,10 +105,17 @@ public:
 	using sg::Dialog::Dialog;
 
 	// メソッド
+	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD_WITH_ARGS(window, set_position, void, (GtkWindowPosition position), position)
+	DEFINE_METHOD(window, fullscreen, void)
+	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
+	DEFINE_PROPERTY_ACCESSORS(Widget, modal, bool)
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
 	DEFINE_PROPERTY_ACCESSORS(Widget, deletable, bool)
 
 	// シグナル

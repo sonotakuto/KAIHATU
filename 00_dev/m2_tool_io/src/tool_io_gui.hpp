@@ -10,6 +10,7 @@
 #include "./SimpleGtk_extension.hpp"
 #include "./tracked_map.hpp"
 #include "./plc_communicator.hpp"
+#include "./tracking_communicator.hpp"
 
 /**
  * @namespace gui
@@ -539,6 +540,8 @@ private:
 	// プライベートメンバ関数 (ヘルパー関数)
 	//=========================================================================
 
+	// --- 複数場面共通のヘルパー関数 ---
+
 	/**
 	 * @brief 現在のテキストモードに応じて表示用の文字列を取得します。
 	 * @param[in] ui_text かな/漢字両方のテキストを持つUiText構造体。
@@ -634,21 +637,33 @@ private:
 	 */
 	void update_and_handle_pagination(PaginationAction action);
 
+	// --- 認証用のヘルパー関数 ---
+
 	/**
-	 * @brief パスワード認証ダイアログを表示し、認証を行います。
+	 * @brief [認証用] パスワード認証ダイアログを表示し、認証を行います。
 	 * @return 認証に成功した場合はtrue、失敗またはキャンセルの場合はfalseを返します。
 	 */
 	bool authenticate_with_password();
 
+	// --- 取り出しモード用のヘルパー関数 ---
+
 	/**
-	 * @brief ツール割当情報のリストをテーブル表示用データに変換してページネーションモデルにセットする
+	 * @brief [取り出し用] ツール割当情報のリストをテーブル表示用データに変換してページネーションモデルにセットする
 	 * @param[out] list_store_model セット対象のページネーションモデル
 	 * @param[in] tool_assignments ツール割当情報のリスト
 	 */
 	void set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWindow::MainTableData>& list_store_model, const std::vector<ToolAssignmentInfo> &tool_assignments);
 
 	/**
-	 * @brief 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
+	 * @brief [取り出し用] 3つのシステム(GUI, PLC, Tracker)の状態をチェックし、
+	 * RETRIEVE_READ_COMPLETED 状態での操作ボタンの感応状態を一括更新する。
+	 */
+	void update_retrieve_read_completed_buttons();
+
+	// --- 補充モード用のヘルパー関数 ---
+
+	/**
+	 * @brief [補充用] 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
 	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
 	bool confirm_if_reground();
@@ -868,7 +883,7 @@ private:
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_retrieve_container_retrieving(plc::Notification notification);
 
@@ -881,7 +896,7 @@ private:
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_retrieve_container_retrieved(plc::Notification notification);
 
@@ -926,9 +941,17 @@ private:
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_retrieve_read_completed(plc::Notification notification);
+
+	/**
+	 * @brief RETRIEVE_READ_COMPLETED 状態の on_tracker_notified の処理。
+	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
+	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
+	 * @return 正常に工具を読み取れていた場合はtrue、読み取り方が間違っていた場合はfalse。
+	 */
+	bool on_tracker_retrieve_read_completed(tracker::Notification notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -952,7 +975,7 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_store_container_retrieving(plc::Notification notification);
 
@@ -965,7 +988,7 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_store_container_retrieved(plc::Notification notification);
 
@@ -1010,7 +1033,7 @@ private:
 	/**
 	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_store_read_completed(plc::Notification notification);
 
@@ -1036,7 +1059,7 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_reconcile_container_retrieving(plc::Notification notification);
 
@@ -1049,7 +1072,7 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
 	void on_plc_reconcile_container_retrieved(plc::Notification notification);
 
@@ -1161,18 +1184,30 @@ private:
 	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
 	std::vector<RecOperationTable> m_operated_records;
 
+	/**
+	 * @brief 追跡システムからのスキャン結果応答を待機している工具の情報。
+	 * @details on_qrCodeEntry... でセットされ、on_tracker... でスキャン結果応答を受け取ると消費されます。
+	 */
+	std::optional<UniqueToolInfo> m_pending_tool_info;
+
+	/// @brief PLCの操作許可状態 (例: 扉が閉まっているか)
+	bool m_plc_ready_for_action;
+
+	/// @brief 追跡システムの操作許可状態 (例: 不正が検知されていないか)
+	bool m_tracker_ready_for_action;
+
 	// --- 操作中の状態保持用 (取り出し専用) ---
 
-	/// @brief 現在取り出し中のツーリングリスト
+	/// @brief [取り出し用] 現在取り出し中のツーリングリスト
 	std::optional<ToolingListInfo> m_retrieving_list;
 
-	/// @brief 確認画面移行前の表の状態を退避しておく vector。
+	/// @brief [取り出し用] 確認画面移行前の表の状態を退避しておく vector。
 	std::vector<MainTableData> m_retrieve_backup_table;
 
-	/// @brief 取り出し中工具のリスト。
+	/// @brief [取り出し用] 取り出し中工具のリスト。
 	std::vector<ToolAssignmentInfo> m_retrieving_tools;
 
-	/// @brief m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
+	/// @brief [取り出し用] m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	std::optional<size_t> m_retrieving_index;
 
 };
