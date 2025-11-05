@@ -17,7 +17,8 @@ class ToolTrackerClient;
 class RecorderClient;
 
 // --- 工具追跡クライアント 定数 ---
-constexpr const char* TRACKER_IP	= "10.19.133.122";
+//constexpr const char* TRACKER_IP	= "10.19.133.122";	// D201
+constexpr const char* TRACKER_IP	= "10.19.106.160";	// C103
 constexpr int TRACKER_PORT			= 5000;
 constexpr size_t TRACKER_MSG_LENGTH	= 11; // ★★★ 固定メッセージ長 (仮に16バイトとする) ★★★
 
