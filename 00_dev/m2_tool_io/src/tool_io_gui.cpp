@@ -2517,6 +2517,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 	if (result) {
 		set_app_state(AppState::RETRIEVE_READ_COMPLETED);
 	}
+	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::on_enter_retrieve_read_completed() {
