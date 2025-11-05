@@ -5,8 +5,10 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <SimpleGtk>
 #include "./parameters.hpp"
+#include "./math_utils.hpp"
 
 //typedef int sample;
 
@@ -303,3 +305,37 @@ struct ToolingListInfo {
 	/// @brief ツーリングリストに含まれる工具のリスト
 	std::vector<ToolAssignmentInfo> tool_assignments{};
 };
+
+// --- 個別工具ID (UniqueToolID) 関連 ---
+
+/// @brief 個別工具IDの桁数 (10桁)
+constexpr int UNIQUE_TOOL_ID_DIGITS = 10;
+
+/// @brief 個別工具ID内の「個別番号」部分の桁数 (5桁)
+constexpr int UNIQUE_TOOL_ID_UNIQUE_DIGITS = 5;
+
+/// @brief 個別工具IDから基本工具IDと個別番号を分離するための除数 (10の UNIQUE_TOOL_ID_UNIQUE_DIGITS 乗)
+constexpr std::int64_t UNIQUE_TOOL_ID_DIVISOR = utils::constexpr_pow(static_cast<std::int64_t>(10), static_cast<std::size_t>(UNIQUE_TOOL_ID_UNIQUE_DIGITS));
+
+/// @brief 有効な個別工具IDの最小値 (10^9)
+constexpr std::int64_t MIN_UNIQUE_TOOL_ID = 0;
+
+/// @brief 有効な個別工具IDの最大値 (10^10 - 1)
+constexpr std::int64_t MAX_UNIQUE_TOOL_ID = utils::constexpr_pow(static_cast<std::int64_t>(10), static_cast<std::size_t>(10)) - 1;
+
+/**
+ * @brief 10桁の個別工具IDを「基本工具ID」と「個別番号」に分割します。
+ * @details 桁数が10桁でないID (MIN/MAXの範囲外) の場合は nullopt を返します。
+ * @param unique_tool_id 10桁の個別工具ID (例: 0000100001)
+ * @return std::pair<基本工具ID, 個別番号> を含む optional (first: 上位5桁, second: 下位5桁)。
+ * 桁数不正時は std::nullopt。
+ */
+inline std::optional<std::pair<std::int32_t, std::int32_t>>
+split_unique_tool_id(std::int64_t unique_tool_id) {
+	if (unique_tool_id < MIN_UNIQUE_TOOL_ID || unique_tool_id > MAX_UNIQUE_TOOL_ID) {
+		return std::nullopt;
+	}
+	auto basic_id = static_cast<std::int32_t>(unique_tool_id / UNIQUE_TOOL_ID_DIVISOR);
+	auto unique_num = static_cast<std::int32_t>(unique_tool_id % UNIQUE_TOOL_ID_DIVISOR);
+	return std::make_pair(basic_id, unique_num);
+}

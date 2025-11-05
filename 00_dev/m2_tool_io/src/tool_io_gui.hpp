@@ -264,9 +264,9 @@ public:
 		/// @brief trueButton がクリックされたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_trueButton_clicked = nullptr;
 		/// @brief PLCモニタースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, plc::Notification)> on_plc_notified = nullptr;
+		std::function<void(MainWindow*, const plc::Notification&)> on_plc_notified = nullptr;
 		/// @brief 工具追跡システムのリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, tracker::Notification)> on_tracker_notified = nullptr;
+		std::function<void(MainWindow*, const tracker::Notification&)> on_tracker_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -298,13 +298,13 @@ public:
 	 * @brief PLCモニタースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void plc_on_notified(plc::Notification notification);
+	void plc_on_notified(const plc::Notification& notification);
 
 	/**
 	 * @brief 工具追跡システムのリスナースレッドから通知を受け取り、GUIスレッドで実行されるコールバック。
 	 * @param[in] notification 工具追跡システムのリスナースレッドからの通知。
 	 */
-	void tracker_on_notified(tracker::Notification notification);
+	void tracker_on_notified(const tracker::Notification& notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -885,7 +885,7 @@ private:
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_retrieve_container_retrieving(plc::Notification notification);
+	void on_plc_retrieve_container_retrieving(const plc::Notification& notification);
 
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -898,7 +898,7 @@ private:
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_retrieve_container_retrieved(plc::Notification notification);
+	void on_plc_retrieve_container_retrieved(const plc::Notification& notification);
 
 	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態に入ったときの処理
@@ -907,24 +907,23 @@ private:
 	void on_enter_retrieve_ready_for_reading();
 
 	/**
-	 * @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
-	 * @details on_qrCodeEntry_retrieve_read_completed() の処理に加え、
-	 * 読み取りに成功した場合は次の画面に遷移する。
+	 * @brief RETRIEVE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @details 読み取られた工具情報をDBから取得して、正しければ追跡システムに正しいスキャンか問い合わせる。
 	 */
 	void on_qrCodeEntry_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の on_tracker_notified の処理。
+	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
+	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
+	 */
+	void on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification);
 
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態に入ったときの処理
 	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
 	 */
 	void on_enter_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
-	 * @details 読み取られた工具情報をDBから取得して表に追加する。
-	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
-	 */
-	bool on_qrCodeEntry_retrieve_read_completed();
 
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態の falseButton.on_clicked の処理
@@ -943,15 +942,7 @@ private:
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_retrieve_read_completed(plc::Notification notification);
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の on_tracker_notified の処理。
-	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
-	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
-	 * @return 正常に工具を読み取れていた場合はtrue、読み取り方が間違っていた場合はfalse。
-	 */
-	bool on_tracker_retrieve_read_completed(tracker::Notification notification);
+	void on_plc_retrieve_read_completed(const plc::Notification& notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -977,7 +968,7 @@ private:
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_container_retrieving(plc::Notification notification);
+	void on_plc_store_container_retrieving(const plc::Notification& notification);
 
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -990,7 +981,7 @@ private:
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_container_retrieved(plc::Notification notification);
+	void on_plc_store_container_retrieved(const plc::Notification& notification);
 
 	/**
 	 * @brief STORE_READY_FOR_READING 状態に入ったときの処理
@@ -1035,7 +1026,7 @@ private:
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_read_completed(plc::Notification notification);
+	void on_plc_store_read_completed(const plc::Notification& notification);
 
 	// --- 棚卸しモードの状態遷移関数 ---
 	/**
@@ -1061,7 +1052,7 @@ private:
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_reconcile_container_retrieving(plc::Notification notification);
+	void on_plc_reconcile_container_retrieving(const plc::Notification& notification);
 
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -1074,7 +1065,7 @@ private:
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_reconcile_container_retrieved(plc::Notification notification);
+	void on_plc_reconcile_container_retrieved(const plc::Notification& notification);
 
 	/**
 	 * @brief RECONCILE_READY_FOR_READING 状態に入ったときの処理。

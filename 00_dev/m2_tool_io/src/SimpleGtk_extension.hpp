@@ -79,7 +79,6 @@ public:
 
 	// メソッド
 	DEFINE_METHOD(widget, get_mapped, gboolean)
-	DEFINE_METHOD_WITH_ARGS(window, set_position, void, (GtkWindowPosition position), position)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 
@@ -106,7 +105,6 @@ public:
 
 	// メソッド
 	DEFINE_METHOD(widget, get_mapped, gboolean)
-	DEFINE_METHOD_WITH_ARGS(window, set_position, void, (GtkWindowPosition position), position)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
@@ -120,14 +118,6 @@ public:
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN(
-		"delete-event",
-		delete_event,
-		gboolean,
-		(GtkWidget* self, GdkEvent* event, Dialog* thiz),
-		std::function<bool(GdkEvent* event)>,
-		event
-	)
 };
 
 /**

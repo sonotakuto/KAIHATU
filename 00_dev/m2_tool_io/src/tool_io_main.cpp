@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	// 工具追跡クライアントのインスタンスを初期化
 	tracker::g_tool_tracker = std::make_unique<tracker::ToolTrackerClient>(
 		// ▼▼▼ このラムダ式がコールバック関数 ▼▼▼
-		[](tracker::Notification notification) {
+		[](const tracker::Notification& notification) {
 			// このラムダ式は ToolTrackerClient のリスナースレッドから呼び出される
 
 			// GUIスレッドで実行したい処理を std::function にキャプチャする

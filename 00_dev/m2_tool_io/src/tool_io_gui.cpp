@@ -258,7 +258,9 @@ MainWindow::MainWindow() :
 	m_password_authenticated(false),
 	m_gui_mode(GuiMode::RETRIEVE),
 	m_app_state(AppState::WAITING_FOR_USER_LOGIN),
-	m_text_mode(TextMode::KANJI)
+	m_text_mode(TextMode::KANJI),
+	m_plc_ready_for_action(true),		// 最初は扉が閉まっているので true
+	m_tracker_ready_for_action(true)	// 最初は不正なしなので true
 {
 	// --- コンストラクタ本体 ---
 
@@ -266,7 +268,15 @@ MainWindow::MainWindow() :
 	this->init(glade, "mainWindow");
 
 	// 2. ウィンドウの閉じるボタンでアプリケーションが終了するように設定
-	this->setDefaultCloseOperation(Window::DESTROY);
+	this->setDefaultCloseOperation(sgex::Window::CloseOperation::DESTROY);
+
+	// ダイアログは破棄せず、非表示にするだけ
+	confirmInsertCountDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
+	confirmRegroundDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
+	logoutDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
+	messageDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
+	passwordEntryDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
+	warningDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 
 	this->set_timeout(100);
 
@@ -1039,7 +1049,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_retrieve_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_retrieve_container_retrieving(notification); }
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_container_retrieving(notification); }
 	});
 
 	// --- 状態：取り出し - コンテナ搬出完了 ---
@@ -1050,7 +1060,7 @@ MainWindow::MainWindow() :
 		},
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_retrieve_container_retrieved(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_retrieve_container_retrieved(notification); }
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_container_retrieved(notification); }
 	});
 
 	// --- 状態：取り出し - 実際に補充を行う - 工具読み取り前 ---
@@ -1096,7 +1106,8 @@ MainWindow::MainWindow() :
 			}, false);
 		},
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_ready_for_reading(); },
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_ready_for_reading(); }
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_ready_for_reading(); },
+		.on_tracker_notified		= [](MainWindow* thiz, const tracker::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
 	});
 
 	// --- 状態：取り出し - 実際に補充を行う - 工具読み取り後 ---
@@ -1117,10 +1128,11 @@ MainWindow::MainWindow() :
 			}, false);
 		},
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_read_completed(); },
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_read_completed(); },
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_ready_for_reading(); },
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_read_completed(); },
 		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_retrieve_read_completed(); },
-		.on_plc_notified			= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_retrieve_read_completed(notification); }
+		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_read_completed(notification); },
+		.on_tracker_notified		= [](MainWindow* thiz, const tracker::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
 	});
 
 	// --- 状態：補充 - 移行 ---
@@ -1177,7 +1189,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName	= "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_store_container_retrieving(notification); }
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_store_container_retrieving(notification); }
 	});
 
 	// --- 状態：補充 - コンテナ搬出完了 ---
@@ -1188,7 +1200,7 @@ MainWindow::MainWindow() :
 		},
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_store_container_retrieved(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_store_container_retrieved(notification); }
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_store_container_retrieved(notification); }
 	});
 
 	// --- 状態：補充 - 実際に補充を行う - 工具読み取り前 ---
@@ -1290,7 +1302,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
 	});
 
 	// --- 状態：棚卸し - コンテナ搬出完了 ---
@@ -1301,7 +1313,7 @@ MainWindow::MainWindow() :
 		},
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, plc::Notification notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
 	});
 
 	// --- 状態：棚卸し - スキャン待ち ---
@@ -1370,7 +1382,7 @@ gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
 	return G_SOURCE_REMOVE;
 }
 
-void MainWindow::plc_on_notified(plc::Notification notification) {
+void MainWindow::plc_on_notified(const plc::Notification& notification) {
 	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", (int)notification.type);
 	switch (notification.type) {
 	case plc::NotificationType::CONNECTION_ESTABLISHED :
@@ -1391,7 +1403,7 @@ void MainWindow::plc_on_notified(plc::Notification notification) {
 					}}, true);
 					warningDialog.show_all();
 				} else {
-					warningDialog.destroy();
+					warningDialog.hide();
 				}
 				break;
 
@@ -1419,7 +1431,7 @@ void MainWindow::plc_on_notified(plc::Notification notification) {
 	}
 }
 
-void MainWindow::tracker_on_notified(tracker::Notification notification) {
+void MainWindow::tracker_on_notified(const tracker::Notification& notification) {
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
 		if (state_config.on_tracker_notified) {
@@ -1773,6 +1785,32 @@ void MainWindow::set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWin
 
 	// 変換したデータをページネーションモデルにセット (これで表示が更新される)
 	list_store_model.set_master_data(std::move(table_data_list));
+}
+
+void MainWindow::update_retrieve_read_completed_buttons() {
+	// 1. GUIの条件を判定
+	bool gui_ready_for_action = !warningDialog.get_mapped() && !m_pending_tool_info.has_value();
+
+	// 選択された中で最後の工具の時 (またはリストが空の時)
+	bool is_last_tool = (!m_retrieving_index.has_value() || m_retrieving_index.value() + 1 >= m_retrieving_tools.size());
+
+	// 2. 全システムの準備状態を判定
+	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action && m_tracker_ready_for_action;
+
+	// 3. ボタンの状態を更新 (update_ui = false で即時描画はしない)
+
+	// 終了ボタン: 全システムが準備OK かつ GUI条件(最後の工具) を満たす場合のみ有効
+	update_widget_state(&falseButton, WidgetState{
+		.is_sensitive = (all_systems_ready && is_last_tool)
+	}, false);
+
+	// 続ける/次へボタン: 全システムが準備OK の場合のみ有効
+	update_widget_state(&trueButton, WidgetState{
+		.is_sensitive = all_systems_ready
+	}, false);
+
+	// 4. 最後にUIを一括更新
+	refresh_ui(false);
 }
 
 bool MainWindow::confirm_if_reground() {
@@ -2174,7 +2212,6 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools() {
 	}).has_value())}, true);
 }
 
-
 void MainWindow::on_falseButton_retrieve_selecting_tools() {
 	liststore2columnAll.modify_master_data(
 		// ラムダ式にマスターデータへの参照(master_data)が渡される
@@ -2272,7 +2309,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 	liststore2columnAll.set_master_data(std::move(vec));
 }
 
-void MainWindow::on_plc_retrieve_container_retrieving(plc::Notification notification) {
+void MainWindow::on_plc_retrieve_container_retrieving(const plc::Notification& notification) {
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
 		auto result = notification.monitor_result.value();
 		if (result.addr == plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
@@ -2292,7 +2329,7 @@ void MainWindow::on_enter_retrieve_container_retrieved() {
 	});
 }
 
-void MainWindow::on_plc_retrieve_container_retrieved(plc::Notification notification) {
+void MainWindow::on_plc_retrieve_container_retrieved(const plc::Notification& notification) {
 	// TODO: 扉を開けるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
 		auto result = notification.monitor_result.value();
@@ -2303,13 +2340,181 @@ void MainWindow::on_plc_retrieve_container_retrieved(plc::Notification notificat
 }
 
 void MainWindow::on_enter_retrieve_ready_for_reading() {
+	// 状態変数を初期化
+	m_plc_ready_for_action = false;		// 扉が閉まるのを待つため、最初は false
+	m_tracker_ready_for_action = true;	// 最初は不正なし
+
 	liststore2columnAll.clear();
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
-	if (on_qrCodeEntry_retrieve_read_completed()) {
+	MstToolInfo retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// TODO: nullopt対応
+	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
+
+	if (unique_info_opt.has_value()) {
+		UniqueToolInfo& unique_info = unique_info_opt.value();
+		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
+			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
+				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
+			}, true);
+		}
+
+		tracker::g_tool_tracker->notify_qr_scan();
+		m_pending_tool_info = std::move(unique_info);
+	} else {
+		update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
+		}, true);
+	}
+	qrCodeEntry.grab_focus();
+}
+
+void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification) {
+	bool result = false;
+	MstToolInfo retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// TODO: nullopt対応
+
+	switch (notification.type) {
+	case tracker::NotificationType::SCAN_SUCCESS: {
+		if (m_pending_tool_info.has_value()) {
+			// 念のため基本工具情報が合致しているかチェック
+			UniqueToolInfo unique_info = std::move(m_pending_tool_info).value();
+			m_pending_tool_info.reset();
+			if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
+				DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が不正値です\n");
+				// TODO: 不正値対応
+//				update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
+//					.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
+//				}, true);
+				result = false;
+			} else {
+				// 1. この工具が既に取り出しリスト (m_operated_records) に存在するか検索
+				auto it = std::find_if(m_operated_records.begin(), m_operated_records.end(),
+					[&](const RecOperationTable& rec) {
+						return rec.unique_tool_id.has_value() && rec.unique_tool_id.value() == unique_info.id;
+					}
+				);
+
+				// 2. 存在する場合 (重複スキャン)
+				if (it != m_operated_records.end()) {
+					if (m_is_insert_operation) {
+						// 2a. インサートの場合: 個数確認ダイアログを再表示
+						DEV_PRINT("重複スキャン (インサート): ID {} の個数を更新します。\n", unique_info.id);
+						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
+							"取り出す枚数を変更します\n何枚取り出すか入力してください",
+							"とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください"
+						}}, true);
+
+						// ダイアログの初期値を、前回入力した個数に設定
+						m_insertCountEntry_current_count = it->tool_num.value_or(1);
+						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
+						confirmInsertCountDialog.run(this); // m_insertCountEntry_current_count に新しい値が入る
+
+						// 履歴ベクトル(m_operated_records)の個数を更新
+						it->tool_num = m_insertCountEntry_current_count;
+						it->proc_time = sg::now(); // 処理時刻を更新
+
+						// 表(liststore2columnAll)の個数を更新
+						// まず、表から該当する行のインデックスを検索
+						auto table_row_opt = liststore2columnAll.find_first_index_and_item(
+							[&](const MainTableData& item){ return item.id == unique_info.id; }
+						);
+
+						if (table_row_opt.has_value()) {
+							auto [index, item] = table_row_opt.value();
+							item.data_columns[5] = std::to_string(m_insertCountEntry_current_count); // 6列目(個数)を更新
+							liststore2columnAll.update(index, item); // 表の行を更新
+						} else {
+							// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
+							// TODO: 不正値対応
+							DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
+						}
+					} else {
+						// 2b. インサートでない場合: 何もしない
+						DEV_PRINT("重複スキャン (非インサート): ID {} を無視します。\n", unique_info.id);
+					}
+				} else {
+					if (m_is_insert_operation) {
+						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
+							"使用するインサートの枚数を\n入力してください",
+							"しようする インサートの まいすうを\nにゅうりょく してください"
+						}}, true);
+						m_insertCountEntry_current_count = 1;
+						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
+						confirmInsertCountDialog.run(this);
+					}
+
+					liststore2columnAll.append(MainTableData{
+						.id = unique_info.id,
+						.data_columns = {
+							fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
+							unique_info.mst_tool_info.category,
+							unique_info.mst_tool_info.maker,
+							unique_info.mst_tool_info.name,
+							unique_info.mst_tool_info.material,
+							to_string(((m_is_insert_operation)
+								? (m_insertCountEntry_current_count)
+								: (unique_info.regrind_count.value_or(0))	// TODO: nullopt対応
+							))
+						},
+						.raw_data = unique_info
+					});
+
+					m_operated_records.push_back(RecOperationTable{
+						.operation_class	= OperationClass::OUT,
+						.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// TODO: nullopt対応
+						.proc_time			= sg::now(),
+						.storage_area_id	= unique_info.storage_area_info.value().id,
+						.unique_tool_id		= unique_info.id,
+						.video_path			= tracker::g_recorder_client->get_current_filename(),
+						.tool_num			= ((m_is_insert_operation)
+							? (m_insertCountEntry_current_count)
+							: (1)
+						)
+					});
+
+					update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
+				}
+				result = true;
+			}
+		} else {
+			DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が nullopt の状況でスキャン成功通知を受け取りました\n");
+			result = false;
+			// TODO: nullopt対応
+		}
+		break;
+	}
+	case tracker::NotificationType::SCAN_FAIL: {
+		update_widget_state({&messageLabel, &warningLabel}, WidgetState{.text = UiText{
+			"作業台に埋め込まれた\nQRコードリーダーで読み取ってください",
+			"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください"
+		}}, true);
+		result = false;
+		break;
+	}
+	case tracker::NotificationType::ANOMALY_UNSCANNED_OUT: {
+		update_widget_state(&warningLabel, WidgetState{.text = UiText{
+			"QRコードリーダーで読み取らずに工具を取り出そうとしています\nQRコードリーダーで読み取ってから、工具を取り出してください",
+			"QRコードリーダーで よみとらずに こうぐを とりだそうと しています\nQRコードリーダーで よみとってから、こうぐを とりだしてください"
+		}}, true);
+		warningDialog.show_all();
+		result = false;
+		break;
+	}
+	// TODO: 不正対策
+	default: {
+		break;
+	}
+	}
+
+	if (result && warningDialog.get_mapped()) {
+		warningDialog.hide();
+	}
+	m_tracker_ready_for_action = result;
+	update_retrieve_read_completed_buttons();
+
+	if (result) {
 		set_app_state(AppState::RETRIEVE_READ_COMPLETED);
 	}
 }
@@ -2337,267 +2542,15 @@ void MainWindow::on_enter_retrieve_read_completed() {
 #endif
 }
 
-bool MainWindow::on_qrCodeEntry_retrieve_read_completed() {
-	bool result = false;
-	MstToolInfo retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// TODO: nullopt対応
-	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
-
-	if (unique_info_opt.has_value()) {
-		UniqueToolInfo& unique_info = unique_info_opt.value();
-		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
-			update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
-			}, true);
-			return false;
-		}
-
-		tracker::g_tool_tracker->notify_qr_scan();
-		m_pending_tool_info = std::move(unique_info);
-	} else {
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
-		}, true);
-		result = false;
-	}
-	qrCodeEntry.grab_focus();
-	return result;
-}
-
-bool MainWindow::on_tracker_retrieve_read_completed(tracker::Notification notification) {
-	bool result = false;
-	MstToolInfo retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// TODO: nullopt対応
-
-	switch (notification.type) {
-	case tracker::NotificationType::SCAN_SUCCESS: {
-		if (m_pending_tool_info.has_value()) {
-			// 念のため基本工具情報が合致しているかチェック
-			UniqueToolInfo& unique_info = m_pending_tool_info.value();
-			if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
-				DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が不正値です\n");
-				// TODO: 不正値対応
-//				update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-//					.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
-//				}, true);
-				return false;
-			}
-
-			// 1. この工具が既に取り出しリスト (m_operated_records) に存在するか検索
-			auto it = std::find_if(m_operated_records.begin(), m_operated_records.end(),
-				[&](const RecOperationTable& rec) {
-					return rec.unique_tool_id.has_value() && rec.unique_tool_id.value() == unique_info.id;
-				}
-			);
-
-			// 2. 存在する場合 (重複スキャン)
-			if (it != m_operated_records.end()) {
-				if (m_is_insert_operation) {
-					// 2a. インサートの場合: 個数確認ダイアログを再表示
-					DEV_PRINT("重複スキャン (インサート): ID {} の個数を更新します。\n", unique_info.id);
-					update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-						"取り出す枚数を変更します\n何枚取り出すか入力してください",
-						"とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください"
-					}}, true);
-
-					// ダイアログの初期値を、前回入力した個数に設定
-					m_insertCountEntry_current_count = it->tool_num.value_or(1);
-					m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-					confirmInsertCountDialog.run(this); // m_insertCountEntry_current_count に新しい値が入る
-
-					// 履歴ベクトル(m_operated_records)の個数を更新
-					it->tool_num = m_insertCountEntry_current_count;
-					it->proc_time = sg::now(); // 処理時刻を更新
-
-					// 表(liststore2columnAll)の個数を更新
-					// まず、表から該当する行のインデックスを検索
-					auto table_row_opt = liststore2columnAll.find_first_index_and_item(
-						[&](const MainTableData& item){ return item.id == unique_info.id; }
-					);
-
-					if (table_row_opt.has_value()) {
-						auto [index, item] = table_row_opt.value();
-						item.data_columns[5] = std::to_string(m_insertCountEntry_current_count); // 6列目(個数)を更新
-						liststore2columnAll.update(index, item); // 表の行を更新
-					} else {
-						// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
-						// TODO: 不正値対応
-						DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
-					}
-				} else {
-					// 2b. インサートでない場合: 何もしない
-					DEV_PRINT("重複スキャン (非インサート): ID {} を無視します。\n", unique_info.id);
-				}
-			} else {
-				if (m_is_insert_operation) {
-					update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-						"使用するインサートの枚数を\n入力してください",
-						"しようする インサートの まいすうを\nにゅうりょく してください"
-					}}, true);
-					m_insertCountEntry_current_count = 1;
-					m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-					confirmInsertCountDialog.run(this);
-				}
-
-				liststore2columnAll.append(MainTableData{
-					.id = unique_info.id,
-					.data_columns = {
-						fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
-						unique_info.mst_tool_info.category,
-						unique_info.mst_tool_info.maker,
-						unique_info.mst_tool_info.name,
-						unique_info.mst_tool_info.material,
-						to_string(((m_is_insert_operation)
-							? (m_insertCountEntry_current_count)
-							: (unique_info.regrind_count.value_or(0))	// TODO: nullopt対応
-						))
-					},
-					.raw_data = unique_info
-				});
-
-				m_operated_records.push_back(RecOperationTable{
-					.operation_class	= OperationClass::OUT,
-					.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// TODO: nullopt対応
-					.proc_time			= sg::now(),
-					.storage_area_id	= unique_info.storage_area_info.value().id,
-					.unique_tool_id		= unique_info.id,
-					.video_path			= tracker::g_recorder_client->get_current_filename(),
-					.tool_num			= ((m_is_insert_operation)
-						? (m_insertCountEntry_current_count)
-						: (1)
-					)
-				});
-
-				update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
-			}
-			result = true;
-		} else {
-			DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が nullopt の状況でスキャン成功通知を受け取りました\n");
-			result = false;
-			// TODO: nullopt対応
-		}
-		break;
-	}
-	case tracker::NotificationType::SCAN_FAIL: {
-		update_widget_state(&messageLabel, WidgetState{.text = UiText{
-			"作業台に埋め込まれた\nQRコードリーダーで読み取ってください",
-			"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください"
-		}}, true);
-		break;
-	}
-	case tracker::NotificationType::BACK_UNSCANNED_IN: {
-		update_widget_state(&warningLabel, WidgetState{.text = UiText{
-			"QRコードリーダーで読み取らずに工具を取り出そうとしています\nQRコードリーダーで読み取ってから、工具を取り出してください",
-			"QRコードリーダーで よみとらずに こうぐを とりだそうと しています\nQRコードリーダーで よみとってから、こうぐを とりだしてください"
-		}}, true);
-		warningDialog.show_all();
-		break;
-	}
-	// TODO: 不正対策
-	}
-
-	qrCodeEntry.grab_focus();
-	return result;
-}
-
-/*
-		// 1. この工具が既に取り出しリスト (m_operated_records) に存在するか検索
-		auto it = std::find_if(m_operated_records.begin(), m_operated_records.end(),
-			[&](const RecOperationTable& rec) {
-				return rec.unique_tool_id.has_value() && rec.unique_tool_id.value() == unique_info.id;
-			}
-		);
-
-		// 2. 存在する場合 (重複スキャン)
-		if (it != m_operated_records.end()) {
-			if (m_is_insert_operation) {
-				// 2a. インサートの場合: 個数確認ダイアログを再表示
-				DEV_PRINT("重複スキャン (インサート): ID {} の個数を更新します。\n", unique_info.id);
-				update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-					"取り出す枚数を変更します\n何枚取り出すか入力してください",
-					"とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください"
-				}}, true);
-
-				// ダイアログの初期値を、前回入力した個数に設定
-				m_insertCountEntry_current_count = it->tool_num.value_or(1);
-				m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-				confirmInsertCountDialog.run(this); // m_insertCountEntry_current_count に新しい値が入る
-
-				// 履歴ベクトル(m_operated_records)の個数を更新
-				it->tool_num = m_insertCountEntry_current_count;
-				it->proc_time = sg::now(); // 処理時刻を更新
-
-				// 表(liststore2columnAll)の個数を更新
-				// まず、表から該当する行のインデックスを検索
-				auto table_row_opt = liststore2columnAll.find_first_index_and_item(
-					[&](const MainTableData& item){ return item.id == unique_info.id; }
-				);
-
-				if (table_row_opt.has_value()) {
-					auto [index, item] = table_row_opt.value();
-					item.data_columns[5] = std::to_string(m_insertCountEntry_current_count); // 6列目(個数)を更新
-					liststore2columnAll.update(index, item); // 表の行を更新
-				} else {
-					// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
-					DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
-				}
-			} else {
-				// 2b. インサートでない場合: 何もしない
-				DEV_PRINT("重複スキャン (非インサート): ID {} を無視します。\n", unique_info.id);
-			}
-		} else {
-			if (m_is_insert_operation) {
-				update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-					"使用するインサートの枚数を\n入力してください",
-					"しようする インサートの まいすうを\nにゅうりょく してください"
-				}}, true);
-				m_insertCountEntry_current_count = 1;
-				m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-				confirmInsertCountDialog.run(this);
-			}
-
-			liststore2columnAll.append(MainTableData{
-				.id = unique_info.id,
-				.data_columns = {
-					fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
-					unique_info.mst_tool_info.category,
-					unique_info.mst_tool_info.maker,
-					unique_info.mst_tool_info.name,
-					unique_info.mst_tool_info.material,
-					to_string(((m_is_insert_operation)
-						? (m_insertCountEntry_current_count)
-						: (unique_info.regrind_count.value_or(0))	// TODO: nullopt対応
-					))
-				},
-				.raw_data = unique_info
-			});
-
-			m_operated_records.push_back(RecOperationTable{
-				.operation_class	= OperationClass::OUT,
-				.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// TODO: nullopt対応
-				.proc_time			= sg::now(),
-				.storage_area_id	= unique_info.storage_area_info.value().id,
-				.unique_tool_id		= unique_info.id,
-				.video_path			= tracker::g_recorder_client->get_current_filename(),
-				.tool_num			= ((m_is_insert_operation)
-					? (m_insertCountEntry_current_count)
-					: (1)
-				)
-			});
-
-			update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
-		}
-		result = true;
-	} else {
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
-		}, true);
-		result = false;
-	}
-	qrCodeEntry.grab_focus();
-	return result;
-}*/
-
 void MainWindow::on_falseButton_retrieve_read_completed() {
+	// TODO: エラー対応
+	plc::store_container();
+	// TODO: 扉ロック
+	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_DOOR_OPEND, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
+	db::disconnect();
+	tracker::g_tool_tracker->disconnect();
+	tracker::g_recorder_client->stop_recording();
 	m_operated_records.clear();
 	m_retrieve_backup_table.clear();
 	m_retrieving_tools.clear();
@@ -2608,7 +2561,13 @@ void MainWindow::on_falseButton_retrieve_read_completed() {
 }
 
 void MainWindow::on_trueButton_retrieve_read_completed() {
+	// TODO: エラー対応
+	plc::store_container();
+	// TODO: 扉ロック
+	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_DOOR_OPEND, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
+	tracker::g_tool_tracker->disconnect();
+	tracker::g_recorder_client->stop_recording();
 	m_operated_records.clear();
 	if (m_retrieving_index.has_value() && m_retrieving_index.value() + 1 < m_retrieving_tools.size()) {
 		// 次の工具の搬出処理へ
@@ -2630,7 +2589,7 @@ void MainWindow::on_trueButton_retrieve_read_completed() {
 	}
 }
 
-void MainWindow::on_plc_retrieve_read_completed(plc::Notification notification) {
+void MainWindow::on_plc_retrieve_read_completed(const plc::Notification& notification) {
 	// TODO: 扉を閉めるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
 		auto result = notification.monitor_result.value();
@@ -2683,7 +2642,7 @@ void MainWindow::on_enter_store_container_retrieving() {
 	});
 }
 
-void MainWindow::on_plc_store_container_retrieving(plc::Notification notification) {
+void MainWindow::on_plc_store_container_retrieving(const plc::Notification& notification) {
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
 		auto result = notification.monitor_result.value();
 		if (result.addr == plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
@@ -2703,7 +2662,7 @@ void MainWindow::on_enter_store_container_retrieved() {
 	});
 }
 
-void MainWindow::on_plc_store_container_retrieved(plc::Notification notification) {
+void MainWindow::on_plc_store_container_retrieved(const plc::Notification& notification) {
 	// TODO: 扉を開けるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
 		auto result = notification.monitor_result.value();
@@ -2790,7 +2749,7 @@ void MainWindow::on_trueButton_store_read_completed() {
 	set_app_state(AppState::STORE);
 }
 
-void MainWindow::on_plc_store_read_completed(plc::Notification notification) {
+void MainWindow::on_plc_store_read_completed(const plc::Notification& notification) {
 	// TODO: 扉を閉めるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// TODO: nullopt対応
 		auto result = notification.monitor_result.value();
@@ -2814,7 +2773,7 @@ void MainWindow::on_enter_reconcile_container_retrieving() {
 
 }
 
-void MainWindow::on_plc_reconcile_container_retrieving(plc::Notification notification) {
+void MainWindow::on_plc_reconcile_container_retrieving(const plc::Notification& notification) {
 
 }
 
@@ -2822,7 +2781,7 @@ void MainWindow::on_enter_reconcile_container_retrieved() {
 
 }
 
-void MainWindow::on_plc_reconcile_container_retrieved(plc::Notification notification) {
+void MainWindow::on_plc_reconcile_container_retrieved(const plc::Notification& notification) {
 
 }
 

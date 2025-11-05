@@ -12,7 +12,7 @@ namespace tracker {
 // ToolTrackerClient クラス実装
 // =================================
 
-ToolTrackerClient::ToolTrackerClient(std::function<void(Notification)> callback)
+ToolTrackerClient::ToolTrackerClient(std::function<void(const Notification&)> callback)
 	: keep_listening(false), notification_callback(callback) {}
 
 ToolTrackerClient::~ToolTrackerClient() {
@@ -121,7 +121,7 @@ void ToolTrackerClient::listener_thread_func() {
 				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_1	.data(),	TRACKER_MSG_C_BACK_1	.size()) == 0) { notification.type = NotificationType::BACK_UNSCANNED_IN;		}
 				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_2	.data(),	TRACKER_MSG_C_ANOMALY_2	.size()) == 0) { notification.type = NotificationType::ANOMALY_SCANNED_IN;		}
 				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_2	.data(),	TRACKER_MSG_C_BACK_2	.size()) == 0) { notification.type = NotificationType::BACK_SCANNED_OUT;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_ACK			.data(),	TRACKER_MSG_ACK			.size()) == 0) { notification.type = NotificationType::ACK;					}
+				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_ACK			.data(),	TRACKER_MSG_ACK			.size()) == 0) { notification.type = NotificationType::ACK;						}
 				else notification.type = NotificationType::UNKNOWN;
 
 				notification.raw_message = std::move(buffer);	// 固定長配列をムーブ

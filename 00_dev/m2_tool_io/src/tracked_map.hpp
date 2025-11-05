@@ -1,3 +1,7 @@
+/**
+ * @file tracked_map.hpp
+ * @brief 更新されたキーを追跡する機能を持つマップクラスを提供するヘッダファイル。
+ */
 #pragma once
 
 #include <condition_variable>
@@ -8,6 +12,10 @@
 #include <functional> // std::less
 #include <memory> // std::allocator, std::allocator_traits
 
+/**
+ * @namespace utils
+ * @brief ユーティリティ関数やクラスをまとめた名前空間
+ */
 namespace utils {
 
 /**

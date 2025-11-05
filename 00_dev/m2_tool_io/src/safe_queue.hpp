@@ -1,3 +1,7 @@
+/**
+ * @file safe_queue.hpp
+ * @brief スレッドセーフなFIFOキューを提供するヘッダファイル。
+ */
 #pragma once
 
 #include <condition_variable>
@@ -5,6 +9,10 @@
 #include <optional>
 #include <queue>
 
+/**
+ * @namespace utils
+ * @brief ユーティリティ関数やクラスをまとめた名前空間
+ */
 namespace utils {
 /**
  * @class SafeQueue

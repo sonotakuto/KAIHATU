@@ -21,6 +21,10 @@ namespace plc {
 
 // --- 型定義 ---
 
+/**
+ * @struct WatchFlags
+ * @brief PLCの状態監視リストの各項目の監視フラグを定義する構造体。
+ */
 struct WatchFlags {
 	std::optional<bool>	enable_fall_notification{};	// ONからOFFになった時にGUIに通知するか
 	std::optional<bool>	enable_rise_notification{};	// OFFからONになった時にGUIに通知するか
@@ -45,9 +49,9 @@ struct WatchFlags {
  * @details 立ち上がり/立ち下がりエッジを検出し、個別の通知を送信できる。
  */
 struct WatchData {
-	WatchFlags	flags{};		// 監視対象のMデバイスアドレス
+	WatchFlags	flags{};		// 監視フラグ
 	bool		prev_status{};	// 前回の状態。通知トリガの検知用。
-	bool		is_first{};		// flags を外部から更新する際 true にする。これがtrueのとき、現在の状態に応じて必ず通知を試行し、試行後このフラグをfalseにする。
+	bool		is_first{};		// flags を外部から更新する際 true にする。これが true のとき、現在の状態に応じて必ず通知を試行し、試行後このフラグを false にする。
 };
 
 /**
@@ -56,7 +60,7 @@ struct WatchData {
  */
 struct WatchCommand {
 	std::uint16_t	addr{};		// 監視対象
-	WatchFlags		flags{};	// 有効にするか無効にするか
+	WatchFlags		flags{};	// 設定する監視フラグ
 };
 
 /**
@@ -110,9 +114,6 @@ constexpr std::uint16_t M_DEVICE_DOOR_OPEND		= 0;	// ドアの状態 // TODO: �
 
 /// @brief GUIスレッドからPLCリスナースレッドへの指令を格納するスレッドセーフなキュー。
 inline utils::SafeQueue<WatchCommand> g_command_queue;
-
-/// @brief PLCの状態監視リスト。キーは監視内容のユニークな名前。
-inline std::map<std::uint16_t, WatchData> g_watchlist;
 
 // --- 関数宣言 ---
 

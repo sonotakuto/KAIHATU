@@ -20,6 +20,8 @@ static const std::map<std::uint16_t, std::string> mc_error_map = {
 static sg::Socket socket;
 /// @brief 複数のスレッドからソケットへ安全にアクセスするためのミューテックス
 static std::recursive_mutex socket_mutex;
+/// @brief PLCの状態監視リスト。キーは監視内容のユニークな名前。
+static std::map<std::uint16_t, WatchData> g_watchlist;
 
 // --- クラスのメンバ関数 ---
 
@@ -221,19 +223,39 @@ static void run_status_monitor() {
 	std::map<std::uint16_t, std::chrono::steady_clock::time_point> one_shot_timers;
 
 	while (true) {
-		// --- 1. GUIスレッドからの指令を処理 ---
-		while (auto command_opt = g_command_queue.try_pop()) {
-			auto& command = command_opt.value();
+		// --- 1. 指令処理 (監視対象の有無でpop/try_popを切り替え) ---
+		std::optional<WatchCommand> command_opt;
+		if (g_watchlist.empty()) {
+			// 監視対象が無い場合、指令が来るまで待機する
+			command_opt = g_command_queue.pop();
+		} else {
+			// 監視対象がある場合、指令があれば処理するが無ければスルーする
+			command_opt = g_command_queue.try_pop();
+		}
+
+		// コマンドが空になるまで、まとめて受け取る
+		while (command_opt.has_value()) {
+			WatchCommand& command = command_opt.value();
 			bool is_one_shot = command.flags.rise_is_one_shot.value_or(false) || command.flags.fall_is_one_shot.value_or(false);
 
 			if (g_watchlist.count(command.addr)) {
-				// 既存の監視項目を更新
-				auto& item = g_watchlist.at(command.addr);
-				item.flags.merge(command.flags);
-				item.is_first = true;
+				if (command.flags.is_active()) {
+					// 既存の監視項目を更新
+					auto& item = g_watchlist.at(command.addr);
+					item.flags.merge(command.flags);
+					item.is_first = true;
+					DEV_PRINT("PLC監視項目 '{}' を更新しました。\n", command.addr);
+				} else {
+					// 監視項目を削除
+					g_watchlist.erase(command.addr);
+					DEV_PRINT("PLC監視項目 '{}' を削除しました。\n", command.addr);
+				}
 			} else {
-				// 新しい監視項目を追加
-				g_watchlist[command.addr] = plc::WatchData{.flags = command.flags, .is_first = true};
+				if (command.flags.is_active()) {
+					// 新しい監視項目を追加
+					g_watchlist.try_emplace(command.addr, plc::WatchData{.flags = command.flags, .is_first = true});
+					DEV_PRINT("PLC監視項目 '{}' を追加しました。\n", command.addr);
+				}
 			}
 
 			// もし、この指令がワンショット通知の要求なら、現在時刻を記録
@@ -241,13 +263,13 @@ static void run_status_monitor() {
 				one_shot_timers[command.addr] = std::chrono::steady_clock::now();
 				DEV_PRINT("PLC(STUB): M{} の one-shot 監視要求を受付。\n", command.addr);
 			}
+			command_opt = g_command_queue.try_pop();
 		}
 
 		// --- 2. ワンショットイベントを時間経過でシミュレート ---
 		const auto now = std::chrono::steady_clock::now();
 		for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ループ内でインクリメント */) {
-			auto& addr = it->first;
-			auto& item = it->second;
+			auto& [addr, item] = *it;
 
 			// ワンショットタイマーがセットされているか確認
 			if (one_shot_timers.count(addr)) {
@@ -304,30 +326,42 @@ static void run_status_monitor() {
 
 			// --- 1. 指令処理 (監視対象の有無でpop/try_popを切り替え) ---
 			std::optional<WatchCommand> command_opt;
-			command_opt = g_command_queue.try_pop();
+			if (g_watchlist.empty()) {
+				// 監視対象が無い場合、指令が来るまで待機する
+				command_opt = g_command_queue.pop();
+			} else {
+				// 監視対象がある場合、指令があれば処理するが無ければスルーする
+				command_opt = g_command_queue.try_pop();
+			}
 
-			if (command_opt.has_value()) {
-				WatchCommand command = command_opt.value();
+			// コマンドが空になるまで、まとめて受け取る
+			while (command_opt.has_value()) {
+				WatchCommand& command = command_opt.value();
 				if (g_watchlist.count(command.addr)) {
 					if (command.flags.is_active()) {
+						// 既存の監視項目を更新
 						auto& item = g_watchlist.at(command.addr);
 						item.flags.merge(command.flags);
-						if (item.flags.merge(command.flags)) {
-							item.is_first = true;
-						}
-						DEV_PRINT("PLC監視項目 '{}' を設定しました。\n", command.addr);
+						item.is_first = true;
+						DEV_PRINT("PLC監視項目 '{}' を更新しました。\n", command.addr);
 					} else {
+						// 監視項目を削除
 						g_watchlist.erase(command.addr);
+						DEV_PRINT("PLC監視項目 '{}' を削除しました。\n", command.addr);
+					}
+				} else {
+					if (command.flags.is_active()) {
+						// 新しい監視項目を追加
+						g_watchlist.try_emplace(command.addr, plc::WatchData{.flags = command.flags, .is_first = true});
+						DEV_PRINT("PLC監視項目 '{}' を追加しました。\n", command.addr);
 					}
 				}
-				break;
+				command_opt = g_command_queue.try_pop();
 			}
 
 			// --- 2. 監視処理 (g_watchlist 内のアクティブな項目全ての値を順番にPLCに問い合わせる) ---
 			for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ここではインクリメントしない */) {
-				// auto& [addr, item] の代わりに、it->first と it->second を使う
-				auto& addr = it->first;
-				auto& item = it->second;
+				auto& [addr, item] = *it;
 
 				bool current_state = false;
 				if (read_M_status(addr, current_state)) {
@@ -361,7 +395,7 @@ static void run_status_monitor() {
 				}
 			}
 
-			// ポーリング間隔で待機 (監視対象がない場合はpopで待機しているので、このsleepは実行されない)
+			// ポーリング間隔で待機 (監視対象がない場合はpopで待機しているので、この行は実行されない)
 			timer.wait_for_next(POLLING_INTERVAL_MS, true);
 
 		} catch (const std::exception& e) {
