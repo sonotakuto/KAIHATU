@@ -110,6 +110,8 @@ void ToolTrackerClient::listener_thread_func() {
 	while (keep_listening) {
 		try {
 			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
+			DEV_PRINT(stderr, "[ToolTrackerClient] Received {} bytes\n", bytes_read);
+			DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", std::string(buffer.data(), bytes_read));
 
 			if (bytes_read == TRACKER_MSG_LENGTH) {
 				Notification notification;
