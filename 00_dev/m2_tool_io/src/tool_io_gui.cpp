@@ -2389,14 +2389,19 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 //				}, true);
 				result = false;
 			} else {
-				// 1. この工具が既に取り出しリスト (m_operated_records) に存在するか検索
+				// 警告ダイアログが表示されていれば非表示に
+				if (warningDialog.get_mapped()) {
+					warningDialog.hide();
+				}
+
+				// この工具が既に取り出しリスト (m_operated_records) に存在するか検索
 				auto it = std::find_if(m_operated_records.begin(), m_operated_records.end(),
 					[&](const RecOperationTable& rec) {
 						return rec.unique_tool_id.has_value() && rec.unique_tool_id.value() == unique_info.id;
 					}
 				);
 
-				// 2. 存在する場合 (重複スキャン)
+				// 存在する場合 (重複スキャン)
 				if (it != m_operated_records.end()) {
 					if (m_is_insert_operation) {
 						// 2a. インサートの場合: 個数確認ダイアログを再表示
@@ -2508,9 +2513,6 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 	}
 	}
 
-	if (result && warningDialog.get_mapped()) {
-		warningDialog.hide();
-	}
 	m_tracker_ready_for_action = result;
 	update_retrieve_read_completed_buttons();
 
