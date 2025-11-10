@@ -6,6 +6,7 @@
 #pragma once
 #include <optional>
 #include <SimpleGtk> // インストール済みのSimpleGtkライブラリをインクルード
+#include "./utility.hpp"
 
 /**
  * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
@@ -425,6 +426,7 @@ public:
 
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_selection, get_selected, gboolean, (GtkTreeModel **model, GtkTreeIter *iter), model, iter)
+	DEFINE_METHOD(tree_selection, unselect_all, void)
 
 	// プロパティ
 
@@ -512,6 +514,8 @@ protected:
 	std::vector<ItemType> m_data_model;
 	/// @brief ItemTypeからGtkListStoreの行データに変換するためのセッター関数。
 	std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> m_row_setter;
+	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
+	bool m_is_programmatically_changing;
 
 	/**
 	 * @brief sgex::ListStore へのポインタを取得します。
@@ -562,7 +566,7 @@ protected:
 	ListStoreModelBase(
 		const std::vector<GType>& column_types,
 		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
-	) : m_row_setter(row_setter)
+	) : m_row_setter(row_setter), m_is_programmatically_changing(false)
 	{
 		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
 		GtkListStore* new_gtk_store = gtk_list_store_newv(column_types.size(), (GType*)column_types.data());
@@ -581,6 +585,7 @@ protected:
 
 	/// @brief C++モデルとGtkListStoreの両方から全ての行を削除します。
 	void clear() {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_data_model.clear();
 		m_list_store_ptr->clear();
 	}
@@ -591,6 +596,7 @@ protected:
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const ItemType& item) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
@@ -607,6 +613,7 @@ protected:
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const std::vector<ItemType>& items) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
@@ -625,6 +632,7 @@ protected:
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type position, const ItemType& item) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		size_type original_position = position;
 		bool position_was_clamped = false;
 
@@ -657,6 +665,7 @@ protected:
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type position, const std::vector<ItemType>& items) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
@@ -677,6 +686,7 @@ protected:
 	 * @return 削除に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool erase(size_type position) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (position >= m_data_model.size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
@@ -695,6 +705,7 @@ protected:
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool erase(std::vector<size_type> positions) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		// ★ 先に全てのインデックスが有効かチェック
 		for (size_type pos : positions) {
 			if (pos >= size()) {
@@ -716,6 +727,7 @@ protected:
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool update(size_type position, const ItemType& item) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (position >= m_data_model.size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
@@ -735,6 +747,7 @@ protected:
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool update(const std::map<size_type, ItemType>& updates) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		// ★ 先に全てのインデックスが有効かチェック
 		for (const auto& [pos, item] : updates) {
 			if (pos >= size()) {
@@ -787,7 +800,7 @@ protected:
 	 */
 	std::vector<size_type> find_indices(std::function<bool(const ItemType&)> predicate) const {
 		std::vector<size_type> found_indices;
-		for (size_t i = 0; i < m_data_model.size(); ++i) {
+		for (size_t i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				found_indices.push_back(i);
 			}
@@ -831,7 +844,7 @@ protected:
 	 */
 	std::vector<std::pair<size_type, ItemType>> find_indices_and_items(std::function<bool(const ItemType&)> predicate) const {
 		std::vector<std::pair<size_type, ItemType>> found_pairs;
-		for (size_t i = 0; i < m_data_model.size(); ++i) {
+		for (size_t i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				found_pairs.emplace_back(i, m_data_model[i]);
 			}
@@ -852,7 +865,7 @@ protected:
 	 * ```
 	 */
 	std::optional<size_type> find_first_index(std::function<bool(const ItemType&)> predicate) const {
-		for (size_t i = 0; i < m_data_model.size(); ++i) {
+		for (size_t i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				return i;
 			}
@@ -894,7 +907,7 @@ protected:
 	 * ```
 	 */
 	std::optional<std::pair<size_type, ItemType>> find_first_index_and_item(std::function<bool(const ItemType&)> predicate) const {
-		for (size_t i = 0; i < m_data_model.size(); ++i) {
+		for (size_t i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				return std::make_pair(i, m_data_model[i]);
 			}
@@ -915,8 +928,45 @@ class TreeViewListStoreModel : public ListStoreModelBase<ItemType> {
 public:
 	using size_type = typename ListStoreModelBase<ItemType>::size_type;
 private:
-	/// @brief このモデルが関連付けられているTreeViewウィジェット。
+	/// @brief このモデルが関連付けられている TreeView ウィジェット。
 	sgex::TreeView& m_tree_view;
+	/// @brief このモデルが関連付けられている TreeView の Selection。
+	sgex::TreeSelection m_tree_selection;
+	/// @brief ユーザーがウィジェットを操作したことを示すフラグ
+	bool m_user_initiated_selection = false;
+	/// @brief 外部に通知するコールバック (ローカルインデックスを渡す)
+	std::function<void(std::optional<size_type>)> m_user_selection_callback = nullptr;
+
+	/**
+	 * @brief (内部ハンドラ) TreeView の button-press-event に接続
+	 * @param[in] event GdkEventButton イベントデータ
+	 * @return イベントが処理された場合は true、伝播させる場合は false
+	 */
+	bool internal_on_button_press(GdkEventButton* event) {
+		if (event->button == GDK_BUTTON_PRIMARY) {
+			m_user_initiated_selection = true;
+		}
+		return false; // イベントを伝播させ、GTKの選択処理を続行させる
+	}
+
+	/**
+	 * @brief (内部ハンドラ) TreeSelection の changed に接続
+	 */
+	void internal_on_selection_changed() {
+		// モデル更新中、またはユーザー起因でない場合は無視
+		if (this->m_is_programmatically_changing || !m_user_initiated_selection) {
+			return;
+		}
+
+		// 処理が開始したのでフラグをリセット
+		m_user_initiated_selection = false;
+
+		// コールバックが登録されていれば呼び出す
+		if (m_user_selection_callback) {
+			// 現在選択されている行のインデックスを渡す
+			m_user_selection_callback(get_selected_index());
+		}
+	}
 
 public:
 	/**
@@ -930,22 +980,47 @@ public:
 		const std::vector<GType>& column_types,
 		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
 	) : ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
-		m_tree_view(tree_view)
+		m_tree_view(tree_view),
+		m_tree_selection(tree_view.get_selection()),
+		m_user_initiated_selection(false)
 	{
 		// TreeViewに、基底クラスで生成された新しいListStoreモデルをセットします。
 		m_tree_view.set_model(this->get_gtk_model());
+
+		// 内部ハンドラを接続
+		m_tree_view.on_button_press_event([this](GdkEventButton* event){ return this->internal_on_button_press(event); });
+		m_tree_selection.on_changed([this](){ this->internal_on_selection_changed(); });
 	}
 
 	// --- TreeView特化の機能 ---
 
 	/**
+	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。
+	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
+	 * インデックスが無効な場合は std::nullopt が渡されます。
+	 */
+	void on_user_selection_changed(std::function<void(std::optional<size_type>)> callback) {
+		m_user_selection_callback = callback;
+	}
+
+	/**
+	 * @brief 全ての選択を解除します。
+	 * @details このメソッドは、他のテーブルの選択が変更されたときに
+	 * 呼び出されることを想定しています。これにより、複数のテーブル間で
+	 * 選択状態を同期させることができます。
+	 */
+	void unselect_all() {
+		utils::scoped_value_guard guard(this->m_is_programmatically_changing, true);
+		m_tree_selection.unselect_all();	// GtkTreeSelection の unselect_all を呼ぶ
+	}
+
+	/**
 	 * @brief 現在TreeViewで選択されている行のインデックスを取得します。
 	 * @return 選択されている行のインデックス。なければ空のoptional。
 	 */
-	std::optional<size_type> get_selected_index() const {
-		sgex::TreeSelection selection(m_tree_view.get_selection());
+	std::optional<size_type> get_selected_index() {
 		GtkTreeIter iter;
-		if (selection.get_selected(nullptr, &iter)) {
+		if (m_tree_selection.get_selected(nullptr, &iter)) {
 			sgex::TreePath path(this->get_sg_store()->get_path(&iter));
 			if (!path) {
 				return std::nullopt;
@@ -960,7 +1035,7 @@ public:
 	 * @brief 現在選択されている行のデータをC++モデルから取得します。
 	 * @return 選択されていれば行データ、なければ空のoptional。
 	 */
-	std::optional<ItemType> get_selected_item() const {
+	std::optional<ItemType> get_selected_item() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
 			return this->get_item(index_opt.value());
@@ -972,7 +1047,7 @@ public:
 	 * @brief 現在選択されている行のインデックスと行データのペアを取得します。
 	 * @return 選択されていればインデックスと行データのペア、なければ空のoptional。
 	 */
-	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() const {
+	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
 			return std::make_pair(index_opt.value(), this->get_item(index_opt.value()));
@@ -981,6 +1056,7 @@ public:
 	}
 };
 
+// TODO: 11/10 次はここを二重処理防止用に改造
 /**
  * @class PaginatedListStoreModel
  * @brief 複数のTreeViewListStoreModelを1ページとして扱い、ページネーション機能を提供するクラス。
@@ -1001,6 +1077,10 @@ private:
 	std::vector<TreeViewListStoreModel<ItemType>*> m_page_models;
 	/// @brief 現在表示中のページ番号 (0から始まるインデックス)
 	int m_current_page_index;
+	/// @brief 外部に通知するコールバック (グローバルインデックスを渡す)
+	std::function<void(std::optional<size_type>)> m_user_selection_callback;
+	/// @brief 内部でデータ変更中かどうかのフラグ
+	bool m_is_processing_model_update;
 
 public:
 	/**
@@ -1438,7 +1518,7 @@ public:
 	 */
 	std::vector<size_type> find_indices(std::function<bool(const ItemType&)> predicate) const {
 		std::vector<size_type> found_indices;
-		for (size_t i = 0; i < m_master_data.size(); ++i) {
+		for (size_t i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				found_indices.push_back(i);
 			}
@@ -1482,7 +1562,7 @@ public:
 	 */
 	std::vector<std::pair<size_type, ItemType>> find_indices_and_items(std::function<bool(const ItemType&)> predicate) const {
 		std::vector<std::pair<size_type, ItemType>> found_pairs;
-		for (size_type i = 0; i < m_master_data.size(); ++i) {
+		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				found_pairs.emplace_back(i, m_master_data[i]);
 			}
@@ -1503,7 +1583,7 @@ public:
 	 * ```
 	 */
 	std::optional<size_type> find_first_index(std::function<bool(const ItemType&)> predicate) const {
-		for (size_type i = 0; i < m_master_data.size(); ++i) {
+		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				return i;
 			}
@@ -1545,7 +1625,7 @@ public:
 	 * ```
 	 */
 	std::optional<std::pair<size_type, ItemType>> find_first_index_and_item(std::function<bool(const ItemType&)> predicate) const {
-		for (size_type i = 0; i < m_master_data.size(); ++i) {
+		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				return std::make_pair(i, m_master_data[i]);
 			}
@@ -1562,7 +1642,7 @@ public:
 		size_t page_start_index = m_current_page_index * total_rows_per_page;
 
 		// 管理している全てのTreeViewをチェック
-		for (size_t i = 0; i < m_page_models.size(); ++i) {
+		for (size_t i = 0; i < m_page_models.size(); i++) {
 			auto local_index_opt = m_page_models[i]->get_selected_index();
 			if (local_index_opt.has_value()) {
 				int local_index = local_index_opt.value();

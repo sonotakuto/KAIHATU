@@ -62,7 +62,7 @@
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
                         <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
@@ -83,7 +83,7 @@
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
                         <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
@@ -104,7 +104,7 @@
                         <property name="width_request">200</property>
                         <property name="height_request">50</property>
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="can_focus">False</property>
                         <property name="focus_on_click">False</property>
                         <property name="receives_default">True</property>
                         <style>
@@ -264,77 +264,117 @@ message message message message message</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkGrid">
+                  <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="halign">center</property>
-                    <property name="row_homogeneous">True</property>
+                    <property name="valign">center</property>
+                    <property name="spacing">30</property>
                     <child>
-                      <object class="GtkLabel" id="programLabel">
-                        <property name="width_request">210</property>
-                        <property name="height_request">50</property>
+                      <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">プログラム番号：</property>
-                        <property name="xalign">0</property>
+                        <property name="halign">center</property>
+                        <property name="row_homogeneous">True</property>
+                        <child>
+                          <object class="GtkLabel" id="programLabel">
+                            <property name="width_request">210</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">プログラム番号：</property>
+                            <property name="xalign">0</property>
+                          </object>
+                          <packing>
+                            <property name="left_attach">0</property>
+                            <property name="top_attach">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="lineLabel">
+                            <property name="width_request">210</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="valign">center</property>
+                            <property name="label" translatable="yes">ライン番号：</property>
+                            <property name="justify">fill</property>
+                            <property name="xalign">0</property>
+                          </object>
+                          <packing>
+                            <property name="left_attach">0</property>
+                            <property name="top_attach">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkEntry" id="lineEntry">
+                            <property name="width_request">200</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="valign">center</property>
+                            <property name="editable">False</property>
+                            <property name="text" translatable="yes">aaaaa</property>
+                            <property name="shadow_type">etched-out</property>
+                          </object>
+                          <packing>
+                            <property name="left_attach">1</property>
+                            <property name="top_attach">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkEntry" id="programEntry">
+                            <property name="width_request">200</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="valign">center</property>
+                            <property name="editable">False</property>
+                            <property name="text" translatable="yes">aaaaa</property>
+                            <property name="shadow_type">etched-out</property>
+                          </object>
+                          <packing>
+                            <property name="left_attach">1</property>
+                            <property name="top_attach">1</property>
+                          </packing>
+                        </child>
+                        <style>
+                          <class name="font-normal"/>
+                          <class name="font-size_25px"/>
+                        </style>
                       </object>
                       <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">1</property>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkLabel" id="lineLabel">
-                        <property name="width_request">210</property>
-                        <property name="height_request">50</property>
+                      <object class="GtkButton" id="listChangeButton">
+                        <property name="label" translatable="yes">ツーリングリスト
+変更</property>
+                        <property name="width_request">280</property>
+                        <property name="height_request">95</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="valign">center</property>
-                        <property name="label" translatable="yes">ライン番号：</property>
-                        <property name="justify">fill</property>
-                        <property name="xalign">0</property>
+                        <property name="focus_on_click">False</property>
+                        <property name="receives_default">True</property>
+                        <property name="halign">center</property>
+                        <style>
+                          <class name="button"/>
+                          <class name="falseButton"/>
+                          <class name="border-normal"/>
+                          <class name="font-bold"/>
+                          <class name="font-size_30px"/>
+                        </style>
                       </object>
                       <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">0</property>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack_type">end</property>
+                        <property name="position">1</property>
                       </packing>
                     </child>
-                    <child>
-                      <object class="GtkEntry" id="programEntry">
-                        <property name="width_request">200</property>
-                        <property name="height_request">50</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">center</property>
-                        <property name="editable">False</property>
-                        <property name="text" translatable="yes">aaaaa</property>
-                        <property name="shadow_type">etched-out</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkEntry" id="lineEntry">
-                        <property name="width_request">200</property>
-                        <property name="height_request">50</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">center</property>
-                        <property name="editable">False</property>
-                        <property name="text" translatable="yes">aaaaa</property>
-                        <property name="shadow_type">etched-out</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">0</property>
-                      </packing>
-                    </child>
-                    <style>
-                      <class name="font-normal"/>
-                      <class name="font-size_25px"/>
-                    </style>
                   </object>
                   <packing>
                     <property name="name">retrieveOperationPage</property>
@@ -574,7 +614,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table3column1st">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -709,7 +749,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table3column2nd">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -844,7 +884,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table3column3rd">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -990,7 +1030,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table2column1st">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1125,7 +1165,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table2column2nd">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
+                            <property name="can_focus">False</property>
                             <property name="search_column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1392,7 +1432,7 @@ message message message message message</property>
                     <property name="width_request">200</property>
                     <property name="height_request">60</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <style>
@@ -1414,7 +1454,7 @@ message message message message message</property>
                     <property name="width_request">200</property>
                     <property name="height_request">60</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <style>
@@ -2200,7 +2240,7 @@ message message message</property>
     </style>
   </object>
   <object class="GtkDialog" id="warningDialog">
-    <property name="width_request">1300</property>
+    <property name="width_request">1260</property>
     <property name="height_request">750</property>
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
@@ -2246,9 +2286,14 @@ message message message</property>
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="halign">center</property>
+            <property name="margin_left">80</property>
+            <property name="margin_right">80</property>
+            <property name="margin_top">80</property>
+            <property name="margin_bottom">80</property>
             <property name="spacing">30</property>
             <child>
               <object class="GtkImage">
+                <property name="width_request">360</property>
                 <property name="height_request">360</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>

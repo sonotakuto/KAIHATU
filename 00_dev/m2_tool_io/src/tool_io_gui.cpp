@@ -1544,7 +1544,7 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 
 	// 4. 対象テーブルのカラムヘッダー表示を更新
 	for (const auto& [table, headers] : tables_to_update) {
-		for (guint i = 0; i < headers.column_headers.value().size(); ++i) {		// TODO: nullopt対応
+		for (guint i = 0; i < headers.column_headers.value().size(); i++) {		// TODO: nullopt対応
 			sgex::TreeViewColumn column(table->get_column(i));
 			if ((GtkTreeViewColumn*)column) {
 				const auto& header = headers.column_headers.value()[i];
@@ -2285,7 +2285,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 
 	std::vector<MainTableData> vec;
 	vec.reserve(m_retrieving_tools.size());
-	for (size_t i = 0; i < m_retrieving_tools.size(); ++i) {
+	for (size_t i = 0; i < m_retrieving_tools.size(); i++) {
 		// 現在の要素への参照を取得
 		const auto& retrieving_tool = m_retrieving_tools[i];
 

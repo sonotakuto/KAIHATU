@@ -1066,5 +1066,4 @@ void swap(SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
 	lhs.swap(rhs);
 }
 
-
 } // namespace utils
