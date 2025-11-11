@@ -942,7 +942,7 @@ private:
 	 * @param[in] event GdkEventButton イベントデータ
 	 * @return イベントが処理された場合は true、伝播させる場合は false
 	 */
-	bool internal_on_button_press(GdkEventButton* event) {
+	bool internal_on_button_press(const GdkEventButton* event) {
 		if (event->button == GDK_BUTTON_PRIMARY) {
 			m_user_initiated_selection = true;
 		}
@@ -1016,6 +1016,15 @@ public:
 
 	/**
 	 * @brief 現在TreeViewで選択されている行のインデックスを取得します。
+	 * @warning [使用上の注意]
+	 * この関数は、呼び出された瞬間の選択状態を問い合わせます。
+	 * get_user_selection_callback() で登録したコールバック関数内で
+	 * 「どの行が選択されたか」を知るためにこの関数を呼び出すのは
+	 * 非推奨です (タイミング問題が発生する可能性があります)。
+	 * コールバック内では、引数として渡されるインデックスを使用してください。
+	 * @note
+	 * 「確定」ボタンのクリック時など、選択変更イベント以外の場所から
+	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されている行のインデックス。なければ空のoptional。
 	 */
 	std::optional<size_type> get_selected_index() {
@@ -1033,6 +1042,15 @@ public:
 
 	/**
 	 * @brief 現在選択されている行のデータをC++モデルから取得します。
+	 * @warning [使用上の注意]
+	 * この関数は、呼び出された瞬間の選択状態を問い合わせます。
+	 * get_user_selection_callback() で登録したコールバック関数内で
+	 * 「どの行が選択されたか」を知るためにこの関数を呼び出すのは
+	 * 非推奨です (タイミング問題が発生する可能性があります)。
+	 * コールバック内では、引数として渡されるインデックスを使用してください。
+	 * @note
+	 * 「確定」ボタンのクリック時など、選択変更イベント以外の場所から
+	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていれば行データ、なければ空のoptional。
 	 */
 	std::optional<ItemType> get_selected_item() {
@@ -1045,6 +1063,15 @@ public:
 
 	/**
 	 * @brief 現在選択されている行のインデックスと行データのペアを取得します。
+	 * @warning [使用上の注意]
+	 * この関数は、呼び出された瞬間の選択状態を問い合わせます。
+	 * get_user_selection_callback() で登録したコールバック関数内で
+	 * 「どの行が選択されたか」を知るためにこの関数を呼び出すのは
+	 * 非推奨です (タイミング問題が発生する可能性があります)。
+	 * コールバック内では、引数として渡されるインデックスを使用してください。
+	 * @note
+	 * 「確定」ボタンのクリック時など、選択変更イベント以外の場所から
+	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていればインデックスと行データのペア、なければ空のoptional。
 	 */
 	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() {
@@ -1056,7 +1083,6 @@ public:
 	}
 };
 
-// TODO: 11/10 次はここを二重処理防止用に改造
 /**
  * @class PaginatedListStoreModel
  * @brief 複数のTreeViewListStoreModelを1ページとして扱い、ページネーション機能を提供するクラス。
@@ -1079,8 +1105,36 @@ private:
 	int m_current_page_index;
 	/// @brief 外部に通知するコールバック (グローバルインデックスを渡す)
 	std::function<void(std::optional<size_type>)> m_user_selection_callback;
-	/// @brief 内部でデータ変更中かどうかのフラグ
-	bool m_is_processing_model_update;
+	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
+	bool m_is_programmatically_changing;
+
+	/**
+	 * @brief (内部ハンドラ) TreeViewListStoreModel の user_selection_changed に接続
+	 */
+	void internal_on_selection_changed(size_type view_index, std::optional<size_type> local_index_opt) {
+		// この PaginatedListStoreModel 自身がモデル更新中なら無視
+		if (m_is_programmatically_changing) {
+			return;
+		}
+
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		// 他のすべての TreeView の選択を解除する
+		for (size_type i = 0; i < m_page_models.size(); i++) {
+			if (i != view_index) {
+				m_page_models[i]->unselect_all();
+			}
+		}
+
+		// 外部コールバックが登録されていれば、グローバルインデックスを計算して呼び出す
+		if (m_user_selection_callback) {
+			std::optional<size_type> global_index_opt = std::nullopt;
+			if (local_index_opt.has_value()) {
+				global_index_opt = (m_current_page_index * m_rows_per_view * m_page_models.size()) + (view_index * m_rows_per_view) + local_index_opt.value();
+			}
+			m_user_selection_callback(global_index_opt);
+		}
+	}
 
 public:
 	/**
@@ -1088,6 +1142,7 @@ public:
 	 * @param[in] page_index 表示するページのインデックス (0から始まる)。
 	 */
 	void display_page(int page_index) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		// 全ての管理下モデルをクリア
 		for (auto* model : m_page_models) {
 			model->clear();
@@ -1135,11 +1190,29 @@ public:
 		: m_rows_per_view(rows_per_view), m_current_page_index(0) {}
 
 	/**
-	 * @brief このページネーション管理に追加するTreeViewListStoreModelを登録します。
+	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。
+	 * @param[in] callback 選択された行のグローバルインデックスを受け取る関数オブジェクト。
+	 * インデックスが無効な場合は std::nullopt が渡されます。
+	 */
+	void on_user_selection_changed(std::function<void(std::optional<size_type>)> callback) {
+		m_user_selection_callback = callback;
+	}
+
+	/**
+	 * @brief このページネーション管理に追加する TreeViewListStoreModel を登録します。
 	 * @param[in, out] model 管理対象のモデルへのポインタ。
 	 */
 	void add_model(TreeViewListStoreModel<ItemType>* model) {
+		// view_index は、モデルが m_page_models に追加される前の .size()
+		const size_type view_index = m_page_models.size();
 		m_page_models.push_back(model);
+
+		// 子モデルのコールバックに、親のハンドラを登録
+		model->on_user_selection_changed(
+			[this, view_index](std::optional<size_type> local_index_opt) {
+				this->internal_on_selection_changed(view_index, local_index_opt);
+			}
+		);
 	}
 
 	/**
@@ -1159,7 +1232,15 @@ public:
 	 */
 	bool clear_models() {
 		// マスターデータが空のときのみクリアを許可
-		if (!m_master_data.empty()) return false;
+		if (!m_master_data.empty()) { return false; }
+
+		// 各モデルに登録したコールバックを解除する
+		for (auto* model : m_page_models) {
+			if (model) {
+				model->on_user_selection_changed(nullptr);
+			}
+		}
+
 		m_page_models.clear();
 		return true;
 	}
@@ -1171,6 +1252,7 @@ public:
 	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
 	 */
 	void set_master_data(const std::vector<ItemType>& all_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_master_data = all_data; // コピーが発生
 		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
 	}
@@ -1183,6 +1265,7 @@ public:
 	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
 	 */
 	void set_master_data(std::vector<ItemType>&& all_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_master_data = std::move(all_data); // ムーブ (効率的)
 		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
 	}
@@ -1198,6 +1281,8 @@ public:
 	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
 	 */
 	std::vector<ItemType> replace_master_data(const std::vector<ItemType>& new_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		// 1. 現在のマスターデータを一時変数にムーブして退避
 		std::vector<ItemType> old_data = std::move(m_master_data);
 
@@ -1222,6 +1307,8 @@ public:
 	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
 	 */
 	std::vector<ItemType> replace_master_data(std::vector<ItemType>&& new_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		// 1. 現在のマスターデータを一時変数にムーブして退避
 		std::vector<ItemType> old_data = std::move(m_master_data);
 
@@ -1240,6 +1327,7 @@ public:
 	 * @return 次のページが存在し、切り替えに成功した場合はtrue。
 	 */
 	bool next_page() {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (has_next_page()) {
 			display_page(m_current_page_index + 1);
 			return true;
@@ -1252,6 +1340,7 @@ public:
 	 * @return 前のページが存在し、切り替えに成功した場合はtrue。
 	 */
 	bool prev_page() {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (has_prev_page()) {
 			display_page(m_current_page_index - 1);
 			return true;
@@ -1303,6 +1392,7 @@ public:
 	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
 	 */
 	void clear(bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_master_data.clear();
 		if (update_display) {
 			display_page(0); // 0ページ目を表示（空になる）
@@ -1316,6 +1406,7 @@ public:
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const ItemType& item, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
 		m_master_data.push_back(item);
 		if (update_display) {
@@ -1331,6 +1422,7 @@ public:
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const std::vector<ItemType>& items, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) return false;
 		m_master_data.insert(m_master_data.end(), items.begin(), items.end());
 		if (update_display) {
@@ -1349,6 +1441,8 @@ public:
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type global_position, const ItemType& item, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		size_type original_position = global_position;
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
 
@@ -1371,6 +1465,8 @@ public:
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type global_position, const std::vector<ItemType>& items, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) return false;
 		bool position_was_valid = (global_position <= size());
 
@@ -1390,6 +1486,8 @@ public:
 	 * @return 削除に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool erase(size_type global_position, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		if (global_position >= size()) return false;
 		m_master_data.erase(m_master_data.begin() + global_position);
 
@@ -1409,6 +1507,8 @@ public:
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool erase(std::vector<size_type> global_positions, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		for (size_type pos : global_positions) {
 			if (pos >= size()) return false;
 		}
@@ -1433,6 +1533,8 @@ public:
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool update(size_type global_position, const ItemType& item, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		if (global_position >= size()) return false;
 
 		m_master_data[global_position] = item;
@@ -1450,6 +1552,8 @@ public:
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool update(const std::map<size_type, ItemType>& updates, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		for (const auto& [pos, item] : updates) {
 			if (pos >= size()) return false;
 		}
@@ -1474,6 +1578,8 @@ public:
 	 * ページが存在しなくなっていれば最終ページが表示されます。falseの場合は0ページ目を表示します。デフォルトはfalse。
 	 */
 	void modify_master_data(std::function<void(std::vector<ItemType>&)> modifier, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		// 1. 渡された関数を実行し、m_master_data を直接変更してもらう
 		modifier(m_master_data);
 
@@ -1635,9 +1741,18 @@ public:
 
 	/**
 	 * @brief 現在表示されているページで選択されている行のグローバルインデックスを取得します。
+	 * @warning [使用上の注意]
+	 * この関数は、呼び出された瞬間の選択状態を問い合わせます。
+	 * get_user_selection_callback() で登録したコールバック関数内で
+	 * 「どの行が選択されたか」を知るためにこの関数を呼び出すのは
+	 * 非推奨です (タイミング問題が発生する可能性があります)。
+	 * コールバック内では、引数として渡されるインデックスを使用してください。
+	 * @note
+	 * 「確定」ボタンのクリック時など、選択変更イベント以外の場所から
+	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていればグローバルインデックス、なければ空のoptional。
 	 */
-	std::optional<size_type> get_selected_index() const {
+	std::optional<size_type> get_selected_index() {
 		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
 		size_t page_start_index = m_current_page_index * total_rows_per_page;
 
@@ -1657,9 +1772,18 @@ public:
 
 	/**
 	 * @brief 現在選択されている行のデータをマスターデータから取得します。
+	 * @warning [使用上の注意]
+	 * この関数は、呼び出された瞬間の選択状態を問い合わせます。
+	 * get_user_selection_callback() で登録したコールバック関数内で
+	 * 「どの行が選択されたか」を知るためにこの関数を呼び出すのは
+	 * 非推奨です (タイミング問題が発生する可能性があります)。
+	 * コールバック内では、引数として渡されるインデックスを使用してください。
+	 * @note
+	 * 「確定」ボタンのクリック時など、選択変更イベント以外の場所から
+	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていれば行データ、なければ空のoptional。
 	 */
-	std::optional<ItemType> get_selected_item() const {
+	std::optional<ItemType> get_selected_item() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
 			return get_item(index_opt.value());
@@ -1669,9 +1793,18 @@ public:
 
 	/**
 	 * @brief 現在選択されている行のグローバルインデックスと行データのペアを取得します。
+	 * @warning [使用上の注意]
+	 * この関数は、呼び出された瞬間の選択状態を問い合わせます。
+	 * get_user_selection_callback() で登録したコールバック関数内で
+	 * 「どの行が選択されたか」を知るためにこの関数を呼び出すのは
+	 * 非推奨です (タイミング問題が発生する可能性があります)。
+	 * コールバック内では、引数として渡されるインデックスを使用してください。
+	 * @note
+	 * 「確定」ボタンのクリック時など、選択変更イベント以外の場所から
+	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていればグローバルインデックスと行データのペア、なければ空のoptional。
 	 */
-	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() const {
+	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
 			return std::make_pair(index_opt.value(), get_item(index_opt.value()));

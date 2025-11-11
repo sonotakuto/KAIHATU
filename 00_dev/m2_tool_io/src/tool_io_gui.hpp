@@ -256,7 +256,7 @@ public:
 		/// @brief 状態遷移直後に実行するアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_enter_state = nullptr;
 		/// @brief いずれかのメインテーブルの選択が変更されたときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*)> on_mainTableSelection_changed = nullptr;
+		std::function<void(MainWindow*, std::optional<size_t>)> on_mainTableSelection_changed = nullptr;
 		/// @brief qrCodeEntry で Enter が押されたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_qrCodeEntry_activate = nullptr;
 		/// @brief falseButton がクリックされたときのアクション (nullptrなら何もしない)
@@ -363,24 +363,18 @@ public:
 	sgex::Box table3column1stBox;
 	/// @brief 3列表示テーブル (1) (ID: table3column1st)
 	sgex::TreeView table3column1st;
-	/// @brief 3列表示テーブルの Selection オブジェクト (1)
-	sg::TreeSelection table3column1stSelection;
 	/// @brief 3列表示テーブルのリストストア (1)
 	sgex::TreeViewListStoreModel<MainTableData> liststore3column1st;
 	/// @brief 3列表示テーブルのボックス (2) (ID: table3column2ndBox)
 	sgex::Box table3column2ndBox;
 	/// @brief 3列表示テーブル (2) (ID: table3column2nd)
 	sgex::TreeView table3column2nd;
-	/// @brief 3列表示テーブルの Selection オブジェクト (2)
-	sg::TreeSelection table3column2ndSelection;
 	/// @brief 3列表示テーブルのリストストア (2)
 	sgex::TreeViewListStoreModel<MainTableData> liststore3column2nd;
 	/// @brief 3列表示テーブルのボックス (3) (ID: table3column3rdBox)
 	sgex::Box table3column3rdBox;
 	/// @brief 3列表示テーブル (3) (ID: table3column3rd)
 	sgex::TreeView table3column3rd;
-	/// @brief 3列表示テーブルの Selection オブジェクト (3)
-	sg::TreeSelection table3column3rdSelection;
 	/// @brief 3列表示テーブルのリストストア (3)
 	sgex::TreeViewListStoreModel<MainTableData> liststore3column3rd;
 	/// @brief 3列表示テーブルのページ操作可能なリストストア
@@ -389,16 +383,12 @@ public:
 	sgex::Box table2column1stBox;
 	/// @brief 2列表示テーブル (1) (ID: table2column1st)
 	sgex::TreeView table2column1st;
-	/// @brief 2列表示テーブルの Selection オブジェクト (1)
-	sg::TreeSelection table2column1stSelection;
 	/// @brief 2列表示テーブルのリストストア (1)
 	sgex::TreeViewListStoreModel<MainTableData> liststore2column1st;
 	/// @brief 2列表示テーブルのボックス (2) (ID: table2column2ndBox)
 	sgex::Box table2column2ndBox;
 	/// @brief 2列表示テーブル (2) (ID: table2column2nd)
 	sgex::TreeView table2column2nd;
-	/// @brief 2列表示テーブルの Selection オブジェクト (2)
-	sg::TreeSelection table2column2ndSelection;
 	/// @brief 2列表示テーブルのリストストア (2)
 	sgex::TreeViewListStoreModel<MainTableData> liststore2column2nd;
 	/// @brief 2列表示テーブルのページ操作可能なリストストア
@@ -727,18 +717,10 @@ private:
 	void userIdEntry_on_activate();
 
 	/**
-	 * @brief メインテーブルの "button-press-event" シグナルに対応するハンドラ。
-	 * @details メインテーブルの上でクリックされた時に呼び出され、現在の状態に応じたコールバックを実行する。
-	 * @param[in] event GdkEventButton構造体へのポインタ。
-	 * @return trueを返すとイベントが消費され、falseを返すと他のハンドラに伝播される。
-	 */
-	bool mainTable_on_button_press(GdkEventButton* event);
-
-	/**
 	 * @brief メインテーブルの Selection オブジェクトの "changed" シグナルに対応するハンドラ。
 	 * @details メインテーブルの選択が変更されたときに呼び出される。現在の状態に応じたコールバックを実行する。
 	 */
-	void mainTableSelection_on_changed();
+	void mainTableSelection_on_changed(std::optional<size_t> selected_index_opt);
 
 	/**
 	 * @brief prevButton の "clicked" シグナルに対応するハンドラ。
@@ -848,7 +830,7 @@ private:
 	 * @brief RETRIEVE_SELECTING_TOOLS 状態の mainTableSelection_on_changed の処理。
 	 * @details 選択された行の選択/非選択の状態を切り替える。
 	 */
-	void on_mainTableSelection_retrieve_selecting_tools();
+	void on_mainTableSelection_retrieve_selecting_tools(std::optional<size_t> selected_index_opt);
 
 	/**
 	 * @brief brief RETRIEVE_SELECTING_TOOLS 状態の falseButton.on_clicked の処理
@@ -1039,7 +1021,7 @@ private:
 	 * @brief RECONCILE_WAITING_FOR_CONTAINER_SELECTION 状態の mainTableSelection_on_changed の処理。
 	 * @details 選択中の状態に選択行を変化させ、trueButton を有効化する。
 	 */
-	void on_mainTableSelection_reconcile_waiting_for_container_selection();
+	void on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt);
 
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態に入ったときの処理。
@@ -1122,14 +1104,6 @@ private:
 	 * @details trueの間、toggled イベントハンドラは何もしない。
 	 */
 	bool m_is_programmatically_changing_toggle;
-
-	/**
-	 * @brief ユーザー起因により表の選択状態が変更されようとしていることを示すフラグ。
-	 * @details
-	 * 表の上で button-release-event シグナルが発生したときにtrueになり、選択処理が開始するとfalseになる。
-	 * trueの間のみ、TreeSelection の changed イベントハンドラは処理を行う。
-	 */
-	bool m_user_initiated_selection;
 
 	// --- 状態遷移管理用 ---
 

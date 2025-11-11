@@ -151,7 +151,6 @@ MainWindow::MainWindow() :
 	table_stack(glade, "table_stack"),
 	table3column1stBox(glade, "table3column1stBox"),
 	table3column1st(glade, "table3column1st"),
-	table3column1stSelection(table3column1st.get_selection()),
 	liststore3column1st(
 		table3column1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
@@ -159,7 +158,6 @@ MainWindow::MainWindow() :
 	),
 	table3column2ndBox(glade, "table3column2ndBox"),
 	table3column2nd(glade, "table3column2nd"),
-	table3column2ndSelection(table3column2nd.get_selection()),
 	liststore3column2nd(
 		table3column2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
@@ -167,7 +165,6 @@ MainWindow::MainWindow() :
 	),
 	table3column3rdBox(glade, "table3column3rdBox"),
 	table3column3rd(glade, "table3column3rd"),
-	table3column3rdSelection(table3column3rd.get_selection()),
 	liststore3column3rd(
 		table3column3rd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
@@ -176,7 +173,6 @@ MainWindow::MainWindow() :
 	liststore3columnAll(DISPLAY_ROWS_PER_COLUMN),
 	table2column1stBox(glade, "table2column1stBox"),
 	table2column1st(glade, "table2column1st"),
-	table2column1stSelection(table2column1st.get_selection()),
 	liststore2column1st(
 		table2column1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
@@ -184,7 +180,6 @@ MainWindow::MainWindow() :
 	),
 	table2column2ndBox(glade, "table2column2ndBox"),
 	table2column2nd(glade, "table2column2nd"),
-	table2column2ndSelection(table2column2nd.get_selection()),
 	liststore2column2nd(
 		table2column2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
@@ -254,7 +249,6 @@ MainWindow::MainWindow() :
 	// 状態管理メンバ
 	m_is_first_show(true),
 	m_is_programmatically_changing_toggle(false),
-	m_user_initiated_selection(false),
 	m_password_authenticated(false),
 	m_gui_mode(GuiMode::RETRIEVE),
 	m_app_state(AppState::WAITING_FOR_USER_LOGIN),
@@ -282,8 +276,8 @@ MainWindow::MainWindow() :
 
 	this->fullscreen();	// フルスクリーンで表示
 
-	this->liststore3columnAll.add_model({&liststore3column1st, &liststore3column2nd, &liststore3column3rd});
-	this->liststore2columnAll.add_model({&liststore2column1st, &liststore2column2nd});
+	liststore3columnAll.add_model({&liststore3column1st, &liststore3column2nd, &liststore3column3rd});
+	liststore2columnAll.add_model({&liststore2column1st, &liststore2column2nd});
 
 	//=========================================================================
 	// イベントハンドラの登録
@@ -295,16 +289,8 @@ MainWindow::MainWindow() :
 	kanaKanjiButton.on_clicked([this]() { this->kanaKanjiButton_on_clicked(); });
 	logoutButton.on_clicked([this]() { this->logoutButton_on_clicked(); });
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
-	table3column1st.on_button_press_event([this](GdkEventButton* event) { return this->mainTable_on_button_press(event); });
-	table3column2nd.on_button_press_event([this](GdkEventButton* event) { return this->mainTable_on_button_press(event); });
-	table3column3rd.on_button_press_event([this](GdkEventButton* event) { return this->mainTable_on_button_press(event); });
-	table2column1st.on_button_press_event([this](GdkEventButton* event) { return this->mainTable_on_button_press(event); });
-	table2column2nd.on_button_press_event([this](GdkEventButton* event) { return this->mainTable_on_button_press(event); });
-	table3column1stSelection.on_changed([this]() { this->mainTableSelection_on_changed(); });
-	table3column2ndSelection.on_changed([this]() { this->mainTableSelection_on_changed(); });
-	table3column3rdSelection.on_changed([this]() { this->mainTableSelection_on_changed(); });
-	table2column1stSelection.on_changed([this]() { this->mainTableSelection_on_changed(); });
-	table2column2ndSelection.on_changed([this]() { this->mainTableSelection_on_changed(); });
+	liststore3columnAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
+	liststore2columnAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
 	prevButton.on_clicked([this]() { this->prevButton_on_clicked(); });
 	nextButton.on_clicked([this]() { this->nextButton_on_clicked(); });
 	qrCodeEntry.on_activate([this]() { this->qrCodeEntry_on_activate(); });
@@ -1013,7 +999,7 @@ MainWindow::MainWindow() :
 		// --- 状態の「振る舞い」を定義 ---
 		.on_prepare_state				= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_retrieve_selecting_tools(); },
-		.on_mainTableSelection_changed	= [](MainWindow* thiz){ thiz->on_mainTableSelection_retrieve_selecting_tools(); },
+		.on_mainTableSelection_changed	= [](MainWindow* thiz, std::optional<size_t> selected_index_opt){ thiz->on_mainTableSelection_retrieve_selecting_tools(selected_index_opt); },
 		.on_falseButton_clicked			= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_selecting_tools(); },
 		.on_trueButton_clicked			= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_CONFIRMING_SELECTION); }
 	});
@@ -1282,7 +1268,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName		= "table2column",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_reconcile_waiting_for_container_selection(); },
-		.on_mainTableSelection_changed	= [](MainWindow* thiz){ thiz->on_mainTableSelection_reconcile_waiting_for_container_selection(); },
+		.on_mainTableSelection_changed	= [](MainWindow* thiz, std::optional<size_t> selected_index_opt){ thiz->on_mainTableSelection_reconcile_waiting_for_container_selection(selected_index_opt); },
 		.on_trueButton_clicked			= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_CONTAINER_RETRIEVING); }
 	});
 
@@ -1560,7 +1546,6 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 void MainWindow::set_app_state(AppState state) {
 	// メンバ変数の状態を更新 & 一部リセット
 	m_app_state = state;
-	m_user_initiated_selection = false;
 
 	// m_widget_statesを更新する
 	const auto& state_config = g_app_state_configs.at(state);
@@ -1959,38 +1944,15 @@ void MainWindow::userIdEntry_on_activate() {
 	}
 }
 
-bool MainWindow::mainTable_on_button_press(GdkEventButton* event) {
-	try {
-		if (event->button==GDK_BUTTON_PRIMARY && g_app_state_configs.at(m_app_state).on_mainTableSelection_changed) {
-			m_user_initiated_selection = true;
-			DEV_PRINT("ユーザー起因フラグをセット\n");
-			return false;
-		}
-	} catch (...) {
-		DEV_PRINT(stderr, "Error: Unexpected exception in delayed mainTableSelection_on_changed\n");
-	}
-	return true;
-}
-
-void MainWindow::mainTableSelection_on_changed() {
-	// ユーザー起因フラグがfalse、つまり、 プログラムによる表操作のとき、何もせずreturn
-	if (!m_user_initiated_selection) {
-		DEV_PRINT("無視\n");
-		return;	// 処理中なら何もしない
-	}
-
-	// ここに来た時点で、ユーザーによる選択変更操作への対応処理が始まるので、ユーザー起因フラグがfalseに戻す
-	m_user_initiated_selection = false;
-	DEV_PRINT("ユーザー起因フラグを解除\n");
-
-	auto* func = new std::function<void()>([this]() {
+void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_index_opt) {
+	auto* func = new std::function<void()>([this, selected_index_opt]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
 
 		try {
 			auto state_config = g_app_state_configs.at(m_app_state);
 			if (state_config.on_mainTableSelection_changed) {
 				// 実際のモデル更新処理などを実行
-				state_config.on_mainTableSelection_changed(this);
+				state_config.on_mainTableSelection_changed(this, selected_index_opt);
 			}
 		} catch (const std::out_of_range& e) {
 			DEV_PRINT(stderr, "Error: 未定義の状態で mainTable の選択変更処理 (idle) が実行されました (AppState={})\n", static_cast<int>(m_app_state));
@@ -2187,28 +2149,28 @@ void MainWindow::on_enter_retrieve_selecting_tools()
 	update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY);
 }
 
-void MainWindow::on_mainTableSelection_retrieve_selecting_tools() {
-	auto selected = liststore2columnAll.get_selected_index_and_item();
-
+void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<size_t> selected_index_opt) {
 	// 選択されていて、かつ無効化されていない行の場合
-	if (selected.has_value()) {
-		auto& [idx, item] = selected.value();
-		DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", idx);
+	if (selected_index_opt.has_value()) {
+		auto selected_index = selected_index_opt.value();
+		auto selected_item = liststore2columnAll.get_item(selected_index);
 
-		if (item.cell_state_0to4 != TableCellState::FADED) {
+		DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index);
+
+		if (selected_item.cell_state_0to4 != TableCellState::FADED) {
 			// 状態をトグルする
-			item.cell_state_0to4 = ((item.cell_state_0to4 == TableCellState::SELECTED)
+			selected_item.cell_state_0to4 = ((selected_item.cell_state_0to4 == TableCellState::SELECTED)
 				? (TableCellState::NORMAL)
 				: (TableCellState::SELECTED)
 			);
 		}
 
 		// モデルを更新 (これにより GtkListStore も更新される)
-		liststore2columnAll.update(idx, item);
+		liststore2columnAll.update(selected_index, selected_item);
 	}
 
-	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnAll.find_first_index([](const MainTableData& item) {
-		return item.cell_state_0to4 == TableCellState::SELECTED;
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnAll.find_first_index([](const MainTableData& selected_item) {
+		return selected_item.cell_state_0to4 == TableCellState::SELECTED;
 	}).has_value())}, true);
 }
 
@@ -2768,7 +2730,7 @@ void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
 
 }
 
-void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection() {
+void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt) {
 
 }
 
