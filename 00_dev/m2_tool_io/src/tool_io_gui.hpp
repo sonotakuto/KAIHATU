@@ -82,8 +82,6 @@ public:
 		RECONCILE_READ_COMPLETED,					// 実際に棚卸しを行う(インサート以外) - 工具読み取り後
 		RECONCILE_INSERT_READY_FOR_READING,			// 実際に棚卸しを行う(インサート) - 工具読み取り前
 		RECONCILE_INSERT_READ_COMPLETED,			// 実際に棚卸しを行う(インサート) - 工具読み取り後
-
-		// TODO: 他のモードの状態もここに追加
 	};
 
 	/**
@@ -344,6 +342,8 @@ public:
 	sgex::Label programLabel;
 	/// @brief (取り出し時) プログラム番号を入力するエントリ (ID: programEntry)
 	sgex::Entry programEntry;
+	/// @brief (取り出し時) ツーリングリストを変更するボタン (ID: listChangeButton)
+	sgex::Button listChangeButton;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	sgex::TreeView storingToolTable;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア
@@ -357,8 +357,8 @@ public:
 
 	// --- テーブル表示部 ---
 
-	/// @brief 複数のテーブル表示形式を切り替えるスタック (ID: table_stack)
-	sgex::Stack table_stack;
+	/// @brief 複数のテーブル表示形式を切り替えるスタック (ID: tableStack)
+	sgex::Stack tableStack;
 	/// @brief 3列表示テーブルのボックス (1) (ID: table3column1stBox)
 	sgex::Box table3column1stBox;
 	/// @brief 3列表示テーブル (1) (ID: table3column1st)
@@ -624,8 +624,9 @@ private:
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
 	 * @param[in] action 実行したい操作の種類。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 */
-	void update_and_handle_pagination(PaginationAction action);
+	void update_and_handle_pagination(PaginationAction action, bool update_ui = true);
 
 	// --- 認証用のヘルパー関数 ---
 

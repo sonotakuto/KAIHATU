@@ -84,7 +84,7 @@ bool save_history(const RecOperationTable& record);
  */
 bool save_history(const std::vector<RecOperationTable>& records);
 
-// TODO: 再研磨機数を増やす関数を追加
+// TODO: 再研磨回数を増やす関数を追加
 
 /**
  * @brief QRコード文字列を基にユーザー情報をデータベースから取得します。

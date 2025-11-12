@@ -39,7 +39,7 @@ static optional<OdbcStatement> create_statement_with_retry() {
 			return optional<OdbcStatement>(in_place, *db_session->connection);
 		} catch (const odbc::OdbcException& e) {
 			// TODO: ログを残すか表示する
-			DEV_PRINT(stderr, "[LOG] ステートメント作成失敗 (試行 {}): {}", i + 1, e.what());
+			DEV_PRINT(stderr, "[LOG] ステートメント作成失敗 (試行 {}): {}\n", i + 1, e.what());
 			// cerr << "[LOG] " << message << endl;
 
 			// 5秒待機してからリトライ
@@ -329,7 +329,7 @@ bool connect(void) {
 		} catch (const odbc::OdbcException& e) {
 			// 接続に失敗した場合
 			// TODO:ログを残すか表示する？
-			DEV_PRINT(stderr, "[LOG] 接続失敗 (試行 {}): {}", i + 1, e.what());
+			DEV_PRINT(stderr, "[LOG] 接続失敗 (試行 {}): {}\n", i + 1, e.what());
 
 			// 5秒待機
 			this_thread::sleep_for(chrono::seconds(5));
@@ -337,7 +337,7 @@ bool connect(void) {
 	}
 
 	// 試行が全て失敗した場合
-	// TODO:エラーメッセージを表示するコードをここに書く？
+	// TODO: エラーメッセージを表示するコードをここに書く？
 
 	return false;
 }

@@ -31,8 +31,9 @@ public:
 	 * @param[in] target 管理対象の変数への参照
 	 * @param[in] new_value スコープ内で設定する一時的な値
 	 */
-	scoped_value_guard(T& target, T new_value)
-		: target_ref_(target), old_value_(std::move(target)) // 1. 元の値を退避
+	scoped_value_guard(T& target, T new_value) :
+		target_ref_(target),
+		old_value_(std::move(target)) // 1. 元の値を退避
 	{
 		target_ref_ = std::move(new_value); // 2. 新しい値を設定
 	}
@@ -53,8 +54,8 @@ public:
 	scoped_value_guard& operator=(scoped_value_guard&&) = delete;
 
 private:
-	T& target_ref_; // 監視対象の変数への参照
-	T  old_value_;  // 退避しておいた元の値
+	T&	target_ref_;	// 監視対象の変数への参照
+	T	old_value_;		// 退避しておいた元の値
 };
 
 } // namespace utils

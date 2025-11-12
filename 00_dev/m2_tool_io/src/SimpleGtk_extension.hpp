@@ -566,7 +566,9 @@ protected:
 	ListStoreModelBase(
 		const std::vector<GType>& column_types,
 		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
-	) : m_row_setter(row_setter), m_is_programmatically_changing(false)
+	) :
+		m_row_setter(row_setter),
+		m_is_programmatically_changing(false)
 	{
 		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
 		GtkListStore* new_gtk_store = gtk_list_store_newv(column_types.size(), (GType*)column_types.data());
@@ -979,7 +981,8 @@ public:
 		sgex::TreeView& tree_view,
 		const std::vector<GType>& column_types,
 		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
-	) : ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
+	) :
+		ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
 		m_tree_view(tree_view),
 		m_tree_selection(tree_view.get_selection()),
 		m_user_initiated_selection(false)
@@ -1186,8 +1189,11 @@ public:
 	 * @brief コンストラクタ
 	 * @param[in] rows_per_view 1つのTreeViewが保持できる最大行数。
 	 */
-	PaginatedListStoreModel(size_t rows_per_view)
-		: m_rows_per_view(rows_per_view), m_current_page_index(0) {}
+	PaginatedListStoreModel(size_t rows_per_view) :
+		m_rows_per_view(rows_per_view),
+		m_current_page_index(0),
+		m_is_programmatically_changing(false)
+	{}
 
 	/**
 	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。

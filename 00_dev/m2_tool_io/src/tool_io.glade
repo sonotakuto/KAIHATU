@@ -267,14 +267,14 @@ message message message message message</property>
                   <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="halign">center</property>
+                    <property name="halign">end</property>
                     <property name="valign">center</property>
                     <property name="spacing">30</property>
                     <child>
                       <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="halign">center</property>
+                        <property name="halign">end</property>
                         <property name="row_homogeneous">True</property>
                         <child>
                           <object class="GtkLabel" id="programLabel">
@@ -581,7 +581,7 @@ message message message message message</property>
             <property name="orientation">vertical</property>
             <property name="spacing">5</property>
             <child>
-              <object class="GtkStack" id="table_stack">
+              <object class="GtkStack" id="tableStack">
                 <property name="height_request">735</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
