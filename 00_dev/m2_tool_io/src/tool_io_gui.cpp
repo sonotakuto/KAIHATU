@@ -151,48 +151,76 @@ MainWindow::MainWindow() :
 	containerEntry(glade, "containerEntry"),
 	// テーブル部
 	tableStack(glade, "tableStack"),
-	table3column1stBox(glade, "table3column1stBox"),
-	table3column1st(glade, "table3column1st"),
-	liststore3column1st(
-		table3column1st,
+	table3columns1stBox(glade, "table3columns1stBox"),
+	table3columns1st(glade, "table3columns1st"),
+	liststore3columns1st(
+		table3columns1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
-	table3column2ndBox(glade, "table3column2ndBox"),
-	table3column2nd(glade, "table3column2nd"),
-	liststore3column2nd(
-		table3column2nd,
+	table3columns2ndBox(glade, "table3columns2ndBox"),
+	table3columns2nd(glade, "table3columns2nd"),
+	liststore3columns2nd(
+		table3columns2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
-	table3column3rdBox(glade, "table3column3rdBox"),
-	table3column3rd(glade, "table3column3rd"),
-	liststore3column3rd(
-		table3column3rd,
+	table3columns3rdBox(glade, "table3columns3rdBox"),
+	table3columns3rd(glade, "table3columns3rd"),
+	liststore3columns3rd(
+		table3columns3rd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
-	liststore3columnAll(DISPLAY_ROWS_PER_COLUMN),
-	table2column1stBox(glade, "table2column1stBox"),
-	table2column1st(glade, "table2column1st"),
-	liststore2column1st(
-		table2column1st,
+	liststore3columnsAll(DISPLAY_ROWS_PER_COLUMN),
+	paginationBox3columns(glade, "paginationBox3columns"),
+	prevButton3columns(glade, "prevButton3columns"),
+	nextButton3columns(glade, "nextButton3columns"),
+	pageLabel3columns(glade, "pageLabel3columns"),
+	table2columns1stBox(glade, "table2columns1stBox"),
+	table2columns1st(glade, "table2columns1st"),
+	liststore2columns1st(
+		table2columns1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
-	table2column2ndBox(glade, "table2column2ndBox"),
-	table2column2nd(glade, "table2column2nd"),
-	liststore2column2nd(
-		table2column2nd,
+	table2columns2ndBox(glade, "table2columns2ndBox"),
+	table2columns2nd(glade, "table2columns2nd"),
+	liststore2columns2nd(
+		table2columns2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
-	liststore2columnAll(DISPLAY_ROWS_PER_COLUMN),
+	liststore2columnsAll(DISPLAY_ROWS_PER_COLUMN),
+	paginationBox2columns(glade, "paginationBox2columns"),
+	prevButton2columns(glade, "prevButton2columns"),
+	nextButton2columns(glade, "nextButton2columns"),
+	pageLabel2columns(glade, "pageLabel2columns"),
+	table2types1stBox(glade, "table2types1stBox"),
+	table2types1st(glade, "table2types1st"),
+	liststore2types1st(
+		table2types1st,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+	),
+	paginatedListstore2types1st(DISPLAY_ROWS_PER_COLUMN),
+	paginationBox2types1st(glade, "paginationBox2types1st"),
+	prevButton2types1st(glade, "prevButton2types1st"),
+	nextButton2types1st(glade, "nextButton2types1st"),
+	pageLabel2types1st(glade, "pageLabel2types1st"),
+	table2types2ndBox(glade, "table2types2ndBox"),
+	table2types2nd(glade, "table2types2nd"),
+	liststore2types2nd(
+		table2types2nd,
+		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+	),
+	paginatedListstore2types2nd(DISPLAY_ROWS_PER_COLUMN),
+	paginationBox2types2nd(glade, "paginationBox2types2nd"),
+	prevButton2types2nd(glade, "prevButton2types2nd"),
+	nextButton2types2nd(glade, "nextButton2types2nd"),
+	pageLabel2types2nd(glade, "pageLabel2types2nd"),
 	// フッター部
-	paginationBox(glade, "paginationBox"),
-	prevButton(glade, "prevButton"),
-	nextButton(glade, "nextButton"),
-	pageNumberLabel(glade, "pageNumberLabel"),
 	qrCodeEntryBox(glade, "qrCodeEntryBox"),
 	qrCodeEntryLabel(glade, "qrCodeEntryLabel"),
 	qrCodeEntry(glade, "qrCodeEntry"),
@@ -278,8 +306,10 @@ MainWindow::MainWindow() :
 
 	this->fullscreen();	// フルスクリーンで表示
 
-	liststore3columnAll.add_model({&liststore3column1st, &liststore3column2nd, &liststore3column3rd});
-	liststore2columnAll.add_model({&liststore2column1st, &liststore2column2nd});
+	liststore3columnsAll.add_model({&liststore3columns1st, &liststore3columns2nd, &liststore3columns3rd});
+	liststore2columnsAll.add_model({&liststore2columns1st, &liststore2columns2nd});
+	paginatedListstore2types1st.add_model(&liststore2types1st);
+	paginatedListstore2types2nd.add_model(&liststore2types2nd);
 
 	//=========================================================================
 	// イベントハンドラの登録
@@ -292,10 +322,16 @@ MainWindow::MainWindow() :
 	logoutButton.on_clicked([this]() { this->logoutButton_on_clicked(); });
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
 	listChangeButton.on_clicked([this]() { this->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); });
-	liststore3columnAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
-	liststore2columnAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
-	prevButton.on_clicked([this]() { this->prevButton_on_clicked(); });
-	nextButton.on_clicked([this]() { this->nextButton_on_clicked(); });
+	liststore3columnsAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
+	prevButton3columns.on_clicked([this]() { this->prevButton3columns_on_clicked(); });
+	nextButton3columns.on_clicked([this]() { this->nextButton3columns_on_clicked(); });
+	liststore2columnsAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
+	prevButton2columns.on_clicked([this]() { this->prevButton2columns_on_clicked(); });
+	nextButton2columns.on_clicked([this]() { this->nextButton2columns_on_clicked(); });
+	prevButton2types1st.on_clicked([this]() { this->prevButton2types1st_on_clicked(); });
+	nextButton2types1st.on_clicked([this]() { this->nextButton2types1st_on_clicked(); });
+	prevButton2types2nd.on_clicked([this]() { this->prevButton2types2nd_on_clicked(); });
+	nextButton2types2nd.on_clicked([this]() { this->nextButton2types2nd_on_clicked(); });
 	qrCodeEntry.on_activate([this]() { this->qrCodeEntry_on_activate(); });
 	falseButton.on_clicked([this]() { this->falseButton_on_clicked(); });
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
@@ -496,90 +532,186 @@ MainWindow::MainWindow() :
 	});
 
 	// --- 3列表示テーブルのボックス (1) ---
-	m_widget_states.try_emplace(&table3column1stBox, WidgetStateUpdater{
+	m_widget_states.try_emplace(&table3columns1stBox, WidgetStateUpdater{
 		{
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
-			if (state.is_visible.has_value()	) { this->table3column1stBox.set_visible(state.is_visible.value()); }
+			if (state.is_visible.has_value()	) { this->table3columns1stBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 3列表示テーブルのボックス (2) ---
-	m_widget_states.try_emplace(&table3column2ndBox, WidgetStateUpdater{
+	m_widget_states.try_emplace(&table3columns2ndBox, WidgetStateUpdater{
 		{
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
-			if (state.is_visible.has_value()	) { this->table3column2ndBox.set_visible(state.is_visible.value()); }
+			if (state.is_visible.has_value()	) { this->table3columns2ndBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
 	// --- 3列表示テーブルのボックス (3) ---
-	m_widget_states.try_emplace(&table3column3rdBox, WidgetStateUpdater{
+	m_widget_states.try_emplace(&table3columns3rdBox, WidgetStateUpdater{
 		{
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
-			if (state.is_visible.has_value()	) { this->table3column3rdBox.set_visible(state.is_visible.value()); }
+			if (state.is_visible.has_value()	) { this->table3columns3rdBox.set_visible(state.is_visible.value()); }
 		}
 	});
 
-	// --- 2列表示テーブルのボックス (1) ---
-	m_widget_states.try_emplace(&table2column1stBox, WidgetStateUpdater{
-		{
-			.is_visible		= true
-		},
-		[this](const WidgetState& state){
-			if (state.is_visible.has_value()	) { this->table2column1stBox.set_visible(state.is_visible.value()); }
-		}
-	});
-
-	// --- 2列表示テーブルのボックス (2) ---
-	m_widget_states.try_emplace(&table2column2ndBox, WidgetStateUpdater{
-		{
-			.is_visible		= true
-		},
-		[this](const WidgetState& state){
-			if (state.is_visible.has_value()	) { this->table2column2ndBox.set_visible(state.is_visible.value()); }
-		}
-	});
-
-	// --- テーブルのページネーション(ページ送り)UIを格納するボックス ---
-	m_widget_states.try_emplace(&paginationBox, WidgetStateUpdater{
+	// --- 3列表示テーブルのページネーション(ページ送り)UIを格納するボックス ---
+	m_widget_states.try_emplace(&paginationBox3columns, WidgetStateUpdater{
 		{
 			.is_visible		= false
 		},
 		[this](const WidgetState& state){
-			if (state.is_visible.has_value()	) { this->paginationBox.set_visible(state.is_visible.value()); }
+			if (state.is_visible.has_value()	) { this->paginationBox3columns.set_visible(state.is_visible.value()); }
 		}
 	});
 
-	// --- ページ戻りボタン ---
-	m_widget_states.try_emplace(&prevButton, WidgetStateUpdater{
+	// --- 3列表示テーブルのページ戻りボタン ---
+	m_widget_states.try_emplace(&prevButton3columns, WidgetStateUpdater{
 		{
 			.can_focus		= false,
 			.is_sensitive	= true,
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
-			if (state.can_focus.has_value()		) { this->prevButton.set_can_focus(state.can_focus.value()); }
-			if (state.is_sensitive.has_value()	) { this->prevButton.set_sensitive(state.is_sensitive.value()); }
-			if (state.is_visible.has_value()	) { this->prevButton.set_visible(state.is_visible.value()); }
+			if (state.can_focus.has_value()		) { this->prevButton3columns.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->prevButton3columns.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->prevButton3columns.set_visible(state.is_visible.value()); }
 		}
 	});
 
-	// --- ページ送りボタン ---
-	m_widget_states.try_emplace(&nextButton, WidgetStateUpdater{
+	// --- 3列表示テーブルのページ送りボタン ---
+	m_widget_states.try_emplace(&nextButton3columns, WidgetStateUpdater{
 		{
 			.can_focus		= false,
 			.is_sensitive	= true,
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
-			if (state.can_focus.has_value()		) { this->nextButton.set_can_focus(state.can_focus.value()); }
-			if (state.is_sensitive.has_value()	) { this->nextButton.set_sensitive(state.is_sensitive.value()); }
-			if (state.is_visible.has_value()	) { this->nextButton.set_visible(state.is_visible.value()); }
+			if (state.can_focus.has_value()		) { this->nextButton3columns.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->nextButton3columns.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->nextButton3columns.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2列表示テーブルのボックス (1) ---
+	m_widget_states.try_emplace(&table2columns1stBox, WidgetStateUpdater{
+		{
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.is_visible.has_value()	) { this->table2columns1stBox.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2列表示テーブルのボックス (2) ---
+	m_widget_states.try_emplace(&table2columns2ndBox, WidgetStateUpdater{
+		{
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.is_visible.has_value()	) { this->table2columns2ndBox.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2種表示テーブルのボックス (1種目) ---
+	m_widget_states.try_emplace(&table2columns1stBox, WidgetStateUpdater{
+		{
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.is_visible.has_value()	) { this->table2columns1stBox.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2種表示テーブルのページネーション(ページ送り)UIを格納するボックス (1種目) ---
+	m_widget_states.try_emplace(&paginationBox2types1st, WidgetStateUpdater{
+		{
+			.is_visible		= false
+		},
+		[this](const WidgetState& state){
+			if (state.is_visible.has_value()	) { this->paginationBox2types1st.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2列表示テーブルのページ戻りボタン (1種目) ---
+	m_widget_states.try_emplace(&prevButton2types1st, WidgetStateUpdater{
+		{
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.can_focus.has_value()		) { this->prevButton2types1st.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->prevButton2types1st.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->prevButton2types1st.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2列表示テーブルのページ送りボタン (1種目) ---
+	m_widget_states.try_emplace(&nextButton2types1st, WidgetStateUpdater{
+		{
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.can_focus.has_value()		) { this->nextButton2types1st.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->nextButton2types1st.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->nextButton2types1st.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2種表示テーブルのボックス (2種目) ---
+	m_widget_states.try_emplace(&table2columns2ndBox, WidgetStateUpdater{
+		{
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.is_visible.has_value()	) { this->table2columns2ndBox.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2種表示テーブルのページネーション(ページ送り)UIを格納するボックス (2種目) ---
+	m_widget_states.try_emplace(&paginationBox2types2nd, WidgetStateUpdater{
+		{
+			.is_visible		= false
+		},
+		[this](const WidgetState& state){
+			if (state.is_visible.has_value()	) { this->paginationBox2types2nd.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2列表示テーブルのページ戻りボタン (2種目) ---
+	m_widget_states.try_emplace(&prevButton2types2nd, WidgetStateUpdater{
+		{
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.can_focus.has_value()		) { this->prevButton2types2nd.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->prevButton2types2nd.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->prevButton2types2nd.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- 2列表示テーブルのページ送りボタン (2種目) ---
+	m_widget_states.try_emplace(&nextButton2types2nd, WidgetStateUpdater{
+		{
+			.can_focus		= false,
+			.is_sensitive	= true,
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.can_focus.has_value()		) { this->nextButton2types2nd.set_can_focus(state.can_focus.value()); }
+			if (state.is_sensitive.has_value()	) { this->nextButton2types2nd.set_sensitive(state.is_sensitive.value()); }
+			if (state.is_visible.has_value()	) { this->nextButton2types2nd.set_visible(state.is_visible.value()); }
 		}
 	});
 
@@ -906,7 +1038,7 @@ MainWindow::MainWindow() :
 	});
 
 	// --- 3列表示テーブル ---
-	m_table_states.try_emplace(&table3column1st, TableState{
+	m_table_states.try_emplace(&table3columns1st, TableState{
 		.column_headers = std::vector<UiText>{
 			{"ツール\n  番号", "  ツール\nばんごう"},
 			{"分類", "ぶんるい"},
@@ -918,7 +1050,7 @@ MainWindow::MainWindow() :
 		.is_sensitive	= true,
 		.is_visible		= true
 	});
-	m_table_states.try_emplace(&table3column2nd, TableState{
+	m_table_states.try_emplace(&table3columns2nd, TableState{
 		.column_headers = std::vector<UiText>{
 			{"ツール\n  番号", "  ツール\nばんごう"},
 			{"分類", "ぶんるい"},
@@ -930,7 +1062,7 @@ MainWindow::MainWindow() :
 		.is_sensitive	= true,
 		.is_visible		= true
 	});
-	m_table_states.try_emplace(&table3column3rd, TableState{
+	m_table_states.try_emplace(&table3columns3rd, TableState{
 		.column_headers = std::vector<UiText>{
 			{"ツール\n  番号", "  ツール\nばんごう"},
 			{"分類", "ぶんるい"},
@@ -944,7 +1076,7 @@ MainWindow::MainWindow() :
 	});
 
 	// --- 2列表示テーブル ---
-	m_table_states.try_emplace(&table2column1st, TableState{
+	m_table_states.try_emplace(&table2columns1st, TableState{
 		.column_headers = std::vector<UiText>{
 			{"ID", "ID"},
 			{"分類", "ぶんるい"},
@@ -956,7 +1088,33 @@ MainWindow::MainWindow() :
 		.is_sensitive	= true,
 		.is_visible		= true
 	});
-	m_table_states.try_emplace(&table2column2nd, TableState{
+	m_table_states.try_emplace(&table2columns2nd, TableState{
+		.column_headers = std::vector<UiText>{
+			{"ID", "ID"},
+			{"分類", "ぶんるい"},
+			{"メーカー", "メーカー"},
+			{"型番", "かたばん"},
+			{"材質", "ざいしつ"},
+			{"再研磨\n  回数", "さいけんま\n  かいすう"}
+		},
+		.is_sensitive	= true,
+		.is_visible		= true
+	});
+
+	// --- 2種表示テーブル ---
+	m_table_states.try_emplace(&table2types1st, TableState{
+		.column_headers = std::vector<UiText>{
+			{"ID", "ID"},
+			{"分類", "ぶんるい"},
+			{"メーカー", "メーカー"},
+			{"型番", "かたばん"},
+			{"材質", "ざいしつ"},
+			{"再研磨\n  回数", "さいけんま\n  かいすう"}
+		},
+		.is_sensitive	= true,
+		.is_visible		= true
+	});
+	m_table_states.try_emplace(&table2types2nd, TableState{
 		.column_headers = std::vector<UiText>{
 			{"ID", "ID"},
 			{"分類", "ぶんるい"},
@@ -1028,7 +1186,7 @@ MainWindow::MainWindow() :
 			{ {&trueButton}, {.text = UiText{"確定", "かくてい"}, .is_sensitive = false} }
 		},
 		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {
+			{ {&table2columns1st, &table2columns2nd}, {
 				.column_headers = std::vector<UiText>{
 					{"ツール\n  番号", "  ツール\nばんごう"},
 					{"分類", "ぶんるい"},
@@ -1040,7 +1198,7 @@ MainWindow::MainWindow() :
 			} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName		= "table2column",
+		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_prepare_state				= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_retrieve_selecting_tools(); },
@@ -1059,7 +1217,7 @@ MainWindow::MainWindow() :
 			{ {&trueButton}, {.text = UiText{"搬出", "はんしゅつ"}, .is_sensitive = true} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName		= "table2column",
+		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state			= [](MainWindow* thiz){ thiz->on_enter_retrieve_confirming_selection(); },
 		.on_falseButton_clicked	= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_confirming_selection(); },
@@ -1075,10 +1233,10 @@ MainWindow::MainWindow() :
 			{ {&falseButton, &trueButton}, {.text = UiText{"", ""}, .is_sensitive = false} }
 		},
 		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
+			{ {&table2columns1st, &table2columns2nd}, {.is_sensitive = false} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName		= "table2column",
+		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_retrieve_container_retrieving(); },
 		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_container_retrieving(notification); }
@@ -1123,7 +1281,7 @@ MainWindow::MainWindow() :
 				.is_sensitive = false,
 				.is_visible = true
 			}, false);
-			thiz->update_table_state({&(thiz->table2column1st), &(thiz->table2column2nd)}, {
+			thiz->update_table_state({&(thiz->table2columns1st), &(thiz->table2columns2nd)}, {
 				.column_headers = std::vector<UiText>{
 					{"ID", "ID"},
 					{"分類", "ぶんるい"},
@@ -1146,7 +1304,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RETRIEVE_READ_COMPLETED, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName	= "table2column",
+		.tableStackPageName	= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_prepare_state	= [](MainWindow* thiz){
 			thiz->update_widget_state(&(thiz->messageLabel), {
@@ -1211,7 +1369,7 @@ MainWindow::MainWindow() :
 			{ {&falseButton, &trueButton}, {.text = UiText{"", ""}, .is_sensitive = false} }
 		},
 		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
+			{ {&table2columns1st, &table2columns2nd}, {.is_sensitive = false} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName	= "pageNone",
@@ -1244,7 +1402,7 @@ MainWindow::MainWindow() :
 		.tableStackPageName	= "pageNone",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_prepare_state	= [](MainWindow* thiz){
-			thiz->update_table_state({&(thiz->table2column1st), &(thiz->table2column2nd)}, {
+			thiz->update_table_state({&(thiz->table2columns1st), &(thiz->table2columns2nd)}, {
 				.column_headers = std::vector<UiText>{
 					{"ID", "ID"},
 					{"分類", "ぶんるい"},
@@ -1269,7 +1427,7 @@ MainWindow::MainWindow() :
 			{ {&messageLabel}, {.text = UiText{"補充が終わったらコンテナを戻して\n扉を閉めてください", "ほじゅうが おわったら コンテナを もどして\nとびらを しめてください"}} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName	= "table2column",
+		.tableStackPageName	= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_read_completed(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_read_completed(); },
@@ -1293,7 +1451,7 @@ MainWindow::MainWindow() :
 			{ {&trueButton}, {.text = UiText{"搬出", "はんしゅつ"}, .is_sensitive = false} }
 		},
 		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {
+			{ {&table2columns1st, &table2columns2nd}, {
 				.column_headers = std::vector<UiText>{
 					{"コンテナ\n  番号", "コンテナ\nばんごう"},
 					{"分類", "ぶんるい"},
@@ -1306,7 +1464,7 @@ MainWindow::MainWindow() :
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName	= "reconcileOperationPage",
-		.tableStackPageName		= "table2column",
+		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_reconcile_waiting_for_container_selection(); },
 		.on_mainTableSelection_changed	= [](MainWindow* thiz, std::optional<size_t> selected_index_opt){ thiz->on_mainTableSelection_reconcile_waiting_for_container_selection(selected_index_opt); },
@@ -1322,11 +1480,11 @@ MainWindow::MainWindow() :
 			{ {&falseButton, &trueButton}, {.text = UiText{"", ""}, .is_sensitive = false} }
 		},
 		.table_states = {
-			{ {&table2column1st, &table2column2nd}, {.is_sensitive = false} }
+			{ {&table2columns1st, &table2columns2nd}, {.is_sensitive = false} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName	= "pageNone",
-		.tableStackPageName		= "table2column",
+		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
 		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
@@ -1353,10 +1511,10 @@ MainWindow::MainWindow() :
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName	= "reconcileInfoPage",
-		.tableStackPageName		= "table2column",
+		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_prepare_state	= [](MainWindow* thiz){
-			thiz->update_table_state({&(thiz->table2column1st), &(thiz->table2column2nd)}, {
+			thiz->update_table_state({&(thiz->table2columns1st), &(thiz->table2columns2nd)}, {
 				.column_headers = std::vector<UiText>{
 					{"ID", "ID"},
 					{"分類", "ぶんるい"},
@@ -1381,7 +1539,7 @@ MainWindow::MainWindow() :
 			{ {&messageLabel}, {.text = UiText{"工具を全てスキャンできたら\n工具とコンテナを戻して扉を閉めてください", "こうぐを すべてスキャンできたら\nこうぐと コンテナを もどして とびらを しめてください"}} }
 		},
 		// --- 各スタックの「表示ページ」を定義 ---
-		.tableStackPageName	= "table2column",
+		.tableStackPageName	= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_reconcile_read_completed(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_reconcile_read_completed(); },
@@ -1706,39 +1864,107 @@ void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter
 }
 
 void MainWindow::update_and_handle_pagination(PaginationAction action, bool update_ui) {
-	// 1. 現在の状態設定から、アクティブなテーブルページ名を取得
+	// 現在の状態設定から、アクティブなテーブルページ名を取得
 	std::string page_name(tableStack.get_visible_child_name());
 
-	// 2. ページ名に応じて、操作対象となるページネーションモデルを選択
-	sgex::PaginatedListStoreModel<MainTableData>* active_paginator = nullptr;
-	if (page_name == "table3column") {
-		active_paginator = &liststore3columnAll;
-	} else if (page_name == "table2column") {
-		active_paginator = &liststore2columnAll;
+	// ページ名に応じて、適切なヘルパーを呼び出す
+	if (page_name == "table3columns") {
+		update_and_handle_pagination_3columns(action, false);
+	} else if (page_name == "table2columns") {
+		update_and_handle_pagination_2columns(action, false);
+	} else if (page_name == "table2types") {
+		update_and_handle_pagination_2types1st(action, false);
+		update_and_handle_pagination_2types2nd(action, false);
 	}
 
-	// 3. 対象のページネーションモデルが存在しない場合、UIを非表示にして終了
-	if (!active_paginator) {
-		update_widget_state(&paginationBox, WidgetState{ .is_visible = false }, update_ui);
-		return;
+	// 画面表示を引数に応じて更新
+	if (update_ui) {
+		refresh_ui(false);
 	}
-	update_widget_state(&paginationBox, WidgetState{ .is_visible = true }, false);
+}
 
-	// 4. 引数に応じてページ送り操作を実行
+void MainWindow::update_and_handle_pagination_3columns(PaginationAction action, bool update_ui) {
+	// 引数に応じてページ送り操作を実行
 	if (action == PaginationAction::GO_TO_PREV) {
-		active_paginator->prev_page();
+		liststore3columnsAll.prev_page();
 	} else if (action == PaginationAction::GO_TO_NEXT) {
-		active_paginator->next_page();
+		liststore3columnsAll.next_page();
 	}
 	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
 
-	// 5. モデルの現在の状態に基づいて、UIを更新
-	pageNumberLabel.set_label(fmt::format("ページ {:2d} / {:2d}",
-		active_paginator->get_current_page(),
-		active_paginator->get_total_pages()
+	// モデルの現在の状態に基づいて、UIを更新
+	pageLabel3columns.set_label(fmt::format("ページ {:2d} / {:2d}",
+		liststore3columnsAll.get_current_page(),
+		liststore3columnsAll.get_total_pages()
 	).c_str());
-	update_widget_state(&prevButton, WidgetState{ .is_sensitive = active_paginator->has_prev_page() }, false);
-	update_widget_state(&nextButton, WidgetState{ .is_sensitive = active_paginator->has_next_page() }, false);
+	update_widget_state(&prevButton3columns, WidgetState{ .is_sensitive = liststore3columnsAll.has_prev_page() }, false);
+	update_widget_state(&nextButton3columns, WidgetState{ .is_sensitive = liststore3columnsAll.has_next_page() }, false);
+
+	if (update_ui) {
+		refresh_ui(false);
+	}
+}
+
+void MainWindow::update_and_handle_pagination_2columns(PaginationAction action, bool update_ui) {
+	// 引数に応じてページ送り操作を実行
+	if (action == PaginationAction::GO_TO_PREV) {
+		liststore2columnsAll.prev_page();
+	} else if (action == PaginationAction::GO_TO_NEXT) {
+		liststore2columnsAll.next_page();
+	}
+	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
+
+	// モデルの現在の状態に基づいて、UIを更新
+	pageLabel2columns.set_label(fmt::format("ページ {:2d} / {:2d}",
+		liststore2columnsAll.get_current_page(),
+		liststore2columnsAll.get_total_pages()
+	).c_str());
+	update_widget_state(&prevButton2columns, WidgetState{ .is_sensitive = liststore2columnsAll.has_prev_page() }, false);
+	update_widget_state(&nextButton2columns, WidgetState{ .is_sensitive = liststore2columnsAll.has_next_page() }, false);
+
+	if (update_ui) {
+		refresh_ui(false);
+	}
+}
+
+void MainWindow::update_and_handle_pagination_2types1st(PaginationAction action, bool update_ui) {
+	// 引数に応じてページ送り操作を実行
+	if (action == PaginationAction::GO_TO_PREV) {
+		paginatedListstore2types1st.prev_page();
+	} else if (action == PaginationAction::GO_TO_NEXT) {
+		paginatedListstore2types1st.next_page();
+	}
+	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
+
+	// モデルの現在の状態に基づいて、UIを更新
+	pageLabel2types1st.set_label(fmt::format("ページ {:2d} / {:2d}",
+		paginatedListstore2types1st.get_current_page(),
+		paginatedListstore2types1st.get_total_pages()
+	).c_str());
+	update_widget_state(&prevButton2types1st, WidgetState{ .is_sensitive = paginatedListstore2types1st.has_prev_page() }, false);
+	update_widget_state(&nextButton2types1st, WidgetState{ .is_sensitive = paginatedListstore2types1st.has_next_page() }, false);
+
+	if (update_ui) {
+		refresh_ui(false);
+	}
+}
+
+void MainWindow::update_and_handle_pagination_2types2nd(PaginationAction action, bool update_ui) {
+	// 引数に応じてページ送り操作を実行
+	if (action == PaginationAction::GO_TO_PREV) {
+		paginatedListstore2types2nd.prev_page();
+	} else if (action == PaginationAction::GO_TO_NEXT) {
+		paginatedListstore2types2nd.next_page();
+	}
+	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
+
+	// モデルの現在の状態に基づいて、UIを更新
+	pageLabel2types2nd.set_label(fmt::format("ページ {:2d} / {:2d}",
+		paginatedListstore2types2nd.get_current_page(),
+		paginatedListstore2types2nd.get_total_pages()
+	).c_str());
+	update_widget_state(&prevButton2types2nd, WidgetState{ .is_sensitive = paginatedListstore2types2nd.has_prev_page() }, false);
+	update_widget_state(&nextButton2types2nd, WidgetState{ .is_sensitive = paginatedListstore2types2nd.has_next_page() }, false);
 
 	if (update_ui) {
 		refresh_ui(false);
@@ -1874,11 +2100,11 @@ void MainWindow::on_window_show() {
 	if (m_is_first_show) {
 		// 初回表示の時だけ、UI全体を初期状態に合わせて完全に再描画し、初期設定を行う
 		storingToolTable.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
-		table2column1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
-		table2column2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
-		table3column1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
-		table3column2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
-		table3column3rd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table2columns1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table2columns2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table3columns1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table3columns2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
+		table3columns3rd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH); // テーブルのグリッド線を表示
 
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
@@ -2013,14 +2239,44 @@ void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_in
 	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
 }
 
-void MainWindow::prevButton_on_clicked() {
+void MainWindow::prevButton3columns_on_clicked() {
 	DEV_PRINT("前のページへ\n");
-	update_and_handle_pagination(PaginationAction::GO_TO_PREV, true);
+	update_and_handle_pagination_3columns(PaginationAction::GO_TO_PREV, true);
 }
 
-void MainWindow::nextButton_on_clicked() {
+void MainWindow::nextButton3columns_on_clicked() {
 	DEV_PRINT("次のページへ\n");
-	update_and_handle_pagination(PaginationAction::GO_TO_NEXT, true);
+	update_and_handle_pagination_3columns(PaginationAction::GO_TO_NEXT, true);
+}
+
+void MainWindow::prevButton2columns_on_clicked() {
+	DEV_PRINT("前のページへ\n");
+	update_and_handle_pagination_2columns(PaginationAction::GO_TO_PREV, true);
+}
+
+void MainWindow::nextButton2columns_on_clicked() {
+	DEV_PRINT("次のページへ\n");
+	update_and_handle_pagination_2columns(PaginationAction::GO_TO_NEXT, true);
+}
+
+void MainWindow::prevButton2types1st_on_clicked() {
+	DEV_PRINT("前のページへ\n");
+	update_and_handle_pagination_2types1st(PaginationAction::GO_TO_PREV, true);
+}
+
+void MainWindow::nextButton2types1st_on_clicked() {
+	DEV_PRINT("次のページへ\n");
+	update_and_handle_pagination_2types1st(PaginationAction::GO_TO_NEXT, true);
+}
+
+void MainWindow::prevButton2types2nd_on_clicked() {
+	DEV_PRINT("前のページへ\n");
+	update_and_handle_pagination_2types2nd(PaginationAction::GO_TO_PREV, true);
+}
+
+void MainWindow::nextButton2types2nd_on_clicked() {
+	DEV_PRINT("次のページへ\n");
+	update_and_handle_pagination_2types2nd(PaginationAction::GO_TO_NEXT, true);
 }
 
 void MainWindow::qrCodeEntry_on_activate() {
@@ -2154,7 +2410,7 @@ void MainWindow::on_enter_retrieve_waiting_for_program_qr() {
 	m_retrieving_index.reset();
 
 	// UIを初期化
-	liststore2columnAll.clear();	// テーブルを空にする
+	liststore2columnsAll.clear();	// テーブルを空にする
 	lineEntry.set_text("");			// ライン名を空にする
 	programEntry.set_text("");		// プログラム番号を空にする
 	qrCodeEntry.set_text("");		// QRコード入力欄を空にする
@@ -2176,7 +2432,7 @@ void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
 
 		// ToolAssignmentInfo のリストを MainTableData のリストに変換して、
 		// ページネーションモデルにセット (これで表示が更新される)
-		set_tool_assignments(liststore2columnAll, tooling_list.tool_assignments);
+		set_tool_assignments(liststore2columnsAll, tooling_list.tool_assignments);
 
 		// 5. 次の状態へ遷移
 		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
@@ -2193,14 +2449,14 @@ void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
 
 void MainWindow::on_enter_retrieve_selecting_tools()
 {
-	update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY, true);
+	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 }
 
 void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<size_t> selected_index_opt) {
 	// 選択されていて、かつ無効化されていない行の場合
 	if (selected_index_opt.has_value()) {
 		auto selected_index = selected_index_opt.value();
-		auto selected_item = liststore2columnAll.get_item(selected_index);
+		auto selected_item = liststore2columnsAll.get_item(selected_index);
 
 		DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index);
 
@@ -2213,16 +2469,16 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 		}
 
 		// モデルを更新 (これにより GtkListStore も更新される)
-		liststore2columnAll.update(selected_index, selected_item);
+		liststore2columnsAll.update(selected_index, selected_item);
 	}
 
-	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnAll.find_first_index([](const MainTableData& selected_item) {
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnsAll.find_first_index([](const MainTableData& selected_item) {
 		return selected_item.cell_state_0to4 == TableCellState::SELECTED;
 	}).has_value())}, true);
 }
 
 void MainWindow::on_falseButton_retrieve_selecting_tools() {
-	liststore2columnAll.modify_master_data(
+	liststore2columnsAll.modify_master_data(
 		// ラムダ式にマスターデータへの参照(master_data)が渡される
 		[](std::vector<MainTableData>& master_data) {
 			// マスターデータを直接ループ処理
@@ -2241,7 +2497,7 @@ void MainWindow::on_falseButton_retrieve_selecting_tools() {
 
 void MainWindow::on_enter_retrieve_confirming_selection() {
 	// 選択状態の行を抽出
-	auto vec = liststore2columnAll.find_items([](const MainTableData& row) {
+	auto vec = liststore2columnsAll.find_items([](const MainTableData& row) {
 		return row.cell_state_0to4 == TableCellState::SELECTED;
 	});
 
@@ -2251,21 +2507,21 @@ void MainWindow::on_enter_retrieve_confirming_selection() {
 	}
 
 	// 表のデータを抽出したものに置き換えつつ、現在のデータを退避
-	m_retrieve_backup_table = liststore2columnAll.replace_master_data(std::move(vec));
+	m_retrieve_backup_table = liststore2columnsAll.replace_master_data(std::move(vec));
 }
 
 void MainWindow::on_falseButton_retrieve_confirming_selection() {
-	liststore2columnAll.set_master_data(std::move(m_retrieve_backup_table));	// 退避していた表データを戻す
+	liststore2columnsAll.set_master_data(std::move(m_retrieve_backup_table));	// 退避していた表データを戻す
 	set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 }
 
 void MainWindow::on_trueButton_retrieve_confirming_selection() {
 	m_retrieve_backup_table.clear();	// 退避していた表のバックアップをクリア
 	m_retrieving_tools.clear();			// 取り出し中工具の vector をクリア
-	m_retrieving_tools.reserve(liststore2columnAll.size());	// 先にメモリを確保しておく
+	m_retrieving_tools.reserve(liststore2columnsAll.size());	// 先にメモリを確保しておく
 
 	// 取り出し中工具のリストに、確定した取り出す工具を格納しておく
-	for (const auto& item : liststore2columnAll.get_master_data()) {
+	for (const auto& item : liststore2columnsAll.get_master_data()) {
 		m_retrieving_tools.push_back(std::any_cast<const ToolAssignmentInfo&>(item.raw_data));	// FIXME: any型不一致対応
 	}
 	m_retrieving_index = 0;	// どの工具の取り出しを行っているかのインデックスを初期化
@@ -2315,7 +2571,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 			.raw_data = retrieving_tool
 		});
 	}
-	liststore2columnAll.set_master_data(std::move(vec));
+	liststore2columnsAll.set_master_data(std::move(vec));
 }
 
 void MainWindow::on_plc_retrieve_container_retrieving(const plc::Notification& notification) {
@@ -2353,7 +2609,7 @@ void MainWindow::on_enter_retrieve_ready_for_reading() {
 	m_plc_ready_for_action = false;		// 扉が閉まるのを待つため、最初は false
 	m_tracker_ready_for_action = true;	// 最初は不正なし
 
-	liststore2columnAll.clear();
+	liststore2columnsAll.clear();
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
@@ -2429,16 +2685,16 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 						it->tool_num = m_insertCountEntry_current_count;
 						it->proc_time = sg::now(); // 処理時刻を更新
 
-						// 表(liststore2columnAll)の個数を更新
+						// 表(liststore2columnsAll)の個数を更新
 						// まず、表から該当する行のインデックスを検索
-						auto table_row_opt = liststore2columnAll.find_first_index_and_item(
+						auto table_row_opt = liststore2columnsAll.find_first_index_and_item(
 							[&](const MainTableData& item){ return item.id == unique_info.id; }
 						);
 
 						if (table_row_opt.has_value()) {
 							auto [index, item] = table_row_opt.value();
 							item.data_columns[5] = std::to_string(m_insertCountEntry_current_count); // 6列目(個数)を更新
-							liststore2columnAll.update(index, item); // 表の行を更新
+							liststore2columnsAll.update(index, item); // 表の行を更新
 						} else {
 							// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
 							// BUG: 不正値対応
@@ -2459,7 +2715,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 						confirmInsertCountDialog.run(this);
 					}
 
-					liststore2columnAll.append(MainTableData{
+					liststore2columnsAll.append(MainTableData{
 						.id = unique_info.id,
 						.data_columns = {
 							fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
@@ -2488,7 +2744,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 						)
 					});
 
-					update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY, true);
+					update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 				}
 				result = true;
 			}
@@ -2592,7 +2848,7 @@ void MainWindow::on_trueButton_retrieve_read_completed() {
 		// m_retrieving_list に保存しておいた、現在取り出し中のツーリングリストを更新
 		if (m_retrieving_list.has_value() && db::update_ToolingListInfo(m_retrieving_list.value())) {
 			// 更新に成功したら、表にセットして工具選択画面に遷移
-			set_tool_assignments(liststore2columnAll, m_retrieving_list.value().tool_assignments);
+			set_tool_assignments(liststore2columnsAll, m_retrieving_list.value().tool_assignments);
 			set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 		} else {
 			// 更新に失敗したら、プログラム割当一覧表読み取り画面に遷移
@@ -2685,7 +2941,7 @@ void MainWindow::on_plc_store_container_retrieved(const plc::Notification& notif
 }
 
 void MainWindow::on_enter_store_ready_for_reading() {
-	liststore2columnAll.clear();
+	liststore2columnsAll.clear();
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
@@ -2723,7 +2979,7 @@ bool MainWindow::on_qrCodeEntry_store_read_completed() {
 			}
 		}
 
-		liststore2columnAll.append(MainTableData{
+		liststore2columnsAll.append(MainTableData{
 			.id = unique_info.id,
 			.data_columns = {
 				to_string(unique_info.id),
@@ -2738,7 +2994,7 @@ bool MainWindow::on_qrCodeEntry_store_read_completed() {
 			},
 			.raw_data = unique_info
 		});
-		update_and_handle_pagination(PaginationAction::UPDATE_UI_ONLY, true);
+		update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 		result = true;
 	} else {
 		// TODO: 該当データが無い場合の処理
