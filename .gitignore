@@ -3,3 +3,4 @@
 00_dev/m2_tool_io/**/*_debug
 00_dev/m2_tool_io/**/*~
 00_dev/m2_tool_io/**/#*#
+**/.vscode
