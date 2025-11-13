@@ -17,16 +17,18 @@ class ToolTrackerClient;
 class RecorderClient;
 
 // --- 工具追跡クライアント 定数 ---
-constexpr const char* TRACKER_IP	= "10.19.133.122";
+constexpr const char* TRACKER_IP	= "10.19.133.122";	// D201
+//constexpr const char* TRACKER_IP	= "10.19.106.160";	// C103
 constexpr int TRACKER_PORT			= 5000;
-constexpr size_t TRACKER_MSG_LENGTH	= 16; // ★★★ 固定メッセージ長 (仮に16バイトとする) ★★★
+constexpr size_t TRACKER_MSG_LENGTH	= 11; // ★★★ 固定メッセージ長 (仮に16バイトとする) ★★★
 
 // 固定長メッセージを生成するヘルパー関数
-constexpr std::array<char, TRACKER_MSG_LENGTH> make_fixed_message(const char* msg) {
-	std::array<char, TRACKER_MSG_LENGTH> arr{}; // ゼロ初期化
+template<std::size_t length>
+constexpr std::array<char, length> make_fixed_message(const char* msg) {
+	std::array<char, length> arr{}; // ゼロ初期化
 	std::string_view sv(msg);
 	// コピーする文字数 = msgの長さ と バッファサイズ-1 (ヌル終端用) の小さい方
-	size_t len_to_copy = std::min(sv.length(), TRACKER_MSG_LENGTH - 1);
+	size_t len_to_copy = std::min(sv.length(), length - 1);
 
 	// 文字列をコピー
 	for (size_t i = 0; i < len_to_copy; i++) {
@@ -34,25 +36,25 @@ constexpr std::array<char, TRACKER_MSG_LENGTH> make_fixed_message(const char* ms
 	}
 
 	// 残りをスペースでパディング (ヌル終端の1つ手前まで)
-	for (size_t i = len_to_copy; i < TRACKER_MSG_LENGTH - 1; i++) {
+	for (size_t i = len_to_copy; i < length - 1; i++) {
 		arr[i] = ' ';
 	}
-	// arr[TRACKER_MSG_LENGTH - 1] はゼロ初期化されているので、ヌル終端は保証される
+	// arr[length - 1] はゼロ初期化されているので、ヌル終端は保証される
 
 	return arr;
 }
 
 // --- プロトコルメッセージ定数 (固定長) ---
-constexpr auto TRACKER_MSG_CONNECT		= make_fixed_message("Connect");
-constexpr auto TRACKER_MSG_DISCONNECT	= make_fixed_message("Disconnect");
-constexpr auto TRACKER_MSG_QR_SCAN		= make_fixed_message("QR_scan");
-constexpr auto TRACKER_MSG_ACK			= make_fixed_message("ACK");
-constexpr auto TRACKER_MSG_SCAN_S		= make_fixed_message("Scan_s");
-constexpr auto TRACKER_MSG_SCAN_F		= make_fixed_message("Scan_f");
-constexpr auto TRACKER_MSG_C_ANOMALY_1	= make_fixed_message("C_Anomly_1");
-constexpr auto TRACKER_MSG_C_BACK_1		= make_fixed_message("C_Back_1");
-constexpr auto TRACKER_MSG_C_ANOMALY_2	= make_fixed_message("C_Anomly_2");
-constexpr auto TRACKER_MSG_C_BACK_2		= make_fixed_message("C_Back_2");
+constexpr auto TRACKER_MSG_CONNECT		= make_fixed_message<TRACKER_MSG_LENGTH>("Connect   ");
+constexpr auto TRACKER_MSG_DISCONNECT	= make_fixed_message<TRACKER_MSG_LENGTH>("Disconnect");
+constexpr auto TRACKER_MSG_QR_SCAN		= make_fixed_message<TRACKER_MSG_LENGTH>("QR_scan");
+constexpr auto TRACKER_MSG_ACK			= make_fixed_message<TRACKER_MSG_LENGTH>("ACK");
+constexpr auto TRACKER_MSG_SCAN_S		= make_fixed_message<TRACKER_MSG_LENGTH>("Scan_s");
+constexpr auto TRACKER_MSG_SCAN_F		= make_fixed_message<TRACKER_MSG_LENGTH>("Scan_f");
+constexpr auto TRACKER_MSG_C_ANOMALY_1	= make_fixed_message<TRACKER_MSG_LENGTH>("C_Anomly_1");	// 未スキャンが画面外
+constexpr auto TRACKER_MSG_C_BACK_1		= make_fixed_message<TRACKER_MSG_LENGTH>("C_Back_1");	// 未スキャンが画面内に戻ってきた
+constexpr auto TRACKER_MSG_C_ANOMALY_2	= make_fixed_message<TRACKER_MSG_LENGTH>("C_Anomly_2");	// スキャン済みをコンテナに入れた
+constexpr auto TRACKER_MSG_C_BACK_2		= make_fixed_message<TRACKER_MSG_LENGTH>("C_Back_2");	// スキャン済みをコンテナから出した
 
 /**
  * @brief 工具追跡サーバーからのメッセージ種別
@@ -104,7 +106,7 @@ public:
 	 * @brief コンストラクタ。
 	 * @param[in] callback イベント受信時に呼び出されるコールバック関数。
 	 */
-	explicit ToolTrackerClient(std::function<void(Notification)> callback); // IPとPortを削除
+	explicit ToolTrackerClient(std::function<void(const Notification&)> callback); // IPとPortを削除
 	~ToolTrackerClient();
 
 	// コピー禁止
@@ -143,7 +145,7 @@ private:
 	sg::Socket socket;
 	std::thread listener_thread;
 	std::atomic<bool> keep_listening;
-	std::function<void(Notification)> notification_callback;
+	std::function<void(const Notification&)> notification_callback;
 };
 
 /**
@@ -180,11 +182,22 @@ public:
 	 */
 	bool stop_recording();
 
+	/**
+	 * @brief 現在録画中のファイル名を取得します。(スレッドセーフ)
+	 * @return 録画中の場合はファイル名、録画中でない場合は std::nullopt。
+	 */
+	std::optional<std::string> get_current_filename() const;
+
 private:
 	std::string base_url;
 	std::string context_path;
 	std::string username;
 	std::string password;
+
+	/// @brief 現在録画中のファイル名を保持 (録画中でなければ nullopt)
+	std::optional<std::string> m_current_filename;
+	/// @brief m_current_filename へのスレッドセーフなアクセスを保証するミューテックス
+	mutable std::mutex m_filename_mutex;
 };
 
 /**

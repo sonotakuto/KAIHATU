@@ -1,7 +1,15 @@
+/**
+ * @file periodic_timer.hpp
+ * @brief 正確な周期実行をサポートするタイマークラスのヘッダファイル。
+ */
 #pragma once
 #include <chrono>
 #include <thread>
 
+/**
+ * @namespace utils
+ * @brief ユーティリティ関数やクラスをまとめた名前空間
+ */
 namespace utils {
 
 /**

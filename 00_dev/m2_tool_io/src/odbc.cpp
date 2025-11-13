@@ -480,7 +480,7 @@ void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<s
 	bulk_param_indicators[paramIndex].resize(opt_vals.size());
 
 	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < opt_vals.size(); ++i) {
+	for (size_t i = 0; i < opt_vals.size(); i++) {
 		if (opt_vals[i].has_value()) {
 			if (!opt_vals[i].value().empty()) {
 				memcpy(flat_buffer.data() + (i * max_len), opt_vals[i].value().data(), opt_vals[i].value().size());
@@ -520,7 +520,7 @@ bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<s
 	std::vector<SQL_TIMESTAMP_STRUCT> buffer(opt_vals.size());
 	bulk_param_indicators[paramIndex].resize(opt_vals.size());
 
-	for (size_t i = 0; i < opt_vals.size(); ++i) {
+	for (size_t i = 0; i < opt_vals.size(); i++) {
 		if (opt_vals[i].has_value()) {
 			if (auto ts_opt = to_sql_timestamp(opt_vals[i].value())) {
 				buffer[i] = ts_opt.value();

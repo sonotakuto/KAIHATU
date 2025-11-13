@@ -10,6 +10,7 @@
 #include "./SimpleGtk_extension.hpp"
 #include "./tracked_map.hpp"
 #include "./plc_communicator.hpp"
+#include "./tracking_communicator.hpp"
 
 /**
  * @namespace gui
@@ -81,8 +82,6 @@ public:
 		RECONCILE_READ_COMPLETED,					// 実際に棚卸しを行う(インサート以外) - 工具読み取り後
 		RECONCILE_INSERT_READY_FOR_READING,			// 実際に棚卸しを行う(インサート) - 工具読み取り前
 		RECONCILE_INSERT_READ_COMPLETED,			// 実際に棚卸しを行う(インサート) - 工具読み取り後
-
-		// TODO: 他のモードの状態もここに追加
 	};
 
 	/**
@@ -255,7 +254,7 @@ public:
 		/// @brief 状態遷移直後に実行するアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_enter_state = nullptr;
 		/// @brief いずれかのメインテーブルの選択が変更されたときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*)> on_mainTableSelection_changed = nullptr;
+		std::function<void(MainWindow*, std::optional<size_t>)> on_mainTableSelection_changed = nullptr;
 		/// @brief qrCodeEntry で Enter が押されたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_qrCodeEntry_activate = nullptr;
 		/// @brief falseButton がクリックされたときのアクション (nullptrなら何もしない)
@@ -263,9 +262,9 @@ public:
 		/// @brief trueButton がクリックされたときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*)> on_trueButton_clicked = nullptr;
 		/// @brief PLCモニタースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, plc::Notification)> on_plc_notified = nullptr;
+		std::function<void(MainWindow*, const plc::Notification&)> on_plc_notified = nullptr;
 		/// @brief 工具追跡システムのリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, tracker::Notification)> on_tracker_notified = nullptr;
+		std::function<void(MainWindow*, const tracker::Notification&)> on_tracker_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -297,13 +296,13 @@ public:
 	 * @brief PLCモニタースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void plc_on_notified(plc::Notification notification);
+	void plc_on_notified(const plc::Notification& notification);
 
 	/**
 	 * @brief 工具追跡システムのリスナースレッドから通知を受け取り、GUIスレッドで実行されるコールバック。
 	 * @param[in] notification 工具追跡システムのリスナースレッドからの通知。
 	 */
-	void tracker_on_notified(tracker::Notification notification);
+	void tracker_on_notified(const tracker::Notification& notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -343,6 +342,8 @@ public:
 	sgex::Label programLabel;
 	/// @brief (取り出し時) プログラム番号を入力するエントリ (ID: programEntry)
 	sgex::Entry programEntry;
+	/// @brief (取り出し時) ツーリングリストを変更するボタン (ID: listChangeButton)
+	sgex::Button listChangeButton;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	sgex::TreeView storingToolTable;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア
@@ -356,30 +357,24 @@ public:
 
 	// --- テーブル表示部 ---
 
-	/// @brief 複数のテーブル表示形式を切り替えるスタック (ID: table_stack)
-	sgex::Stack table_stack;
+	/// @brief 複数のテーブル表示形式を切り替えるスタック (ID: tableStack)
+	sgex::Stack tableStack;
 	/// @brief 3列表示テーブルのボックス (1) (ID: table3column1stBox)
 	sgex::Box table3column1stBox;
 	/// @brief 3列表示テーブル (1) (ID: table3column1st)
 	sgex::TreeView table3column1st;
-	/// @brief 3列表示テーブルの Selection オブジェクト (1)
-	sg::TreeSelection table3column1stSelection;
 	/// @brief 3列表示テーブルのリストストア (1)
 	sgex::TreeViewListStoreModel<MainTableData> liststore3column1st;
 	/// @brief 3列表示テーブルのボックス (2) (ID: table3column2ndBox)
 	sgex::Box table3column2ndBox;
 	/// @brief 3列表示テーブル (2) (ID: table3column2nd)
 	sgex::TreeView table3column2nd;
-	/// @brief 3列表示テーブルの Selection オブジェクト (2)
-	sg::TreeSelection table3column2ndSelection;
 	/// @brief 3列表示テーブルのリストストア (2)
 	sgex::TreeViewListStoreModel<MainTableData> liststore3column2nd;
 	/// @brief 3列表示テーブルのボックス (3) (ID: table3column3rdBox)
 	sgex::Box table3column3rdBox;
 	/// @brief 3列表示テーブル (3) (ID: table3column3rd)
 	sgex::TreeView table3column3rd;
-	/// @brief 3列表示テーブルの Selection オブジェクト (3)
-	sg::TreeSelection table3column3rdSelection;
 	/// @brief 3列表示テーブルのリストストア (3)
 	sgex::TreeViewListStoreModel<MainTableData> liststore3column3rd;
 	/// @brief 3列表示テーブルのページ操作可能なリストストア
@@ -388,16 +383,12 @@ public:
 	sgex::Box table2column1stBox;
 	/// @brief 2列表示テーブル (1) (ID: table2column1st)
 	sgex::TreeView table2column1st;
-	/// @brief 2列表示テーブルの Selection オブジェクト (1)
-	sg::TreeSelection table2column1stSelection;
 	/// @brief 2列表示テーブルのリストストア (1)
 	sgex::TreeViewListStoreModel<MainTableData> liststore2column1st;
 	/// @brief 2列表示テーブルのボックス (2) (ID: table2column2ndBox)
 	sgex::Box table2column2ndBox;
 	/// @brief 2列表示テーブル (2) (ID: table2column2nd)
 	sgex::TreeView table2column2nd;
-	/// @brief 2列表示テーブルの Selection オブジェクト (2)
-	sg::TreeSelection table2column2ndSelection;
 	/// @brief 2列表示テーブルのリストストア (2)
 	sgex::TreeViewListStoreModel<MainTableData> liststore2column2nd;
 	/// @brief 2列表示テーブルのページ操作可能なリストストア
@@ -539,6 +530,8 @@ private:
 	// プライベートメンバ関数 (ヘルパー関数)
 	//=========================================================================
 
+	// --- 複数場面共通のヘルパー関数 ---
+
 	/**
 	 * @brief 現在のテキストモードに応じて表示用の文字列を取得します。
 	 * @param[in] ui_text かな/漢字両方のテキストを持つUiText構造体。
@@ -631,24 +624,37 @@ private:
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
 	 * @param[in] action 実行したい操作の種類。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 */
-	void update_and_handle_pagination(PaginationAction action);
+	void update_and_handle_pagination(PaginationAction action, bool update_ui = true);
+
+	// --- 認証用のヘルパー関数 ---
 
 	/**
-	 * @brief パスワード認証ダイアログを表示し、認証を行います。
+	 * @brief [認証用] パスワード認証ダイアログを表示し、認証を行います。
 	 * @return 認証に成功した場合はtrue、失敗またはキャンセルの場合はfalseを返します。
 	 */
 	bool authenticate_with_password();
 
+	// --- 取り出しモード用のヘルパー関数 ---
+
 	/**
-	 * @brief ツール割当情報のリストをテーブル表示用データに変換してページネーションモデルにセットする
+	 * @brief [取り出し用] ツール割当情報のリストをテーブル表示用データに変換してページネーションモデルにセットする
 	 * @param[out] list_store_model セット対象のページネーションモデル
 	 * @param[in] tool_assignments ツール割当情報のリスト
 	 */
 	void set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWindow::MainTableData>& list_store_model, const std::vector<ToolAssignmentInfo> &tool_assignments);
 
 	/**
-	 * @brief 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
+	 * @brief [取り出し用] 3つのシステム(GUI, PLC, Tracker)の状態をチェックし、
+	 * RETRIEVE_READ_COMPLETED 状態での操作ボタンの感応状態を一括更新する。
+	 */
+	void update_retrieve_read_completed_buttons();
+
+	// --- 補充モード用のヘルパー関数 ---
+
+	/**
+	 * @brief [補充用] 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
 	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
 	bool confirm_if_reground();
@@ -712,18 +718,10 @@ private:
 	void userIdEntry_on_activate();
 
 	/**
-	 * @brief メインテーブルの "button-press-event" シグナルに対応するハンドラ。
-	 * @details メインテーブルの上でクリックされた時に呼び出され、現在の状態に応じたコールバックを実行する。
-	 * @param[in] event GdkEventButton構造体へのポインタ。
-	 * @return trueを返すとイベントが消費され、falseを返すと他のハンドラに伝播される。
-	 */
-	bool mainTable_on_button_press(GdkEventButton* event);
-
-	/**
 	 * @brief メインテーブルの Selection オブジェクトの "changed" シグナルに対応するハンドラ。
 	 * @details メインテーブルの選択が変更されたときに呼び出される。現在の状態に応じたコールバックを実行する。
 	 */
-	void mainTableSelection_on_changed();
+	void mainTableSelection_on_changed(std::optional<size_t> selected_index_opt);
 
 	/**
 	 * @brief prevButton の "clicked" シグナルに対応するハンドラ。
@@ -833,7 +831,7 @@ private:
 	 * @brief RETRIEVE_SELECTING_TOOLS 状態の mainTableSelection_on_changed の処理。
 	 * @details 選択された行の選択/非選択の状態を切り替える。
 	 */
-	void on_mainTableSelection_retrieve_selecting_tools();
+	void on_mainTableSelection_retrieve_selecting_tools(std::optional<size_t> selected_index_opt);
 
 	/**
 	 * @brief brief RETRIEVE_SELECTING_TOOLS 状態の falseButton.on_clicked の処理
@@ -868,9 +866,9 @@ private:
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_retrieve_container_retrieving(plc::Notification notification);
+	void on_plc_retrieve_container_retrieving(const plc::Notification& notification);
 
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -881,9 +879,9 @@ private:
 	/**
 	 * @brief RETRIEVE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_retrieve_container_retrieved(plc::Notification notification);
+	void on_plc_retrieve_container_retrieved(const plc::Notification& notification);
 
 	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態に入ったときの処理
@@ -892,24 +890,23 @@ private:
 	void on_enter_retrieve_ready_for_reading();
 
 	/**
-	 * @brief STORE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
-	 * @details on_qrCodeEntry_retrieve_read_completed() の処理に加え、
-	 * 読み取りに成功した場合は次の画面に遷移する。
+	 * @brief RETRIEVE_READY_FOR_READING 状態の qrCodeEntry.on_activate の処理
+	 * @details 読み取られた工具情報をDBから取得して、正しければ追跡システムに正しいスキャンか問い合わせる。
 	 */
 	void on_qrCodeEntry_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の on_tracker_notified の処理。
+	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
+	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
+	 */
+	void on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification);
 
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態に入ったときの処理
 	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
 	 */
 	void on_enter_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
-	 * @details 読み取られた工具情報をDBから取得して表に追加する。
-	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
-	 */
-	bool on_qrCodeEntry_retrieve_read_completed();
 
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態の falseButton.on_clicked の処理
@@ -926,9 +923,9 @@ private:
 	/**
 	 * @brief RETRIEVE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_retrieve_read_completed(plc::Notification notification);
+	void on_plc_retrieve_read_completed(const plc::Notification& notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -952,9 +949,9 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_container_retrieving(plc::Notification notification);
+	void on_plc_store_container_retrieving(const plc::Notification& notification);
 
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -965,9 +962,9 @@ private:
 	/**
 	 * @brief STORE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_container_retrieved(plc::Notification notification);
+	void on_plc_store_container_retrieved(const plc::Notification& notification);
 
 	/**
 	 * @brief STORE_READY_FOR_READING 状態に入ったときの処理
@@ -1010,9 +1007,9 @@ private:
 	/**
 	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_read_completed(plc::Notification notification);
+	void on_plc_store_read_completed(const plc::Notification& notification);
 
 	// --- 棚卸しモードの状態遷移関数 ---
 	/**
@@ -1025,7 +1022,7 @@ private:
 	 * @brief RECONCILE_WAITING_FOR_CONTAINER_SELECTION 状態の mainTableSelection_on_changed の処理。
 	 * @details 選択中の状態に選択行を変化させ、trueButton を有効化する。
 	 */
-	void on_mainTableSelection_reconcile_waiting_for_container_selection();
+	void on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt);
 
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態に入ったときの処理。
@@ -1036,9 +1033,9 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、搬出が完了すれば次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_reconcile_container_retrieving(plc::Notification notification);
+	void on_plc_reconcile_container_retrieving(const plc::Notification& notification);
 
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態に入ったときの処理。
@@ -1049,9 +1046,9 @@ private:
 	/**
 	 * @brief RECONCILE_CONTAINER_RETRIEVED 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が開かれたら次の画面に遷移する。
-	 * @param[in] notification PLCリスナースレッドからの通知。
+	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_reconcile_container_retrieved(plc::Notification notification);
+	void on_plc_reconcile_container_retrieved(const plc::Notification& notification);
 
 	/**
 	 * @brief RECONCILE_READY_FOR_READING 状態に入ったときの処理。
@@ -1109,14 +1106,6 @@ private:
 	 */
 	bool m_is_programmatically_changing_toggle;
 
-	/**
-	 * @brief ユーザー起因により表の選択状態が変更されようとしていることを示すフラグ。
-	 * @details
-	 * 表の上で button-release-event シグナルが発生したときにtrueになり、選択処理が開始するとfalseになる。
-	 * trueの間のみ、TreeSelection の changed イベントハンドラは処理を行う。
-	 */
-	bool m_user_initiated_selection;
-
 	// --- 状態遷移管理用 ---
 
 	/// @brief パスワード認証が成功したかどうかのフラグ。
@@ -1161,18 +1150,30 @@ private:
 	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
 	std::vector<RecOperationTable> m_operated_records;
 
+	/**
+	 * @brief 追跡システムからのスキャン結果応答を待機している工具の情報。
+	 * @details on_qrCodeEntry... でセットされ、on_tracker... でスキャン結果応答を受け取ると消費されます。
+	 */
+	std::optional<UniqueToolInfo> m_pending_tool_info;
+
+	/// @brief PLCの操作許可状態 (例: 扉が閉まっているか)
+	bool m_plc_ready_for_action;
+
+	/// @brief 追跡システムの操作許可状態 (例: 不正が検知されていないか)
+	bool m_tracker_ready_for_action;
+
 	// --- 操作中の状態保持用 (取り出し専用) ---
 
-	/// @brief 現在取り出し中のツーリングリスト
+	/// @brief [取り出し用] 現在取り出し中のツーリングリスト
 	std::optional<ToolingListInfo> m_retrieving_list;
 
-	/// @brief 確認画面移行前の表の状態を退避しておく vector。
+	/// @brief [取り出し用] 確認画面移行前の表の状態を退避しておく vector。
 	std::vector<MainTableData> m_retrieve_backup_table;
 
-	/// @brief 取り出し中工具のリスト。
+	/// @brief [取り出し用] 取り出し中工具のリスト。
 	std::vector<ToolAssignmentInfo> m_retrieving_tools;
 
-	/// @brief m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
+	/// @brief [取り出し用] m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	std::optional<size_t> m_retrieving_index;
 
 };

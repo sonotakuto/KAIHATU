@@ -15,7 +15,7 @@
 namespace db {
 
 constexpr int	RETRY_LIMIT	= 3;	// DB接続のリトライ回数
-constexpr const char*	ODBC_DSN	= "system";	// ODBCのDSN名
+constexpr const char*	ODBC_DSN	= "system";		// ODBCのDSN名
 constexpr const char*	ODBC_USER	= "pi";			// ODBCのユーザー名
 constexpr const char*	ODBC_PASS	= "pipasswd";	// ODBCのパスワード
 
@@ -84,7 +84,7 @@ bool save_history(const RecOperationTable& record);
  */
 bool save_history(const std::vector<RecOperationTable>& records);
 
-// TODO: 再研磨機数を増やす関数を追加
+// TODO: 再研磨回数を増やす関数を追加
 
 /**
  * @brief QRコード文字列を基にユーザー情報をデータベースから取得します。

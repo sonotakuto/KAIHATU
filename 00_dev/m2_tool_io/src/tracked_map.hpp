@@ -1,3 +1,7 @@
+/**
+ * @file tracked_map.hpp
+ * @brief 更新されたキーを追跡する機能を持つマップクラスを提供するヘッダファイル。
+ */
 #pragma once
 
 #include <condition_variable>
@@ -8,6 +12,10 @@
 #include <functional> // std::less
 #include <memory> // std::allocator, std::allocator_traits
 
+/**
+ * @namespace utils
+ * @brief ユーティリティ関数やクラスをまとめた名前空間
+ */
 namespace utils {
 
 /**
@@ -1057,6 +1065,5 @@ void swap(SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
 		SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
 	lhs.swap(rhs);
 }
-
 
 } // namespace utils
