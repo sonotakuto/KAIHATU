@@ -359,51 +359,91 @@ public:
 
 	/// @brief 複数のテーブル表示形式を切り替えるスタック (ID: tableStack)
 	sgex::Stack tableStack;
-	/// @brief 3列表示テーブルのボックス (1) (ID: table3column1stBox)
-	sgex::Box table3column1stBox;
-	/// @brief 3列表示テーブル (1) (ID: table3column1st)
-	sgex::TreeView table3column1st;
+	/// @brief 3列表示テーブルのボックス (1) (ID: table3columns1stBox)
+	sgex::Box table3columns1stBox;
+	/// @brief 3列表示テーブル (1) (ID: table3columns1st)
+	sgex::TreeView table3columns1st;
 	/// @brief 3列表示テーブルのリストストア (1)
-	sgex::TreeViewListStoreModel<MainTableData> liststore3column1st;
-	/// @brief 3列表示テーブルのボックス (2) (ID: table3column2ndBox)
-	sgex::Box table3column2ndBox;
-	/// @brief 3列表示テーブル (2) (ID: table3column2nd)
-	sgex::TreeView table3column2nd;
+	sgex::TreeViewListStoreModel<MainTableData> liststore3columns1st;
+	/// @brief 3列表示テーブルのボックス (2) (ID: table3columns2ndBox)
+	sgex::Box table3columns2ndBox;
+	/// @brief 3列表示テーブル (2) (ID: table3columns2nd)
+	sgex::TreeView table3columns2nd;
 	/// @brief 3列表示テーブルのリストストア (2)
-	sgex::TreeViewListStoreModel<MainTableData> liststore3column2nd;
-	/// @brief 3列表示テーブルのボックス (3) (ID: table3column3rdBox)
-	sgex::Box table3column3rdBox;
-	/// @brief 3列表示テーブル (3) (ID: table3column3rd)
-	sgex::TreeView table3column3rd;
+	sgex::TreeViewListStoreModel<MainTableData> liststore3columns2nd;
+	/// @brief 3列表示テーブルのボックス (3) (ID: table3columns3rdBox)
+	sgex::Box table3columns3rdBox;
+	/// @brief 3列表示テーブル (3) (ID: table3columns3rd)
+	sgex::TreeView table3columns3rd;
 	/// @brief 3列表示テーブルのリストストア (3)
-	sgex::TreeViewListStoreModel<MainTableData> liststore3column3rd;
+	sgex::TreeViewListStoreModel<MainTableData> liststore3columns3rd;
 	/// @brief 3列表示テーブルのページ操作可能なリストストア
-	sgex::PaginatedListStoreModel<MainTableData> liststore3columnAll;
-	/// @brief 2列表示テーブルのボックス (1) (ID: table2column1stBox)
-	sgex::Box table2column1stBox;
-	/// @brief 2列表示テーブル (1) (ID: table2column1st)
-	sgex::TreeView table2column1st;
+	sgex::PaginatedListStoreModel<MainTableData> liststore3columnsAll;
+	/// @brief 3列表示テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox3columns)
+	sgex::Box paginationBox3columns;
+	/// @brief 3列表示テーブルの前のページへ移動するボタン (ID: prevButton3columns)
+	sgex::Button prevButton3columns;
+	/// @brief 3列表示テーブルの次のページへ移動するボタン (ID: nextButton3columns)
+	sgex::Button nextButton3columns;
+	/// @brief 3列表示テーブルの現在のページ番号を表示するラベル (ID: pageLabel3columns)
+	sgex::Label pageLabel3columns;
+	/// @brief 2列表示テーブルのボックス (1) (ID: table2columns1stBox)
+	sgex::Box table2columns1stBox;
+	/// @brief 2列表示テーブル (1) (ID: table2columns1st)
+	sgex::TreeView table2columns1st;
 	/// @brief 2列表示テーブルのリストストア (1)
-	sgex::TreeViewListStoreModel<MainTableData> liststore2column1st;
-	/// @brief 2列表示テーブルのボックス (2) (ID: table2column2ndBox)
-	sgex::Box table2column2ndBox;
-	/// @brief 2列表示テーブル (2) (ID: table2column2nd)
-	sgex::TreeView table2column2nd;
+	sgex::TreeViewListStoreModel<MainTableData> liststore2columns1st;
+	/// @brief 2列表示テーブルのボックス (2) (ID: table2columns2ndBox)
+	sgex::Box table2columns2ndBox;
+	/// @brief 2列表示テーブル (2) (ID: table2columns2nd)
+	sgex::TreeView table2columns2nd;
 	/// @brief 2列表示テーブルのリストストア (2)
-	sgex::TreeViewListStoreModel<MainTableData> liststore2column2nd;
+	sgex::TreeViewListStoreModel<MainTableData> liststore2columns2nd;
 	/// @brief 2列表示テーブルのページ操作可能なリストストア
-	sgex::PaginatedListStoreModel<MainTableData> liststore2columnAll;
+	sgex::PaginatedListStoreModel<MainTableData> liststore2columnsAll;
+	/// @brief 2列表示テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox2columns)
+	sgex::Box paginationBox2columns;
+	/// @brief 2列表示テーブルの前のページへ移動するボタン (ID: prevButton2columns)
+	sgex::Button prevButton2columns;
+	/// @brief 2列表示テーブルの次のページへ移動するボタン (ID: nextButton2columns)
+	sgex::Button nextButton2columns;
+	/// @brief 2列表示テーブルの現在のページ番号を表示するラベル (ID: pageLabel2columns)
+	sgex::Label pageLabel2columns;
+	/// @brief 2種表示テーブルのボックス (1種目) (ID: table2types1stBox)
+	sgex::Box table2types1stBox;
+	/// @brief 2種表示テーブル (1種目) (ID: table2types1st)
+	sgex::TreeView table2types1st;
+	/// @brief 2種表示テーブルのリストストア (1種目)
+	sgex::TreeViewListStoreModel<MainTableData> liststore2types1st;
+	/// @brief 2種表示テーブルのページ操作可能なリストストア (1種目)
+	sgex::PaginatedListStoreModel<MainTableData> paginatedListstore2types1st;
+	/// @brief 2種表示テーブルのページネーション(ページ送り)UIを格納するボックス (1種目) (ID: paginationBox2types1st)
+	sgex::Box paginationBox2types1st;
+	/// @brief 2種表示テーブルの前のページへ移動するボタン (1種目) (ID: prevButton2types1st)
+	sgex::Button prevButton2types1st;
+	/// @brief 2種表示テーブルの次のページへ移動するボタン (1種目) (ID: nextButton2types1st)
+	sgex::Button nextButton2types1st;
+	/// @brief 2種表示テーブルの現在のページ番号を表示するラベル (1種目) (ID: pageLabel2types1st)
+	sgex::Label pageLabel2types1st;
+	/// @brief 2種表示テーブルのボックス (2種目) (ID: table2types2ndBox)
+	sgex::Box table2types2ndBox;
+	/// @brief 2種表示テーブル (2種目) (ID: table2types2nd)
+	sgex::TreeView table2types2nd;
+	/// @brief 2種表示テーブルのリストストア (2種目)
+	sgex::TreeViewListStoreModel<MainTableData> liststore2types2nd;
+	/// @brief 2種表示テーブルのページ操作可能なリストストア (2種目)
+	sgex::PaginatedListStoreModel<MainTableData> paginatedListstore2types2nd;
+	/// @brief 2種表示テーブルのページネーション(ページ送り)UIを格納するボックス (2種目) (ID: paginationBox2types2nd)
+	sgex::Box paginationBox2types2nd;
+	/// @brief 2種表示テーブルの前のページへ移動するボタン (2種目) (ID: prevButton2types2nd)
+	sgex::Button prevButton2types2nd;
+	/// @brief 2種表示テーブルの次のページへ移動するボタン (2種目) (ID: nextButton2types2nd)
+	sgex::Button nextButton2types2nd;
+	/// @brief 2種表示テーブルの現在のページ番号を表示するラベル (2種目) (ID: pageLabel2types2nd)
+	sgex::Label pageLabel2types2nd;
 
 	// --- フッター部 ---
 
-	/// @brief テーブルのページネーション(ページ送り)UIを格納するボックス (ID: paginationBox)
-	sgex::Box paginationBox;
-	/// @brief 前のページへ移動するボタン (ID: prevButton)
-	sgex::Button prevButton;
-	/// @brief 次のページへ移動するボタン (ID: nextButton)
-	sgex::Button nextButton;
-	/// @brief 現在のページ番号を表示するラベル (ID: pageNumberLabel)
-	sgex::Label pageNumberLabel;
 	/// @brief QRコード受付UIを格納するボックス (ID: qrCodeEntryBox)
 	sgex::Box qrCodeEntryBox;
 	/// @brief 「QRコード受付：」のラベル (ID: qrCodeEntryLabel)
@@ -622,11 +662,48 @@ private:
 	void main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row);
 
 	/**
-	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数。
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（ページ自動判別用）。
+	 * @details 現在表示中のページに応じて、適切なヘルパー関数を呼び出します。
+	 *
+	 * @warning [使用上の注意]
+	 * 互換性のために、PaginationAction を自由に指定できるようにしていますが、
+	 * 基本的に PaginationAction::UPDATE_UI_ONLY だけを使うことを想定しています。
+	 * なぜなら、2種類表示ページで両方の表が同時にページ遷移するのはおかしいためです。
+	 * また、2種類表示ページで、左右で項目数が異なる場合、この関数で同時にページ遷移すると、
+	 * ページ番号が左右でずれてしまう可能性があります。
+	 *
+	 * @param[in] action (オプション・デフォルト UPDATE_UI_ONLY) 実行したい操作の種類。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 */
+	void update_and_handle_pagination(PaginationAction action = PaginationAction::UPDATE_UI_ONLY, bool update_ui = true);
+
+	/**
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（3段表示ページ用）。
 	 * @param[in] action 実行したい操作の種類。
 	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 */
-	void update_and_handle_pagination(PaginationAction action, bool update_ui = true);
+	void update_and_handle_pagination_3columns(PaginationAction action, bool update_ui = true);
+
+	/**
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2段表示ページ用）。
+	 * @param[in] action 実行したい操作の種類。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 */
+	void update_and_handle_pagination_2columns(PaginationAction action, bool update_ui = true);
+
+	/**
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2種表示ページの1種目用）。
+	 * @param[in] action 実行したい操作の種類。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 */
+	void update_and_handle_pagination_2types1st(PaginationAction action, bool update_ui = true);
+
+	/**
+	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2種表示ページの2種目用）。
+	 * @param[in] action 実行したい操作の種類。
+	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 */
+	void update_and_handle_pagination_2types2nd(PaginationAction action, bool update_ui = true);
 
 	// --- 認証用のヘルパー関数 ---
 
@@ -724,16 +801,52 @@ private:
 	void mainTableSelection_on_changed(std::optional<size_t> selected_index_opt);
 
 	/**
-	 * @brief prevButton の "clicked" シグナルに対応するハンドラ。
+	 * @brief prevButton3columns の "clicked" シグナルに対応するハンドラ。
 	 * @details 前のページに移動する。
 	 */
-	void prevButton_on_clicked();
+	void prevButton3columns_on_clicked();
 
 	/**
-	 * @brief nextButton の "clicked" シグナルに対応するハンドラ。
+	 * @brief nextButton3columns の "clicked" シグナルに対応するハンドラ。
 	 * @details 次のページに移動する。
 	 */
-	void nextButton_on_clicked();
+	void nextButton3columns_on_clicked();
+
+	/**
+	 * @brief prevButton2columns の "clicked" シグナルに対応するハンドラ。
+	 * @details 前のページに移動する。
+	 */
+	void prevButton2columns_on_clicked();
+
+	/**
+	 * @brief nextButton2columns の "clicked" シグナルに対応するハンドラ。
+	 * @details 次のページに移動する。
+	 */
+	void nextButton2columns_on_clicked();
+
+	/**
+	 * @brief prevButton2types1st の "clicked" シグナルに対応するハンドラ。
+	 * @details 前のページに移動する。
+	 */
+	void prevButton2types1st_on_clicked();
+
+	/**
+	 * @brief nextButton2types1st の "clicked" シグナルに対応するハンドラ。
+	 * @details 次のページに移動する。
+	 */
+	void nextButton2types1st_on_clicked();
+
+	/**
+	 * @brief prevButton2types2nd の "clicked" シグナルに対応するハンドラ。
+	 * @details 前のページに移動する。
+	 */
+	void prevButton2types2nd_on_clicked();
+
+	/**
+	 * @brief nextButton2types2nd の "clicked" シグナルに対応するハンドラ。
+	 * @details 次のページに移動する。
+	 */
+	void nextButton2types2nd_on_clicked();
 
 	/**
 	 * @brief qrCodeEntry の "activate" シグナルに対応するハンドラ。
