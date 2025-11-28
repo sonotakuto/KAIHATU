@@ -1289,7 +1289,21 @@ private:
 	/// @brief [取り出し用] m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	std::optional<size_t> m_retrieving_index;
 
+	// --- 操作中の状態保持用 (棚卸し専用) ---
+
+	/// @brief [棚卸し用] 絞り込み条件（工具分類）
+	std::optional<std::string> m_reconcile_filter_category;
+
+	/// @brief [棚卸し用] 絞り込み条件（開始日時）
+	std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_start_date;
+
+	/// @brief [棚卸し用] 絞り込み条件（終了日時）
+	std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_end_date;
+
+	
+
 };
+
 
 // MainWindow::UiTextの比較演算子 (宣言)
 bool operator==(const MainWindow::UiText& lhs, const MainWindow::UiText& rhs);

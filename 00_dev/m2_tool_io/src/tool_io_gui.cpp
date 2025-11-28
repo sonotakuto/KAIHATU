@@ -3030,7 +3030,87 @@ void MainWindow::on_plc_store_read_completed(const plc::Notification& notificati
 // --- 棚卸し ---
 
 void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
+	// 1. 絞り込み条件（メンバー変数）を使用してDBからコンテナリストを取得
+	// ※ 注: 絞り込み条件を保持するため、MainWindowクラス(tool_io_gui.hpp)に
+	//      以下のメンバー変数を追加で定義する必要があります。
+	//
+	// std::optional<std::string> m_reconcile_filter_category;
+	// std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_start_date;
+	// std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_end_date;
+	//
+	// ※ 注: db::get_reconcile_container_list は db_client.cpp に新規実装が必要です。
+	// auto container_list_opt = db::get_reconcile_container_list(
+	// 	m_reconcile_filter_category,
+	// 	m_reconcile_filter_start_date,
+	// 	m_reconcile_filter_end_date
+	// );
 
+	// ---【以下、DB関数が実装されるまでのダミーデータ】---
+	std::vector<ContainerReconcileInfo> dummy_list;
+	dummy_list.push_back({
+		.area_info = StrageAreaInfo {
+			.id = 1,
+			.item = MstToolInfo { .category = "ドリル", .maker = "OSG", .name = "ADF-2D-9", .material = "超硬" },
+			.mst_address_info = MstAddressInfo { .display_address = "1-1-1" }
+		},
+		.last_reconcile_time = sg::make_time_point(2025, 10, 1) // 2025/10/01
+	});
+	dummy_list.push_back({
+		.area_info = StrageAreaInfo {
+			.id = 2,
+			.item = MstToolInfo { .category = "インサート", .maker = "タンガロイ", .name = "TPMT16T308-CM", .material = "T515" },
+			.mst_address_info = MstAddressInfo { .display_address = "1-1-2" }
+		},
+		.last_reconcile_time = std::nullopt // 棚卸し履歴なし
+	});
+	// (絞り込み条件を適用するロジックをダミーで追加)
+	// if (m_reconcile_filter_category.has_value() && m_reconcile_filter_category.value() == "ドリル") {
+	//     dummy_list.pop_back(); // インサートを削除
+	// }
+	auto container_list_opt = std::make_optional(std::move(dummy_list));
+	// ---【ダミーデータここまで】---
+
+	// 2. DBからの取得結果を処理
+	if (!container_list_opt.has_value()) {
+		// 取得失敗
+		update_widget_state(&messageLabel, WidgetState{.text = UiText{"コンテナリストの取得に失敗しました", "コンテナリストの しゅとくに しっぱいしました"}}, true);
+		liststore2columnsAll.clear(); // テーブルを空にする
+		return;
+	}
+
+	// 3. DBデータをGUI用テーブルデータ (MainTableData) に変換
+	std::vector<MainTableData> table_data_list;
+	table_data_list.reserve(container_list_opt.value().size());
+
+	for (const auto& row : container_list_opt.value()) {
+		std::string last_time_str = "----/--/--";
+		if (row.last_reconcile_time.has_value()) {
+			// time_point を "YYYY/MM/DD" 形式の文字列にフォーマット
+			last_time_str = fmt::format("{:%Y/%m/%d}", row.last_reconcile_time.value());
+		}
+
+		table_data_list.push_back(MainTableData{
+			.id = row.area_info.id, // 識別用に StrageAreaInfo の ID を使う
+			.data_columns = {
+				row.area_info.mst_address_info.display_address, // [0] コンテナ番号
+				row.area_info.item.category,                    // [1] 分類
+				row.area_info.item.maker,                       // [2] メーカー
+				row.area_info.item.name,                        // [3] 型番
+				row.area_info.item.material,                    // [4] 材質
+				last_time_str                                   // [5] 最終棚卸し日時
+			},
+			.cell_state_0to4 = TableCellState::NORMAL,  // 状態はすべて「通常」
+			// .cell_state_5 = TableCellState::NORMAL,     // 状態はすべて「通常」（無くても動く）
+			.raw_data = row.area_info                   // 選択時に使うため、生の StrageAreaInfo を保持
+		});
+	}
+
+	// 4. 変換したデータを PaginatedListStoreModel にセット
+	// (set_master_data は自動的に display_page(0) を呼び出し、UIを更新します)
+	liststore2columnsAll.set_master_data(std::move(table_data_list));
+
+	// 5. ページネーションUI（ボタンの有効/無効など）を更新
+	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 }
 
 void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt) {
