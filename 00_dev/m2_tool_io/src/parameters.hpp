@@ -11,6 +11,7 @@
 constexpr const char* TOOL_CATEGORY_INSERT = "インサート";	// インサート専用の処理を行う必要がある、データベース上の工具種別名
 
 constexpr int	DISPLAY_ROWS_PER_COLUMN = 11;	// 表1列あたりの表示行数
+constexpr int	NUM_OF_VIEW_COLUMNS = 6;		// メインテーブルの表示列数
 
 // 色定義
 constexpr GdkRGBA TABLE_BGCOLOR_NORMAL				= {0.97, 0.97, 1.00, 1.0};	// テーブルの通常背景色

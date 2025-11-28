@@ -86,12 +86,13 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 					.id			= std::any_cast<std::int32_t>(row.at("tool_assignment_id")),
 					.tool_num	= std::any_cast<std::string>(row.at("tool_num")),
 					.mst_tool_info = MstToolInfo{
-						.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
-						.name		= std::any_cast<std::string>	(row.at("tool_name")),
-						.maker		= std::any_cast<std::string>	(row.at("maker")),
-						.category	= std::any_cast<std::string>	(row.at("tool_category")),
-						.material	= std::any_cast<std::string>	(row.at("tool_material")),
-						.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+						.id			= std::any_cast<std::int32_t>				(row.at("basic_tool_id")),
+						.name		= std::any_cast<std::string>				(row.at("tool_name")),
+						.maker		= std::any_cast<std::string>				(row.at("maker")),
+						.category	= std::any_cast<std::string>				(row.at("tool_category")),
+						.material	= std::any_cast<std::string>				(row.at("tool_material")),
+						.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+						.is_frozen	= std::any_cast<bool>						(row.at("is_frozen"))
 					}
 				});
 			}
@@ -105,14 +106,14 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 }
 
 /**
- * @brief program_id と (オプションの) print_time でDBを検索し、ToolingListInfo を構築する共通ヘルパー
+ * @brief program_id と print_time でDBを検索し、ToolingListInfo を構築する共通ヘルパー
  * @param[in] program_id 検索キーとなるプログラムID
- * @param[in] print_time 認証に使うQRコードの印刷時刻。nulloptの場合は program_id のみで検索
+ * @param[in] print_time (オプション・デフォルト nullopt) 認証に使うQRコードの印刷時刻。nulloptの場合は program_id のみで検索
  * @return 成功した場合は ToolingListInfo、失敗した場合は nullopt
  */
 static std::optional<ToolingListInfo> query_and_populate_tooling_list(
 	std::int64_t program_id,
-	std::optional<std::chrono::system_clock::time_point> print_time)
+	std::optional<std::chrono::system_clock::time_point> print_time = std::nullopt)
 {
 	auto stmt_opt = create_statement_with_retry();
 	if (!stmt_opt) {
@@ -127,7 +128,7 @@ static std::optional<ToolingListInfo> query_and_populate_tooling_list(
 			"    pal.program_id, pal.program_name, "
 			"    ml.line_id, ml.line_name, "
 			"    ta.tool_assignment_id, ta.tool_num, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
 			"FROM mst_program AS pal "
 			"LEFT JOIN mst_line AS ml ON pal.line_id = ml.line_id "
 			"LEFT JOIN mst_tool_assignment AS ta ON pal.program_id = ta.program_id "
@@ -179,9 +180,9 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 		// 指定された basic_tool_id で絞り込み、toolcase_stc_num でソートして最初の1件を取得するSQL
 		const std::string sql = fmt::format(
 			"SELECT "
-			"    sa.storage_area_id, sa.toolcase_stc_num, "
+			"    sa.storage_area_id, sa.toolcase_stc_num, sa.last_reconciliation_time, "
 			"    ma.display_address, ma.control_address, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
 			"FROM storage_area AS sa "
 			"JOIN mst_address AS ma ON sa.display_address = ma.display_address "
 			"JOIN mst_tool AS mt ON sa.basic_tool_id = mt.basic_tool_id "
@@ -207,20 +208,23 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 			.id	= std::any_cast<std::int32_t>(row.at("storage_area_id")),
 
 			.item	= MstToolInfo{
-				.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
-				.name		= std::any_cast<std::string>	(row.at("tool_name")),
-				.maker		= std::any_cast<std::string>	(row.at("maker")),
-				.category	= std::any_cast<std::string>	(row.at("tool_category")),
-				.material	= std::any_cast<std::string>	(row.at("tool_material")),
-				.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+				.id			= std::any_cast<std::int32_t>				(row.at("basic_tool_id")),
+				.name		= std::any_cast<std::string>				(row.at("tool_name")),
+				.maker		= std::any_cast<std::string>				(row.at("maker")),
+				.category	= std::any_cast<std::string>				(row.at("tool_category")),
+				.material	= std::any_cast<std::string>				(row.at("tool_material")),
+				.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+				.is_frozen	= std::any_cast<bool>						(row.at("is_frozen"))
 			},
 
-			.toolcase_stc_num	= std::any_cast<std::int32_t>(row.at("toolcase_stc_num")),
+			.toolcase_stc_num	= stdex::any_cast_optional<std::int32_t>(row.at("toolcase_stc_num")),
 
 			.mst_address_info	= MstAddressInfo{
 				.display_address	= std::any_cast<std::string>(row.at("display_address")),
 				.control_address	= std::any_cast<std::string>(row.at("control_address"))
-			}
+			},
+
+			.last_reconciliation_time = stdex::any_cast_optional<std::chrono::system_clock::time_point>(row.at("last_reconciliation_time"))
 		};
 
 	} catch (const odbc::OdbcException& e) {
@@ -352,7 +356,7 @@ bool user_authenticate(const std::string& qr_string) {
 }
 
 bool save_history(const RecOperationTable& record) {
-	// 1. リトライ処理付きでステートメントオブジェクトを取得します。
+	// リトライ処理付きでステートメントオブジェクトを取得します。
 	optional<OdbcStatement> stmt_opt = create_statement_with_retry();
 	if (!stmt_opt.has_value()) {
 		DEV_PRINT(stderr, "Error: Failed to create statement for saving history after multiple retries.\n");
@@ -362,16 +366,16 @@ bool save_history(const RecOperationTable& record) {
 	auto& stmt = stmt_opt.value();
 
 	try {
-		// 2. 実行するSQL文を準備します。
+		// 実行するSQL文を準備します。
 		// operation_id は自動インクリメントなので含めません。
 		const std::string sql =
 			"INSERT INTO rec_operation "
-			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_num) "
-			"VALUES (?, ?, ?, ?, ?, ?, ?);";
+			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_num, line_id, track_result) "
+			"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
 		stmt.prepare(sql);
 
-		// 3. OperationClass enumをデータベースの文字列に変換します。
+		// OperationClass enumをデータベースの文字列に変換します。
 		std::string op_class_str;
 		switch (record.operation_class) {
 			case OperationClass::OUT:		op_class_str = "取出"; break;
@@ -382,7 +386,19 @@ bool save_history(const RecOperationTable& record) {
 				return false;
 		}
 
-		// 4. 各プレースホルダにRecOperationTable構造体の値をバインドします。
+		// TrackResult enumをデータベースの文字列に変換します。
+		std::optional<std::string> track_result_str_opt;
+		if (record.track_result.has_value()) {
+			switch (record.track_result.value()) {
+				case TrackResult::NORMAL:		track_result_str_opt = "正常"; break;
+				case TrackResult::OVERRIDDEN:	track_result_str_opt = "異常"; break;
+				default:
+					DEV_PRINT(stderr, "Error: Unknown track result provided to save_history.\n");
+					return false;
+			}
+		}
+
+		// 各プレースホルダにRecOperationTable構造体の値をバインドします。
 		stmt.bind(1, op_class_str);
 		stmt.bind(2, record.user_id);
 		stmt.bind(3, record.proc_time);
@@ -390,8 +406,10 @@ bool save_history(const RecOperationTable& record) {
 		stmt.bind(5, record.unique_tool_id);
 		stmt.bind(6, record.video_path);
 		stmt.bind(7, record.tool_num);
+		stmt.bind(8, record.line_id);
+		stmt.bind(9, track_result_str_opt);
 
-		// 5. 準備されたステートメントを実行します。
+		// 準備されたステートメントを実行します。
 		stmt.executePrepared();
 
 		DEV_PRINT("[DB] save_history successful.\n");
@@ -431,8 +449,8 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 
 		const std::string sql =
 			"INSERT INTO rec_operation "
-			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_num) "
-			"VALUES (?, ?, ?, ?, ?, ?, ?);";
+			"(operation_class, user_id, proc_time, storage_area_id, unique_tool_id, video_path, tool_num, line_id, track_result) "
+			"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 		stmt.prepare(sql);
 
 		// 4. 一括挿入する行数を設定
@@ -446,6 +464,8 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		std::vector<std::optional<std::int64_t>> unique_tool_ids;
 		std::vector<std::optional<std::string>> video_paths;
 		std::vector<std::optional<std::int32_t>> tool_nums;
+		std::vector<std::optional<std::int32_t>> line_ids;
+		std::vector<std::optional<std::string>> track_result_strs;
 
 		op_class_strs.reserve(records.size());
 		user_ids.reserve(records.size());
@@ -454,6 +474,8 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		unique_tool_ids.reserve(records.size());
 		video_paths.reserve(records.size());
 		tool_nums.reserve(records.size());
+		line_ids.reserve(records.size());
+		track_result_strs.reserve(records.size());
 
 		for (const auto& rec : records) {
 			switch (rec.operation_class) {
@@ -468,6 +490,16 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 			unique_tool_ids.push_back(rec.unique_tool_id);
 			video_paths.push_back(rec.video_path);
 			tool_nums.push_back(rec.tool_num);
+			line_ids.push_back(rec.line_id);
+			if (rec.track_result.has_value()) {
+				switch (rec.track_result.value()) {
+					case TrackResult::NORMAL:		track_result_strs.push_back("正常"); break;
+					case TrackResult::OVERRIDDEN:	track_result_strs.push_back("異常"); break;
+					default: throw std::runtime_error("Unknown track result");
+				}
+			} else {
+				track_result_strs.push_back(std::nullopt);
+			}
 		}
 
 		// 6. 各列のデータを一括でバインド
@@ -478,6 +510,8 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		stmt.bindColumn(5, unique_tool_ids);
 		stmt.bindColumn(6, video_paths);
 		stmt.bindColumn(7, tool_nums);
+		stmt.bindColumn(8, line_ids);
+		stmt.bindColumn(9, track_result_strs);
 
 		// 7. SQLを一括実行
 		stmt.executePrepared();
@@ -514,7 +548,7 @@ std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 	}
 
 	try {
-		const std::string sql = "SELECT * FROM mst_user WHERE user_id = ? AND user_print_time = ?;";
+		const std::string sql = "SELECT * FROM mst_user WHERE user_id = ? AND user_print_time = ? AND is_frozen = false;";
 		stmt.prepare(sql);
 		stmt.bind(1, code.id);
 		stmt.bind(2, code.timestamp);
@@ -566,7 +600,7 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 		const std::string sql =
 			"SELECT "
 			"    ut.unique_tool_id, ut.unique_num, ut.case_pack_num, ut.storage_condition, ut.regrind_count, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen, "
 			"    sa.storage_area_id, sa.toolcase_stc_num, "
 			"    ma.display_address, ma.control_address "
 			"FROM unique_tool AS ut "
@@ -592,12 +626,13 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 
 		// mst_tool テーブルの情報を詰めて用意しておく
 		MstToolInfo mst_tool_info{
-			.id			= std::any_cast<std::int32_t>	(row.at("basic_tool_id")),
-			.name		= std::any_cast<std::string>	(row.at("tool_name")),
-			.maker		= std::any_cast<std::string>	(row.at("maker")),
-			.category	= std::any_cast<std::string>	(row.at("tool_category")),
-			.material	= std::any_cast<std::string>	(row.at("tool_material")),
-			.stc		= std::any_cast<std::int32_t>	(row.at("stc"))
+			.id			= std::any_cast<std::int32_t>				(row.at("basic_tool_id")),
+			.name		= std::any_cast<std::string>				(row.at("tool_name")),
+			.maker		= std::any_cast<std::string>				(row.at("maker")),
+			.category	= std::any_cast<std::string>				(row.at("tool_category")),
+			.material	= std::any_cast<std::string>				(row.at("tool_material")),
+			.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+			.is_frozen	= std::any_cast<bool>						(row.at("is_frozen"))
 		};
 
 		// unique_tool テーブルの情報を詰めて返す
@@ -630,13 +665,13 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 			),
 
 			.storage_condition = (
-				(condition_str == "保管中") ? (
-					StorageCondition::USABLE
+				(condition_str == "補充前") ? (
+					StorageCondition::NOT_STORED
 				) : (
-					(condition_str == "取出") ? (
-						StorageCondition::TAKEN_OUT
+					(condition_str == "保管中") ? (
+						StorageCondition::STORED
 					) : (
-						StorageCondition::NOT_STORED
+						StorageCondition::TAKEN_OUT
 					)
 				)
 			),

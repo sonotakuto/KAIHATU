@@ -20,7 +20,7 @@ class RecorderClient;
 constexpr const char* TRACKER_IP	= "10.19.133.122";	// D201
 //constexpr const char* TRACKER_IP	= "10.19.106.160";	// C103
 constexpr int TRACKER_PORT			= 5000;
-constexpr size_t TRACKER_MSG_LENGTH	= 11; // ★★★ 固定メッセージ長 (仮に16バイトとする) ★★★
+constexpr size_t TRACKER_MSG_LENGTH	= 24;	// メッセージ長
 
 // 固定長メッセージを生成するヘルパー関数
 template<std::size_t length>
@@ -44,32 +44,60 @@ constexpr std::array<char, length> make_fixed_message(const char* msg) {
 	return arr;
 }
 
-// --- プロトコルメッセージ定数 (固定長) ---
-constexpr auto TRACKER_MSG_CONNECT		= make_fixed_message<TRACKER_MSG_LENGTH>("Connect   ");
-constexpr auto TRACKER_MSG_DISCONNECT	= make_fixed_message<TRACKER_MSG_LENGTH>("Disconnect");
-constexpr auto TRACKER_MSG_QR_SCAN		= make_fixed_message<TRACKER_MSG_LENGTH>("QR_scan");
-constexpr auto TRACKER_MSG_ACK			= make_fixed_message<TRACKER_MSG_LENGTH>("ACK");
-constexpr auto TRACKER_MSG_SCAN_S		= make_fixed_message<TRACKER_MSG_LENGTH>("Scan_s");
-constexpr auto TRACKER_MSG_SCAN_F		= make_fixed_message<TRACKER_MSG_LENGTH>("Scan_f");
-constexpr auto TRACKER_MSG_C_ANOMALY_1	= make_fixed_message<TRACKER_MSG_LENGTH>("C_Anomly_1");	// 未スキャンが画面外
-constexpr auto TRACKER_MSG_C_BACK_1		= make_fixed_message<TRACKER_MSG_LENGTH>("C_Back_1");	// 未スキャンが画面内に戻ってきた
-constexpr auto TRACKER_MSG_C_ANOMALY_2	= make_fixed_message<TRACKER_MSG_LENGTH>("C_Anomly_2");	// スキャン済みをコンテナに入れた
-constexpr auto TRACKER_MSG_C_BACK_2		= make_fixed_message<TRACKER_MSG_LENGTH>("C_Back_2");	// スキャン済みをコンテナから出した
+// --- プロトコルメッセージ定数 (パディングなし) ---
+// 送信メッセージ
+constexpr const char* TRACKER_MSG_CONNECT					= "Connect";					// 接続要求
+constexpr const char* TRACKER_MSG_DISCONNECT				= "Disconnect";					// 切断要求
+constexpr const char* TRACKER_MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
+// 受信メッセージ
+constexpr const char* TRACKER_MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
+constexpr const char* TRACKER_MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
+constexpr const char* TRACKER_MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
+constexpr const char* TRACKER_MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
+constexpr const char* TRACKER_MSG_SCANNED_IN_CONTAINER		= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
+constexpr const char* TRACKER_MSG_SCANNED_OUT_CONTAINER		= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
+constexpr const char* TRACKER_MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
+constexpr const char* TRACKER_MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
+constexpr const char* TRACKER_MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
+constexpr const char* TRACKER_MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
+constexpr const char* TRACKER_MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
+
+// --- プロトコルメッセージ定数 (パディングあり) ---
+// 送信メッセージ
+constexpr auto TRACKER_PADDED_MSG_CONNECT					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_CONNECT);					// 接続要求
+constexpr auto TRACKER_PADDED_MSG_DISCONNECT				= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_DISCONNECT);				// 切断要求
+constexpr auto TRACKER_PADDED_MSG_QR_SCAN					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_QR_SCAN);					// QRコードスキャン通知
+// 受信メッセージ
+constexpr auto TRACKER_PADDED_MSG_CONNECT_ACK				= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_CONNECT_ACK);				// 接続完了応答
+constexpr auto TRACKER_PADDED_MSG_DISCONNECT_ACK			= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_DISCONNECT_ACK);			// 切断完了応答
+constexpr auto TRACKER_PADDED_MSG_SCAN_S					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCAN_S);					// スキャン成功通知
+constexpr auto TRACKER_PADDED_MSG_SCAN_F					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCAN_F);					// スキャン失敗通知
+constexpr auto TRACKER_PADDED_MSG_SCANNED_IN_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCANNED_IN_CONTAINER);		// スキャン済工具がコンテナ内に入った通知
+constexpr auto TRACKER_PADDED_MSG_SCANNED_OUT_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCANNED_OUT_CONTAINER);	// スキャン済工具がコンテナ外に出た通知
+constexpr auto TRACKER_PADDED_MSG_OTHER_IN_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_OTHER_IN_CONTAINER);		// その他工具がコンテナ内に入った通知
+constexpr auto TRACKER_PADDED_MSG_OTHER_OUT_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_OTHER_OUT_CONTAINER);		// その他工具がコンテナ外に出た通知
+constexpr auto TRACKER_PADDED_MSG_UNSCANNED_IN_CONTAINER	= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_UNSCANNED_IN_CONTAINER);	// 未スキャン工具がコンテナ内に入った通知
+constexpr auto TRACKER_PADDED_MSG_UNSCANNED_OUT_CONTAINER	= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_UNSCANNED_OUT_CONTAINER);	// 未スキャン工具がコンテナ外に出た通知
+constexpr auto TRACKER_PADDED_MSG_UNSCANNED_OUT_FRAME		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_UNSCANNED_OUT_FRAME);		// 未スキャン工具がフレーム外に出た通知
 
 /**
  * @brief 工具追跡サーバーからのメッセージ種別
  */
 enum class NotificationType {
-	SCAN_SUCCESS,			// スキャン成功
-	SCAN_FAIL,				// スキャン失敗
-	ANOMALY_UNSCANNED_OUT,	// 未スキャンがフレーム外へ
-	BACK_UNSCANNED_IN,		// 未スキャンがフレーム内へ
-	ANOMALY_SCANNED_IN,		// スキャン済みがコンテナ内へ
-	BACK_SCANNED_OUT,		// スキャン済みがコンテナ外へ
-	ACK,					// 接続確認応答
-	UNKNOWN,				// 不明なメッセージ
-	CONNECTION_LOST,		// 接続切れ
-	ERROR					// 受信エラー
+	CONNECT_ACK,				// 接続完了
+	DISCONNECT_ACK,				// 切断完了
+	SCAN_SUCCESS,				// スキャン成功
+	SCAN_FAILURE,				// スキャン失敗
+	SCANNED_IN_CONTAINER,		// スキャン済工具がコンテナ内に入った
+	SCANNED_OUT_CONTAINER,		// スキャン済工具がコンテナ外に出た
+	OTHER_IN_CONTAINER,			// その他工具がコンテナ内に入った
+	OTHER_OUT_CONTAINER,		// その他工具がコンテナ外に出た
+	UNSCANNED_IN_CONTAINER,		// 未スキャン工具がコンテナ内に入った
+	UNSCANNED_OUT_CONTAINER,	// 未スキャン工具がコンテナ外に出た
+	UNSCANNED_OUT_FRAME,		// 未スキャン工具がフレーム外に出た
+	UNKNOWN,					// 不明なメッセージ
+	CONNECTION_LOST,			// 接続切れ
+	ERROR						// 受信エラー
 };
 
 /**
@@ -79,7 +107,8 @@ enum class NotificationType {
 struct Notification {
 	NotificationType type = NotificationType::UNKNOWN;
 	std::array<char, TRACKER_MSG_LENGTH> raw_message{};
-	std::string error_details;
+	std::string trimmed_message{};
+	std::string error_details{};
 };
 
 // --- 録画用クライアント 定数 ---
@@ -168,7 +197,7 @@ public:
 
 	/**
 	 * @brief 録画開始コマンドを送信します。
-	 * @param[in] filename (オプション) 録画ファイル名を指定します。
+	 * @param[in] filename (オプション・デフォルト "") 録画ファイル名を指定します。
 	 * 空の場合、タイムスタンプから自動生成されます。
 	 * @return サーバーが成功応答 (HTTP 2xx) を返し、
 	 * かつファイル名が確定した場合、そのファイル名を std::optional で返します。
@@ -202,9 +231,9 @@ private:
 
 /**
  * @brief インサート個数取得サーバーに接続し、個数を取得して切断します。
- * @param[in] ip (オプション) サーバーIPアドレス。デフォルトは COUNTER_IP 定数。
- * @param[in] port (オプション) サーバーポート番号。デフォルトは COUNTER_PORT 定数。
- * @param[in] timeout_ms (オプション) 受信タイムアウト(ミリ秒)。デフォルトは COUNTER_TIMEOUT_MS 定数。
+ * @param[in] ip (オプション・デフォルト COUNTER_IP) サーバーIPアドレス。デフォルトは COUNTER_IP 定数。
+ * @param[in] port (オプション・デフォルト COUNTER_PORT) サーバーポート番号。デフォルトは COUNTER_PORT 定数。
+ * @param[in] timeout_ms (オプション・デフォルト COUNTER_TIMEOUT_MS) 受信タイムアウト(ミリ秒)。デフォルトは COUNTER_TIMEOUT_MS 定数。
  * @return 取得した個数。失敗した場合は std::nullopt。
  */
 std::optional<int> get_insert_count(

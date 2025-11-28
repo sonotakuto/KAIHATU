@@ -4,6 +4,7 @@
 
 # C++コンパイラを指定
 CXX = g++
+#CXX = g++-10
 
 # 使用するパッケージを指定
 PACKAGES = libcurl SimpleGtk
@@ -23,6 +24,7 @@ LDFLAGS = `pkg-config --libs $(PACKAGES)`
 # -O0	: 最適化を無効にする（デバッグしやすくなる）
 # -DDEBUG -DDEBUG_LEVEL=3 : デバッグ用のマクロを定義
 DEBUGFLAGS = -g -O0 -DDEBUG -DDEBUG_LEVEL=3
+#DEBUGFLAGS = -g -O0 -DDEBUG -DDEBUG_LEVEL=3 -fsanitize=address -fno-omit-frame-pointer
 
 # 構文チェック時のみ追加されるオプション
 # -fsyntax-only : 構文チェックのみを行い、オブジェクトファイルは生成しない
@@ -61,11 +63,13 @@ DEBUG_TARGET = tool_io_debug
 # ソースファイル名からオブジェクトファイル名（.o）のリストを自動生成
 OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=.o))
 
-# 各オブジェクトファイルの依存関係ファイルのリスト
-DEPS = $(OBJECTS:.o=.d) # この行を追加
-
 # ソースファイル名からデバッグ用オブジェクトファイル名（_debug.o）のリストを自動生成
 DEBUG_OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=_debug.o))
+
+# 各オブジェクトファイルの依存関係ファイルのリスト
+DEPS = $(OBJECTS:.o=.d)
+DEBUG_DEPS = $(DEBUG_OBJECTS:.o=.d)
+
 
 # --- メインターゲット ---
 
@@ -123,6 +127,7 @@ clean:
 # 生成された依存関係ファイルを読み込む
 # （ファイルが存在しなくてもエラーにしないために -include を使う）
 -include $(DEPS)
+-include $(DEBUG_DEPS)
 
 # 偽物のターゲット（Phony Target）を宣言
 # これにより、同名のファイルが存在してもコマンドが正しく実行される

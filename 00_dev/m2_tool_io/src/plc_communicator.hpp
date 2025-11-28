@@ -6,7 +6,8 @@
 #include <any>
 #include <cstdint>
 #include <SimpleGtk>
-#include "safe_queue.hpp"
+#include "./opt_extension.hpp"
+#include "./safe_queue.hpp"
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
@@ -35,12 +36,12 @@ struct WatchFlags {
 		return enable_fall_notification.value_or(false) || enable_rise_notification.value_or(false);
 	}
 
-	/**
-	 * @brief 他の WatchFlags の値でこのインスタンスを更新する。
-	 * @param[in] other 更新に使用する WatchFlags インスタンス。
-	 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
-	 */
-	bool merge(const WatchFlags& other);
+	STDEX_DEFINE_MERGE_FUNC(WatchFlags,
+		&WatchFlags::enable_fall_notification,
+		&WatchFlags::enable_rise_notification,
+		&WatchFlags::fall_is_one_shot,
+		&WatchFlags::rise_is_one_shot
+	)
 };
 
 /**
