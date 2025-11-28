@@ -1,0 +1,131 @@
+// --- Tables Definition ---
+// DBML (Database Markup Language) for system database
+
+Table mst_address {
+  display_address varchar(304) [pk, not null, note: '画面表示住所']
+  control_address varchar(3) [not null, default: '0', note: 'PLC制御住所']
+}
+
+Table mst_line {
+  line_id int(4) [pk, not null, increment, note: 'ラインID']
+  line_name varchar(50) [not null, default: '0', note: 'ライン名']
+  is_frozen tinyint(1) [not null, default: 0, note: 'データ凍結フラグ']
+}
+
+Table mst_password {
+  password varchar(60) [pk, not null, note: 'システムパスワード']
+}
+
+Table mst_program {
+  program_id int(3) [pk, not null, increment, note: 'プログラム割り当てID']
+  line_id int(4) [not null, note: 'ライン名']
+  program_name varchar(50) [not null, default: '0', note: 'プログラム番号']
+  program_print_time timestamp [not null, note: 'プログラムQR印刷日時']
+}
+
+Table mst_tool {
+  basic_tool_id int(4) [pk, not null, increment, note: '基本工具ID']
+  tool_name varchar(50) [not null, default: '0', note: '型番']
+  maker varchar(50) [not null, default: '0', note: 'メーカー']
+  tool_category enum [not null, note: '工具分類']
+  tool_material varchar(50) [not null, default: '0', note: '材質']
+  stc int(4) [note: '在庫数']
+  rop int(4) [not null, default: 0, note: '発注点']
+  buyer varchar(50) [not null, default: '0', note: '購入商社']
+  is_frozen tinyint(1) [not null, default: 0, note: 'データ凍結フラグ']
+}
+
+Table mst_tool_assignment {
+  tool_assignment_id int(4) [pk, not null, increment, note: '工具割当識別用ID']
+  program_id int(3) [not null, note: 'プログラム割り当てID']
+  tool_num varchar(50) [not null, default: '0', note: 'ツール番号']
+  basic_tool_id int(4) [not null, note: '基本工具ID']
+}
+
+Table mst_user {
+  user_id int(4) [pk, not null, increment, note: 'ユーザーID']
+  user_name varchar(50) [not null, default: '0', note: 'ユーザー名']
+  user_print_time timestamp [not null, note: 'ユーザーQR印刷日時']
+  per_add tinyint(1) [not null, default: 0, note: '補充権限']
+  per_inventory tinyint(1) [not null, default: 0, note: '棚卸し権限']
+  per_user tinyint(1) [not null, default: 0, note: 'ユーザー権限']
+  per_tool tinyint(1) [not null, default: 0, note: '工具管理権限']
+  per_line tinyint(1) [not null, default: 0, note: 'ライン管理権限']
+  per_analysis tinyint(1) [not null, default: 0, note: '工具分析権限']
+  per_history tinyint(1) [not null, default: 0, note: '操作履歴権限']
+  per_db tinyint(1) [not null, default: 0, note: 'データベース管理権限']
+  per_setting tinyint(1) [not null, default: 0, note: 'パスワード設定']
+  is_frozen tinyint(1) [not null, default: 0, note: 'データ凍結フラグ']
+}
+
+Table rec_operation {
+  operation_id int(4) [pk, not null, increment, note: '記録用連番']
+  operation_class enum [not null, note: '履歴分類名称']
+  user_id int(4) [not null, note: 'ユーザー識別用連番']
+  proc_time timestamp [not null, note: '処理日時']
+  storage_area_id int(4) [not null, note: '工具保管領域識別用連番']
+  video_path varchar(50) [default: '0', note: '動画の保存先リンク']
+  line_id int(4) [note: 'ラインID']
+}
+
+Table rec_operation_child {
+  operation_child_id int(4) [pk, not null, increment, note: '記録用連番']
+  operation_id int(4) [not null, note: '記録用連番']
+  unique_tool_id bigint(10) [note: '工具識別用連番']
+  tool_num int(2) [default: 0, note: '操作個数']
+}
+
+Table rec_stock {
+  stock_id int(8) [pk, not null, increment, note: '記録用連番']
+  register_year_month varchar(50) [not null, default: '', note: '年月']
+  basic_tool_id int(4) [not null, note: '工具種別ごとの連番']
+  out_num int(4) [not null, default: 0, note: '取り出し個数（期間末）']
+  end_period_stock int(4) [not null, default: 0, note: '期間末在庫数']
+
+  Indexes {
+    (register_year_month, basic_tool_id) [unique]
+  }
+}
+
+Table storage_area {
+  storage_area_id int(4) [pk, not null, increment, note: '保管領域ID']
+  basic_tool_id int(4) [not null, note: '基本工具ID']
+  toolcase_stc_num int(2) [note: '保管ケース個数']
+  display_address varchar(304) [not null, note: '画面表示住所']
+}
+
+Table unique_tool {
+  unique_tool_id bigint(10) [pk, not null, note: '個別工具ID']
+  tool_print_time timestamp [not null, note: '個別工具QR印刷日時']
+  basic_tool_id int(4) [not null, note: '基本工具ID']
+  unique_num int(6) [not null, note: '個別番号']
+  case_pack_num int(2) [not null, note: 'ケース内個数']
+  storage_area_id int(4) [note: '保管領域ID']
+  storage_condition enum [not null, default: '補充前', note: '保管状態']
+  regrind_count int(2) [note: '工具の再研磨回数']
+}
+
+
+// --- Relationships ---
+// ( > : One-to-Many, < : Many-to-One )
+
+Ref: mst_line.line_id < mst_program.line_id
+Ref: mst_line.line_id < rec_operation.line_id
+
+Ref: mst_program.program_id < mst_tool_assignment.program_id
+
+Ref: mst_tool.basic_tool_id < mst_tool_assignment.basic_tool_id
+Ref: mst_tool.basic_tool_id < rec_stock.basic_tool_id
+Ref: mst_tool.basic_tool_id < storage_area.basic_tool_id
+Ref: mst_tool.basic_tool_id < unique_tool.basic_tool_id
+
+Ref: mst_user.user_id < rec_operation.user_id
+
+Ref: mst_address.display_address < storage_area.display_address // 1-to-many (o<)
+
+Ref: rec_operation.operation_id < rec_operation_child.operation_id // 1-to-many (o<)
+
+Ref: storage_area.storage_area_id < rec_operation.storage_area_id
+Ref: storage_area.storage_area_id - unique_tool.storage_area_id // 1-to-many (o<)
+
+Ref: unique_tool.unique_tool_id < rec_operation_child.unique_tool_id

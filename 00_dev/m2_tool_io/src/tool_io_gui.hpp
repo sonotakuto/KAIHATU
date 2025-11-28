@@ -5,9 +5,10 @@
 #pragma once
 #include <cstdint>
 #include <SimpleGtk>
+#include "./opt_extension.hpp"
+#include "./SimpleGtk_extension.hpp"
 #include "./typedef.hpp"
 #include "./parameters.hpp"
-#include "./SimpleGtk_extension.hpp"
 #include "./tracked_map.hpp"
 #include "./plc_communicator.hpp"
 #include "./tracking_communicator.hpp"
@@ -163,12 +164,13 @@ public:
 		/// @brief エントリの編集可否 (GtkEntry限定, true: 可能, false: 不可)
 		std::optional<bool> is_editable{};
 
-		/**
-		 * @brief 他のWidgetStateの値でこのインスタンスを更新する。
-		 * @param[in] other 更新に使用するWidgetStateインスタンス。
-		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
-		 */
-		bool merge(const WidgetState& other);
+		STDEX_DEFINE_MERGE_FUNC(WidgetState,
+			&WidgetState::text,
+			&WidgetState::can_focus,
+			&WidgetState::is_sensitive,
+			&WidgetState::is_visible,
+			&WidgetState::is_editable
+		)
 	};
 
 	/**
@@ -179,20 +181,19 @@ public:
 	struct TableState {
 		/// @brief 列ヘッダーのテキストリスト (UiTextのvector)
 		std::optional<std::vector<UiText>> column_headers{};
-		/// @brief 列ヘッダーの感応 (true: 有効, false: 無効)
+		/// @brief ツリービューの感応 (true: 有効, false: 無効)
 		std::optional<bool> is_sensitive{};
-		/**
-		 * @brief 列ヘッダーの表示 (true: 表示, false: 非表示)
-		 * @details 使用は非推奨（gladeファイルの設計上、外側のコンテナごと非表示にしないと枠が消えないため）
-		 */
+		/// @brief ツリービューの表示 (true: 表示, false: 非表示)
 		std::optional<bool> is_visible{};
+		/// @brief ツリービューの選択可能性 (true: 選択可能, false: 選択不可)
+		std::optional<bool> is_selectable{};
 
-		/**
-		 * @brief 他のTableStateの値でこのインスタンスを更新する。
-		 * @param[in] other 更新に使用するTableStateインスタンス。
-		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
-		 */
-		bool merge(const TableState& other);
+		STDEX_DEFINE_MERGE_FUNC(TableState,
+			&TableState::column_headers,
+			&TableState::is_sensitive,
+			&TableState::is_visible,
+			&TableState::is_selectable
+		)
 	};
 
 	/**
@@ -223,7 +224,7 @@ public:
 	 */
 	struct TableUpdateGroup {
 		/// @brief 対象テーブルのポインタリスト
-		std::vector<sgex::TreeView*> tables{};
+		std::vector<sgex::ListStoreViewInterface*> tables{};
 		/// @brief 適用する状態
 		TableState state{};
 	};
@@ -574,9 +575,9 @@ private:
 
 	/**
 	 * @brief 現在のテキストモードに応じて表示用の文字列を取得します。
+	 * @details m_text_mode メンバ変数に基づいて、ui_text の適切なフィールドを返します。
 	 * @param[in] ui_text かな/漢字両方のテキストを持つUiText構造体。
 	 * @return 表示用の文字列 (かな or 漢字)。
-	 * @details m_text_mode メンバ変数に基づいて、ui_text の適切なフィールドを返します。
 	 */
 	const std::string& get_display_text(const UiText& ui_text) const {
 		return ((m_text_mode == TextMode::KANA)
@@ -593,45 +594,63 @@ private:
 	/**
 	 * @brief ヘッダーのボタン群を初期状態にリセットする変数。
 	 * @details GUI操作モードの変更時に呼び出されます。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void reset_header_buttons(bool update_ui = true);
 
 	/**
 	 * @brief ウィジェットの状態を更新するヘルパー関数。
-	 * @param[out] widget 更新対象のウィジェット。
-	 * @param[in] state 適用する状態 (WidgetState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 * @param[in] widget 更新対象のウィジェット。
+	 * @param[in] state 適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_widget_state(sg::Widget* widget, WidgetState state, bool update_ui = true);
+	void update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui = true);
+
+	/**
+	 * @brief ウィジェットの状態をムーブ更新するヘルパー関数。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 * @param[in] widget 更新対象のウィジェット。
+	 * @param[in] state ムーブ適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のウィジェットの状態を更新するヘルパー関数。
-	 * @param[out] widgets 更新対象のウィジェットのリスト。
-	 * @param[in] state 適用する状態 (WidgetState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 * @param[in] widgets 更新対象のウィジェットのリスト。
+	 * @param[in] state 適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_widget_state(std::vector<sg::Widget*> widgets, WidgetState state, bool update_ui = true);
+	void update_widget_state(const std::vector<sg::Widget*>& widgets, const WidgetState& state, bool update_ui = true);
 
 	/**
 	 * @brief テーブルの状態を更新するヘルパー関数。
-	 * @param[out] table 更新対象のテーブルウィジェット。
-	 * @param[in] state 適用する状態 (TableState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 * @param[in] table 更新対象のテーブルウィジェット。
+	 * @param[in] state 適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_table_state(sgex::TreeView* table, TableState state, bool update_ui = true);
+	void update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui = true);
+
+	/**
+	 * @brief テーブルの状態をムーブ更新するヘルパー関数。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 * @param[in] table 更新対象のテーブルウィジェット。
+	 * @param[in] state ムーブ適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のテーブルの状態を更新するヘルパー関数。
-	 * @param[out] tables 更新対象のテーブルウィジェットのリスト。
-	 * @param[in] state 適用する状態 (TableState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 * @param[in] tables 更新対象のテーブルウィジェットのリスト。
+	 * @param[in] state 適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_table_state(std::vector<sgex::TreeView*> tables, TableState state, bool update_ui = true);
+	void update_table_state(const std::vector<sgex::ListStoreViewInterface*>& tables, const TableState& state, bool update_ui = true);
 
 	/**
 	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
@@ -641,15 +660,15 @@ private:
 
 	/**
 	 * @brief アプリケーションの状態を更新し、UI（メッセージ、ボタン等）を再描画します。
-	 * @param[in] state 新しいアプリケーションの状態。
 	 * @details 状態遷移の唯一の窓口となる関数です。
+	 * @param[in] state 新しいアプリケーションの状態。
 	 */
 	void set_app_state(AppState state);
 
 	/**
 	 * @brief アプリケーションの操作モードを設定します。
-	 * @param[in] mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 * @details この関数がモードに対応する全てのUI状態（モード変数、ボタン排他、画面表示）を更新します。
+	 * @param[in] mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 */
 	void set_mode(GuiMode mode);
 
@@ -673,35 +692,35 @@ private:
 	 * ページ番号が左右でずれてしまう可能性があります。
 	 *
 	 * @param[in] action (オプション・デフォルト UPDATE_UI_ONLY) 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination(PaginationAction action = PaginationAction::UPDATE_UI_ONLY, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（3段表示ページ用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_3columns(PaginationAction action, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2段表示ページ用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_2columns(PaginationAction action, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2種表示ページの1種目用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_2types1st(PaginationAction action, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2種表示ページの2種目用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_2types2nd(PaginationAction action, bool update_ui = true);
 
@@ -1235,8 +1254,8 @@ private:
 	/// @brief ウィジェットの状態を保持し、変更があったウィジェットを追跡するマップ。
 	utils::TrackedMap<sg::Widget*, WidgetStateUpdater> m_widget_states;
 
-	/// @brief 各テーブルのカラムヘッダー表示テキストを保持するマップ。
-	utils::TrackedMap<sgex::TreeView*, TableState> m_table_states;
+	/// @brief 各テーブルの状態を保持し、変更があった要素を追跡するマップ。
+	utils::TrackedMap<sgex::ListStoreViewInterface*, TableState> m_table_states;
 
 	/**
 	 * @brief アプリケーション状態とウィジェット設定を紐付けるマップ。
@@ -1288,6 +1307,12 @@ private:
 
 	/// @brief [取り出し用] m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	std::optional<size_t> m_retrieving_index;
+
+	/// @brief [取り出し用] 現在場にある未スキャン工具の数
+	int m_unscanned_count;
+
+	/// @brief [取り出し用] その回の取り出しで、今後すべての警告を無視するかどうか
+	bool m_ignore_all_warnings;
 
 	// --- 操作中の状態保持用 (棚卸し専用) ---
 

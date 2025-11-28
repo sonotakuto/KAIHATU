@@ -219,6 +219,12 @@
 .selectableTree-style:disabled header button {
 	background-color: #A6A6A6;
 }
+/* :selected = 表が選択されている時のスタイル */
+/*
+.selectableTree-style:selected {
+	background-color: rgba(97%, 97%, 100%, 1.0);
+}
+*/
 
 /* 表のヘッダーの高さ調整用クラス */
 .subTree-headerSize header button {

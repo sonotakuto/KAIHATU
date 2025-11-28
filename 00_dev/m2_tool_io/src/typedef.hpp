@@ -45,7 +45,9 @@ struct MstToolTable {
 	/// @brief 材質 (工具の材質)
 	std::string tool_material{};
 	/// @brief 在庫数 (現在工具棚に保管されている個数)
-	std::int32_t stc{};
+	std::optional<std::int32_t> stc{};
+	/// @brief 凍結フラグ (true: 凍結、false: 通常)
+	bool is_frozen{};
 };
 
 /**
@@ -69,9 +71,11 @@ struct StrageAreaTable {
 	/// @brief 基本工具ID (工具種別ごとの連番)
 	std::int32_t basic_tool_id{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	std::int32_t toolcase_stc_num{};
+	std::optional<std::int32_t> toolcase_stc_num{};
 	/// @brief 画面表示住所
 	std::string display_address{};
+	/// @brief 最終棚卸し日時
+	std::optional<std::chrono::system_clock::time_point> last_reconciliation_time{};
 };
 
 /**
@@ -79,11 +83,11 @@ struct StrageAreaTable {
  * @brief 工具の状態を示す列挙型
  */
 enum class StorageCondition {
-	/// @brief 未補充
+	/// @brief 補充前
 	NOT_STORED,
-	/// @brief 使用可能 (保管中)
-	USABLE,
-	/// @brief 取り出された
+	/// @brief 保管中 (使用可能)
+	STORED,
+	/// @brief 取出
 	TAKEN_OUT
 };
 
@@ -152,9 +156,23 @@ struct MstToolAssignmentTable {
  * @brief 操作の分類を示す列挙型
  */
 enum class OperationClass {
+	/// @brief 取り出し
 	OUT,
+	/// @brief 補充
 	ADD,
+	/// @brief 棚卸し
 	INVENTORY
+};
+
+/**
+ * @enum TrackResult
+ * @brief 追跡システムの結果を示す列挙型
+ */
+enum class TrackResult {
+	/// @brief 正常
+	NORMAL,
+	/// @brief 異常 (警告無視)
+	OVERRIDDEN
 };
 
 /**
@@ -178,6 +196,10 @@ struct RecOperationTable {
 	std::optional<std::string> video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
 	std::optional<std::int32_t> tool_num{};
+	/// @brief ラインID (ライン識別用連番)
+	std::optional<std::int32_t> line_id{};
+	/// @brief 工具追跡の結果
+	std::optional<TrackResult> track_result{};
 };
 
 /**
@@ -213,7 +235,9 @@ struct MstToolInfo {
 	/// @brief 材質 (工具の材質)
 	std::string material{};
 	/// @brief 在庫数 (現在工具棚に保管されている個数)
-	std::int32_t stc{};
+	std::optional<std::int32_t> stc{};
+	/// @brief 凍結フラグ (true: 凍結、false: 通常)
+	bool is_frozen{};
 };
 
 /**
@@ -232,9 +256,11 @@ struct StrageAreaInfo {
 	/// @brief 保管している工具の基本情報
 	MstToolInfo item{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	std::int32_t toolcase_stc_num{};
+	std::optional<std::int32_t> toolcase_stc_num{};
 	/// @brief 住所 (画面表示住所とPLC制御住所)
 	MstAddressInfo mst_address_info{};
+	/// @brief 最終棚卸し日時
+	std::optional<std::chrono::system_clock::time_point> last_reconciliation_time{};
 };
 
 /**

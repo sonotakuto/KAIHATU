@@ -77,7 +77,7 @@ public:
 	/**
 	 * @brief 指定されたキーに対応する値を取得する。
 	 * @param[in] key キー
-	 * @param[in] flag_erase_updated_keys (オプション) trueの場合、取得したキーを更新済みリストから削除する。
+	 * @param[in] flag_erase_updated_keys (オプション・デフォルト false) trueの場合、取得したキーを更新済みリストから削除する。
 	 * @return キーに対応する値。
 	 * @throws std::out_of_range キーが存在しない場合。
 	 */
@@ -92,7 +92,7 @@ public:
 	// --- ゲッター (TrackedMap固有) ---
 	/**
 	 * @brief 全ての要素のコピーを取得する。
-	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys (オプション・デフォルト false) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return マップ全体のコピー。
 	 */
 	map_type get_all(bool flag_clear_updated_keys = false) {
@@ -105,7 +105,7 @@ public:
 
 	/**
 	 * @brief 更新されたキーのセットを取得する。
-	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys (オプション・デフォルト false) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新されたキーのセットのコピー。
 	 */
 	set_type get_updated_keys(bool flag_clear_updated_keys = false) {
@@ -118,7 +118,7 @@ public:
 
 	/**
 	 * @brief 更新された要素（キーと値のペア）のマップを取得する。
-	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_clear_updated_keys (オプション・デフォルト false) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements(bool flag_clear_updated_keys = false) {
@@ -703,8 +703,8 @@ public:
 	/**
 	 * @brief 指定されたキーに対応する値を取得する。
 	 * @param[in] key キー
-	 * @param[in] flag_wait_for_updates (オプション) trueの場合、キーが更新されるまで待機する。
-	 * @param[in] flag_erase_updated_keys (オプション) trueの場合、取得したキーを更新済みリストから削除する。
+	 * @param[in] flag_wait_for_updates (オプション・デフォルト false) trueの場合、キーが更新されるまで待機する。
+	 * @param[in] flag_erase_updated_keys (オプション・デフォルト false) trueの場合、取得したキーを更新済みリストから削除する。
 	 * @return キーに対応する値 (コピー)。
 	 * @throws std::out_of_range キーが存在しない場合。
 	 */
@@ -721,8 +721,8 @@ public:
 	// --- ゲッター (SafeTrackedMap固有) ---
 	/**
 	 * @brief 全ての要素のコピーを取得する。
-	 * @param[in] flag_wait_for_updates (オプション) trueの場合、更新キーが発生するまで待機する。
-	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_wait_for_updates (オプション・デフォルト false) trueの場合、更新キーが発生するまで待機する。
+	 * @param[in] flag_clear_updated_keys (オプション・デフォルト false) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return マップ全体のコピー。
 	 */
 	map_type get_all(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
@@ -735,8 +735,8 @@ public:
 	 * @brief 更新されたキーのリストを取得する。
 	 * @details
 	 * 現在 `updated_keys` に記録されている全てのキーのコピーを返します。
-	 * @param[in] flag_wait_for_updates (オプション) trueの場合、更新キーが発生するまで待機する。
-	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_wait_for_updates (オプション・デフォルト false) trueの場合、更新キーが発生するまで待機する。
+	 * @param[in] flag_clear_updated_keys (オプション・デフォルト false) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新されたキーのセットのコピー。
 	 */
 	set_type get_updated_keys(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
@@ -749,8 +749,8 @@ public:
 	 * @brief 更新された要素（キーと値のペア）のマップを取得する。
 	 * @details
 	 * `updated_keys` に記録されているキーに対応する要素を全て抽出し、新しいマップとして返します。
-	 * @param[in] flag_wait_for_updates (オプション) trueの場合、更新キーが発生するまで待機する。
-	 * @param[in] flag_clear_updated_keys (オプション) trueの場合、取得後に更新済みキーのリストをクリアする。
+	 * @param[in] flag_wait_for_updates (オプション・デフォルト false) trueの場合、更新キーが発生するまで待機する。
+	 * @param[in] flag_clear_updated_keys (オプション・デフォルト false) trueの場合、取得後に更新済みキーのリストをクリアする。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements(bool flag_wait_for_updates = false, bool flag_clear_updated_keys = false) {
