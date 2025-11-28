@@ -2042,12 +2042,12 @@ void MainWindow::set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWin
 			// ToolAssignmentInfo と MstToolInfo から MainTableData に値をコピー
 			.id = tool_assignment.id,	// 行の識別に使う (今回は tool_assignment_id を流用)
 			.data_columns = {
-				tool_assignment.tool_num,							// ツール番号
-				tool_assignment.mst_tool_info.category,				// 分類
-				tool_assignment.mst_tool_info.maker,				// メーカー
-				tool_assignment.mst_tool_info.name,					// 型番
-				tool_assignment.mst_tool_info.material,				// 材質
-				std::to_string(tool_assignment.mst_tool_info.stc),	// 在庫数 (文字列に変換)
+				tool_assignment.tool_num,									// ツール番号
+				tool_assignment.mst_tool_info.category,						// 分類
+				tool_assignment.mst_tool_info.maker,						// メーカー
+				tool_assignment.mst_tool_info.name,							// 型番
+				tool_assignment.mst_tool_info.material,						// 材質
+				std::to_string(tool_assignment.mst_tool_info.stc.value()),	// BUG: nullopt対応 在庫数 (文字列に変換)
 			},
 			.cell_state_0to4 = ((tool_assignment.mst_tool_info.stc > 0)
 				? (TableCellState::NORMAL)	// 在庫があれば通常状態
@@ -2588,12 +2588,12 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 		vec.push_back(MainTableData{
 			.id = retrieving_tool.id,
 			.data_columns = {
-				retrieving_tool.tool_num,							// ツール番号
-				retrieving_tool.mst_tool_info.category,				// 分類
-				retrieving_tool.mst_tool_info.maker,				// メーカー
-				retrieving_tool.mst_tool_info.name,					// 型番
-				retrieving_tool.mst_tool_info.material,				// 材質
-				std::to_string(retrieving_tool.mst_tool_info.stc),	// 在庫数 (文字列に変換)
+				retrieving_tool.tool_num,									// ツール番号
+				retrieving_tool.mst_tool_info.category,						// 分類
+				retrieving_tool.mst_tool_info.maker,						// メーカー
+				retrieving_tool.mst_tool_info.name,							// 型番
+				retrieving_tool.mst_tool_info.material,						// 材質
+				std::to_string(retrieving_tool.mst_tool_info.stc.value()),	// BUG: nullopt対応 在庫数 (文字列に変換)
 			},
 			.cell_state_0to4 = ((i == m_retrieving_index)
 				? (TableCellState::HIGHLIGHT)
@@ -2647,6 +2647,7 @@ void MainWindow::on_enter_retrieve_ready_for_reading() {
 	qrCodeEntry.grab_focus();
 }
 
+// TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
 	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
@@ -2669,6 +2670,7 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	qrCodeEntry.grab_focus();
 }
 
+// TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification) {
 	bool result = false;
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
@@ -2928,6 +2930,7 @@ void MainWindow::on_enter_store_waiting_for_tool_qr() {
 	qrCodeEntry.grab_focus();
 }
 
+// TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 	auto unique_info = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
@@ -3014,6 +3017,7 @@ void MainWindow::on_enter_store_read_completed() {
 	});
 }
 
+// TODO: storage_condition の値に応じた警告表示を追加
 bool MainWindow::on_qrCodeEntry_store_read_completed() {
 	bool result = false;
 	bool is_reground = false;

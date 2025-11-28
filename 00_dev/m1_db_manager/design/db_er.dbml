@@ -1,9 +1,9 @@
 // --- Tables Definition ---
 // DBML (Database Markup Language) for system database
-// Based on: 現在のＤＢ_大石修正1119.sql
+// Based on: system_1128.sql
 
 Table mst_address {
-	display_address varchar(304) [pk, not null, note: '画面表示住所']
+	display_address varchar(104) [pk, not null, note: '画面表示住所']
 	control_address varchar(3) [not null, default: '0', note: 'PLC制御住所']
 }
 
@@ -28,10 +28,10 @@ Table mst_tool {
 	basic_tool_id int(4) [pk, not null, increment, note: '基本工具ID']
 	tool_name varchar(50) [not null, default: '0', note: '型番']
 	maker varchar(50) [not null, default: '0', note: 'メーカー']
-	tool_category enum [not null, note: '工具分類']
+	tool_category enum('ドリル','インサート','タップ','リーマー','エンドミル') [not null, note: '工具分類']
 	tool_material varchar(50) [not null, default: '0', note: '材質']
 	stc int(4) [note: '在庫数']
-	rop int(4) [not null, default: 0, note: '発注点']
+	rop int(4) [note: '発注点']
 	buyer varchar(50) [not null, default: '0', note: '購入商社']
 	is_frozen tinyint(1) [not null, default: 0, note: 'データ凍結フラグ']
 }
@@ -61,7 +61,7 @@ Table mst_user {
 
 Table rec_operation {
 	operation_id int(4) [pk, not null, increment, note: '記録用連番']
-	operation_class enum [not null, note: '履歴分類名称']
+	operation_class enum('補充','取出','棚卸') [not null, note: '履歴分類名称']
 	user_id int(4) [not null, note: 'ユーザー識別用連番']
 	proc_time timestamp [not null, note: '処理日時']
 	storage_area_id int(4) [not null, note: '工具保管領域識別用連番']
@@ -69,7 +69,7 @@ Table rec_operation {
 	video_path varchar(50) [default: '0', note: '動画の保存先リンク']
 	tool_num int(2) [default: 0, note: '操作個数']
 	line_id int(4) [note: 'ラインID']
-	track_result enum [note: '工具追跡の結果']
+	track_result enum('正常','異常') [note: '工具追跡の結果']
 }
 
 Table rec_stock {
@@ -88,7 +88,7 @@ Table storage_area {
 	storage_area_id int(4) [pk, not null, increment, note: '保管領域ID']
 	basic_tool_id int(4) [not null, note: '基本工具ID']
 	toolcase_stc_num int(2) [note: '保管ケース個数']
-	display_address varchar(304) [not null, note: '画面表示住所']
+	display_address varchar(104) [not null, note: '画面表示住所']
 	last_reconciliation_time timestamp [note: '最終棚卸し日時']
 }
 
@@ -99,7 +99,7 @@ Table unique_tool {
 	unique_num int(6) [not null, note: '個別番号']
 	case_pack_num int(2) [not null, note: 'ケース内個数']
 	storage_area_id int(4) [note: '保管領域ID']
-	storage_condition enum [not null, default: '補充前', note: '保管状態']
+	storage_condition enum('補充前','保管中','取出') [not null, default: '補充前', note: '保管状態']
 	regrind_count int(2) [note: '工具の再研磨回数']
 }
 
@@ -119,9 +119,9 @@ Ref: mst_tool.basic_tool_id < unique_tool.basic_tool_id
 
 Ref: mst_user.user_id < rec_operation.user_id
 
-Ref: mst_address.display_address < storage_area.display_address // 1-to-many (o<)
+Ref: mst_address.display_address < storage_area.display_address
 
 Ref: storage_area.storage_area_id < rec_operation.storage_area_id
-Ref: storage_area.storage_area_id < unique_tool.storage_area_id // 1-to-many (o<)
+Ref: storage_area.storage_area_id < unique_tool.storage_area_id
 
 Ref: unique_tool.unique_tool_id < rec_operation.unique_tool_id
