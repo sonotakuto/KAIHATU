@@ -1,74 +1,74 @@
 {
   "version": "1.0.0",
-  "darkMode": false,
+  "darkMode": true,
   "gridEnabling": false,
   "detailLevel": "All",
   "tablePositions": [
     {
       "name": "mst_address",
       "schemaName": "public",
-      "x": 358.9413082189209,
-      "y": 581.1740670841633
+      "x": 376,
+      "y": 584
     },
     {
       "name": "mst_line",
       "schemaName": "public",
-      "x": 387.3956539220459,
-      "y": 12
+      "x": 376,
+      "y": 16
     },
     {
       "name": "mst_password",
       "schemaName": "public",
-      "x": 382.1642086095459,
-      "y": -87.21391471474729
+      "x": 376,
+      "y": -88
     },
     {
       "name": "mst_program",
       "schemaName": "public",
-      "x": 816.4135270222343,
-      "y": 72.82067135066154
+      "x": 816,
+      "y": 72
     },
     {
       "name": "mst_tool",
       "schemaName": "public",
-      "x": 377.2267086095459,
-      "y": 225.4229017356003
+      "x": 376,
+      "y": 224
     },
     {
       "name": "mst_tool_assignment",
       "schemaName": "public",
-      "x": 1256.4006624688466,
-      "y": 105.20899611900268
+      "x": 1248,
+      "y": 104
     },
     {
       "name": "mst_user",
       "schemaName": "public",
-      "x": 376.2586910314209,
-      "y": 695.6815917748262
+      "x": 376,
+      "y": 728
     },
     {
       "name": "rec_operation",
       "schemaName": "public",
-      "x": 1685.3151458728025,
-      "y": 661.8112849774294
+      "x": 1680,
+      "y": 664
     },
     {
       "name": "rec_stock",
       "schemaName": "public",
-      "x": 1652.7929290759275,
-      "y": 1009.5725720134249
+      "x": 1656,
+      "y": 1048
     },
     {
       "name": "storage_area",
       "schemaName": "public",
-      "x": 820.0729508503593,
-      "y": 555.8291665144982
+      "x": 824,
+      "y": 560
     },
     {
       "name": "unique_tool",
       "schemaName": "public",
-      "x": 1244.2795687188466,
-      "y": 300.4378536952195
+      "x": 1248,
+      "y": 296
     }
   ],
   "tableGroupCollapseStates": [],
@@ -87,7 +87,16 @@
       "secondTableName": "mst_program",
       "secondSchemaName": "public",
       "secondRelation": "*",
-      "checkPoints": []
+      "checkPoints": [
+        {
+          "x": 721.7391546735164,
+          "y": 72
+        },
+        {
+          "x": 721.7391546735164,
+          "y": 152
+        }
+      ]
     },
     {
       "firstFieldNames": [
@@ -104,12 +113,12 @@
       "secondRelation": "*",
       "checkPoints": [
         {
-          "x": 1564.4885220541266,
-          "y": 52
+          "x": 1569.7985794084386,
+          "y": 56
         },
         {
-          "x": 1564.4885220541266,
-          "y": 965.8112849774294
+          "x": 1569.7985794084386,
+          "y": 936
         }
       ]
     },
@@ -126,7 +135,16 @@
       "secondTableName": "mst_tool_assignment",
       "secondSchemaName": "public",
       "secondRelation": "*",
-      "checkPoints": []
+      "checkPoints": [
+        {
+          "x": 1184.9214363013875,
+          "y": 120
+        },
+        {
+          "x": 1184.9214363013875,
+          "y": 184
+        }
+      ]
     },
     {
       "firstFieldNames": [
@@ -143,12 +161,12 @@
       "secondRelation": "*",
       "checkPoints": [
         {
-          "x": 735.1350389311986,
-          "y": 273.4229017356003
+          "x": 742.9657274971283,
+          "y": 272
         },
         {
-          "x": 735.1350389311986,
-          "y": 252.49252856926546
+          "x": 742.9657274971283,
+          "y": 248
         }
       ]
     },
@@ -167,12 +185,12 @@
       "secondRelation": "*",
       "checkPoints": [
         {
-          "x": 734.1864829107376,
-          "y": 273.4229017356003
+          "x": 742.9440368721284,
+          "y": 272
         },
         {
-          "x": 734.1864829107376,
-          "y": 1121.5725720134249
+          "x": 742.9440368721284,
+          "y": 1128
         }
       ]
     },
@@ -189,7 +207,16 @@
       "secondTableName": "storage_area",
       "secondSchemaName": "public",
       "secondRelation": "*",
-      "checkPoints": []
+      "checkPoints": [
+        {
+          "x": 742.9828024971284,
+          "y": 272
+        },
+        {
+          "x": 742.9828024971284,
+          "y": 640
+        }
+      ]
     },
     {
       "firstFieldNames": [
@@ -206,12 +233,12 @@
       "secondRelation": "*",
       "checkPoints": [
         {
-          "x": 734.1192673806772,
-          "y": 273.4229017356003
+          "x": 742.9657274971283,
+          "y": 272
         },
         {
-          "x": 734.1192673806772,
-          "y": 415.72138614548226
+          "x": 742.9657274971283,
+          "y": 408
         }
       ]
     },
@@ -228,16 +255,7 @@
       "secondTableName": "rec_operation",
       "secondSchemaName": "public",
       "secondRelation": "*",
-      "checkPoints": [
-        {
-          "x": 1634.594699737952,
-          "y": 743.6815917748262
-        },
-        {
-          "x": 1634.594699737952,
-          "y": 773.8112849774294
-        }
-      ]
+      "checkPoints": []
     },
     {
       "firstFieldNames": [
@@ -278,12 +296,12 @@
       "secondRelation": "*",
       "checkPoints": [
         {
-          "x": 1615.6536080635613,
-          "y": 611.8291665144982
+          "x": 1617.0771536096886,
+          "y": 616
         },
         {
-          "x": 1615.6536080635613,
-          "y": 837.8112849774294
+          "x": 1617.0771536096886,
+          "y": 808
         }
       ]
     },
@@ -299,7 +317,7 @@
       ],
       "secondTableName": "unique_tool",
       "secondSchemaName": "public",
-      "secondRelation": "1",
+      "secondRelation": "*",
       "checkPoints": []
     },
     {
@@ -317,12 +335,12 @@
       "secondRelation": "*",
       "checkPoints": [
         {
-          "x": 1593.8358935264885,
-          "y": 348.4378536952195
+          "x": 1593.437866509064,
+          "y": 344
         },
         {
-          "x": 1593.8358935264885,
-          "y": 869.8112849774294
+          "x": 1593.437866509064,
+          "y": 840
         }
       ]
     }

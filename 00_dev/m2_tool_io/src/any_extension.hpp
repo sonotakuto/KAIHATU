@@ -1,3 +1,8 @@
+/**
+ * @file any_extension.hpp
+ * @brief std::any に対する拡張機能を定義したヘッダファイル。
+ */
+#pragma once
 #include <any>
 #include <optional>
 #include <functional> // std::reference_wrapper

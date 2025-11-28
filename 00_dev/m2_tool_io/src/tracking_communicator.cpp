@@ -1,6 +1,6 @@
 /**
- * @file
- * @brief
+ * @file tracking_communicator.cpp
+ * @brief 工具追跡システムおよび録画サーバーと通信するためのクライアントクラス群の実装。
  */
 #include "./includes.hpp"
 #include "./url_transfer.hpp"
@@ -30,24 +30,25 @@ bool ToolTrackerClient::connect() {
 			return false;
 		}
 
-		if (socket.send(TRACKER_MSG_CONNECT.data(), TRACKER_MSG_CONNECT.size()) < 0) {
+		if (socket.send(TRACKER_PADDED_MSG_CONNECT.data(), TRACKER_PADDED_MSG_CONNECT.size()) < 0) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Connect' message.\n");
 			socket.close();
 			return false;
 		}
 
 		socket.set_timeout(5000);
-		std::array<char, TRACKER_MSG_LENGTH> ack_buffer{};
-		ssize_t bytes_read = socket.receive(ack_buffer.data(), ack_buffer.size());
+		std::array<char, TRACKER_MSG_LENGTH> buffer{};
+		ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
 		socket.set_timeout(0); // ブロッキングモードに戻す
+		std::string raw_message(buffer.data(), bytes_read);
 
-		if (bytes_read > 0 && std::memcmp(ack_buffer.data(), TRACKER_MSG_ACK.data(), TRACKER_MSG_ACK.size()) == 0) {
+		if (bytes_read == TRACKER_MSG_LENGTH && sg::rtrim(raw_message) == TRACKER_MSG_CONNECT_ACK) {
 			keep_listening = true;
 			listener_thread = std::thread(&ToolTrackerClient::listener_thread_func, this);
 			return true;
 		} else {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
-					(bytes_read > 0 ? std::string(ack_buffer.data(), bytes_read) : "(No data or error)"));
+					((bytes_read > 0) ? (raw_message) : ("(No data or error)")));
 			socket.close();
 			return false;
 		}
@@ -69,7 +70,21 @@ void ToolTrackerClient::disconnect() {
 	keep_listening = false;
 	if (socket.is_connected()) {
 		try {
-			socket.send(TRACKER_MSG_DISCONNECT.data(), TRACKER_MSG_DISCONNECT.size());
+			socket.send(TRACKER_PADDED_MSG_DISCONNECT.data(), TRACKER_PADDED_MSG_DISCONNECT.size());
+			if (socket.send(TRACKER_PADDED_MSG_DISCONNECT.data(), TRACKER_PADDED_MSG_DISCONNECT.size()) >= 0) {
+				socket.set_timeout(5000);
+				std::array<char, TRACKER_MSG_LENGTH> buffer{};
+				ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
+				socket.set_timeout(0); // ブロッキングモードに戻す
+				std::string raw_message(buffer.data(), bytes_read);
+
+				if (bytes_read == TRACKER_MSG_LENGTH && sg::rtrim(raw_message) != TRACKER_MSG_DISCONNECT_ACK) {
+					DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
+							((bytes_read > 0) ? (raw_message) : ("(No data or error)")));
+				}
+			} else {
+				DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Disconnect' message.\n");
+			}
 		} catch (...) {}
 		socket.close();
 	}
@@ -89,7 +104,7 @@ bool ToolTrackerClient::notify_qr_scan() {
 		return false;
 	}
 	try {
-		if (socket.send(TRACKER_MSG_QR_SCAN.data(), TRACKER_MSG_QR_SCAN.size()) < 0) {
+		if (socket.send(TRACKER_PADDED_MSG_QR_SCAN.data(), TRACKER_PADDED_MSG_QR_SCAN.size()) < 0) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
 			disconnect();
 			notification_callback({NotificationType::ERROR, {}, "Send failed"});
@@ -109,24 +124,31 @@ void ToolTrackerClient::listener_thread_func() {
 
 	while (keep_listening) {
 		try {
+			// 受信のためにバッファをクリア
+			buffer.fill('\0');
 			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
+			std::string raw_message(buffer.data(), bytes_read);
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received {} bytes\n", bytes_read);
-			DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", std::string(buffer.data(), bytes_read));
+			DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", raw_message);
 
 			if (bytes_read == TRACKER_MSG_LENGTH) {
 				Notification notification;
+				std::string trimmed_message = sg::rtrim(raw_message);
 
 				// 固定長メッセージの比較を行い、通知タイプを判別、設定
-				if		(std::memcmp(buffer.data(),	TRACKER_MSG_SCAN_S		.data(),	TRACKER_MSG_SCAN_S		.size()) == 0) { notification.type = NotificationType::SCAN_SUCCESS;			}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_SCAN_F		.data(),	TRACKER_MSG_SCAN_F		.size()) == 0) { notification.type = NotificationType::SCAN_FAIL;				}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_1	.data(),	TRACKER_MSG_C_ANOMALY_1	.size()) == 0) { notification.type = NotificationType::ANOMALY_UNSCANNED_OUT;	}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_1	.data(),	TRACKER_MSG_C_BACK_1	.size()) == 0) { notification.type = NotificationType::BACK_UNSCANNED_IN;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_ANOMALY_2	.data(),	TRACKER_MSG_C_ANOMALY_2	.size()) == 0) { notification.type = NotificationType::ANOMALY_SCANNED_IN;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_C_BACK_2	.data(),	TRACKER_MSG_C_BACK_2	.size()) == 0) { notification.type = NotificationType::BACK_SCANNED_OUT;		}
-				else if	(std::memcmp(buffer.data(),	TRACKER_MSG_ACK			.data(),	TRACKER_MSG_ACK			.size()) == 0) { notification.type = NotificationType::ACK;						}
-				else notification.type = NotificationType::UNKNOWN;
+				if		(trimmed_message == TRACKER_MSG_SCAN_S					) { notification.type = NotificationType::SCAN_SUCCESS;				}
+				else if	(trimmed_message == TRACKER_MSG_SCAN_F					) { notification.type = NotificationType::SCAN_FAILURE;				}
+				else if	(trimmed_message == TRACKER_MSG_SCANNED_IN_CONTAINER	) { notification.type = NotificationType::SCANNED_IN_CONTAINER;		}
+				else if	(trimmed_message == TRACKER_MSG_SCANNED_OUT_CONTAINER	) { notification.type = NotificationType::SCANNED_OUT_CONTAINER;	}
+				else if	(trimmed_message == TRACKER_MSG_OTHER_IN_CONTAINER		) { notification.type = NotificationType::OTHER_IN_CONTAINER;		}
+				else if	(trimmed_message == TRACKER_MSG_OTHER_OUT_CONTAINER		) { notification.type = NotificationType::OTHER_OUT_CONTAINER;		}
+				else if	(trimmed_message == TRACKER_MSG_UNSCANNED_IN_CONTAINER	) { notification.type = NotificationType::UNSCANNED_IN_CONTAINER;	}
+				else if	(trimmed_message == TRACKER_MSG_UNSCANNED_OUT_CONTAINER	) { notification.type = NotificationType::UNSCANNED_OUT_CONTAINER;	}
+				else if	(trimmed_message == TRACKER_MSG_UNSCANNED_OUT_FRAME		) { notification.type = NotificationType::UNSCANNED_OUT_FRAME;		}
+				else { notification.type = NotificationType::UNKNOWN; }
 
 				notification.raw_message = std::move(buffer);	// 固定長配列をムーブ
+				notification.trimmed_message = std::move(trimmed_message);	// トリムしたメッセージをムーブ
 				notification_callback(notification);
 
 			} else if (bytes_read <= 0) {

@@ -105,14 +105,14 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 }
 
 /**
- * @brief program_id と (オプションの) print_time でDBを検索し、ToolingListInfo を構築する共通ヘルパー
+ * @brief program_id と print_time でDBを検索し、ToolingListInfo を構築する共通ヘルパー
  * @param[in] program_id 検索キーとなるプログラムID
- * @param[in] print_time 認証に使うQRコードの印刷時刻。nulloptの場合は program_id のみで検索
+ * @param[in] print_time (オプション・デフォルト nullopt) 認証に使うQRコードの印刷時刻。nulloptの場合は program_id のみで検索
  * @return 成功した場合は ToolingListInfo、失敗した場合は nullopt
  */
 static std::optional<ToolingListInfo> query_and_populate_tooling_list(
 	std::int64_t program_id,
-	std::optional<std::chrono::system_clock::time_point> print_time)
+	std::optional<std::chrono::system_clock::time_point> print_time = std::nullopt)
 {
 	auto stmt_opt = create_statement_with_retry();
 	if (!stmt_opt) {
