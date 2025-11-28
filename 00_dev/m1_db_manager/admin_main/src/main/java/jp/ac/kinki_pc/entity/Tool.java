@@ -29,4 +29,5 @@ public class Tool {
 	private Integer stc;
 	private Integer rop;
 	private String buyer;
+	private Boolean isFrozen;
 }

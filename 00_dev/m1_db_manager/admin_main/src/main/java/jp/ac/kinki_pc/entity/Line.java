@@ -23,4 +23,5 @@ public class Line {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer lineId;
 	private String lineName;
+	private Boolean isFrozen;
 }

@@ -35,4 +35,5 @@ public class User {
 	private Integer perHistory;
 	private Integer perDb;
 	private Integer perSetting;
+	private Boolean isFrozen;
 }

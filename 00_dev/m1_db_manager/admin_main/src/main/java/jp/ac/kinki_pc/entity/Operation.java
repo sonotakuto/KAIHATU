@@ -31,4 +31,6 @@ public class Operation {
 	private Long uniqueToolId;
 	private String videoPath;
 	private Integer toolNum;
+	private Integer lineId;
+	private String trackResult;		// ENUM型: '正常','異常'
 }

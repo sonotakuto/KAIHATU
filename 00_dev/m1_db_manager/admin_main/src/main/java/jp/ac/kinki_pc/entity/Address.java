@@ -19,5 +19,5 @@ public class Address {
 	
 	@Id
 	private String displayAddress;
-	private Integer controlAddress;
+	private String controlAddress;
 }

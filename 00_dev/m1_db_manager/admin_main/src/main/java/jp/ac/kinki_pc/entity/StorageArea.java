@@ -2,6 +2,8 @@
 
 package jp.ac.kinki_pc.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,4 +27,5 @@ public class StorageArea {
 	private Integer basicToolId;
 	private Integer toolcaseStcNum;
 	private String displayAddress;
+	private LocalDateTime lastReconciliationTime;
 }
