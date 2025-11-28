@@ -1397,8 +1397,8 @@ MainWindow::MainWindow() :
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_read_completed(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_read_completed(); },
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_read_completed(); },
-		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_read_completed(); }
-		// TODO: 扉の開閉に関するPLC連携処理を実装 (扉が閉められている時のみtrue/falseボタンを操作できるようにする)
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_read_completed(); },
+		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_store_read_completed(notification); }
 	});
 
 	// --- 状態：棚卸し - 移行 ---
@@ -2616,21 +2616,19 @@ void MainWindow::on_plc_retrieve_container_retrieving(const plc::Notification& n
 }
 
 void MainWindow::on_enter_retrieve_container_retrieved() {
-	// TODO: 扉を開けるまで待機する処理を実装
 	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.addr = plc::M_DEVICE_READY_TO_STORE,
 		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
+			.enable_fall_notification = true,
+			.fall_is_one_shot = true
 		}
 	});
 }
 
 void MainWindow::on_plc_retrieve_container_retrieved(const plc::Notification& notification) {
-	// TODO: 扉を開けるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
 		auto result = notification.monitor_result.value();
-		if (result.addr == plc::M_DEVICE_DOOR_OPEND && result.status) {
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE && !result.status) {
 			set_app_state(AppState::RETRIEVE_READY_FOR_READING);
 		} else {}	// BUG: エラー処理
 	}
@@ -2658,6 +2656,24 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
 				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
 			}, true);
+			qrCodeEntry.grab_focus();
+			return;
+		}
+
+		if (unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
+			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
+				.text = UiText{"この工具は既に『取り出し済み』になっています\n別の工具を読み取ってください", "この こうぐは すでに 『とりだしずみ』に なっています\nべつの こうぐを よみとってください"}
+			}, true);
+			qrCodeEntry.grab_focus();
+			return;
+		}
+
+		if (unique_info.storage_condition == StorageCondition::NOT_STORED) {
+			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
+				.text = UiText{"この工具は『補充待ち』になっています\n別の工具を読み取ってください", "この こうぐは 『ほじゅうまち』に なっています\nべつの こうぐを よみとってください"}
+			}, true);
+			qrCodeEntry.grab_focus();
+			return;
 		}
 
 		tracker::g_tool_tracker->notify_qr_scan();
@@ -2670,7 +2686,6 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	qrCodeEntry.grab_focus();
 }
 
-// TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification) {
 	bool result = false;
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
@@ -2678,10 +2693,16 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 	switch (notification.type) {
 	case tracker::NotificationType::SCAN_SUCCESS: {
 		if (m_pending_tool_info.has_value()) {
-			// 念のため基本工具情報が合致しているかチェック
+			// 念のため基本工具情報等が合致しているかチェック
 			UniqueToolInfo unique_info = std::move(m_pending_tool_info).value();
 			m_pending_tool_info.reset();
-			if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id) {
+
+			if (
+				unique_info.mst_tool_info.id != retrieving_tool.id &&
+				unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.id &&
+				unique_info.storage_condition != StorageCondition::TAKEN_OUT &&
+				unique_info.storage_condition != StorageCondition::NOT_STORED
+			) {
 				DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が不正値です\n");
 				// BUG: 不正値対応
 //				update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
@@ -2837,18 +2858,17 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 }
 
 void MainWindow::on_enter_retrieve_read_completed() {
-	// TODO: 扉を閉めるまで待機する処理を実装
 #ifdef STUB_PLC
 	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.addr = plc::M_DEVICE_READY_TO_STORE,
 		.flags = plc::WatchFlags{
-			.enable_fall_notification = true,
-			.fall_is_one_shot = true,
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true,
 		}
 	});
 #else
 	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.addr = plc::M_DEVICE_READY_TO_STORE,
 		.flags = plc::WatchFlags{
 			.enable_fall_notification = true,
 			.enable_rise_notification = true,
@@ -2862,8 +2882,7 @@ void MainWindow::on_enter_retrieve_read_completed() {
 void MainWindow::on_falseButton_retrieve_read_completed() {
 	// BUG: エラー対応
 	plc::store_container();
-	// TODO: 扉ロック
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_DOOR_OPEND, .flags = plc::WatchFlags{}});	// 監視対象を削除
+	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
 	db::disconnect();
 	tracker::g_tool_tracker->disconnect();
@@ -2880,8 +2899,7 @@ void MainWindow::on_falseButton_retrieve_read_completed() {
 void MainWindow::on_trueButton_retrieve_read_completed() {
 	// BUG: エラー対応
 	plc::store_container();
-	// TODO: 扉ロック
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_DOOR_OPEND, .flags = plc::WatchFlags{}});	// 監視対象を削除
+	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
 	tracker::g_tool_tracker->disconnect();
 	tracker::g_recorder_client->stop_recording();
@@ -2908,12 +2926,11 @@ void MainWindow::on_trueButton_retrieve_read_completed() {
 }
 
 void MainWindow::on_plc_retrieve_read_completed(const plc::Notification& notification) {
-	// TODO: 扉を閉めるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
 		auto result = notification.monitor_result.value();
-		if (result.addr == plc::M_DEVICE_DOOR_OPEND) {
-			// 1. PLCの状態変数を更新 (status=true が「開」、false が「閉」と仮定)
-			m_plc_ready_for_action = !result.status; // 扉が閉まっている(!status)時に true
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE) {
+			// 1. PLCの状態変数を更新 (status=true が格納準備完了状態)
+			m_plc_ready_for_action = result.status;
 
 			// 2. 共通ヘルパーを呼び出して、3つの条件に基づきUIを更新
 			update_retrieve_read_completed_buttons();
@@ -2973,10 +2990,10 @@ void MainWindow::on_plc_store_container_retrieving(const plc::Notification& noti
 void MainWindow::on_enter_store_container_retrieved() {
 	// TODO: 扉を開けるまで待機する処理を実装
 	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.addr = plc::M_DEVICE_READY_TO_STORE,
 		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
+			.enable_fall_notification = true,
+			.fall_is_one_shot = true
 		}
 	});
 }
@@ -2985,7 +3002,7 @@ void MainWindow::on_plc_store_container_retrieved(const plc::Notification& notif
 	// TODO: 扉を開けるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
 		auto result = notification.monitor_result.value();
-		if (result.addr == plc::M_DEVICE_DOOR_OPEND && result.status) {
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE && !result.status) {
 			set_app_state(AppState::STORE_READY_FOR_READING);
 		} else {}	// BUG: エラー処理
 	}
@@ -3005,9 +3022,8 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 }
 
 void MainWindow::on_enter_store_read_completed() {
-	// TODO: 扉を閉めるまで待機する処理を実装
 	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_DOOR_OPEND,
+		.addr = plc::M_DEVICE_READY_TO_STORE,
 		.flags = plc::WatchFlags{
 			.enable_fall_notification = true,
 			.enable_rise_notification = true,
@@ -3071,11 +3087,10 @@ void MainWindow::on_trueButton_store_read_completed() {
 }
 
 void MainWindow::on_plc_store_read_completed(const plc::Notification& notification) {
-	// TODO: 扉を閉めるまで待機する処理を実装
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
 		auto result = notification.monitor_result.value();
-		if (result.addr == plc::M_DEVICE_DOOR_OPEND) {
-			update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = !result.status}, true);
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE) {
+			update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = result.status}, true);
 		} else {}	// BUG: エラー処理
 	}
 }
