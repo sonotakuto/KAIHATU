@@ -1314,18 +1314,15 @@ private:
 	/// @brief [取り出し用] その回の取り出しで、今後すべての警告を無視するかどうか
 	bool m_ignore_all_warnings;
 
-	// --- 操作中の状態保持用 (棚卸し専用) ---
-
-	/// @brief [棚卸し用] 絞り込み条件（工具分類）
+	// --- 棚卸しフィルタ用メンバ変数 ---
+	/// @brief 棚卸しコンテナ一覧の絞り込みカテゴリ (nulloptなら全件)
 	std::optional<std::string> m_reconcile_filter_category;
 
-	/// @brief [棚卸し用] 絞り込み条件（開始日時）
+	/// @brief 棚卸しコンテナ一覧の絞り込み期間（開始）
 	std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_start_date;
 
-	/// @brief [棚卸し用] 絞り込み条件（終了日時）
+	/// @brief 棚卸しコンテナ一覧の絞り込み期間（終了）
 	std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_end_date;
-
-	
 
 };
 

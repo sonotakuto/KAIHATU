@@ -728,4 +728,71 @@ std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_i
 	return get_StrageAreaInfo_ordered_by_cases(basic_tool_id, "DESC");
 }
 
+std::vector<UniqueToolInfo> get_tools_in_container(int storage_area_id) {
+	std::vector<UniqueToolInfo> result;
+
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt.has_value()) {
+		DEV_PRINT(stderr, "DB Error: Failed to create statement in get_tools_in_container.\n");
+		return result;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// 保管領域IDが一致し、かつ「保管中」の工具を取得するSQL
+		// unique_tool の情報に加え、表示に必要な mst_tool の情報も結合して取得
+		const std::string sql = 
+			"SELECT "
+			"    ut.unique_tool_id, ut.unique_num, ut.case_pack_num, ut.storage_condition, ut.regrind_count, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"FROM unique_tool AS ut "
+			"LEFT JOIN mst_tool AS mt ON ut.basic_tool_id = mt.basic_tool_id "
+			"WHERE ut.storage_area_id = ? AND ut.storage_condition = '保管中' "
+			"ORDER BY ut.unique_tool_id ASC;";
+
+		stmt.prepare(sql);
+		stmt.bind(1, storage_area_id);
+		stmt.executePrepared();
+
+		// 結果を取得してリストに詰める
+		auto rows = stmt.fetchAll();
+		result.reserve(rows.size());
+
+		for (const auto& row : rows) {
+			// mst_tool 情報を構築
+			MstToolInfo mst_tool_info{
+				.id          = std::any_cast<std::int32_t>              (row.at("basic_tool_id")),
+				.name        = std::any_cast<std::string>               (row.at("tool_name")),
+				.maker       = std::any_cast<std::string>               (row.at("maker")),
+				.category    = std::any_cast<std::string>               (row.at("tool_category")),
+				.material    = std::any_cast<std::string>               (row.at("tool_material")),
+				.stc         = stdex::any_cast_optional<std::int32_t>   (row.at("stc")),
+				.is_frozen   = std::any_cast<bool>                      (row.at("is_frozen"))
+			};
+
+			// UniqueToolInfo を構築して追加
+			result.push_back(UniqueToolInfo{
+				.id = std::any_cast<std::int64_t>(row.at("unique_tool_id")),
+				.mst_tool_info = std::move(mst_tool_info),
+				.unique_num    = std::any_cast<std::int32_t>(row.at("unique_num")),
+				.case_pack_num = std::any_cast<std::int32_t>(row.at("case_pack_num")),
+				
+				// 今回は親元のコンテナIDが分かっている前提なので、storage_area_info の詳細は省略可とするか、
+				// 必要であれば別途クエリするかですが、リスト表示用には基本情報があれば十分です。
+				.storage_area_info = std::nullopt, 
+
+				.storage_condition = StorageCondition::STORED, // SQLで'保管中'で絞っているため
+				.regrind_count = stdex::any_cast_optional<std::int32_t>(row.at("regrind_count"))
+			});
+		}
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_tools_in_container: {}\n", e.what());
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_tools_in_container: {}\n", e.what());
+	}
+
+	return result;
+}
+
 } // namespace db

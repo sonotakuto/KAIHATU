@@ -264,15 +264,6 @@ struct StrageAreaInfo {
 };
 
 /**
- * @brief [仮の構造体] DBから棚卸しコンテナリストを取得する際の情報。
- * @details db_client がこの構造体の vector を返すように実装することを想定しています。
- */
-struct ContainerReconcileInfo {
-	StrageAreaInfo area_info; // typedef.hpp で定義済み
-	std::optional<std::chrono::system_clock::time_point> last_reconcile_time;
-};
-
-/**
  * @struct UniqueToolInfo
  * @brief 工具の個別情報を保持する構造体
  */

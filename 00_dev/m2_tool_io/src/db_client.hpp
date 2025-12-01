@@ -128,4 +128,41 @@ std::optional<StrageAreaInfo> get_StrageAreaInfo_with_min_cases(int basic_tool_i
  */
 std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_id);
 
+/**
+ * @brief 棚卸し用のコンテナ（保管領域）リストを取得します。
+ * @details storage_area テーブルを主軸に、工具情報や最終棚卸し日時を結合して取得します。
+ * @param[in] category (任意) 工具分類による絞り込み。nulloptの場合は全件。
+ * @param[in] start_date (任意) 最終棚卸し日時の範囲指定（開始）。
+ * @param[in] end_date (任意) 最終棚卸し日時の範囲指定（終了）。
+ * @return 取得した保管領域情報のリスト。
+ */
+std::vector<StrageAreaInfo> get_reconcile_container_list(
+	std::optional<std::string> category,
+	std::optional<std::chrono::system_clock::time_point> start_date,
+	std::optional<std::chrono::system_clock::time_point> end_date
+);
+
+/**
+ * @brief 指定された保管領域（コンテナ）に保管されているはずの工具リストを取得します。
+ * @details unique_tool テーブルを storage_area_id で検索し、保管状態が 'STORED' のものを取得します。
+ * @param[in] storage_area_id 保管領域ID。
+ * @return 工具情報のリスト。
+ */
+std::vector<UniqueToolInfo> get_tools_in_container(int storage_area_id);
+
+/**
+ * @brief インサートチップのケース内個数を更新します。
+ * @param[in] unique_tool_id 更新対象の工具ID。
+ * @param[in] new_count 新しい個数。
+ * @return 成功したらtrue。
+ */
+bool update_insert_count(std::int64_t unique_tool_id, int new_count);
+
+/**
+ * @brief 保管領域の最終棚卸し日時を現在時刻に更新します。
+ * @param[in] storage_area_id 更新対象の保管領域ID。
+ * @return 成功したらtrue。
+ */
+bool update_last_reconciliation_time(int storage_area_id);
+
 } // namespace db
