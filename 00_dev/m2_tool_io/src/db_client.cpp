@@ -728,6 +728,119 @@ std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_i
 	return get_StrageAreaInfo_ordered_by_cases(basic_tool_id, "DESC");
 }
 
+// db_client.cpp に追加
+
+std::vector<StrageAreaInfo> get_reconcile_container_list(
+	std::optional<std::string> category,
+	std::optional<std::chrono::system_clock::time_point> start_date,
+	std::optional<std::chrono::system_clock::time_point> end_date
+) {
+	std::vector<StrageAreaInfo> result;
+
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt.has_value()) {
+		DEV_PRINT(stderr, "DB Error: Failed to create statement in get_reconcile_container_list.\n");
+		return result;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// SQL構築:
+		// storage_area をベースに、mst_tool, mst_address を結合。
+		// rec_operation から「棚卸し(INVENTORY)」区分の最終日時を取得するサブクエリを結合。
+		std::string sql = R"(
+			SELECT
+				sa.storage_area_id,
+				sa.toolcase_stc_num,
+				sa.display_address,
+				ma.control_address,
+				mt.basic_tool_id,
+				mt.tool_name,
+				mt.maker,
+				mt.tool_category,
+				mt.tool_material,
+				mt.stc,
+				mt.is_frozen,
+				sa.last_reconciliation_time
+			FROM storage_area sa
+			LEFT JOIN mst_tool mt ON sa.basic_tool_id = mt.basic_tool_id
+			LEFT JOIN mst_address ma ON sa.display_address = ma.display_address
+			WHERE 1=1
+		)";
+
+		// カテゴリ絞り込みがあればSQLに追加
+		if (category.has_value()) {
+			sql += " AND mt.tool_category = ?";
+		}
+
+		sql += " ORDER BY sa.display_address ASC";
+
+		// ステートメントの準備
+		stmt.prepare(sql);
+
+		// パラメータバインド (indexは1から)
+		int param_idx = 1;
+		
+		// OperationClass::INVENTORY を int にキャストしてバインド (サブクエリ用)
+		// ※ OperationClass は typedef.hpp で定義されている enum class
+		stmt.bind(param_idx++, static_cast<int>(OperationClass::INVENTORY));
+
+		if (category.has_value()) {
+			stmt.bind(param_idx++, category.value());
+		}
+
+		stmt.executePrepared();
+
+		// 結果の取得
+		while (stmt.fetch()) {
+			StrageAreaInfo info;
+			
+			// 各カラムを取得して構造体に詰める
+			info.id = stmt.getData<int>(1).value_or(0); // storage_area_id
+			info.toolcase_stc_num = stmt.getData<int>(2); // toolcase_stc_num
+			info.mst_address_info.display_address = stmt.getData<std::string>(3).value_or("");
+			info.mst_address_info.control_address = stmt.getData<std::string>(4).value_or("");
+
+			info.item.id = stmt.getData<int>(5).value_or(0); // basic_tool_id
+			info.item.name = stmt.getData<std::string>(6).value_or("");
+			info.item.maker = stmt.getData<std::string>(7).value_or("");
+			info.item.category = stmt.getData<std::string>(8).value_or("");
+			info.item.material = stmt.getData<std::string>(9).value_or("");
+			info.item.stc = stmt.getData<int>(10); // stc
+			info.item.is_frozen = (stmt.getData<int>(11).value_or(0) != 0);
+
+			// 最終棚卸し日時
+			info.last_reconciliation_time = stmt.getData<std::chrono::system_clock::time_point>(12);
+
+			// --- 日付フィルタリング (SQLが複雑になるためC++側で簡易実施) ---
+			bool include_record = true;
+			if (start_date.has_value()) {
+				// 開始日指定があるのに履歴がない、または開始日より前なら除外
+				if (!info.last_reconciliation_time.has_value() || info.last_reconciliation_time.value() < start_date.value()) {
+					include_record = false;
+				}
+			}
+			if (end_date.has_value()) {
+				// 終了日指定があるのに履歴がない(これはOKとするか仕様次第)、または終了日より後なら除外
+				if (info.last_reconciliation_time.has_value() && info.last_reconciliation_time.value() > end_date.value()) {
+					include_record = false;
+				}
+			}
+
+			if (include_record) {
+				result.push_back(std::move(info));
+			}
+		}
+		
+		stmt.closeCursor();
+
+	} catch (const std::exception& e) {
+		DEV_PRINT(stderr, "DB Error in get_reconcile_container_list: %s\n", e.what());
+	}
+
+	return result;
+}
+
 std::vector<UniqueToolInfo> get_tools_in_container(int storage_area_id) {
 	std::vector<UniqueToolInfo> result;
 
