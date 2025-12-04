@@ -24,8 +24,18 @@ public interface StorageAreaRepository extends JpaRepository<StorageArea, Intege
 	/**
 	 * (ToolRepository から移行)
 	 * JPQL (JPAのクエリ言語) を使用して実装します。
+	 * [修正] mst_toolのis_frozenが1(無効化)のものはカウントから除外する
 	 */
 	@Query("SELECT s.displayAddress as display_address, COUNT(s) as address_count " +
-           "FROM StorageArea s GROUP BY s.displayAddress")
+           "FROM StorageArea s, Tool t " +
+           "WHERE s.basicToolId = t.basicToolId " +
+           "AND t.isFrozen = false " +
+           "GROUP BY s.displayAddress")
 	List<Map<String, Object>> getStorageAddressCounts();
+
+	/**
+	 * 指定された基本工具IDで、在庫数(toolcase_stc_num)が指定数より大きいレコードが存在するかチェックする
+	 * (storageCondition のチェックはここではなく UniqueToolRepository で行います)
+	 */
+	boolean existsByBasicToolIdAndToolcaseStcNumGreaterThan(Integer basicToolId, int toolcaseStcNum);
 }

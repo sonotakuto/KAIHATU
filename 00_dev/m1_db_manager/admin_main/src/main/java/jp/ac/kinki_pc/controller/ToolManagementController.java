@@ -2,10 +2,12 @@ package jp.ac.kinki_pc.controller;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map; // 追記
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity; // 追記
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-// import org.springframework.web.servlet.mvc.support.RedirectAttributes; // 削除
 
 import jp.ac.kinki_pc.dto.AddressDto;
 import jp.ac.kinki_pc.dto.IndividualToolDto;
@@ -85,25 +86,45 @@ public class ToolManagementController {
 		return toolManagementService.getIndividualTools(basicToolId);
 	}
 
+	/**
+	 * 基本工具を追加する処理
+	 * 格納場所が「装置外」の場合は、JS側でdisabledにされるためパラメータが送信されない。
+	 * そのため、在庫数(stc)と発注点(rop)は required = false とし、nullとして受け取る。
+	 */
 	@PostMapping("/add")
 	public String addTool(
 			@RequestParam String toolName,
 			@RequestParam String maker,
 			@RequestParam String toolCategory,
 			@RequestParam String toolMaterial,
-			@RequestParam int rop,
+			@RequestParam(required = false) Integer rop,
 			@RequestParam String buyer,
 			@RequestParam String storageLocation,
-			@RequestParam(defaultValue = "0") int stc) { 
+			@RequestParam(required = false) Integer stc) {
 		
 		toolManagementService.addTool(toolName, maker, toolCategory, toolMaterial, stc, rop, buyer, storageLocation);
 		return "redirect:/tool";
 	}
 
 	@PostMapping("/delete")
-	public String deleteTool(@RequestParam int basicToolId) {
-		toolManagementService.deleteTool(basicToolId);
-		return "redirect:/tool";
+	@ResponseBody // Ajaxリクエストに対し、HTMLではなくデータを返す
+	public ResponseEntity<String> disableTool(@RequestParam int basicToolId) {
+		try {
+			toolManagementService.disableTool(basicToolId);
+			// 成功時は 200 OK
+			return ResponseEntity.ok("削除完了"); 
+		} catch (DataIntegrityViolationException e) {
+			// 外部キー制約違反（使用中のため削除不可）
+			// 409 Conflict: リソースの状態と矛盾するためリクエストを完了できない
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.body("この工具は履歴や在庫に関連付けられているため削除できません。");
+		} catch (Exception e) {
+			// その他のエラー
+			e.printStackTrace();
+			// 500 Internal Server Error
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(e.getMessage());
+		}
 	}
 	
 	@PostMapping("/edit")

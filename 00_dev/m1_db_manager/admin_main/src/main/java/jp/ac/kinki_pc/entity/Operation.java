@@ -1,5 +1,3 @@
-// jp/ac/kinki_pc/entity/Operation.java
-
 package jp.ac.kinki_pc.entity;
 
 import java.time.LocalDateTime;
@@ -22,7 +20,7 @@ import lombok.NoArgsConstructor;
 public class Operation {
 	
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)	// AUTO_INCREMENTに対応
 	private Integer operationId;
 	private String operationClass;	// ENUM型: '補充','取出','棚卸'
 	private Integer userId;
@@ -31,4 +29,6 @@ public class Operation {
 	private Long uniqueToolId;
 	private String videoPath;
 	private Integer toolNum;
+	private Integer lineId;
+	private String trackResult;		// ENUM型: '正常','異常'
 }

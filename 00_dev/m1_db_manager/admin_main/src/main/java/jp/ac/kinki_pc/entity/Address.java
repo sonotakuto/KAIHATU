@@ -1,5 +1,3 @@
-// jp/ac/kinki_pc/entity/Address.java
-
 package jp.ac.kinki_pc.entity;
 
 import jakarta.persistence.Entity;
@@ -19,5 +17,5 @@ public class Address {
 	
 	@Id
 	private String displayAddress;
-	private Integer controlAddress;
+	private String controlAddress;
 }

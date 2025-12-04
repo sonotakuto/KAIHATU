@@ -840,7 +840,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						throw new Error('IDの抽出に失敗');
 					}
 				} catch (err) {
-	console.error("QRコード解析エラー:", err);
+					console.error("QRコード解析エラー:", err);
 					alert('QRコードの形式が正しくありません。');
 					qrScanInput.value = '';
 					qrScanInput.focus();
@@ -872,4 +872,210 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 	// 再印刷処理ここまで
 
+	// 7. 新規登録モーダル UI制御 (新規追加)
+	const modelsAddModalEl = document.getElementById('modelsaddModal');
+	if (modelsAddModalEl) {
+		const storageCountSelect = document.getElementById('storageCount');
+		const assignStorageBtn = document.getElementById('assignStorageBtn');
+		const storageLocationInput = document.getElementById('storageLocation');
+		const addToolForm = modelsAddModalEl.querySelector('form');
+		const addToolSubmitBtn = document.getElementById('addToolSubmitBtn');
+
+		if (storageCountSelect && assignStorageBtn && storageLocationInput && addToolSubmitBtn) {
+			
+			// 追加ボタンの状態と見た目を制御する関数
+			const setAddButtonState = (enable) => {
+				addToolSubmitBtn.disabled = !enable;
+				if (enable) {
+					// 有効化 (赤枠/ホバー可能)
+					addToolSubmitBtn.classList.remove('custom-btn-common');
+					addToolSubmitBtn.classList.remove('custom-btn-common--notselectable');
+					addToolSubmitBtn.classList.add('custom-btn-modal');
+					addToolSubmitBtn.classList.add('btn-outline-danger');
+				} else {
+					// 無効化 (グレー/選択不可)
+					addToolSubmitBtn.classList.remove('custom-btn-modal');
+					addToolSubmitBtn.classList.remove('btn-outline-danger');
+					addToolSubmitBtn.classList.add('custom-btn-common');
+					addToolSubmitBtn.classList.add('custom-btn-common--notselectable');
+				}
+			};
+
+			const updateStorageUI = (shouldClearInput = false) => {
+				const val = storageCountSelect.value;
+				const ropInput = document.getElementById('rop');
+				
+				// stc (在庫数) の hidden input 制御
+				let stcInput = addToolForm.querySelector('input[name="stc"]');
+				if (!stcInput) {
+					stcInput = document.createElement('input');
+					stcInput.type = 'hidden';
+					stcInput.name = 'stc';
+					addToolForm.appendChild(stcInput);
+				}
+				
+				if (val === '6') {
+					// 装置外保管場所: 割当ボタン無効化、入力可
+					assignStorageBtn.disabled = true;
+					assignStorageBtn.classList.remove('custom-btn-modal');
+					assignStorageBtn.classList.add('custom-btn-common');
+					assignStorageBtn.classList.add('custom-btn-common--notselectable');
+
+					ropInput.disabled = true;
+					ropInput.value = '';
+					ropInput.removeAttribute('required');
+					
+					// stcをnull (送信しない) に設定
+					stcInput.disabled = true;
+					stcInput.value = '';
+					
+					// 切り替え時に既存の自動割当アドレス(A11など)があればクリア
+					if (shouldClearInput) {
+						const currentVal = storageLocationInput.value;
+						if (/^([ABC]\d{2})(,[ABC]\d{2})*$/.test(currentVal)) {
+							storageLocationInput.value = "";
+						}
+					}
+					
+					storageLocationInput.readOnly = false;
+					storageLocationInput.placeholder = "保管場所を入力…";
+
+					// 【予約番号チェック】AXX, BXX, CXX なら追加ボタン無効化
+					const locationVal = storageLocationInput.value.trim().toUpperCase();
+					const isReserved = /^[ABC]\d{2}$/.test(locationVal);
+					
+					setAddButtonState(!isReserved); // 予約番号なら無効(false)、そうでなければ有効(true)
+
+				} else {
+					// コンテナ (1-5): 割当ボタン有効化、入力不可(readonly)
+					assignStorageBtn.disabled = false;
+					assignStorageBtn.classList.remove('custom-btn-common');
+					assignStorageBtn.classList.remove('custom-btn-common--notselectable');
+					assignStorageBtn.classList.add('custom-btn-modal');
+
+					storageLocationInput.readOnly = true;
+					storageLocationInput.placeholder = "";
+
+					ropInput.disabled = false;
+					ropInput.setAttribute('required', '');
+					
+					// stcを0で送信設定
+					stcInput.disabled = false;
+					stcInput.value = '0';
+					
+					// 装置外などからコンテナ保管へ切り替わった場合、入力値をクリア
+					if (shouldClearInput) {
+						storageLocationInput.value = "";
+					}
+					
+					// 追加ボタンは常に有効
+					setAddButtonState(true);
+				}
+			};
+
+			// イベントリスナー追加
+			storageCountSelect.addEventListener('change', () => {
+				updateStorageUI(true); // 切り替え時は入力クリアを許可
+			});
+			
+			// 保管場所入力時のリアルタイム監視
+			storageLocationInput.addEventListener('input', () => {
+				updateStorageUI(false); // 入力中はクリアしない
+			});
+			
+			// モーダル表示時の初期化処理
+			modelsAddModalEl.addEventListener('show.bs.modal', () => {
+				updateStorageUI(false);
+			});
+			
+			// フォーム送信時の念押しバリデーション
+			if (addToolForm) {
+				addToolForm.addEventListener('submit', function(e) {
+					if (storageCountSelect.value === '6') { // 6=装置外
+						const locationVal = storageLocationInput.value.trim().toUpperCase();
+						if (/^[ABC]\d{2}$/.test(locationVal)) {
+							e.preventDefault();
+							alert("名称が装置内コンテナアドレスと重複しているため登録できません。");
+						}
+					}
+				});
+			}
+		}
+	}
+	// 新規登録モーダル UI制御ここまで
+
+	// 8. モーダル閉鎖時のフォームリセット処理 (新規追加)
+	// 対象となるモーダルのIDを指定
+	const modalsToReset = ['modelsaddModal', 'modelsfilteringModal']; 
+
+	modalsToReset.forEach(modalId => {
+		const modalEl = document.getElementById(modalId);
+		if (modalEl) {
+			modalEl.addEventListener('hidden.bs.modal', () => {
+				// モーダル内のフォームを探してリセット
+				const form = modalEl.querySelector('form');
+				if (form) {
+					form.reset();
+				}
+				// ※ ボタンの活性/非活性などの見た目のリセットは、
+				//    各モーダルの show.bs.modal イベント側で処理されています。
+			});
+		}
+	});
+
+	// 7. 削除モーダルのAjax処理 (新規追加)
+    const executeDeleteBtn = document.getElementById('executeDeleteBtn');
+    const deleteErrorAlert = document.getElementById('deleteErrorAlert');
+    const deleteToolForm = document.getElementById('deleteToolForm');
+
+    if (executeDeleteBtn && deleteErrorAlert && deleteToolForm) {
+        
+        // モーダルが閉じたときにエラーメッセージをリセットする処理
+        const modelsdelModalEl = document.getElementById('modelsdelModal');
+        if (modelsdelModalEl) {
+            modelsdelModalEl.addEventListener('hidden.bs.modal', () => {
+                deleteErrorAlert.style.display = 'none';
+                deleteErrorAlert.textContent = '';
+            });
+        }
+
+        executeDeleteBtn.addEventListener('click', async () => {
+            // エラー表示を一旦クリア
+            deleteErrorAlert.style.display = 'none';
+            deleteErrorAlert.textContent = '';
+            
+            // ボタンを無効化（二重送信防止）
+            executeDeleteBtn.disabled = true;
+            executeDeleteBtn.textContent = '削除中...';
+
+            const formData = new FormData(deleteToolForm);
+
+            try {
+                const response = await fetch('/tool/delete', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // 成功時: 画面をリロードして反映
+                    location.reload();
+                } else {
+                    // エラー時: サーバーからのメッセージを表示
+                    // サーバーがテキストを返すと想定
+                    const errorMessage = await response.text(); 
+                    deleteErrorAlert.textContent = errorMessage || '削除に失敗しました。';
+                    deleteErrorAlert.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('削除リクエストエラー:', error);
+                deleteErrorAlert.textContent = '通信エラーが発生しました。';
+                deleteErrorAlert.style.display = 'block';
+            } finally {
+                // ボタンの状態を戻す
+                executeDeleteBtn.disabled = false;
+                executeDeleteBtn.textContent = '削除';
+            }
+        });
+    }
 });

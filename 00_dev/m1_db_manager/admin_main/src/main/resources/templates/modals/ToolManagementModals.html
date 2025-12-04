@@ -1,6 +1,6 @@
 <!-- 絞り込みモーダル -->
 <div th:fragment="modelsfilteringModal">
-	<div class="modal fade" id="modelsfilteringModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="modelsfilteringModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog custom-modal modal-dialog-centered">
 			<div class="modal-content">
 				<form th:action="@{/tool}" method="get">
@@ -61,7 +61,7 @@
 
 <!-- 新規登録モーダル -->
 <div th:fragment="modelsaddModal">
-	<div class="modal fade" id="modelsaddModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="modelsaddModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog custom-modal modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -70,7 +70,6 @@
 				<form th:action="@{/tool/add}" method="post">
 					<div class="modal-body">
 						<div class="container mt-4">
-							<!-- 分類 -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="toolCategory" class="col-sm-3 col-form-label fs-2 custom-text text-center">分類</label>
 								<div class="col-sm-6">
@@ -84,42 +83,36 @@
 									</select>
 								</div>
 							</div>
-							<!-- メーカー -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="maker" class="col-sm-3 col-form-label fs-2 custom-text text-center">メーカー</label>
 								<div class="col-sm-6">
 									<input type="text" name="maker" id="maker" class="form-control custom-text js-normalize-hankaku" required>
 								</div>
 							</div>
-							<!-- 型番 -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="toolName" class="col-sm-3 col-form-label fs-2 custom-text text-center">型番</label>
 								<div class="col-sm-6">
 									<input type="text" name="toolName" id="toolName" class="form-control custom-text js-normalize-hankaku" required>
 								</div>
 							</div>
-							<!-- 材質 -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="toolMaterial" class="col-sm-3 col-form-label fs-2 custom-text text-center">材質</label>
 								<div class="col-sm-6">
 									<input type="text" name="toolMaterial" id="toolMaterial" class="form-control custom-text js-normalize-hankaku" required>
 								</div>
 							</div>
-							<!-- 商社 -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="buyer" class="col-sm-3 col-form-label fs-2 custom-text text-center">商社</label>
 								<div class="col-sm-6">
 									<input type="text" name="buyer" id="buyer" class="form-control custom-text js-normalize-hankaku" required>
 								</div>
 							</div>
-							<!-- 発注点 -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="rop" class="col-sm-3 col-form-label fs-2 custom-text text-center">発注点</label>
 								<div class="col-sm-6">
 									<input type="number" name="rop" id="rop" value="0" min="0" class="form-control custom-text js-normalize-hankaku" required>
 								</div>
 							</div>
-							<!-- 格納数 -->
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="storageCount" class="col-sm-3 col-form-label fs-2 custom-text text-center">格納コンテナ数</label>
 								<div class="col-sm-6">
@@ -131,21 +124,22 @@
 											<option value="3">3</option>
 											<option value="4">4</option>
 											<option value="5">5</option>
+											<option value="6">装置外</option>
 										</select>
-										<button type="button" class="btn custom-btn-modal" style="height: 1%" data-bs-toggle="modal" data-bs-target="#toolassignmentModal">割当</button>
+										<button type="button" id="assignStorageBtn" class="btn custom-btn-modal" style="height: 1%" data-bs-toggle="modal" data-bs-target="#toolassignmentModal">割当</button>
 									</div>
 								</div>
 							</div>
 							<div class="row mb-3 align-items-center justify-content-center">
 								<label for="storageLocation" class="col-sm-3 col-form-label fs-2 custom-text text-center">格納場所</label>
 								<div class="col-sm-6">
-									<input type="text" name="storageLocation" id="storageLocation" class="form-control custom-text " readonly required>
+									<input type="text" name="storageLocation" id="storageLocation" class="form-control custom-text js-normalize-hankaku" readonly required>
 								</div>
 							</div>
 							</div>
 					</div>
 					<div class="modal-footer d-flex justify-content-center gap-5">
-						<button type="submit" class="btn custom-btn-modal btn-outline-danger" style="width: 25%;">追加</button>
+						<button type="submit" id="addToolSubmitBtn" class="btn custom-btn-modal btn-outline-danger" style="width: 25%;">追加</button>
 						<button type="button" class="btn custom-btn-modal" data-bs-dismiss="modal" style="width: 25%;">キャンセル</button>
 					</div>
 				</form>
@@ -156,7 +150,7 @@
 
 <!-- コンテナ選択画面 -->
 <div th:fragment="toolassignmentModal">
-	<div class="modal fade" id="toolassignmentModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="toolassignmentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog modal-xl modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -250,29 +244,33 @@
 
 <!-- 基本工具削除モーダル -->
 <div th:fragment="modelsdelModal">
-	<div class="modal fade" id="modelsdelModal" tabindex="-1" aria-hidden="true">
-		<div class="modal-dialog custom-modal modal-dialog-centered">
-			<div class="modal-content">
-				<form th:action="@{/tool/delete}" method="post">
-					<div class="d-flex justify-content-center align-items-center bg-light" style="height: 200px;">
-						<div class="container-fluid">
-							<p class="modal-title custom-text--large text-center w-100">選択された基本工具情報を<br>本当に削除しますか？</p>
-						</div>
-					</div>
-					<div class="modal-footer d-flex justify-content-center gap-4">
-						<input type="hidden" name="basicToolId" id="deleteBasicToolIdInput">
-						<button type="submit" class="btn custom-btn-modal btn-danger" style="width: 25%">削除</button>
-						<button type="button" class="btn custom-btn-modal btn-secondary" data-bs-dismiss="modal" style="width: 25%">キャンセル</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
+    <div class="modal fade" id="modelsdelModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog custom-modal modal-dialog-centered">
+            <div class="modal-content">
+                <form id="deleteToolForm">
+                    <div class="d-flex justify-content-center align-items-center bg-light" style="height: 200px; flex-direction: column;">
+                        <div class="container-fluid">
+                            <p class="modal-title custom-text--large text-center w-100">選択された基本工具情報を<br>本当に削除しますか？</p>
+                        </div>
+                        
+                        <div id="deleteErrorAlert" class="alert alert-danger custom-text w-75 mt-3" style="display: none;" role="alert">
+                            </div>
+                        </div>
+                    <div class="modal-footer d-flex justify-content-center gap-4">
+                        <input type="hidden" name="basicToolId" id="deleteBasicToolIdInput">
+                        
+                        <button type="button" id="executeDeleteBtn" class="btn custom-btn-modal btn-danger" style="width: 25%">削除</button>
+                        <button type="button" class="btn custom-btn-modal btn-secondary" data-bs-dismiss="modal" style="width: 25%">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- 発注点編集モーダル -->
 <div th:fragment="modelseditModal">
-	<div class="modal fade" id="modelseditModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="modelseditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog custom-modal modal-dialog-centered">
 			<div class="modal-content">
 				<form th:action="@{/tool/edit}" method="post">
@@ -328,7 +326,7 @@
 
 <!-- 個別工具登録モーダル -->
 <div th:fragment="toolsaddModal">
-	<div class="modal fade" id="toolsaddModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="toolsaddModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog custom-modal modal-dialog-centered">
 			<div class="modal-content">
 				<form th:action="@{/tool/createIndividual}" method="post" id="createIndividualToolForm">
@@ -394,7 +392,7 @@
 
 <!-- 工具詳細表示モーダル -->
 <div th:fragment="toolsdataModal">
-	<div class="modal fade" id="toolsdataModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="toolsdataModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog custom-modal modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -432,7 +430,7 @@
   
 <!-- QRコード再印刷モーダル -->
 <div th:fragment="printqrcodeModal" th:remove="tag">
-	<div class="modal fade" id="printqrcodeModal" tabindex="-1" aria-hidden="true">
+	<div class="modal fade" id="printqrcodeModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 		<div class="modal-dialog custom-modal modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header">

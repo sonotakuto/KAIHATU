@@ -1,5 +1,3 @@
-// jp/ac/kinki_pc/controller/UserManagementController.java
-
 package jp.ac.kinki_pc.controller;
 
 import java.util.List;
@@ -62,8 +60,8 @@ public class UserManagementController {
 	 */
 	@PostMapping("/delete")
 	@ResponseBody
-	public ResponseEntity<String> deleteUser(@RequestParam("userId") Integer userId) { // 型をIntegerに変更
-		userManagementService.deleteUser(userId);
+	public ResponseEntity<String> disableUser(@RequestParam("userId") Integer userId) { // 型をIntegerに変更
+		userManagementService.disableUser(userId);
 		return ResponseEntity.ok("deleted");
 	}
 	
