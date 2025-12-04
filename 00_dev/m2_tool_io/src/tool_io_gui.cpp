@@ -294,6 +294,7 @@ MainWindow::MainWindow() :
 	logoutButton.on_clicked([this]() { this->logoutButton_on_clicked(); });
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
 	listChangeButton.on_clicked([this]() { this->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); });
+	filterButton.on_clicked([this](){ reconcileFilterDialog.run(this); });
 	liststore3columnsAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
 	prevButton3columns.on_clicked([this]() { this->prevButton3columns_on_clicked(); });
 	nextButton3columns.on_clicked([this]() { this->nextButton3columns_on_clicked(); });
@@ -3158,23 +3159,114 @@ void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
 }
 
 void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt) {
+	// 1. 選択された行のインデックスがある場合、セルの状態を更新
+	if (selected_index_opt.has_value()) {
+		size_t selected_index = selected_index_opt.value();
 
+		// 全行の選択状態を一度リセット（単一選択にするため）
+		liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data) {
+			for (size_t i = 0; i < data.size(); ++i) {
+				if (i == selected_index) {
+					// 選択された行: 選択状態をトグル
+					data[i].cell_state_0to4 = (data[i].cell_state_0to4 == TableCellState::SELECTED)
+						? TableCellState::NORMAL
+						: TableCellState::SELECTED;
+				} else {
+					// それ以外の行: 非選択に戻す
+					data[i].cell_state_0to4 = TableCellState::NORMAL;
+				}
+			}
+		}, true); // UI更新
+	}
+
+	// 2. 「搬出」ボタン(trueButton)の有効化判定
+	// 選択状態(SELECTED)になっている行が一つでもあれば有効化
+	bool has_selection = liststore2columnsAll.find_first_index([](const MainTableData& item) {
+		return item.cell_state_0to4 == TableCellState::SELECTED;
+	}).has_value();
+
+	update_widget_state(&trueButton, WidgetState{ .is_sensitive = has_selection }, true);
 }
 
 void MainWindow::on_enter_reconcile_container_retrieving() {
+// 1. 搬出コマンドの送信
+	// m_operating_area は前の画面(選択待ち)で「搬出」ボタンを押した際に保存されている前提
+	try {
+		int control_addr = std::stoi(m_operating_area.mst_address_info.control_address);
+		plc::retrieve_container(control_addr);
+	} catch (const std::exception& e) {
+		DEV_PRINT(stderr, "Error: Invalid control address for retrieval.\n");
+		return;
+	}
 
+	// 2. 搬出完了信号(M80)の監視を開始
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
+	});
+
+	// 3. 外部システムとの連携開始
+	// (エラーハンドリングは簡易的に実装)
+	tracker::g_tool_tracker->connect();
+	tracker::g_recorder_client->start_recording();
+
+	// 4. リスト表示の更新
+	// 選択されていたコンテナだけを強調表示し、他はグレーアウトする
+	liststore2columnsAll.modify_master_data([this](std::vector<MainTableData>& data) {
+		for (auto& row : data) {
+			if (row.id == m_operating_area.id) {
+				row.cell_state_0to4 = TableCellState::HIGHLIGHT; // 操作対象
+			} else {
+				row.cell_state_0to4 = TableCellState::FADED;     // その他
+			}
+		}
+	}, true);
 }
 
 void MainWindow::on_plc_reconcile_container_retrieving(const plc::Notification& notification) {
-
+	// 搬出完了信号(M80)の立ち上がりを検知したら、次の状態へ遷移
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
+		auto result = notification.monitor_result.value();
+		if (result.addr == plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
+			set_app_state(AppState::RECONCILE_CONTAINER_RETRIEVED);
+		}
+	}
 }
 
 void MainWindow::on_enter_reconcile_container_retrieved() {
-
+// コンテナが到着した状態。扉が開くのを待つ。
+	
+	// ※注意: plc_communicator.hpp に M_DEVICE_DOOR_OPEND が未定義のためコメントアウトしています。
+	// 定義を追加した場合はコメントを外してください。
+	/*
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_DOOR_OPEND, // 扉オープン信号
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
+	});
+	*/
+	
+	// 仮実装: 信号待ちをスキップして即座に次へ進む場合（デバッグ用）
+	// set_app_state(AppState::RECONCILE_READY_FOR_READING);
 }
 
 void MainWindow::on_plc_reconcile_container_retrieved(const plc::Notification& notification) {
-
+	// 扉オープン信号の立ち上がりを検知したら、読み取り開始状態へ遷移
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
+		auto result = notification.monitor_result.value();
+		
+		// ※注意: 定義があればコメントを外す
+		/*
+		if (result.addr == plc::M_DEVICE_DOOR_OPEND && result.status) {
+			set_app_state(AppState::RECONCILE_READY_FOR_READING);
+		}
+		*/
+	}
 }
 
 void MainWindow::on_enter_reconcile_ready_for_reading() {
