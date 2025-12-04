@@ -430,7 +430,10 @@ public:
 	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(tree_model, get_iter_first, gboolean, (GtkTreeIter  *iter), iter)
 	DEFINE_METHOD_WITH_ARGS(tree_model, get_path, GtkTreePath*, (GtkTreeIter  *iter), iter)
+	DEFINE_METHOD_WITH_ARGS(tree_model, iter_previous, gboolean, (GtkTreeIter  *iter), iter)
+	DEFINE_METHOD_WITH_ARGS(tree_model, iter_next, gboolean, (GtkTreeIter  *iter), iter)
 	DEFINE_METHOD_WITH_ARGS(tree_model, iter_nth_child, gboolean, (GtkTreeIter  *iter, GtkTreeIter *parent, gint n), iter, parent, n)
 	DEFINE_METHOD_WITH_ARGS(list_store, remove, gboolean, (GtkTreeIter *iter), iter)
 	DEFINE_METHOD_WITH_ARGS(list_store, insert, void, (GtkTreeIter *iter, gint position), iter, position)
@@ -690,6 +693,32 @@ protected:
 	virtual ~ListStoreModelBase() = default;
 
 	// --- 基本的なデータ操作（単一行） ---
+
+	/**
+	 * @brief Gtk側（GtkListStore）の内容を強制的に更新します。
+	 * @details 保持しているデータモデル(m_data_model)の値を使って、全ての行に対してセッター関数(m_row_setter)を再実行します。
+	 * セッター内で外部フラグ（言語設定など）を参照している場合に、表示を切り替えるために使用します。
+	 */
+	void refresh() {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		GtkTreeIter iter;
+
+		// 最初の行を取得
+		if (!get_sg_store()->get_iter_first(&iter)) {
+			return; // データがない場合は何もしない
+		}
+
+		size_t index = 0;
+		do {
+			if (index >= m_data_model.size()) { break; }	// 安全策（念のため）
+
+			// 現在の行のデータをセッターに渡して更新
+			set_row_to_store(&iter, m_data_model.at(index));
+
+			index++;
+		} while (get_sg_store()->iter_next(&iter));	// 次の行へ移動。次がなければループ終了
+	}
 
 	/// @brief C++モデルとGtkListStoreの両方から全ての行を削除します。
 	void clear() {
@@ -1025,6 +1054,124 @@ protected:
 };
 
 /**
+ * @class ComboBoxListStoreModel
+ * @brief ListStoreModelBaseを継承し、GtkComboBoxに特化した機能を追加した派生クラス。
+ * @details セルレンダラーの自動設定や、選択状態の管理機能を提供します。
+ * @tparam ItemType テーブルの1行分のデータを表現する構造体の型。
+ */
+template<typename ItemType>
+class ComboBoxListStoreModel : public ListStoreModelBase<ItemType> {
+public:
+	using size_type = typename ListStoreModelBase<ItemType>::size_type;
+
+private:
+	/// @brief このモデルが関連付けられている ComboBox ウィジェット。
+	sgex::ComboBox& m_combo_box;
+	/// @brief 外部に通知するコールバック (選択されたインデックスを渡す)
+	std::function<void(std::optional<size_type>)> m_user_activation_callback = nullptr;
+
+	/**
+	 * @brief (内部ハンドラ) ComboBox の changed シグナルに接続
+	 */
+	void internal_on_changed() {
+		// プログラムによる変更中は無視
+		if (this->m_is_programmatically_changing) {
+			return;
+		}
+
+		// コールバックが登録されていれば呼び出す
+		if (m_user_activation_callback) {
+			m_user_activation_callback(get_selected_index());
+		}
+	}
+
+public:
+	/**
+	 * @brief ComboBoxListStoreModelのコンストラクタ。
+	 * @param[in, out] combo_box 管理対象のComboBoxウィジェット。
+	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
+	 * @param[in] row_setter ItemTypeのデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] text_column_index コンボボックスに表示するテキストが格納されているカラムのインデックス (デフォルト: 0)。
+	 */
+	ComboBoxListStoreModel(
+		sgex::ComboBox& combo_box,
+		const std::vector<GType>& column_types,
+		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter,
+		int text_column_index = 0
+	) :
+		ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラス初期化
+		m_combo_box(combo_box)
+	{
+		// ComboBoxにモデルをセット
+		m_combo_box.set_model(this->get_gtk_model());
+
+		// 内部シグナルハンドラを接続
+		m_combo_box.on_changed([this]() { this->internal_on_changed(); });
+	}
+
+	/**
+	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。
+	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
+	 * 未選択の場合は std::nullopt が渡されます。
+	 */
+	void on_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+		m_user_activation_callback = callback;
+	}
+
+	/**
+	 * @brief 現在選択されている行のインデックスを取得します。
+	 * @return 選択されている行のインデックス。未選択なら std::nullopt。
+	 */
+	std::optional<size_type> get_active_index() {
+		int active_index = m_combo_box.get_active();
+		if (active_index < 0) {
+			return std::nullopt;
+		}
+		return static_cast<size_type>(active_index);
+	}
+
+	/**
+	 * @brief 現在選択されている行のデータを取得します。
+	 * @return 選択されている行のデータ。未選択なら std::nullopt。
+	 */
+	std::optional<ItemType> get_active_item() {
+		auto index_opt = get_active_index();
+		if (index_opt.has_value()) {
+			return this->get_item(index_opt.value());
+		}
+		return std::nullopt;
+	}
+
+	std::optional<std::pair<size_type, ItemType>> get_active_index_and_item() {
+		auto index_opt = get_active_index();
+		if (index_opt.has_value()) {
+			return std::make_pair(index_opt.value(), this->get_item(index_opt.value()));
+		}
+		return std::nullopt;
+	}
+
+	/**
+	 * @brief 指定したインデックスを選択状態にします。
+	 * @details プログラムによる変更フラグを立てるため、on_changed_by_user は発火しません。
+	 * @param[in] index 選択するインデックス。
+	 */
+	void set_active_index(size_type index) {
+		if (index >= this->size()) return;
+
+		utils::scoped_value_guard guard(this->m_is_programmatically_changing, true);
+		m_combo_box.set_active(static_cast<int>(index));
+	}
+
+	/**
+	 * @brief 選択を解除します（未選択状態にする）。
+	 */
+	void clear_active() {
+		utils::scoped_value_guard guard(this->m_is_programmatically_changing, true);
+		m_combo_box.set_active(-1);
+	}
+};
+
+/**
  * @class ListStoreViewInterface
  * @brief ItemTypeに依存しない、ListStore系モデルの共通ビュー操作インターフェース。
  * @details テンプレート引数なしでポインタを保持し、表示設定やタイトル変更などを統一的に行うために使用します。
@@ -1218,10 +1365,10 @@ public:
 		m_tree_selection(tree_view.get_selection()),
 		m_user_initiated_selection(false)
 	{
-		// TreeViewに、基底クラスで生成された新しいListStoreモデルをセットします。
+		// TreeViewにモデルをセット
 		m_tree_view.set_model(this->get_gtk_model());
 
-		// 内部ハンドラを接続
+		// 内部シグナルハンドラを接続
 		m_tree_view.on_button_press_event([this](GdkEventButton* event){ return this->internal_on_button_press(event); });
 		m_tree_selection.on_changed([this](){ this->internal_on_selection_changed(); });
 	}
@@ -1423,7 +1570,7 @@ public:
 	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
 	 * インデックスが無効な場合は std::nullopt が渡されます。
 	 */
-	void on_user_selection_changed(std::function<void(std::optional<size_type>)> callback) {
+	void on_selection_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
 		m_user_selection_callback = callback;
 	}
 
@@ -1656,11 +1803,20 @@ public:
 	}
 
 	/**
+	 * @brief 現在表示中のページの表示を更新します。
+	 * @details セッターロジックが外部状態に依存している場合などに、表示を最新の状態にします。
+	 * 内部的に display_page を呼び出します。
+	 */
+	void refresh() {
+		display_page(m_current_page_index);
+	}
+
+	/**
 	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。
 	 * @param[in] callback 選択された行のグローバルインデックスを受け取る関数オブジェクト。
 	 * インデックスが無効な場合は std::nullopt が渡されます。
 	 */
-	void on_user_selection_changed(std::function<void(std::optional<size_type>)> callback) {
+	void on_selection_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
 		m_user_selection_callback = callback;
 	}
 
@@ -1696,7 +1852,7 @@ public:
 		model->set_selection_mode(m_selection_mode);
 
 		// 子モデルのコールバックに、親のハンドラを登録
-		model->on_user_selection_changed(
+		model->on_selection_changed_by_user(
 			[this, view_index](std::optional<size_type> local_index_opt) {
 				this->internal_on_selection_changed(view_index, local_index_opt);
 			}
@@ -1753,7 +1909,7 @@ public:
 		// 各モデルに登録したコールバックを解除する
 		for (auto* model : m_page_models) {
 			if (model) {
-				model->on_user_selection_changed(nullptr);
+				model->on_selection_changed_by_user(nullptr);
 			}
 		}
 
