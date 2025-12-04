@@ -65,6 +65,66 @@ static return_type on_##c_signal_name##_static para_static { \
 	}
 
 /**
+ * @brief bool型プロパティのゲッターとセッターを定義するマクロ。
+ * @details
+ * g_object_get/set関数は gboolean 型 (4バイト整数) を使用しますが、
+ * C++コードでは bool 型 (1バイト) を使用することが一般的です。
+ * このマクロは、gboolean と bool の間で自動的に変換を行うゲッターとセッターを定義します。
+ *
+ * @param[in] property_name GTKオブジェクトのプロパティ名 (例: visible)。
+ *
+ * ```cpp
+ * // 使用例
+ * // クラス定義内で使用
+ * DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+ * // これにより、以下のメンバ関数が自動的に定義されます:
+ * // bool get_visible() const;
+ * // void set_visible(bool value);
+ * ```
+ */
+#define DEFINE_BOOL_PROPERTY_ACCESSORS(property_name) \
+	bool get_##property_name() const { \
+		gboolean value; \
+		g_object_get(G_OBJECT(this->object), #property_name, &value, NULL); \
+		return (bool)value; \
+	} \
+	void set_##property_name(bool value) { \
+		g_object_set(G_OBJECT(this->object), #property_name, (gboolean)value, NULL); \
+	}
+
+// 名前指定版（can-focusなどハイフン付き用）
+/**
+ * @brief GTKプロパティ名にハイフンが含まれる場合に対応した、bool型プロパティのゲッターとセッターを定義するマクロ。
+ * @details
+ * g_object_get/set関数は gboolean 型 (4バイト整数) を使用しますが、
+ * C++コードでは bool 型 (1バイト) を使用することが一般的です。
+ * このマクロは、gboolean と bool の間で自動的に変換を行うゲッターとセッターを定義します。
+ * また、GTKプロパティ名とC++関数名の一部を別々に指定できるようにすることで、
+ * ハイフンを含むプロパティ名にも対応します。
+ *
+ * @param[in] gtk_property_name GTKオブジェクトのプロパティ名 (例: "can-focus")。文字列リテラルで指定します。
+ * @param[in] cpp_suffix 生成されるC++関数名の一部 (例: can_focus)。識別子として有効な名前を指定します。
+ *
+ * ```cpp
+ * // 使用例
+ * // クラス定義内で使用
+ * DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+ * // これにより、以下のメンバ関数が自動的に定義されます:
+ * // bool get_can_focus() const;
+ * // void set_can_focus(bool value);
+ * ```
+ */
+#define DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME(gtk_property_name, cpp_suffix) \
+	bool get_##cpp_suffix() const { \
+		gboolean value; \
+		g_object_get(G_OBJECT(this->object), gtk_property_name, &value, NULL); \
+		return (bool)value; \
+	} \
+	void set_##cpp_suffix(bool value) { \
+		g_object_set(G_OBJECT(this->object), gtk_property_name, (gboolean)value, NULL); \
+	}
+
+/**
  * @namespace sgex
  * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
  */
@@ -84,11 +144,11 @@ public:
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
-	DEFINE_PROPERTY_ACCESSORS(Widget, modal, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_PROPERTY_ACCESSORS(Widget, deletable, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWindow* self)
@@ -111,14 +171,15 @@ public:
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
-	DEFINE_PROPERTY_ACCESSORS(Widget, modal, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_PROPERTY_ACCESSORS(Widget, deletable, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkDialog* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
 };
 
 /**
@@ -150,7 +211,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
 };
@@ -184,7 +245,7 @@ public:
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
 };
@@ -200,8 +261,46 @@ public:
 	// メソッド
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+
+	// シグナル
+};
+
+/**
+ * @class CheckButton
+ * @brief sg::CheckButtonを拡張し、機能を追加したクラス。
+ */
+class CheckButton : public sg::CheckButton {
+public:
+	using sg::CheckButton::CheckButton; // 基底クラスのコンストラクタを継承
+
+	// メソッド
+
+	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+
+	// シグナル
+};
+
+/**
+ * @class RadioButton
+ * @brief sg::RadioButtonを拡張し、機能を追加したクラス。
+ */
+class RadioButton : public sg::RadioButton {
+public:
+	using sg::RadioButton::RadioButton; // 基底クラスのコンストラクタを継承
+
+	// メソッド
+
+	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
 };
@@ -219,10 +318,10 @@ public:
 	DEFINE_METHOD(widget, grab_focus, void)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, editable, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(editable)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
@@ -257,7 +356,7 @@ public:
 	DEFINE_METHOD(toggle_button, get_active, bool)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
@@ -277,10 +376,10 @@ public:
 	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("state-set", state_set, Switch, GtkSwitch* self, bool state)
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
 };
 
 /**
@@ -297,7 +396,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(combo_box, set_active, void, (gint index), index)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
@@ -314,8 +413,8 @@ public:
 	// メソッド
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
 };
@@ -358,7 +457,6 @@ public:
 	}
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus, bool)
 
 	// シグナル
 };
@@ -377,7 +475,7 @@ private:
 
 public:
 	// GtkTreePath*からオブジェクトを構築
-	TreePath(GtkTreePath* path) : m_path(path) {}
+	explicit TreePath(GtkTreePath* path) : m_path(path) {}
 
 	// デストラクタでメモリを自動解放
 	~TreePath() {
@@ -429,8 +527,35 @@ public:
 	DEFINE_METHOD(tree_selection, unselect_all, void)
 
 	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS(Widget, mode, GtkSelectionMode)
 
 	// シグナル
+};
+
+/**
+ * @class TreeView
+ * @brief sg::TreeViewを拡張し、機能を追加したクラス。
+ */
+class TreeView : public sg::TreeView {
+public:
+	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
+
+	// メソッド
+	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
+	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
+	DEFINE_METHOD(tree_view, get_n_columns, guint)
+	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
+	DEFINE_METHOD(tree_view, get_grid_lines, GtkTreeViewGridLines)
+	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
+
+	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+
+	// シグナル
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
 };
 
 /**
@@ -442,7 +567,7 @@ class TreeViewColumn : public sg::Object {
 public:
 	// コンストラクタ
 	TreeViewColumn() : sg::Object(G_OBJECT(gtk_tree_view_column_new())) {}
-	TreeViewColumn(GtkTreeViewColumn* column) : sg::Object(G_OBJECT(column)) {}
+	TreeViewColumn(GtkTreeViewColumn* column) = delete;
 	virtual ~TreeViewColumn() = default;
 
 	// コピーは禁止
@@ -461,36 +586,17 @@ public:
 		return GTK_TREE_VIEW_COLUMN(this->object);
 	}
 
-	// --- メソッド ---
-	DEFINE_METHOD_WITH_ARGS(tree_view_column, set_title, void, (const char* title), title)
-	DEFINE_METHOD_WITH_ARGS(tree_view_column, set_alignment, void, (gfloat xalign), xalign)
-	DEFINE_METHOD_WITH_ARGS(tree_view_column, set_fixed_width, void, (int fixed_width), fixed_width)
+	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_view_column, pack_start, void, (GtkCellRenderer* cell, bool expand), cell, expand)
 	DEFINE_METHOD_WITH_ARGS(tree_view_column, pack_end, void, (GtkCellRenderer* cell, bool expand), cell, expand)
 	DEFINE_METHOD_WITH_ARGS(tree_view_column, add_attribute, void, (GtkCellRenderer* cell, const char* attribute, int column), cell, attribute, column)
-};
-
-/**
- * @class TreeView
- * @brief sg::TreeViewを拡張し、機能を追加したクラス。
- */
-class TreeView : public sg::TreeView {
-public:
-	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
-
-	// メソッド
-	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
-	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
-	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
-	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, sensitive, bool)
-	DEFINE_PROPERTY_ACCESSORS(Widget, visible, bool)
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("fixed-width", fixed_width, gint)
+	DEFINE_PROPERTY_ACCESSORS(Widget, title, const gchar*)
+	DEFINE_PROPERTY_ACCESSORS(Widget, alignment, gfloat)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("button-press-event", button_press_event, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("button-release-event", button_release_event, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
 };
 
 /**
@@ -918,6 +1024,129 @@ protected:
 	}
 };
 
+/**
+ * @class ListStoreViewInterface
+ * @brief ItemTypeに依存しない、ListStore系モデルの共通ビュー操作インターフェース。
+ * @details テンプレート引数なしでポインタを保持し、表示設定やタイトル変更などを統一的に行うために使用します。
+ */
+class ListStoreViewInterface {
+public:
+	virtual ~ListStoreViewInterface() = default;
+
+	// --- カラム・タイトル操作 ---
+
+	/**
+	 * @brief 指定したカラムのタイトルを設定します。
+	 * @param[in] n カラムのインデックス。
+	 * @param[in] title 新しいタイトル文字列。
+	 * @return 設定に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	virtual bool set_title(gint n, const gchar* title) = 0;
+
+	/**
+	 * @brief 全カラムのタイトルを一括でコピー設定します。
+	 * @param[in] titles 各カラムの新しいタイトル文字列のリスト。
+	 * @return 設定に成功すればtrue、タイトル数がカラム数と一致しない場合はfalse。
+	 */
+	virtual bool set_titles(const std::vector<std::string>& titles) = 0;
+
+	/**
+	 * @brief 全カラムのタイトルを一括でムーブ設定します。
+	 * @param[in] titles 各カラムの新しいタイトル文字列のリスト。
+	 * @return 設定に成功すればtrue、タイトル数がカラム数と一致しない場合はfalse。
+	 */
+	virtual bool set_titles(std::vector<std::string>&& titles) = 0;
+
+	/**
+	 * @brief 指定したカラムのタイトルを取得します。
+	 * @param[in] n カラムのインデックス。
+	 * @return タイトル文字列。インデックスが無効な場合はstd::nullopt。
+	 */
+	virtual std::optional<std::string> get_title(gint n) = 0;	// 実装の制約により非const
+
+	/**
+	 * @brief 全カラムのタイトルを取得します。
+	 * @return 各カラムのタイトル文字列のリスト。
+	 */
+	virtual std::vector<std::string> get_titles() = 0;	// 実装の制約により非const
+
+	/**
+	 * @brief カラム数を取得します。
+	 * @return カラム数。
+	 */
+	virtual guint get_n_columns() = 0;	// 実装の制約により非const
+
+	// --- グリッド線 ---
+
+	/**
+	 * @brief グリッド線の表示設定を取得します。
+	 * @return 現在のグリッド線の表示設定。
+	 */
+	virtual GtkTreeViewGridLines get_grid_lines() = 0;	// 実装の制約により非const
+
+	/**
+	 * @brief グリッド線の表示設定を変更します。
+	 * @param[in] grid_lines 新しいグリッド線の表示設定。
+	 */
+	virtual void set_grid_lines(GtkTreeViewGridLines grid_lines) = 0;
+
+	// --- ウィジェット状態 ---
+
+	/**
+	 * @brief ウィジェットがフォーカス可能かどうかを設定します。
+	 * @param[in] can_focus フォーカス可能にする場合はtrue、不可能にする場合はfalse。
+	 */
+	virtual void set_can_focus(bool can_focus) = 0;
+
+	/**
+	 * @brief ウィジェットがフォーカス可能かどうかを取得します。
+	 * @return フォーカス可能であればtrue、不可能であればfalse。
+	 */
+	virtual bool get_can_focus() = 0;
+
+	/**
+	 * @brief ウィジェットの感度(有効/無効)を設定します。
+	 * @param[in] sensitive 有効にする場合はtrue、無効にする場合はfalse。
+	 */
+	virtual void set_sensitive(bool sensitive) = 0;
+
+	/**
+	 * @brief ウィジェットの感度(有効/無効)を取得します。
+	 * @return 有効であればtrue、無効であればfalse。
+	 */
+	virtual bool get_sensitive() = 0;
+
+	/**
+	 * @brief ウィジェットの表示/非表示を設定します。
+	 * @param[in] visible 表示する場合はtrue、非表示にする場合はfalse。
+	 */
+	virtual void set_visible(bool visible) = 0;
+
+	/**
+	 * @brief ウィジェットの表示/非表示を取得します。
+	 * @return 表示されていればtrue、非表示であればfalse。
+	 */
+	virtual bool get_visible() = 0;
+
+	// --- 選択操作 ---
+
+	/**
+	 * @brief 選択モードを設定します。
+	 * @param[in] type 新しい選択モード。
+	 */
+	virtual void set_selection_mode(GtkSelectionMode type) = 0;
+
+	/**
+	 * @brief 現在の選択モードを取得します。
+	 * @return 現在の選択モード。
+	 */
+	virtual GtkSelectionMode get_selection_mode() = 0;
+
+	/**
+	 * @brief 全ての選択を解除します。
+	 */
+	virtual void unselect_all() = 0;
+};
 
 /**
  * @class TreeViewListStoreModel
@@ -926,7 +1155,7 @@ protected:
  * @tparam ItemType テーブルの1行分のデータを表現する構造体の型。
  */
 template<typename ItemType>
-class TreeViewListStoreModel : public ListStoreModelBase<ItemType> {
+class TreeViewListStoreModel : public ListStoreModelBase<ItemType>, public ListStoreViewInterface {
 public:
 	using size_type = typename ListStoreModelBase<ItemType>::size_type;
 private:
@@ -934,6 +1163,8 @@ private:
 	sgex::TreeView& m_tree_view;
 	/// @brief このモデルが関連付けられている TreeView の Selection。
 	sgex::TreeSelection m_tree_selection;
+	/// @brief 連動させる外側の Widget へのポインタ
+	sg::Widget* m_enclosing_widget = nullptr;
 	/// @brief ユーザーがウィジェットを操作したことを示すフラグ
 	bool m_user_initiated_selection = false;
 	/// @brief 外部に通知するコールバック (ローカルインデックスを渡す)
@@ -995,6 +1226,196 @@ public:
 		m_tree_selection.on_changed([this](){ this->internal_on_selection_changed(); });
 	}
 
+	/**
+	 * @brief TreeViewを囲む外枠のBoxなどを登録し、表示状態を連動させます。
+	 * @param[in] widget 連動させるウィジェット（Box, Frame, Windowなど何でも可）。
+	 */
+	void set_enclosing_widget(sg::Widget* widget) {
+		m_enclosing_widget = widget;
+
+		// 登録時に現在のTreeViewの状態と同期させる
+		if (m_enclosing_widget) {
+			// sg::Widget* から GtkWidget* への変換は SimpleGtk が自動で行ってくれる
+			bool visible = m_tree_view.get_visible();
+			gtk_widget_set_visible(*m_enclosing_widget, visible);
+		}
+	}
+
+	// --- ListStoreViewInterface の実装 (override) ---
+
+	/**
+	 * @brief 指定したインデックスのカラムのタイトルを設定します。
+	 * @param[in] n カラムのインデックス (0から始まる)。
+	 * @param[in] title 設定するタイトル文字列。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_title(gint n, const gchar* title) override {
+		GtkTreeViewColumn* column = m_tree_view.get_column(n);
+		if (!column) {
+			return false; // 指定されたインデックスのカラムが存在しない
+		}
+		gtk_tree_view_column_set_title(column, title);
+		return true;
+	}
+
+	/**
+	 * @brief 複数のカラムのタイトルを一括で設定します。
+	 * @param[in] titles 各カラムのタイトル文字列を格納したvector。
+	 * インデックス0が最初のカラム、1が2番目のカラム、という順序になります。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_titles(const std::vector<std::string>& titles) override {
+		if (titles.size() != m_tree_view.get_n_columns()) {
+			return false;	// カラム数とタイトル数が一致しない
+		}
+		for (size_t i = 0; i < titles.size(); i++) {
+			set_title(static_cast<gint>(i), titles[i].c_str());
+		}
+		return true;
+	}
+
+	/**
+	 * @brief 複数のカラムのタイトルを一括で設定します。
+	 * @details ムーブする必要がないため、内部でコピー版のset_titlesを呼び出します。
+	 * @param[in] titles 各カラムのタイトル文字列を格納したvector。
+	 * インデックス0が最初のカラム、1が2番目のカラム、という順序になります。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_titles(std::vector<std::string>&& titles) override {
+		return set_titles(titles);
+	}
+
+	/**
+	 * @brief 指定したインデックスのカラムのタイトルを取得します。
+	 * @param[in] n カラムのインデックス (0から始まる)。
+	 * @return カラムのタイトル文字列。指定されたインデックスのカラムが存在しない場合は空のoptional。
+	 */
+	std::optional<std::string> get_title(gint n) override {
+		GtkTreeViewColumn* column = m_tree_view.get_column(n);
+		if (!column) {
+			return std::nullopt; // 指定されたインデックスのカラムが存在しない
+		}
+		return std::string(gtk_tree_view_column_get_title(column));
+	}
+
+	std::vector<std::string> get_titles() override {
+		std::vector<std::string> titles;
+		gint n_columns = 0;
+		while (true) {
+			GtkTreeViewColumn* column = m_tree_view.get_column(n_columns);
+			if (!column) {
+				break; // これ以上カラムが存在しない
+			}
+			titles.push_back(std::string(gtk_tree_view_column_get_title(column)));
+			n_columns++;
+		}
+		return titles;
+	}
+
+	/**
+	 * @brief 表の列数を取得します。
+	 * @return 列数。
+	 */
+	guint get_n_columns() override {
+		return m_tree_view.get_n_columns();
+	}
+
+	/**
+	 * @brief TreeViewのグリッド線の表示状態を取得します。
+	 * @return グリッド線の表示状態。
+	 */
+	GtkTreeViewGridLines get_grid_lines() override {
+		return m_tree_view.get_grid_lines();
+	}
+
+	/**
+	 * @brief TreeViewのグリッド線の表示状態を設定します。
+	 * @param[in] grid_lines グリッド線の表示状態。
+	 */
+	void set_grid_lines(GtkTreeViewGridLines grid_lines) override {
+		m_tree_view.set_grid_lines(grid_lines);
+	}
+
+	/**
+	 * @brief TreeViewのフォーカス可否を設定します。
+	 * @param[in] can_focus フォーカス可能にする場合はtrue、不可能にする場合はfalse。
+	 */
+	void set_can_focus(bool can_focus) override {
+		m_tree_view.set_can_focus(can_focus);
+	}
+
+	/**
+	 * @brief TreeViewのフォーカス可否を取得します。
+	 * @return フォーカス可能であればtrue、不可能であればfalse。
+	 */
+	bool get_can_focus() override {
+		return m_tree_view.get_can_focus();
+	}
+
+	/**
+	 * @brief TreeViewの感応可否を設定します。
+	 * @param[in] sensitive 感応可能にする場合はtrue、無効にする場合はfalse。
+	 */
+	void set_sensitive(bool sensitive) override {
+		m_tree_view.set_sensitive(sensitive);
+	}
+
+	/**
+	 * @brief TreeViewの感応可否を取得します。
+	 * @return 感応可能であればtrue、無効であればfalse。
+	 */
+	bool get_sensitive() {
+		return m_tree_view.get_sensitive();
+	}
+
+	/**
+	 * @brief TreeViewの表示・非表示を設定します。
+	 * @param[in] visible 表示する場合はtrue、非表示にする場合はfalse。
+	 */
+	void set_visible(bool visible) override {
+		m_tree_view.set_visible(visible);
+		if (m_enclosing_widget) {
+			// sg::Widget に set_visible が無くても、これが万能に動作します
+			gtk_widget_set_visible(*m_enclosing_widget, visible);
+		}
+	}
+
+	/**
+	 * @brief TreeViewの表示・非表示を取得します。
+	 * @return 表示されていればtrue、非表示であればfalse。
+	 */
+	bool get_visible() override {
+		return m_tree_view.get_visible();
+	}
+
+	/**
+	 * @brief 選択モードを設定します。
+	 * @param[in] type GtkSelectionMode 列挙型のいずれかの値。
+	 */
+	void set_selection_mode(GtkSelectionMode type) override {
+		utils::scoped_value_guard guard(this->m_is_programmatically_changing, true);
+		m_tree_selection.set_mode(type);	// GtkTreeSelection の set_mode を呼ぶ
+	}
+
+	/**
+	 * @brief 選択モードを取得します。
+	 * @return 現在の選択モード。
+	 */
+	GtkSelectionMode get_selection_mode() override {
+		return m_tree_selection.get_mode();
+	}
+
+	/**
+	 * @brief 全ての選択を解除します。
+	 * @details このメソッドは、他のテーブルの選択が変更されたときに
+	 * 呼び出されることを想定しています。これにより、複数のテーブル間で
+	 * 選択状態を同期させることができます。
+	 */
+	void unselect_all() override {
+		utils::scoped_value_guard guard(this->m_is_programmatically_changing, true);
+		m_tree_selection.unselect_all();	// GtkTreeSelection の unselect_all を呼ぶ
+	}
+
 	// --- TreeView特化の機能 ---
 
 	/**
@@ -1004,17 +1425,6 @@ public:
 	 */
 	void on_user_selection_changed(std::function<void(std::optional<size_type>)> callback) {
 		m_user_selection_callback = callback;
-	}
-
-	/**
-	 * @brief 全ての選択を解除します。
-	 * @details このメソッドは、他のテーブルの選択が変更されたときに
-	 * 呼び出されることを想定しています。これにより、複数のテーブル間で
-	 * 選択状態を同期させることができます。
-	 */
-	void unselect_all() {
-		utils::scoped_value_guard guard(this->m_is_programmatically_changing, true);
-		m_tree_selection.unselect_all();	// GtkTreeSelection の unselect_all を呼ぶ
 	}
 
 	/**
@@ -1093,7 +1503,7 @@ public:
  * @tparam ItemType 1行分のデータを表現する構造体の型。
  */
 template<typename ItemType>
-class PaginatedListStoreModel {
+class PaginatedListStoreModel : public ListStoreViewInterface {
 public:
 	using size_type = typename std::vector<ItemType>::size_type;
 
@@ -1110,6 +1520,20 @@ private:
 	std::function<void(std::optional<size_type>)> m_user_selection_callback;
 	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
 	bool m_is_programmatically_changing;
+	/// @brief フォーカス可否
+	bool m_can_focus;
+	/// @brief 感応可否
+	bool m_sensitive;
+	/// @brief 表示・非表示
+	bool m_visible;
+	/// @brief TreeView の列数
+	guint m_n_columns;
+	/// @brief カラムタイトルのリスト
+	std::vector<std::string> m_titles;
+	/// @brief グリッド線の表示状態
+	GtkTreeViewGridLines m_grid_lines;
+	/// @brief 選択モード
+	GtkSelectionMode m_selection_mode;
 
 	/**
 	 * @brief (内部ハンドラ) TreeViewListStoreModel の user_selection_changed に接続
@@ -1140,6 +1564,47 @@ private:
 	}
 
 public:
+	/// @brief ページネーションモデルの設定構造体
+	struct Config {
+		/// @brief フォーカス可否
+		bool can_focus = true;
+		/// @brief 感応可否
+		bool sensitive = true;
+		/// @brief 表示・非表示
+		bool visible = true;
+		/// @brief カラムタイトルのリスト
+		std::vector<std::string> titles = {};
+		/// @brief グリッド線の表示状態
+		GtkTreeViewGridLines grid_lines = GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_NONE;
+		/// @brief 選択モード
+		GtkSelectionMode selection_mode = GtkSelectionMode::GTK_SELECTION_SINGLE;
+	};
+
+	/**
+	 * @brief コンストラクタ
+	 * @param[in] rows_per_view 最大行数
+	 * @param[in] n_columns 列数
+	 * @param[in] config (オプション) その他の設定
+	 */
+	PaginatedListStoreModel(
+		size_t rows_per_view,
+		guint n_columns,
+		Config config = {} // デフォルト値で初期化
+	) :
+		m_rows_per_view(rows_per_view),
+		m_current_page_index(0),
+		m_is_programmatically_changing(false),
+		m_can_focus(config.can_focus),
+		m_sensitive(config.sensitive),
+		m_visible(config.visible),
+		m_n_columns(n_columns),
+		m_titles(std::move(config.titles)),	// ムーブ
+		m_grid_lines(config.grid_lines),
+		m_selection_mode(config.selection_mode)
+	{
+		m_titles.resize(n_columns);
+	}
+
 	/**
 	 * @brief 指定されたページのデータを各TreeViewに表示する内部関数。
 	 * @param[in] page_index 表示するページのインデックス (0から始まる)。
@@ -1182,18 +1647,13 @@ public:
 				m_page_models[view_index]->append(m_master_data[master_index]);
 			}
 		}
+
+		for (auto* model : m_page_models) {
+			// 親(このクラス)が表示設定(m_visible)になっており、かつモデルに行データが存在する場合のみ表示する
+			model->set_visible(m_visible && (model->size() > 0));
+		}
 		m_current_page_index = page_index;
 	}
-
-	/**
-	 * @brief コンストラクタ
-	 * @param[in] rows_per_view 1つのTreeViewが保持できる最大行数。
-	 */
-	PaginatedListStoreModel(size_t rows_per_view) :
-		m_rows_per_view(rows_per_view),
-		m_current_page_index(0),
-		m_is_programmatically_changing(false)
-	{}
 
 	/**
 	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。
@@ -1207,11 +1667,33 @@ public:
 	/**
 	 * @brief このページネーション管理に追加する TreeViewListStoreModel を登録します。
 	 * @param[in, out] model 管理対象のモデルへのポインタ。
+	 * @param[in] update_ui (オプション・デフォルト true) trueの場合、登録後に画面を更新します。
+	 * @return 登録に成功した場合はtrue、失敗した場合はfalse。
 	 */
-	void add_model(TreeViewListStoreModel<ItemType>* model) {
+	bool add_model(TreeViewListStoreModel<ItemType>* model, bool update_ui = true) {
+		// NULLチェック
+		if (!model) {
+			return false; // 無効なモデルポインタ
+		}
+
+		// 列数チェック
+		if (model->get_n_columns() != m_n_columns) {
+			return false; // 列数が一致しない
+		}
+
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
 		// view_index は、モデルが m_page_models に追加される前の .size()
 		const size_type view_index = m_page_models.size();
 		m_page_models.push_back(model);
+
+		// 登録したモデルのプロパティを親に合わせる
+		model->set_titles(m_titles);
+		model->set_grid_lines(m_grid_lines);
+		model->set_can_focus(m_can_focus);
+		model->set_sensitive(m_sensitive);
+		model->set_visible(m_visible);
+		model->set_selection_mode(m_selection_mode);
 
 		// 子モデルのコールバックに、親のハンドラを登録
 		model->on_user_selection_changed(
@@ -1219,16 +1701,44 @@ public:
 				this->internal_on_selection_changed(view_index, local_index_opt);
 			}
 		);
+
+		if (update_ui) {
+			display_page(m_current_page_index);
+		}
+
+		return true;
 	}
 
 	/**
 	 * @brief 複数のTreeViewListStoreModelを一括で登録します。
 	 * @param[in, out] models 管理対象のモデルへのポインタのvector。
+	 * @param[in] update_ui (オプション・デフォルト true) trueの場合、登録後に画面を更新します。
+	 * @return 登録に成功した場合はtrue、失敗した場合はfalse。
 	 */
-	void add_model(const std::vector<TreeViewListStoreModel<ItemType>*>& models) {
+	bool add_model(const std::vector<TreeViewListStoreModel<ItemType>*>& models, bool update_ui = true) {
+		// 登録前に全てのモデルをチェック
 		for (auto* model : models) {
-			add_model(model);
+			// NULLチェック
+			if (!model) {
+				return false; // 無効なモデルポインタ
+			}
+
+			// 列数チェック
+			if (model->get_n_columns() != m_n_columns) {
+				return false; // 列数が一致しない
+			}
 		}
+
+		// 全てのモデルが有効なら登録を実行
+		for (auto* model : models) {
+			add_model(model, false); // 個別のUI更新はしない
+		}
+
+		if (update_ui) {
+			display_page(m_current_page_index);
+		}
+
+		return true;
 	}
 
 	/**
@@ -1252,10 +1762,344 @@ public:
 	}
 
 	/**
+	 * @brief 1つのTreeViewが表示できる最大行数を設定します。
+	 * @param[in] rows_per_view 1つのTreeViewが表示できる最大行数。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 設定後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
+	 */
+	void set_rows_per_view(size_t rows_per_view, bool refresh_current_page = false) {
+		if (rows_per_view == m_rows_per_view) {
+			return; // 変更なし
+		}
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_rows_per_view = rows_per_view;
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+	}
+
+	/**
+	 * @brief 1つのTreeViewが表示できる最大行数を取得します。
+	 * @return 1つのTreeViewが表示できる最大行数。
+	 */
+	size_t get_rows_per_view() const {
+		return m_rows_per_view;
+	}
+
+	// --- ListStoreViewInterface の実装 (override) ---
+
+	/**
+	 * @brief 指定したインデックスのカラムのタイトルを設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] n カラムのインデックス (0から始まる)。
+	 * @param[in] title 設定するタイトル文字列。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_title(gint n, const gchar* title) override {
+		return set_title(n, title, false);
+	}
+
+		/**
+	 * @brief 指定したインデックスのカラムのタイトルを設定します。
+	 * @param[in] n カラムのインデックス (0から始まる)。
+	 * @param[in] title 設定するタイトル文字列。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_title(gint n, const gchar* title, bool force_update) {
+		// 列数チェック
+		if (n < 0 || static_cast<guint>(n) >= m_n_columns) {
+			return false; // 列数が一致しない
+		}
+		if (m_titles.at(n) == title && !force_update) {
+			return true; // 変更なし
+		}
+
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_titles.at(n) = std::string(title);
+		for (auto* model : m_page_models) {
+			model->set_title(n, title);
+		}
+		return true;
+	}
+
+	/**
+	 * @brief 複数のカラムのタイトルを一括でコピー設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] titles 各カラムのタイトル文字列を格納したvector。
+	 * インデックス0が最初のカラム、1が2番目のカラム、という順序になります。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_titles(const std::vector<std::string>& titles) override {
+		return set_titles(titles, false);
+	}
+
+	/**
+	 * @brief 複数のカラムのタイトルを一括でコピー設定します。
+	 * @param[in] titles 各カラムのタイトル文字列を格納したvector。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 * インデックス0が最初のカラム、1が2番目のカラム、という順序になります。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_titles(const std::vector<std::string>& titles, bool force_update) {
+		// 列数チェック
+		if (titles.size() != m_n_columns) {
+			return false; // 列数が一致しない
+		}
+		if (m_titles == titles && !force_update) {
+			return true; // 変更なし
+		}
+
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_titles = titles;
+		for (auto* model : m_page_models) {
+			model->set_titles(m_titles);
+		}
+		return true;
+	}
+
+	/**
+	 * @brief 複数のカラムのタイトルを一括でムーブ設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] titles 各カラムのタイトル文字列を格納したvector。
+	 * インデックス0が最初のカラム、1が2番目のカラム、という順序になります。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_titles(std::vector<std::string>&& titles) override {
+		return set_titles(std::move(titles), false);
+	}
+
+	/**
+	 * @brief 複数のカラムのタイトルを一括でムーブ設定します。
+	 * @param[in] titles 各カラムのタイトル文字列を格納したvector。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 * インデックス0が最初のカラム、1が2番目のカラム、という順序になります。
+	 * @return 成功すればtrue、指定されたインデックスのカラムが存在しない場合はfalse。
+	 */
+	bool set_titles(std::vector<std::string>&& titles, bool force_update) {
+		// 列数チェック
+		if (titles.size() != m_n_columns) {
+			return false; // 列数が一致しない
+		}
+		if (m_titles == titles && !force_update) {
+			return true; // 変更なし
+		}
+
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_titles = std::move(titles);
+		for (auto* model : m_page_models) {
+			model->set_titles(m_titles);
+		}
+		return true;
+	}
+
+	/**
+	 * @brief 指定したインデックスのカラムのタイトルを取得します。
+	 * @param[in] n カラムのインデックス (0から始まる)。
+	 * @return カラムのタイトル文字列。指定されたインデックスのカラムが存在しない場合は空のoptional。
+	 */
+	std::optional<std::string> get_title(gint n) override {
+		// 列数チェック
+		if (n < 0 || static_cast<guint>(n) >= m_n_columns) {
+			return std::nullopt; // 列数が一致しない
+		}
+		return m_titles.at(n);
+	}
+
+	/**
+	 * @brief カラムタイトルのリストを取得します。
+	 * @return カラムタイトルのリスト。
+	 */
+	std::vector<std::string> get_titles() override {
+		return m_titles;
+	}
+
+	/**
+	 * @brief TreeViewの列数を取得します。
+	 * @return 列数。
+	 */
+	guint get_n_columns() override {
+		return m_n_columns;
+	}
+
+	/**
+	 * @brief TreeViewのグリッド線の表示状態を取得します。
+	 * @return グリッド線の表示状態。
+	 */
+	GtkTreeViewGridLines get_grid_lines() override {
+		return m_grid_lines;
+	}
+
+	/**
+	 * @brief TreeViewのグリッド線の表示状態を設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] grid_lines グリッド線の表示状態。
+	 */
+	void set_grid_lines(GtkTreeViewGridLines grid_lines) override {
+		set_grid_lines(grid_lines, false);
+	}
+
+	/**
+	 * @brief TreeViewのグリッド線の表示状態を設定します。
+	 * @param[in] grid_lines グリッド線の表示状態。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 */
+	void set_grid_lines(GtkTreeViewGridLines grid_lines, bool force_update) {
+		if (m_grid_lines == grid_lines && !force_update) {
+			return; // 変更なし
+		}
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_grid_lines = grid_lines;
+		for (auto* model : m_page_models) {
+			model->set_grid_lines(grid_lines);
+		}
+	}
+
+	/**
+	 * @brief TreeViewのフォーカス可否を設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] can_focus フォーカス可能にする場合はtrue、不可能にする場合はfalse。
+	 */
+	void set_can_focus(bool can_focus) override {
+		set_can_focus(can_focus, false);
+	}
+
+	/**
+	 * @brief TreeViewのフォーカス可否を設定します。
+	 * @param[in] can_focus フォーカス可能にする場合はtrue、不可能にする場合はfalse。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 */
+	void set_can_focus(bool can_focus, bool force_update) {
+		if (m_can_focus == can_focus && !force_update) {
+			return; // 変更なし
+		}
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_can_focus = can_focus;
+		for (auto* model : m_page_models) {
+			model->set_can_focus(can_focus);
+		}
+	}
+
+	/**
+	 * @brief TreeViewのフォーカス可否を取得します。
+	 * @return フォーカス可能であればtrue、不可能であればfalse。
+	 */
+	bool get_can_focus() override {
+		return m_can_focus;
+	}
+
+	/**
+	 * @brief TreeViewの感応可否を設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] sensitive 感応可能にする場合はtrue、無効にする場合はfalse。
+	 */
+	void set_sensitive(bool sensitive) override {
+		set_sensitive(sensitive, false);
+	}
+
+	/**
+	 * @brief TreeViewの感応可否を設定します。
+	 * @param[in] sensitive 感応可能にする場合はtrue、無効にする場合はfalse。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 */
+	void set_sensitive(bool sensitive, bool force_update) {
+		if (m_sensitive == sensitive && !force_update) {
+			return; // 変更なし
+		}
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_sensitive = sensitive;
+		for (auto* model : m_page_models) {
+			model->set_sensitive(sensitive);
+		}
+	}
+
+	/**
+	 * @brief TreeViewの感応可否を取得します。
+	 * @return 感応可能であればtrue、無効であればfalse。
+	 */
+	bool get_sensitive() override {
+		return m_sensitive;
+	}
+
+	/**
+	 * @brief TreeViewの表示・非表示を設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] visible 表示する場合はtrue、非表示にする場合はfalse。
+	 */
+	void set_visible(bool visible) override {
+		set_visible(visible, false);
+	}
+
+	/**
+	 * @brief TreeViewの表示・非表示を設定します。
+	 * @param[in] visible 表示する場合はtrue、非表示にする場合はfalse。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 */
+	void set_visible(bool visible, bool force_update) {
+		if (m_visible == visible && !force_update) {
+			return; // 変更なし
+		}
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_visible = visible;
+		for (auto* model : m_page_models) {
+			// display_page と同様のロジックで判定
+			model->set_visible(m_visible && (model->size() > 0));
+		}
+	}
+
+	/**
+	 * @brief TreeViewの表示・非表示を取得します。
+	 * @return 表示されていればtrue、非表示であればfalse。
+	 */
+	bool get_visible() override {
+		return m_visible;
+	}
+
+	/**
+	 * @brief 選択モードを設定します。
+	 * @details 変更がない場合は更新しません。
+	 * @param[in] type GtkSelectionMode 列挙型のいずれかの値。
+	 */
+	void set_selection_mode(GtkSelectionMode type) override {
+		set_selection_mode(type, false);
+	}
+
+	/**
+	 * @brief 選択モードを設定します。
+	 * @param[in] type GtkSelectionMode 列挙型のいずれかの値。
+	 * @param[in] force_update 強制的に更新する場合はtrue、変更がない場合は更新しない場合はfalse。
+	 */
+	void set_selection_mode(GtkSelectionMode type, bool force_update) {
+		if (m_selection_mode == type && !force_update) {
+			return; // 変更なし
+		}
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_selection_mode = type;
+		for (auto* model : m_page_models) {
+			model->set_selection_mode(type);
+		}
+	}
+
+	/**
+	 * @brief 選択モードを取得します。
+	 * @return 現在の選択モード。
+	 */
+	GtkSelectionMode get_selection_mode() override {
+		return m_selection_mode;
+	}
+
+	/**
+	 * @brief 現在表示されているページで選択されている行を全て解除します。
+	 */
+	void unselect_all() override {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		for (auto& model : m_page_models) {
+			model->unselect_all();
+		}
+	}
+
+	/**
 	 * @brief 全てのページの元となるマスターデータをコピーしてセットします。
 	 * @details この関数を呼び出すと、データが内部にコピーされ、最初のページが表示されます。
 	 * @param[in] all_data 全てのデータを含むvector (コピー元)。
-	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 */
 	void set_master_data(const std::vector<ItemType>& all_data, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
@@ -1268,7 +2112,7 @@ public:
 	 * @details この関数を呼び出すと、データの所有権が効率的に移動され、最初のページが表示されます。
 	 * 呼び出し元のvectorは空になります。
 	 * @param[in] all_data 全てのデータを含むvector (ムーブ元)。
-	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 */
 	void set_master_data(std::vector<ItemType>&& all_data, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
@@ -1283,7 +2127,7 @@ public:
 	 * 置き換え前の古いマスターデータはムーブされて返されます。
 	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
 	 * @param[in] new_data 新しく設定するマスターデータ。関数内でマスターデータにコピーされます。
-	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
 	 */
 	std::vector<ItemType> replace_master_data(const std::vector<ItemType>& new_data, bool refresh_current_page = false) {
@@ -1309,7 +2153,7 @@ public:
 	 * データのコピーは最小限に抑えられます。置き換え前の古いマスターデータはムーブされて返されます。
 	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
 	 * @param[in] new_data 新しく設定するマスターデータ (ムーブ元)。この関数の呼び出し後、`new_data` は空（または有効だが未定義の状態）になります。
-	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
 	 */
 	std::vector<ItemType> replace_master_data(std::vector<ItemType>&& new_data, bool refresh_current_page = false) {
@@ -1395,7 +2239,7 @@ public:
 
 	/**
 	 * @brief マスターデータと表示中の全データをクリアします。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 */
 	void clear(bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
@@ -1408,7 +2252,7 @@ public:
 	/**
 	 * @brief マスターデータの末尾に単一の行を追加し、UIを更新します。
 	 * @param[in] item 追加する行のデータ。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const ItemType& item, bool update_display = true) {
@@ -1424,7 +2268,7 @@ public:
 	/**
 	 * @brief マスターデータの末尾に複数の行をまとめて追加し、UIを更新します。
 	 * @param[in] items 追加する行データのvector。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const std::vector<ItemType>& items, bool update_display = true) {
@@ -1443,7 +2287,7 @@ public:
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] global_position 挿入位置のグローバルインデックス。
 	 * @param[in] item 挿入する行のデータ。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type global_position, const ItemType& item, bool update_display = true) {
@@ -1467,7 +2311,7 @@ public:
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] global_position 挿入位置のグローバルインデックス。
 	 * @param[in] items 挿入する行データのvector。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
 	bool insert(size_type global_position, const std::vector<ItemType>& items, bool update_display = true) {
@@ -1488,7 +2332,7 @@ public:
 	/**
 	 * @brief マスターデータの指定したグローバルインデックスの行を削除し、UIを更新します。
 	 * @param[in] global_position 削除する行のグローバルインデックス。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 削除に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool erase(size_type global_position, bool update_display = true) {
@@ -1509,7 +2353,7 @@ public:
 	/**
 	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて削除します。
 	 * @param[in] global_positions 削除する行のグローバルインデックスのリスト。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool erase(std::vector<size_type> global_positions, bool update_display = true) {
@@ -1535,7 +2379,7 @@ public:
 	 * @brief マスターデータの指定したグローバルインデックスの行を上書きし、UIを更新します。
 	 * @param[in] global_position 上書きする行のグローバルインデックス。
 	 * @param[in] item 新しい行データ。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool update(size_type global_position, const ItemType& item, bool update_display = true) {
@@ -1554,7 +2398,7 @@ public:
 	/**
 	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて上書きします。
 	 * @param[in] updates 上書きする行のグローバルインデックスと新しい行データのmap。
-	 * @param[in] update_display (オプション) trueの場合に、画面を更新します。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
 	bool update(const std::map<size_type, ItemType>& updates, bool update_display = true) {
@@ -1580,7 +2424,7 @@ public:
 	 * 直接変更できます (ソート、フィルタリング、要素の変更など)。
 	 * 関数オブジェクトの実行が完了した後、自動的にUIが更新されます。
 	 * @param[in] modifier マスターデータへの非const参照を受け取り、編集を行う関数オブジェクト。
-	 * @param[in] refresh_current_page (オプション) trueの場合、編集後に現在のページを再表示しようと試みます。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 * ページが存在しなくなっていれば最終ページが表示されます。falseの場合は0ページ目を表示します。デフォルトはfalse。
 	 */
 	void modify_master_data(std::function<void(std::vector<ItemType>&)> modifier, bool refresh_current_page = false) {

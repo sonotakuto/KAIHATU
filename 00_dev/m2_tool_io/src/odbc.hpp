@@ -629,8 +629,8 @@ struct OdbcSession {
 	/**
 	 * @brief このセッションに新しい名前付きステートメントを追加または取得します。
 	 * @param[in] name このステートメントを識別するためのユニークな名前。
-	 * @param[in] overwrite (オプション) 同名のステートメントが既に存在する場合に上書きするかどうか。
-	 * @param[out] is_new (オプション) 新規に挿入された場合にtrue、既存だった場合にfalseが設定されます。
+	 * @param[in] overwrite (オプション・デフォルト false) 同名のステートメントが既に存在する場合に上書きするかどうか。
+	 * @param[out] is_new (オプション・デフォルト nullptr) 新規に挿入された場合にtrue、既存だった場合にfalseが設定されます。
 	 * @return 作成された、または既存のステートメントへの参照。
 	 */
 	OdbcStatement& add_statement(const std::string& name, bool overwrite = false, bool* is_new = nullptr) {

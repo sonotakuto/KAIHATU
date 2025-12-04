@@ -5,9 +5,10 @@
 #pragma once
 #include <cstdint>
 #include <SimpleGtk>
+#include "./opt_extension.hpp"
+#include "./SimpleGtk_extension.hpp"
 #include "./typedef.hpp"
 #include "./parameters.hpp"
-#include "./SimpleGtk_extension.hpp"
 #include "./tracked_map.hpp"
 #include "./plc_communicator.hpp"
 #include "./tracking_communicator.hpp"
@@ -136,6 +137,32 @@ public:
 	};
 
 	/**
+	 * @enum WarningType
+	 * @brief 警告の種類を定義する列挙型。
+	 */
+	enum class WarningType {
+		GENERAL,		// 一般的な警告
+		RETRIEVE,		// 取り出し関連の警告
+		STORE,			// 補充関連の警告
+		RECONCILE		// 棚卸し関連の警告
+	};
+
+	/**
+	 * @struct WarningListData
+	 * @brief 警告一覧の1行分のデータを保持する構造体。
+	 */
+	struct WarningListData {
+		/// @brief 警告番号
+		WarningType type{};
+		/// @brief 警告メッセージ
+		std::string message{};
+		/// @brief その警告の発生件数
+		int count{};
+		/// @brief 行の状態
+		TableCellState cell_state = TableCellState::NORMAL;
+	};
+
+	/**
 	 * @struct UiText
 	 * @brief UI要素の かな/漢字 両方のテキストを定義する構造体。
 	 */
@@ -163,12 +190,13 @@ public:
 		/// @brief エントリの編集可否 (GtkEntry限定, true: 可能, false: 不可)
 		std::optional<bool> is_editable{};
 
-		/**
-		 * @brief 他のWidgetStateの値でこのインスタンスを更新する。
-		 * @param[in] other 更新に使用するWidgetStateインスタンス。
-		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
-		 */
-		bool merge(const WidgetState& other);
+		STDEX_DEFINE_MERGE_FUNC(WidgetState,
+			&WidgetState::text,
+			&WidgetState::can_focus,
+			&WidgetState::is_sensitive,
+			&WidgetState::is_visible,
+			&WidgetState::is_editable
+		)
 	};
 
 	/**
@@ -179,20 +207,19 @@ public:
 	struct TableState {
 		/// @brief 列ヘッダーのテキストリスト (UiTextのvector)
 		std::optional<std::vector<UiText>> column_headers{};
-		/// @brief 列ヘッダーの感応 (true: 有効, false: 無効)
+		/// @brief ツリービューの感応 (true: 有効, false: 無効)
 		std::optional<bool> is_sensitive{};
-		/**
-		 * @brief 列ヘッダーの表示 (true: 表示, false: 非表示)
-		 * @details 使用は非推奨（gladeファイルの設計上、外側のコンテナごと非表示にしないと枠が消えないため）
-		 */
+		/// @brief ツリービューの表示 (true: 表示, false: 非表示)
 		std::optional<bool> is_visible{};
+		/// @brief ツリービューの選択可能性 (true: 選択可能, false: 選択不可)
+		std::optional<bool> is_selectable{};
 
-		/**
-		 * @brief 他のTableStateの値でこのインスタンスを更新する。
-		 * @param[in] other 更新に使用するTableStateインスタンス。
-		 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
-		 */
-		bool merge(const TableState& other);
+		STDEX_DEFINE_MERGE_FUNC(TableState,
+			&TableState::column_headers,
+			&TableState::is_sensitive,
+			&TableState::is_visible,
+			&TableState::is_selectable
+		)
 	};
 
 	/**
@@ -223,7 +250,7 @@ public:
 	 */
 	struct TableUpdateGroup {
 		/// @brief 対象テーブルのポインタリスト
-		std::vector<sgex::TreeView*> tables{};
+		std::vector<sgex::ListStoreViewInterface*> tables{};
 		/// @brief 適用する状態
 		TableState state{};
 	};
@@ -344,6 +371,8 @@ public:
 	sgex::Entry programEntry;
 	/// @brief (取り出し時) ツーリングリストを変更するボタン (ID: listChangeButton)
 	sgex::Button listChangeButton;
+	/// @brief (補充時) 補充する工具の情報を表示するテーブルのボックス (ID: storingToolTableBox)
+	sgex::Box storingToolTableBox;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	sgex::TreeView storingToolTable;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア
@@ -461,14 +490,18 @@ public:
 	sgex::Dialog confirmInsertCountDialog;
 	/// @brief 再研磨確認ダイアログ (ID: confirmRegroundDialog)
 	sgex::Dialog confirmRegroundDialog;
-	/// @brief ログアウト確認ダイアログ (ID: logoutDialog)
-	sgex::Dialog logoutDialog;
+	/// @brief 確認ダイアログ (ID: confirmationDialog)
+	sgex::Dialog confirmationDialog;
 	/// @brief メッセージダイアログ (ID: messageDialog)
 	sgex::Dialog messageDialog;
+	/// @brief 強制実行確認ダイアログ (ID: overrideConfirmDialog)
+	sgex::Dialog overrideConfirmDialog;
 	/// @brief パスワード入力ダイアログ (ID: passwordEntryDialog)
 	sgex::Dialog passwordEntryDialog;
 	/// @brief 警告表示ダイアログ (ID: warningDialog)
 	sgex::Dialog warningDialog;
+	/// @brief 警告一覧ダイアログ (ID: warningListDialog)
+	sgex::Dialog warningListDialog;
 	/// @brief 棚卸し絞り込みダイアログ (ID: reconcileFilterDialog)
 	sgex::Dialog reconcileFilterDialog;
 
@@ -498,17 +531,28 @@ public:
 	/// @brief 「OK」ボタン (ID: confirmRegroundOkButton)
 	sgex::Button confirmRegroundOkButton;
 
-	// --- ログアウト確認ダイアログ内のウィジェット ---
+	// --- 確認ダイアログ内のウィジェット ---
 
-	/// @brief 「いいえ」ボタン (ID: logoutNoButton)
-	sgex::Button logoutNoButton;
-	/// @brief 「はい」ボタン (ID: logoutYesButton)
-	sgex::Button logoutYesButton;
+	/// @brief 確認メッセージを表示するラベル (ID: confirmationLabel)
+	sgex::Label confirmationLabel;
+	/// @brief 「いいえ」ボタン (ID: confirmationNoButton)
+	sgex::Button confirmationNoButton;
+	/// @brief 「はい」ボタン (ID: confirmationYesButton)
+	sgex::Button confirmationYesButton;
 
 	// --- メッセージダイアログ内のウィジェット ---
 
 	/// @brief メッセージを表示するラベル (ID: messageDialogLabel)
 	sgex::Label messageDialogLabel;
+
+	// --- 強制実行確認ダイアログ内のウィジェット ---
+
+	/// @brief 確認メッセージを表示するラベル (ID: overrideConfirmLabel)
+	sgex::Label overrideConfirmLabel;
+	/// @brief 「無視して続ける」ボタン (ID: overrideConfirmOverrideButton)
+	sgex::Button overrideConfirmOverrideButton;
+	/// @brief 「キャンセル」ボタン (ID: overrideConfirmCancelButton)
+	sgex::Button overrideConfirmCancelButton;
 
 	// --- パスワード入力ダイアログ内のウィジェット ---
 
@@ -525,6 +569,19 @@ public:
 
 	/// @brief 警告メッセージを表示するラベル (ID: warningLabel)
 	sgex::Label warningLabel;
+
+	// --- 警告一覧ダイアログ内のウィジェット ---
+
+	/// @brief 警告一覧のボックス (ID: warningListBox)
+	sgex::Box warningListBox;
+	/// @brief 警告一覧を表示するツリービュー (ID: warningList)
+	sgex::TreeView warningList;
+	/// @brief 警告一覧のリストストア
+	sgex::TreeViewListStoreModel<WarningListData> warningListstore;
+	/// @brief 「閉じる」ボタン (ID: warningListCloseButton)
+	sgex::Button warningListCloseButton;
+	/// @brief 「無視」ボタン (ID: warningListSuppressButton)
+	sgex::Button warningListSuppressButton;
 
 	// --- 棚卸し絞り込みダイアログ内のウィジェット ---
 
@@ -574,9 +631,9 @@ private:
 
 	/**
 	 * @brief 現在のテキストモードに応じて表示用の文字列を取得します。
+	 * @details m_text_mode メンバ変数に基づいて、ui_text の適切なフィールドを返します。
 	 * @param[in] ui_text かな/漢字両方のテキストを持つUiText構造体。
 	 * @return 表示用の文字列 (かな or 漢字)。
-	 * @details m_text_mode メンバ変数に基づいて、ui_text の適切なフィールドを返します。
 	 */
 	const std::string& get_display_text(const UiText& ui_text) const {
 		return ((m_text_mode == TextMode::KANA)
@@ -593,45 +650,63 @@ private:
 	/**
 	 * @brief ヘッダーのボタン群を初期状態にリセットする変数。
 	 * @details GUI操作モードの変更時に呼び出されます。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void reset_header_buttons(bool update_ui = true);
 
 	/**
 	 * @brief ウィジェットの状態を更新するヘルパー関数。
-	 * @param[out] widget 更新対象のウィジェット。
-	 * @param[in] state 適用する状態 (WidgetState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 * @param[in] widget 更新対象のウィジェット。
+	 * @param[in] state 適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_widget_state(sg::Widget* widget, WidgetState state, bool update_ui = true);
+	void update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui = true);
+
+	/**
+	 * @brief ウィジェットの状態をムーブ更新するヘルパー関数。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 * @param[in] widget 更新対象のウィジェット。
+	 * @param[in] state ムーブ適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のウィジェットの状態を更新するヘルパー関数。
-	 * @param[out] widgets 更新対象のウィジェットのリスト。
-	 * @param[in] state 適用する状態 (WidgetState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するウィジェットのプロパティを更新します。
+	 * @param[in] widgets 更新対象のウィジェットのリスト。
+	 * @param[in] state 適用する状態 (WidgetState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_widget_state(std::vector<sg::Widget*> widgets, WidgetState state, bool update_ui = true);
+	void update_widget_state(const std::vector<sg::Widget*>& widgets, const WidgetState& state, bool update_ui = true);
 
 	/**
 	 * @brief テーブルの状態を更新するヘルパー関数。
-	 * @param[out] table 更新対象のテーブルウィジェット。
-	 * @param[in] state 適用する状態 (TableState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 * @param[in] table 更新対象のテーブルウィジェット。
+	 * @param[in] state 適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_table_state(sgex::TreeView* table, TableState state, bool update_ui = true);
+	void update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui = true);
+
+	/**
+	 * @brief テーブルの状態をムーブ更新するヘルパー関数。
+	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 * @param[in] table 更新対象のテーブルウィジェット。
+	 * @param[in] state ムーブ適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のテーブルの状態を更新するヘルパー関数。
-	 * @param[out] tables 更新対象のテーブルウィジェットのリスト。
-	 * @param[in] state 適用する状態 (TableState)。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
 	 * @details state の各フィールドが std::nullopt でない場合にのみ、対応するテーブルのプロパティを更新します。
+	 * @param[in] tables 更新対象のテーブルウィジェットのリスト。
+	 * @param[in] state 適用する状態 (TableState)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_table_state(std::vector<sgex::TreeView*> tables, TableState state, bool update_ui = true);
+	void update_table_state(const std::vector<sgex::ListStoreViewInterface*>& tables, const TableState& state, bool update_ui = true);
 
 	/**
 	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
@@ -641,17 +716,24 @@ private:
 
 	/**
 	 * @brief アプリケーションの状態を更新し、UI（メッセージ、ボタン等）を再描画します。
-	 * @param[in] state 新しいアプリケーションの状態。
 	 * @details 状態遷移の唯一の窓口となる関数です。
+	 * @param[in] state 新しいアプリケーションの状態。
 	 */
 	void set_app_state(AppState state);
 
 	/**
 	 * @brief アプリケーションの操作モードを設定します。
-	 * @param[in] mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 * @details この関数がモードに対応する全てのUI状態（モード変数、ボタン排他、画面表示）を更新します。
+	 * @param[in] mode 設定したい新しいモード (RETRIEVE, STORE, RECONCILE)。
 	 */
 	void set_mode(GuiMode mode);
+
+	/**
+	 * @brief かな/漢字入力モードを設定します。
+	 * @param[in] text_mode 設定したい新しいテキストモード (KANA, KANJI)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void set_text_mode(TextMode text_mode, bool update_ui = true);
 
 	/**
 	 * @brief MainTableData構造体の内容をGtkListStoreに設定するセッター関数。
@@ -673,37 +755,51 @@ private:
 	 * ページ番号が左右でずれてしまう可能性があります。
 	 *
 	 * @param[in] action (オプション・デフォルト UPDATE_UI_ONLY) 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination(PaginationAction action = PaginationAction::UPDATE_UI_ONLY, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（3段表示ページ用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_3columns(PaginationAction action, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2段表示ページ用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_2columns(PaginationAction action, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2種表示ページの1種目用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_2types1st(PaginationAction action, bool update_ui = true);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（2種表示ページの2種目用）。
 	 * @param[in] action 実行したい操作の種類。
-	 * @param[in] update_ui (オプション・デフォルトtrue) trueのとき、UIを更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void update_and_handle_pagination_2types2nd(PaginationAction action, bool update_ui = true);
+
+	/**
+	 * @brief 確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。
+	 * @param[in] message ダイアログに設定するメッセージ。
+	 * @return ユーザーが「はい」を選択した場合はtrue、「いいえ」を選択した場合はfalseを返します。
+	 */
+	bool confirm_to_user(const UiText& message);
+
+	/**
+	 * @brief 確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。(ムーブ版)
+	 * @param[in] message ダイアログにムーブ設定するメッセージ。
+	 * @return ユーザーが「はい」を選択した場合はtrue、「いいえ」を選択した場合はfalseを返します。
+	 */
+	bool confirm_to_user(UiText&& message);
 
 	// --- 認証用のヘルパー関数 ---
 
@@ -725,8 +821,9 @@ private:
 	/**
 	 * @brief [取り出し用] 3つのシステム(GUI, PLC, Tracker)の状態をチェックし、
 	 * RETRIEVE_READ_COMPLETED 状態での操作ボタンの感応状態を一括更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_retrieve_read_completed_buttons();
+	void update_retrieve_read_completed_buttons(bool update_ui = true);
 
 	// --- 補充モード用のヘルパー関数 ---
 
@@ -879,6 +976,18 @@ private:
 	void passwordEntryDialog_on_show();
 
 	/**
+	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じる。
+	 */
+	void warningListCloseButton_on_clicked();
+
+	/**
+	 * @brief warningListSuppressButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
+	 */
+	void warningListSuppressButton_on_clicked();
+
+	/**
 	 * @brief insertCountIncrementButton の "clicked" シグナルに対応するハンドラ。
 	 * @details insertCountEntry の数値をインクリメントする。
 	 */
@@ -998,7 +1107,7 @@ private:
 
 	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態に入ったときの処理
-	 * @details 表をクリアして、次の読み取り準備を行う。
+	 * @details 表をクリアして次の読み取り準備を行い、PLC監視スレッドに搬入準備完了状態の監視を命令する。
 	 */
 	void on_enter_retrieve_ready_for_reading();
 
@@ -1009,36 +1118,30 @@ private:
 	void on_qrCodeEntry_retrieve_ready_for_reading();
 
 	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の falseButton.on_clicked の処理
+	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
+	 */
+	void on_falseButton_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の trueButton.on_clicked の処理
+	 * @details 次の工具の取り出しへ遷移、もしくは、取り出し機能の最初の画面に戻る。
+	 */
+	void on_trueButton_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
+	 * @param[in] notification PLCモニタースレッドからの通知。
+	 */
+	void on_plc_retrieve_ready_for_reading(const plc::Notification& notification);
+
+	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態の on_tracker_notified の処理。
 	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
 	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
 	 */
 	void on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification);
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態に入ったときの処理
-	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
-	 */
-	void on_enter_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の falseButton.on_clicked の処理
-	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
-	 */
-	void on_falseButton_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の trueButton.on_clicked の処理
-	 * @details 次の工具の取り出しへ遷移、もしくは、取り出し機能の最初の画面に戻る。
-	 */
-	void on_trueButton_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の on_plc_notified の処理。
-	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param[in] notification PLCモニタースレッドからの通知。
-	 */
-	void on_plc_retrieve_read_completed(const plc::Notification& notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -1235,8 +1338,8 @@ private:
 	/// @brief ウィジェットの状態を保持し、変更があったウィジェットを追跡するマップ。
 	utils::TrackedMap<sg::Widget*, WidgetStateUpdater> m_widget_states;
 
-	/// @brief 各テーブルのカラムヘッダー表示テキストを保持するマップ。
-	utils::TrackedMap<sgex::TreeView*, TableState> m_table_states;
+	/// @brief 各テーブルの状態を保持し、変更があった要素を追跡するマップ。
+	utils::TrackedMap<sgex::ListStoreViewInterface*, TableState> m_table_states;
 
 	/**
 	 * @brief アプリケーション状態とウィジェット設定を紐付けるマップ。
@@ -1258,7 +1361,7 @@ private:
 	// --- 操作中の状態保持用 (複数場面共通) ---
 
 	/// @brief 操作している保管領域。
-	StrageAreaInfo m_operating_area;
+	std::optional<StrageAreaInfo> m_operating_area;
 
 	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
 	std::vector<RecOperationTable> m_operated_records;
@@ -1275,6 +1378,12 @@ private:
 	/// @brief 追跡システムの操作許可状態 (例: 不正が検知されていないか)
 	bool m_tracker_ready_for_action;
 
+	/// @brief ユーザーによって警告が閉じられたかどうか
+	bool m_warning_closed_by_user;
+
+	/// @brief その回の操作で、今後すべての警告を無視するかどうか
+	bool m_ignore_all_warnings;
+
 	// --- 操作中の状態保持用 (取り出し専用) ---
 
 	/// @brief [取り出し用] 現在取り出し中のツーリングリスト
@@ -1289,6 +1398,11 @@ private:
 	/// @brief [取り出し用] m_retrieving_tools の中で、現在どの工具の取り出しを行っているか、インデックスを格納する。
 	std::optional<size_t> m_retrieving_index;
 
+	/// @brief [取り出し用] 現在場にある未スキャン工具の数
+	int m_unscanned_count;
+
+	// --- 操作中の状態保持用 (補充専用) ---
+	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

@@ -6,7 +6,8 @@
 #include <any>
 #include <cstdint>
 #include <SimpleGtk>
-#include "safe_queue.hpp"
+#include "./opt_extension.hpp"
+#include "./safe_queue.hpp"
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
@@ -35,12 +36,12 @@ struct WatchFlags {
 		return enable_fall_notification.value_or(false) || enable_rise_notification.value_or(false);
 	}
 
-	/**
-	 * @brief 他の WatchFlags の値でこのインスタンスを更新する。
-	 * @param[in] other 更新に使用する WatchFlags インスタンス。
-	 * @return 変更があったかどうか (true: 変更あり, false: 変更なし)
-	 */
-	bool merge(const WatchFlags& other);
+	STDEX_DEFINE_MERGE_FUNC(WatchFlags,
+		&WatchFlags::enable_fall_notification,
+		&WatchFlags::enable_rise_notification,
+		&WatchFlags::fall_is_one_shot,
+		&WatchFlags::rise_is_one_shot
+	)
 };
 
 /**
@@ -103,12 +104,7 @@ constexpr std::uint16_t M_DEVICE_SESSION_END		= 83;	// GUIセッション終了�
 constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始トリガ
 constexpr std::uint16_t M_DEVICE_STORE_START		= 92;	// 搬入開始トリガ
 constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
-
-#ifdef STUB_PLC
-constexpr std::uint16_t M_DEVICE_DOOR_OPEND		= 0;	// ドアの状態 // TODO: 決まったらアドレスを設定する
-#else
-//constexpr std::uint16_t M_DEVICE_DOOR_OPEND		= xx;	// ドアの状態 // TODO: 決まったらアドレスを設定する
-#endif
+constexpr std::uint16_t M_DEVICE_READY_TO_STORE		= 94;	// 搬入準備完了信号
 
 // --- PLC通信機能の使用に必要なグローバル変数を定義 ---
 

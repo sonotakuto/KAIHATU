@@ -2,6 +2,7 @@
  * @file plc_communicator.cpp
  * @brief plc_communicator.hpp で宣言されたPLC通信機能の実装ファイル。
  */
+#include "./opt_extension.hpp"
 #include "./includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
 #include "./periodic_timer.hpp"
 #include "./tool_io_gui.hpp"
@@ -22,29 +23,6 @@ static sg::Socket socket;
 static std::recursive_mutex socket_mutex;
 /// @brief PLCの状態監視リスト。キーは監視内容のユニークな名前。
 static std::map<std::uint16_t, WatchData> g_watchlist;
-
-// --- クラスのメンバ関数 ---
-
-bool WatchFlags::merge(const WatchFlags& other) {
-	bool changed = false;
-	if (other.enable_fall_notification.has_value() && this->enable_fall_notification != other.enable_fall_notification) {
-		this->enable_fall_notification = other.enable_fall_notification;
-		changed = true;
-	}
-	if (other.enable_rise_notification.has_value() && this->enable_rise_notification != other.enable_rise_notification) {
-		this->enable_rise_notification = other.enable_rise_notification;
-		changed = true;
-	}
-	if (other.fall_is_one_shot.has_value() && this->fall_is_one_shot != other.fall_is_one_shot) {
-		this->fall_is_one_shot = other.fall_is_one_shot;
-		changed = true;
-	}
-	if (other.rise_is_one_shot.has_value() && this->rise_is_one_shot != other.rise_is_one_shot) {
-		this->rise_is_one_shot = other.rise_is_one_shot;
-		changed = true;
-	}
-	return changed;
-}
 
 // --- このファイル内部でのみ使用するヘルパー関数 ---
 

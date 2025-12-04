@@ -219,6 +219,32 @@
 .selectableTree-style:disabled header button {
 	background-color: #A6A6A6;
 }
+/* :selected = 表が選択されている時のスタイル */
+/*
+.selectableTree-style:selected {
+	background-color: rgba(97%, 97%, 100%, 1.0);
+}
+*/
+
+/* 警告リスト用の表のスタイル */
+.warningTree-style {
+	color: black;
+	font-size: 25px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: normal;
+	background-image: none; /* デフォルトのグラデーションなどを無効化 */
+	border: 1px solid black;
+}
+
+.warningTree-style header button {
+	color: white;
+	font-size: 18px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: bold;
+	background-color: #4472C4;
+	border: 1px solid black;
+	min-height: 59px;
+}
 
 /* 表のヘッダーの高さ調整用クラス */
 .subTree-headerSize header button {

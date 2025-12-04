@@ -13,6 +13,15 @@
 //typedef int sample;
 
 /**
+ * @brief DBからの文字列を特定の型に変換するテンプレート関数の宣言
+ * @tparam T 変換先の型
+ * @param[in] str 変換元の文字列
+ * @return 変換に成功した場合はT型の値を含むoptional、失敗した場合はnullopt
+ */
+template<typename T>
+std::optional<T> from_db_string(const std::string& str);
+
+/**
  * @struct MstUserTable
  * @brief ユーザー情報を保持するテーブルのデータ構造
  */
@@ -45,7 +54,9 @@ struct MstToolTable {
 	/// @brief 材質 (工具の材質)
 	std::string tool_material{};
 	/// @brief 在庫数 (現在工具棚に保管されている個数)
-	std::int32_t stc{};
+	std::optional<std::int32_t> stc{};
+	/// @brief 凍結フラグ (true: 凍結、false: 通常)
+	bool is_frozen{};
 };
 
 /**
@@ -69,9 +80,11 @@ struct StrageAreaTable {
 	/// @brief 基本工具ID (工具種別ごとの連番)
 	std::int32_t basic_tool_id{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	std::int32_t toolcase_stc_num{};
+	std::optional<std::int32_t> toolcase_stc_num{};
 	/// @brief 画面表示住所
 	std::string display_address{};
+	/// @brief 最終棚卸し日時
+	std::optional<std::chrono::system_clock::time_point> last_reconciliation_time{};
 };
 
 /**
@@ -79,13 +92,43 @@ struct StrageAreaTable {
  * @brief 工具の状態を示す列挙型
  */
 enum class StorageCondition {
-	/// @brief 未補充
+	/// @brief 補充前
 	NOT_STORED,
-	/// @brief 使用可能 (保管中)
-	USABLE,
-	/// @brief 取り出された
+	/// @brief 保管中 (使用可能)
+	STORED,
+	/// @brief 取出
 	TAKEN_OUT
 };
+
+constexpr const char* StorageCondition_NOT_STORED_STR	= "補充前";	// NOT_STORED
+constexpr const char* StorageCondition_STORED_STR		= "保管中";	// STORED
+constexpr const char* StorageCondition_TAKEN_OUT_STR	= "取出";	// TAKEN_OUT
+
+/**
+ * @brief StorageCondition 列挙型をDB保存用の文字列に変換するヘルパー関数
+ * @param[in] condition 変換元の StorageCondition 列挙型の値
+ * @return 変換後の文字列
+ */
+inline std::string to_db_string(StorageCondition condition) {
+	switch (condition) {
+		case StorageCondition::NOT_STORED:	return StorageCondition_NOT_STORED_STR;
+		case StorageCondition::STORED:		return StorageCondition_STORED_STR;
+		case StorageCondition::TAKEN_OUT:	return StorageCondition_TAKEN_OUT_STR;
+	}
+}
+
+/**
+ * @brief DB保存用の文字列を StorageCondition 列挙型に変換するヘルパー関数
+ * @param[in] str 変換元の文字列
+ * @return 変換後の StorageCondition 列挙型の値を含むoptional、変換に失敗した場合はnullopt
+ */
+template<>
+inline std::optional<StorageCondition> from_db_string<StorageCondition>(const std::string& str) {
+	if (str == StorageCondition_NOT_STORED_STR)	{ return StorageCondition::NOT_STORED; }
+	if (str == StorageCondition_STORED_STR)		{ return StorageCondition::STORED; }
+	if (str == StorageCondition_TAKEN_OUT_STR)	{ return StorageCondition::TAKEN_OUT; }
+	return std::nullopt;
+}
 
 /**
  * @struct UniqueToolTable
@@ -152,10 +195,83 @@ struct MstToolAssignmentTable {
  * @brief 操作の分類を示す列挙型
  */
 enum class OperationClass {
+	/// @brief 取り出し
 	OUT,
+	/// @brief 補充
 	ADD,
+	/// @brief 棚卸し
 	INVENTORY
 };
+
+constexpr const char* OperationClass_OUT_STR		= "取出";	// OUT
+constexpr const char* OperationClass_ADD_STR		= "補充";	// ADD
+constexpr const char* OperationClass_INVENTORY_STR	= "棚卸";	// INVENTORY
+
+/**
+ * @brief OperationClass 列挙型をDB保存用の文字列に変換するヘルパー関数
+ * @param[in] op_class 変換元の OperationClass 列挙型の値
+ * @return 変換後の文字列
+ */
+inline std::string to_db_string(OperationClass op_class) {
+	switch (op_class) {
+		case OperationClass::OUT:		return OperationClass_OUT_STR;
+		case OperationClass::ADD:		return OperationClass_ADD_STR;
+		case OperationClass::INVENTORY:	return OperationClass_INVENTORY_STR;
+	}
+	return "";
+}
+
+/**
+ * @brief DB保存用の文字列を OperationClass 列挙型に変換するヘルパー関数
+ * @param[in] str 変換元の文字列
+ * @return 変換後の OperationClass 列挙型の値を含むoptional、変換に失敗した場合はnullopt
+ */
+template<>
+inline std::optional<OperationClass> from_db_string<OperationClass>(const std::string& str) {
+	if (str == OperationClass_OUT_STR)			{ return OperationClass::OUT; }
+	if (str == OperationClass_ADD_STR)			{ return OperationClass::ADD; }
+	if (str == OperationClass_INVENTORY_STR)	{ return OperationClass::INVENTORY; }
+	return std::nullopt;
+}
+
+/**
+ * @enum TrackResult
+ * @brief 追跡システムの結果を示す列挙型
+ */
+enum class TrackResult {
+	/// @brief なし (正常)
+	NORMAL,
+	/// @brief あり (警告無視)
+	OVERRIDDEN
+};
+
+constexpr const char* TrackResult_NORMAL_STR		= "なし";	// NORMAL
+constexpr const char* TrackResult_OVERRIDDEN_STR	= "あり";	// OVERRIDDEN
+
+/**
+ * @brief TrackResult 列挙型をDB保存用の文字列に変換するヘルパー関数
+ * @param[in] result 変換元の TrackResult 列挙型の値
+ * @return 変換後の文字列
+ */
+inline std::string to_db_string(TrackResult result) {
+	switch (result) {
+		case TrackResult::NORMAL:		return TrackResult_NORMAL_STR;
+		case TrackResult::OVERRIDDEN:	return TrackResult_OVERRIDDEN_STR;
+	}
+	return "";
+}
+
+/**
+ * @brief DB保存用の文字列を TrackResult 列挙型に変換するヘルパー関数
+ * @param[in] str 変換元の文字列
+ * @return 変換後の TrackResult 列挙型の値を含むoptional、変換に失敗した場合はnullopt
+ */
+template<>
+inline std::optional<TrackResult> from_db_string<TrackResult>(const std::string& str) {
+	if (str == TrackResult_NORMAL_STR)		{ return TrackResult::NORMAL; }
+	if (str == TrackResult_OVERRIDDEN_STR)	{ return TrackResult::OVERRIDDEN; }
+	return std::nullopt;
+}
 
 /**
  * @struct RecOperationTable
@@ -178,6 +294,10 @@ struct RecOperationTable {
 	std::optional<std::string> video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
 	std::optional<std::int32_t> tool_num{};
+	/// @brief ラインID (ライン識別用連番)
+	std::optional<std::int32_t> line_id{};
+	/// @brief 工具追跡の結果
+	std::optional<TrackResult> track_result{};
 };
 
 /**
@@ -213,7 +333,9 @@ struct MstToolInfo {
 	/// @brief 材質 (工具の材質)
 	std::string material{};
 	/// @brief 在庫数 (現在工具棚に保管されている個数)
-	std::int32_t stc{};
+	std::optional<std::int32_t> stc{};
+	/// @brief 凍結フラグ (true: 凍結、false: 通常)
+	bool is_frozen{};
 };
 
 /**
@@ -232,9 +354,11 @@ struct StrageAreaInfo {
 	/// @brief 保管している工具の基本情報
 	MstToolInfo item{};
 	/// @brief 保管ケース個数 (工具ケースの保管個数)
-	std::int32_t toolcase_stc_num{};
+	std::optional<std::int32_t> toolcase_stc_num{};
 	/// @brief 住所 (画面表示住所とPLC制御住所)
 	MstAddressInfo mst_address_info{};
+	/// @brief 最終棚卸し日時
+	std::optional<std::chrono::system_clock::time_point> last_reconciliation_time{};
 };
 
 /**
