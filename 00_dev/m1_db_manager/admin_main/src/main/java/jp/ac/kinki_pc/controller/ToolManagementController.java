@@ -2,10 +2,12 @@ package jp.ac.kinki_pc.controller;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map; // 追記
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity; // 追記
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-// import org.springframework.web.servlet.mvc.support.RedirectAttributes; // 削除
 
 import jp.ac.kinki_pc.dto.AddressDto;
 import jp.ac.kinki_pc.dto.IndividualToolDto;
@@ -96,19 +97,34 @@ public class ToolManagementController {
 			@RequestParam String maker,
 			@RequestParam String toolCategory,
 			@RequestParam String toolMaterial,
-			@RequestParam(required = false) Integer rop, // 変更: 必須解除, Integer化
+			@RequestParam(required = false) Integer rop,
 			@RequestParam String buyer,
 			@RequestParam String storageLocation,
-			@RequestParam(required = false) Integer stc) { // 変更: 必須解除, Integer化
+			@RequestParam(required = false) Integer stc) {
 		
 		toolManagementService.addTool(toolName, maker, toolCategory, toolMaterial, stc, rop, buyer, storageLocation);
 		return "redirect:/tool";
 	}
 
 	@PostMapping("/delete")
-	public String disableTool(@RequestParam int basicToolId) {
-		toolManagementService.disableTool(basicToolId);
-		return "redirect:/tool";
+	@ResponseBody // Ajaxリクエストに対し、HTMLではなくデータを返す
+	public ResponseEntity<String> disableTool(@RequestParam int basicToolId) {
+		try {
+			toolManagementService.disableTool(basicToolId);
+			// 成功時は 200 OK
+			return ResponseEntity.ok("削除完了"); 
+		} catch (DataIntegrityViolationException e) {
+			// 外部キー制約違反（使用中のため削除不可）
+			// 409 Conflict: リソースの状態と矛盾するためリクエストを完了できない
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.body("この工具は履歴や在庫に関連付けられているため削除できません。");
+		} catch (Exception e) {
+			// その他のエラー
+			e.printStackTrace();
+			// 500 Internal Server Error
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(e.getMessage());
+		}
 	}
 	
 	@PostMapping("/edit")
@@ -158,22 +174,5 @@ public class ToolManagementController {
 		} catch (Exception e) {
 			return ResponseEntity.internalServerError().body(Map.of("error", "サーバー内部エラーが発生しました。"));
 		}
-	}
-
-	/**
-	 * 工具の無効化処理 (POST)
-	 */
-	@PostMapping("/freeze")
-	public String freezeTool(@RequestParam int basicToolId, Model model) {
-		try {
-			toolManagementService.freezeTool(basicToolId);
-		} catch (RuntimeException e) {
-			// 必要に応じてエラーハンドリング (例: ログ出力、エラー画面への遷移など)
-			// 現在は例外をスローしてSpringのデフォルトエラーハンドリングに任せるか、
-			// コンソールに出力してリダイレクトするなどの簡易実装とします。
-			e.printStackTrace();
-			// throw e; // 必要ならスローする
-		}
-		return "redirect:/tool";
 	}
 }
