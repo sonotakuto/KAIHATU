@@ -595,6 +595,8 @@ public:
 	sgex::Button reconcileFilterResetButton;
 	/// @brief 工具分類選択コンボボックス (ID: reconcileToolTypeFilterComboBox)
 	sgex::ComboBox reconcileToolTypeFilterComboBox;
+	/// @brief 工具分類選択コンボボックスのリストストア
+	sgex::ComboBoxListStoreModel<std::string> reconcileToolTypeFilterComboBoxListstore;	// TODO: 型は自由に変更してください
 	/// @brief 期間フィルタON/OFFスイッチ (ID: reconcilePeriodFilterSwitch)
 	sgex::Switch reconcilePeriodFilterSwitch;
 	/// @brief 期間指定用 開始年増加ボタン (ID: reconcileFilterStartYearIncrementButton)

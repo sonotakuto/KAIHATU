@@ -362,10 +362,10 @@ MainWindow::MainWindow() :
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
 	listChangeButton.on_clicked([this]() { this->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); });
 	filterButton.on_clicked([this](){ reconcileFilterDialog.run(this); });
-	liststore3columnsAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
+	liststore3columnsAll.on_selection_changed_by_user([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
 	prevButton3columns.on_clicked([this]() { this->prevButton3columns_on_clicked(); });
 	nextButton3columns.on_clicked([this]() { this->nextButton3columns_on_clicked(); });
-	liststore2columnsAll.on_user_selection_changed([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
+	liststore2columnsAll.on_selection_changed_by_user([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
 	prevButton2columns.on_clicked([this]() { this->prevButton2columns_on_clicked(); });
 	nextButton2columns.on_clicked([this]() { this->nextButton2columns_on_clicked(); });
 	prevButton2types1st.on_clicked([this]() { this->prevButton2types1st_on_clicked(); });
