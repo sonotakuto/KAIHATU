@@ -46,7 +46,7 @@ public class OperationHistoryController {
 	private OperationHistoryService historyService;
 	
 	// application.properties から動画保存パスを取得 (デフォルトは Z:/recordings)
-	@Value("${video.storage.path:Z:/recordings}")
+	@Value("${video.storage.path:C:/recordings}")
 	private String videoStoragePath;
 		
 	/**

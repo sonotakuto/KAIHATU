@@ -27,7 +27,8 @@ public interface ToolRepository extends JpaRepository<Tool, Integer>, JpaSpecifi
 		       tool_material,
 		       buyer,
 		       rop,
-		       stc
+		       stc,
+			   is_frozen
 			   FROM mst_tool
 			   WHERE stc < rop AND is_frozen = 0;
 		""", nativeQuery = true) // ネイティブSQLとして実行

@@ -2,6 +2,7 @@
 
 package jp.ac.kinki_pc.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -62,5 +63,39 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 		   "FROM Operation ro " +
 		   "ORDER BY 1 DESC")
 	List<String> findHistoryCandidate();
+
+	/**
+	 * 操作履歴(rec_operation)とユーザー名(mst_user)を結合して取得します。
+	 * (DTO ではなく、HistoryProjection インターフェースのリストを返します)
+	 * HistoryProjectionのフィールドを満たすため、不要なカラムには空文字を割り当てています。
+	 * @param end 終了日時 (この日時"以前" <=) (null許容)
+	 * @param newerThan 開始日時 (この日時"より後" >) (null許容)
+	 * @return HistoryProjection のリスト
+	 */
+	@Query("SELECT " +
+		   "  ro.procTime AS procTime, " +
+		   "  mu.userName AS userName, " +
+		   "  ro.operationClass AS operationClass, " +
+		   "  '' AS videoPath, " + // ★ 追加: ダミー
+		   "  '' AS toolCategory, " + // ★ 追加: ダミー
+		   "  '' AS maker, " + // ★ 追加: ダミー
+		   "  '' AS toolName, " + // ★ 追加: ダミー
+		   "  '' AS toolMaterial " + // ★ 追加: ダミー
+		   "FROM Operation ro, User mu " +
+		   "WHERE ro.userId = mu.userId " +
+		   "  AND (:newerThan IS NULL OR ro.procTime > :newerThan) " +
+		   "  AND (:end IS NULL OR ro.procTime <= :end) " +
+		   "ORDER BY ro.procTime ASC")
+	List<HistoryProjection> findOperationHistory(
+		@Param("end") LocalDateTime end,
+		@Param("newerThan") LocalDateTime newerThan
+	);
+
+	/**
+	 * rec_operation テーブルから最も古い proc_time (LocalDateTime) を取得します。
+	 * @return 最も古い LocalDateTime (レコードがない場合は null)
+	 */
+	@Query("SELECT MIN(ro.procTime) FROM Operation ro")
+	LocalDateTime findOldestOperationTimestamp();
 
 }
