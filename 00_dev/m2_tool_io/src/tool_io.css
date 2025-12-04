@@ -226,6 +226,26 @@
 }
 */
 
+/* 警告リスト用の表のスタイル */
+.warningTree-style {
+	color: black;
+	font-size: 25px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: normal;
+	background-image: none; /* デフォルトのグラデーションなどを無効化 */
+	border: 1px solid black;
+}
+
+.warningTree-style header button {
+	color: white;
+	font-size: 18px;
+	font-family: 'Noto Sans CJK JP';
+	font-weight: bold;
+	background-color: #4472C4;
+	border: 1px solid black;
+	min-height: 59px;
+}
+
 /* 表のヘッダーの高さ調整用クラス */
 .subTree-headerSize header button {
 	min-height: 34px;

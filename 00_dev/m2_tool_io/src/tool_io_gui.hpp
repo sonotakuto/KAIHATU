@@ -137,6 +137,32 @@ public:
 	};
 
 	/**
+	 * @enum WarningType
+	 * @brief 警告の種類を定義する列挙型。
+	 */
+	enum class WarningType {
+		GENERAL,		// 一般的な警告
+		RETRIEVE,		// 取り出し関連の警告
+		STORE,			// 補充関連の警告
+		RECONCILE		// 棚卸し関連の警告
+	};
+
+	/**
+	 * @struct WarningListData
+	 * @brief 警告一覧の1行分のデータを保持する構造体。
+	 */
+	struct WarningListData {
+		/// @brief 警告番号
+		WarningType type{};
+		/// @brief 警告メッセージ
+		std::string message{};
+		/// @brief その警告の発生件数
+		int count{};
+		/// @brief 行の状態
+		TableCellState cell_state = TableCellState::NORMAL;
+	};
+
+	/**
 	 * @struct UiText
 	 * @brief UI要素の かな/漢字 両方のテキストを定義する構造体。
 	 */
@@ -345,6 +371,8 @@ public:
 	sgex::Entry programEntry;
 	/// @brief (取り出し時) ツーリングリストを変更するボタン (ID: listChangeButton)
 	sgex::Button listChangeButton;
+	/// @brief (補充時) 補充する工具の情報を表示するテーブルのボックス (ID: storingToolTableBox)
+	sgex::Box storingToolTableBox;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブル (ID: storingToolTable)
 	sgex::TreeView storingToolTable;
 	/// @brief (補充時) 補充する工具の情報を表示するテーブルのリストストア
@@ -462,14 +490,18 @@ public:
 	sgex::Dialog confirmInsertCountDialog;
 	/// @brief 再研磨確認ダイアログ (ID: confirmRegroundDialog)
 	sgex::Dialog confirmRegroundDialog;
-	/// @brief ログアウト確認ダイアログ (ID: logoutDialog)
-	sgex::Dialog logoutDialog;
+	/// @brief 確認ダイアログ (ID: confirmationDialog)
+	sgex::Dialog confirmationDialog;
 	/// @brief メッセージダイアログ (ID: messageDialog)
 	sgex::Dialog messageDialog;
+	/// @brief 強制実行確認ダイアログ (ID: overrideConfirmDialog)
+	sgex::Dialog overrideConfirmDialog;
 	/// @brief パスワード入力ダイアログ (ID: passwordEntryDialog)
 	sgex::Dialog passwordEntryDialog;
 	/// @brief 警告表示ダイアログ (ID: warningDialog)
 	sgex::Dialog warningDialog;
+	/// @brief 警告一覧ダイアログ (ID: warningListDialog)
+	sgex::Dialog warningListDialog;
 	/// @brief 棚卸し絞り込みダイアログ (ID: reconcileFilterDialog)
 	sgex::Dialog reconcileFilterDialog;
 
@@ -499,17 +531,28 @@ public:
 	/// @brief 「OK」ボタン (ID: confirmRegroundOkButton)
 	sgex::Button confirmRegroundOkButton;
 
-	// --- ログアウト確認ダイアログ内のウィジェット ---
+	// --- 確認ダイアログ内のウィジェット ---
 
-	/// @brief 「いいえ」ボタン (ID: logoutNoButton)
-	sgex::Button logoutNoButton;
-	/// @brief 「はい」ボタン (ID: logoutYesButton)
-	sgex::Button logoutYesButton;
+	/// @brief 確認メッセージを表示するラベル (ID: confirmationLabel)
+	sgex::Label confirmationLabel;
+	/// @brief 「いいえ」ボタン (ID: confirmationNoButton)
+	sgex::Button confirmationNoButton;
+	/// @brief 「はい」ボタン (ID: confirmationYesButton)
+	sgex::Button confirmationYesButton;
 
 	// --- メッセージダイアログ内のウィジェット ---
 
 	/// @brief メッセージを表示するラベル (ID: messageDialogLabel)
 	sgex::Label messageDialogLabel;
+
+	// --- 強制実行確認ダイアログ内のウィジェット ---
+
+	/// @brief 確認メッセージを表示するラベル (ID: overrideConfirmLabel)
+	sgex::Label overrideConfirmLabel;
+	/// @brief 「無視して続ける」ボタン (ID: overrideConfirmOverrideButton)
+	sgex::Button overrideConfirmOverrideButton;
+	/// @brief 「キャンセル」ボタン (ID: overrideConfirmCancelButton)
+	sgex::Button overrideConfirmCancelButton;
 
 	// --- パスワード入力ダイアログ内のウィジェット ---
 
@@ -526,6 +569,19 @@ public:
 
 	/// @brief 警告メッセージを表示するラベル (ID: warningLabel)
 	sgex::Label warningLabel;
+
+	// --- 警告一覧ダイアログ内のウィジェット ---
+
+	/// @brief 警告一覧のボックス (ID: warningListBox)
+	sgex::Box warningListBox;
+	/// @brief 警告一覧を表示するツリービュー (ID: warningList)
+	sgex::TreeView warningList;
+	/// @brief 警告一覧のリストストア
+	sgex::TreeViewListStoreModel<WarningListData> warningListstore;
+	/// @brief 「閉じる」ボタン (ID: warningListCloseButton)
+	sgex::Button warningListCloseButton;
+	/// @brief 「無視」ボタン (ID: warningListSuppressButton)
+	sgex::Button warningListSuppressButton;
 
 	// --- 棚卸し絞り込みダイアログ内のウィジェット ---
 
@@ -673,6 +729,13 @@ private:
 	void set_mode(GuiMode mode);
 
 	/**
+	 * @brief かな/漢字入力モードを設定します。
+	 * @param[in] text_mode 設定したい新しいテキストモード (KANA, KANJI)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void set_text_mode(TextMode text_mode, bool update_ui = true);
+
+	/**
 	 * @brief MainTableData構造体の内容をGtkListStoreに設定するセッター関数。
 	 * @param[out] store 更新対象の sgex::ListStore。
 	 * @param[out] iter 更新する行のイテレータ。
@@ -724,6 +787,20 @@ private:
 	 */
 	void update_and_handle_pagination_2types2nd(PaginationAction action, bool update_ui = true);
 
+	/**
+	 * @brief 確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。
+	 * @param[in] message ダイアログに設定するメッセージ。
+	 * @return ユーザーが「はい」を選択した場合はtrue、「いいえ」を選択した場合はfalseを返します。
+	 */
+	bool confirm_to_user(const UiText& message);
+
+	/**
+	 * @brief 確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。(ムーブ版)
+	 * @param[in] message ダイアログにムーブ設定するメッセージ。
+	 * @return ユーザーが「はい」を選択した場合はtrue、「いいえ」を選択した場合はfalseを返します。
+	 */
+	bool confirm_to_user(UiText&& message);
+
 	// --- 認証用のヘルパー関数 ---
 
 	/**
@@ -744,8 +821,9 @@ private:
 	/**
 	 * @brief [取り出し用] 3つのシステム(GUI, PLC, Tracker)の状態をチェックし、
 	 * RETRIEVE_READ_COMPLETED 状態での操作ボタンの感応状態を一括更新する。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void update_retrieve_read_completed_buttons();
+	void update_retrieve_read_completed_buttons(bool update_ui = true);
 
 	// --- 補充モード用のヘルパー関数 ---
 
@@ -898,6 +976,18 @@ private:
 	void passwordEntryDialog_on_show();
 
 	/**
+	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じる。
+	 */
+	void warningListCloseButton_on_clicked();
+
+	/**
+	 * @brief warningListSuppressButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
+	 */
+	void warningListSuppressButton_on_clicked();
+
+	/**
 	 * @brief insertCountIncrementButton の "clicked" シグナルに対応するハンドラ。
 	 * @details insertCountEntry の数値をインクリメントする。
 	 */
@@ -1017,7 +1107,7 @@ private:
 
 	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態に入ったときの処理
-	 * @details 表をクリアして、次の読み取り準備を行う。
+	 * @details 表をクリアして次の読み取り準備を行い、PLC監視スレッドに搬入準備完了状態の監視を命令する。
 	 */
 	void on_enter_retrieve_ready_for_reading();
 
@@ -1028,36 +1118,30 @@ private:
 	void on_qrCodeEntry_retrieve_ready_for_reading();
 
 	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の falseButton.on_clicked の処理
+	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
+	 */
+	void on_falseButton_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の trueButton.on_clicked の処理
+	 * @details 次の工具の取り出しへ遷移、もしくは、取り出し機能の最初の画面に戻る。
+	 */
+	void on_trueButton_retrieve_ready_for_reading();
+
+	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の on_plc_notified の処理。
+	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
+	 * @param[in] notification PLCモニタースレッドからの通知。
+	 */
+	void on_plc_retrieve_ready_for_reading(const plc::Notification& notification);
+
+	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態の on_tracker_notified の処理。
 	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
 	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
 	 */
 	void on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification);
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態に入ったときの処理
-	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
-	 */
-	void on_enter_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の falseButton.on_clicked の処理
-	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
-	 */
-	void on_falseButton_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の trueButton.on_clicked の処理
-	 * @details 次の工具の取り出しへ遷移、もしくは、取り出し機能の最初の画面に戻る。
-	 */
-	void on_trueButton_retrieve_read_completed();
-
-	/**
-	 * @brief RETRIEVE_READ_COMPLETED 状態の on_plc_notified の処理。
-	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
-	 * @param[in] notification PLCモニタースレッドからの通知。
-	 */
-	void on_plc_retrieve_read_completed(const plc::Notification& notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -1277,7 +1361,7 @@ private:
 	// --- 操作中の状態保持用 (複数場面共通) ---
 
 	/// @brief 操作している保管領域。
-	StrageAreaInfo m_operating_area;
+	std::optional<StrageAreaInfo> m_operating_area;
 
 	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
 	std::vector<RecOperationTable> m_operated_records;
@@ -1293,6 +1377,12 @@ private:
 
 	/// @brief 追跡システムの操作許可状態 (例: 不正が検知されていないか)
 	bool m_tracker_ready_for_action;
+
+	/// @brief ユーザーによって警告が閉じられたかどうか
+	bool m_warning_closed_by_user;
+
+	/// @brief その回の操作で、今後すべての警告を無視するかどうか
+	bool m_ignore_all_warnings;
 
 	// --- 操作中の状態保持用 (取り出し専用) ---
 
@@ -1311,8 +1401,8 @@ private:
 	/// @brief [取り出し用] 現在場にある未スキャン工具の数
 	int m_unscanned_count;
 
-	/// @brief [取り出し用] その回の取り出しで、今後すべての警告を無視するかどうか
-	bool m_ignore_all_warnings;
+	// --- 操作中の状態保持用 (補充専用) ---
+	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };
 
 // MainWindow::UiTextの比較演算子 (宣言)

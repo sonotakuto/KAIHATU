@@ -13,6 +13,15 @@
 //typedef int sample;
 
 /**
+ * @brief DBからの文字列を特定の型に変換するテンプレート関数の宣言
+ * @tparam T 変換先の型
+ * @param[in] str 変換元の文字列
+ * @return 変換に成功した場合はT型の値を含むoptional、失敗した場合はnullopt
+ */
+template<typename T>
+std::optional<T> from_db_string(const std::string& str);
+
+/**
  * @struct MstUserTable
  * @brief ユーザー情報を保持するテーブルのデータ構造
  */
@@ -91,6 +100,36 @@ enum class StorageCondition {
 	TAKEN_OUT
 };
 
+constexpr const char* StorageCondition_NOT_STORED_STR	= "補充前";	// NOT_STORED
+constexpr const char* StorageCondition_STORED_STR		= "保管中";	// STORED
+constexpr const char* StorageCondition_TAKEN_OUT_STR	= "取出";	// TAKEN_OUT
+
+/**
+ * @brief StorageCondition 列挙型をDB保存用の文字列に変換するヘルパー関数
+ * @param[in] condition 変換元の StorageCondition 列挙型の値
+ * @return 変換後の文字列
+ */
+inline std::string to_db_string(StorageCondition condition) {
+	switch (condition) {
+		case StorageCondition::NOT_STORED:	return StorageCondition_NOT_STORED_STR;
+		case StorageCondition::STORED:		return StorageCondition_STORED_STR;
+		case StorageCondition::TAKEN_OUT:	return StorageCondition_TAKEN_OUT_STR;
+	}
+}
+
+/**
+ * @brief DB保存用の文字列を StorageCondition 列挙型に変換するヘルパー関数
+ * @param[in] str 変換元の文字列
+ * @return 変換後の StorageCondition 列挙型の値を含むoptional、変換に失敗した場合はnullopt
+ */
+template<>
+inline std::optional<StorageCondition> from_db_string<StorageCondition>(const std::string& str) {
+	if (str == StorageCondition_NOT_STORED_STR)	{ return StorageCondition::NOT_STORED; }
+	if (str == StorageCondition_STORED_STR)		{ return StorageCondition::STORED; }
+	if (str == StorageCondition_TAKEN_OUT_STR)	{ return StorageCondition::TAKEN_OUT; }
+	return std::nullopt;
+}
+
 /**
  * @struct UniqueToolTable
  * @brief 工具の個別情報を保持するテーブルのデータ構造
@@ -164,16 +203,75 @@ enum class OperationClass {
 	INVENTORY
 };
 
+constexpr const char* OperationClass_OUT_STR		= "取出";	// OUT
+constexpr const char* OperationClass_ADD_STR		= "補充";	// ADD
+constexpr const char* OperationClass_INVENTORY_STR	= "棚卸";	// INVENTORY
+
+/**
+ * @brief OperationClass 列挙型をDB保存用の文字列に変換するヘルパー関数
+ * @param[in] op_class 変換元の OperationClass 列挙型の値
+ * @return 変換後の文字列
+ */
+inline std::string to_db_string(OperationClass op_class) {
+	switch (op_class) {
+		case OperationClass::OUT:		return OperationClass_OUT_STR;
+		case OperationClass::ADD:		return OperationClass_ADD_STR;
+		case OperationClass::INVENTORY:	return OperationClass_INVENTORY_STR;
+	}
+	return "";
+}
+
+/**
+ * @brief DB保存用の文字列を OperationClass 列挙型に変換するヘルパー関数
+ * @param[in] str 変換元の文字列
+ * @return 変換後の OperationClass 列挙型の値を含むoptional、変換に失敗した場合はnullopt
+ */
+template<>
+inline std::optional<OperationClass> from_db_string<OperationClass>(const std::string& str) {
+	if (str == OperationClass_OUT_STR)			{ return OperationClass::OUT; }
+	if (str == OperationClass_ADD_STR)			{ return OperationClass::ADD; }
+	if (str == OperationClass_INVENTORY_STR)	{ return OperationClass::INVENTORY; }
+	return std::nullopt;
+}
+
 /**
  * @enum TrackResult
  * @brief 追跡システムの結果を示す列挙型
  */
 enum class TrackResult {
-	/// @brief 正常
+	/// @brief なし (正常)
 	NORMAL,
-	/// @brief 異常 (警告無視)
+	/// @brief あり (警告無視)
 	OVERRIDDEN
 };
+
+constexpr const char* TrackResult_NORMAL_STR		= "なし";	// NORMAL
+constexpr const char* TrackResult_OVERRIDDEN_STR	= "あり";	// OVERRIDDEN
+
+/**
+ * @brief TrackResult 列挙型をDB保存用の文字列に変換するヘルパー関数
+ * @param[in] result 変換元の TrackResult 列挙型の値
+ * @return 変換後の文字列
+ */
+inline std::string to_db_string(TrackResult result) {
+	switch (result) {
+		case TrackResult::NORMAL:		return TrackResult_NORMAL_STR;
+		case TrackResult::OVERRIDDEN:	return TrackResult_OVERRIDDEN_STR;
+	}
+	return "";
+}
+
+/**
+ * @brief DB保存用の文字列を TrackResult 列挙型に変換するヘルパー関数
+ * @param[in] str 変換元の文字列
+ * @return 変換後の TrackResult 列挙型の値を含むoptional、変換に失敗した場合はnullopt
+ */
+template<>
+inline std::optional<TrackResult> from_db_string<TrackResult>(const std::string& str) {
+	if (str == TrackResult_NORMAL_STR)		{ return TrackResult::NORMAL; }
+	if (str == TrackResult_OVERRIDDEN_STR)	{ return TrackResult::OVERRIDDEN; }
+	return std::nullopt;
+}
 
 /**
  * @struct RecOperationTable

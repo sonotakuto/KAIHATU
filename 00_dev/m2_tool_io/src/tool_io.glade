@@ -3,19 +3,48 @@
 <interface>
   <requires lib="gtk+" version="3.20"/>
   <!-- interface-css-provider-path tool_io.css -->
-  <object class="GtkWindow">
-    <property name="can_focus">False</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
-    <child>
-      <placeholder/>
-    </child>
+  <object class="GtkListStore" id="liststore1">
+    <columns>
+      <!-- column-name gchararray1 -->
+      <column type="gchararray"/>
+      <!-- column-name gchararray2 -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">こうぐが ちがいます。
+べつの こうぐを よみとってください。</col>
+        <col id="1" translatable="yes">1</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">この こうぐは すでに 『とりだしずみ』に なっています。
+べつの こうぐを よみとってください。</col>
+        <col id="1" translatable="yes">2</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">QRコードリーダーで よみとらずに こうぐを とりだそうと しています。
+QRコードリーダーで よみとってから、こうぐを とりだしてください。</col>
+        <col id="1" translatable="yes">3</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">さぎょうだいに うめこまれた QRコードリーダーで よみとってください。</col>
+        <col id="1" translatable="yes">4</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">スキャンずみの こうぐを コンテナに もどさないでください。</col>
+        <col id="1" translatable="yes">5</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">コンテナのそとに あった こうぐを コンテナに いれないでください。</col>
+        <col id="1" translatable="yes">6</col>
+      </row>
+    </data>
   </object>
   <object class="GtkWindow" id="mainWindow">
     <property name="width_request">1920</property>
     <property name="height_request">1080</property>
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">工具入出庫システム</property>
     <property name="resizable">False</property>
     <property name="window_position">center-always</property>
     <property name="decorated">False</property>
@@ -401,7 +430,6 @@ message message message message message</property>
                     <child>
                       <object class="GtkTreeView" id="storingToolTable">
                         <property name="visible">True</property>
-                        <property name="sensitive">False</property>
                         <property name="can_focus">False</property>
                         <property name="search_column">0</property>
                         <child internal-child="selection">
@@ -637,6 +665,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -717,6 +746,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -772,6 +802,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -852,6 +883,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -907,6 +939,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -987,6 +1020,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -1157,6 +1191,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="alignment">right</property>
                                     <property name="wrap_width">70</property>
                                   </object>
@@ -1238,6 +1273,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
@@ -1292,6 +1328,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -1372,6 +1409,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
@@ -1543,6 +1581,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="alignment">right</property>
                                     <property name="wrap_width">70</property>
                                   </object>
@@ -1624,6 +1663,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
@@ -1783,6 +1823,7 @@ message message message message message</property>
                                 <child>
                                   <object class="GtkCellRendererText">
                                     <property name="height">58</property>
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">70</property>
                                   </object>
                                   <attributes>
@@ -1863,6 +1904,7 @@ message message message message message</property>
                                 <property name="alignment">0.5</property>
                                 <child>
                                   <object class="GtkCellRendererText">
+                                    <property name="xalign">0.20000000298023224</property>
                                     <property name="wrap_width">90</property>
                                   </object>
                                   <attributes>
@@ -2103,7 +2145,6 @@ message message message message message</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="valign">center</property>
-                    <property name="text" translatable="yes">aaaaa</property>
                     <property name="shadow_type">etched-out</property>
                   </object>
                   <packing>
@@ -2137,7 +2178,10 @@ message message message message message</property>
     </style>
   </object>
   <object class="GtkDialog" id="confirmInsertCountDialog">
+    <property name="width_request">850</property>
+    <property name="height_request">530</property>
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">インサート個数を入力</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
@@ -2150,19 +2194,209 @@ message message message message message</property>
     </child>
     <child internal-child="vbox">
       <object class="GtkBox">
-        <property name="width_request">850</property>
         <property name="can_focus">False</property>
-        <property name="margin_top">50</property>
-        <property name="margin_bottom">50</property>
+        <property name="valign">center</property>
         <property name="orientation">vertical</property>
-        <property name="spacing">50</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox">
-            <property name="width_request">850</property>
             <property name="can_focus">False</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
             <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">50</property>
+            <child>
+              <object class="GtkLabel" id="confirmInsertCountLabel">
+                <property name="height_request">90</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="label" translatable="yes">使用するインサートの枚数を
+入力してください</property>
+                <property name="justify">center</property>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="spacing">30</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="width_request">310</property>
+                        <property name="height_request">50</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
+                        <property name="label" translatable="yes">インサート枚数 ： </property>
+                        <property name="xalign">1</property>
+                        <style>
+                          <class name="font-size_30px"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkButton" id="insertCountIncrementButton">
+                            <property name="label" translatable="yes">▲</property>
+                            <property name="width_request">65</property>
+                            <property name="height_request">65</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
+                            <property name="receives_default">True</property>
+                            <property name="halign">center</property>
+                            <property name="relief">none</property>
+                            <style>
+                              <class name="font-size_40px"/>
+                              <class name="padding_0px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkEntry" id="insertCountEntry">
+                            <property name="width_request">170</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <property name="editable">False</property>
+                            <property name="text" translatable="yes">1</property>
+                            <property name="xalign">0.5</property>
+                            <property name="shadow_type">etched-out</property>
+                            <style>
+                              <class name="font-size_30px"/>
+                              <class name="entry"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="insertCountDecrementButton">
+                            <property name="label" translatable="yes">▼</property>
+                            <property name="width_request">65</property>
+                            <property name="height_request">65</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="focus_on_click">False</property>
+                            <property name="receives_default">True</property>
+                            <property name="halign">center</property>
+                            <property name="relief">none</property>
+                            <style>
+                              <class name="font-size_40px"/>
+                              <class name="padding_0px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">2</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <style>
+                      <class name="font-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="insertCountDetectButton">
+                    <property name="label" translatable="yes">自動検出</property>
+                    <property name="width_request">280</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="trueButton"/>
+                      <class name="border-normal"/>
+                      <class name="font-bold"/>
+                      <class name="font-size_30px"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-normal"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
             <child>
               <object class="GtkButton" id="insertCountOkButton">
                 <property name="label" translatable="yes">OK</property>
@@ -2173,183 +2407,6 @@ message message message message message</property>
                 <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
                 <property name="halign">center</property>
-                <style>
-                  <class name="button"/>
-                  <class name="trueButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="confirmInsertCountLabel">
-            <property name="height_request">90</property>
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="label" translatable="yes">使用するインサートの枚数を
-入力してください</property>
-            <property name="justify">center</property>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="valign">center</property>
-            <property name="spacing">30</property>
-            <child>
-              <object class="GtkBox">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="width_request">310</property>
-                    <property name="height_request">50</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">center</property>
-                    <property name="valign">center</property>
-                    <property name="label" translatable="yes">インサート枚数 ： </property>
-                    <property name="xalign">1</property>
-                    <style>
-                      <class name="font-size_30px"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkBox">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="orientation">vertical</property>
-                    <child>
-                      <object class="GtkButton" id="insertCountIncrementButton">
-                        <property name="label" translatable="yes">▲</property>
-                        <property name="width_request">65</property>
-                        <property name="height_request">65</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="focus_on_click">False</property>
-                        <property name="receives_default">True</property>
-                        <property name="halign">center</property>
-                        <property name="relief">none</property>
-                        <style>
-                          <class name="font-size_40px"/>
-                          <class name="padding_0px"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkEntry" id="insertCountEntry">
-                        <property name="width_request">170</property>
-                        <property name="height_request">50</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="halign">center</property>
-                        <property name="valign">center</property>
-                        <property name="editable">False</property>
-                        <property name="text" translatable="yes">3</property>
-                        <property name="xalign">0.5</property>
-                        <property name="shadow_type">etched-out</property>
-                        <style>
-                          <class name="font-size_30px"/>
-                          <class name="entry"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkButton" id="insertCountDecrementButton">
-                        <property name="label" translatable="yes">▼</property>
-                        <property name="width_request">65</property>
-                        <property name="height_request">65</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="focus_on_click">False</property>
-                        <property name="receives_default">True</property>
-                        <property name="halign">center</property>
-                        <property name="relief">none</property>
-                        <style>
-                          <class name="font-size_40px"/>
-                          <class name="padding_0px"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">2</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <style>
-                  <class name="font-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="insertCountDetectButton">
-                <property name="label" translatable="yes">自動検出</property>
-                <property name="width_request">280</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
                 <style>
                   <class name="button"/>
                   <class name="trueButton"/>
@@ -2365,14 +2422,11 @@ message message message message message</property>
                 <property name="position">2</property>
               </packing>
             </child>
-            <style>
-              <class name="font-normal"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="position">3</property>
           </packing>
         </child>
       </object>
@@ -2382,7 +2436,10 @@ message message message message message</property>
     </style>
   </object>
   <object class="GtkDialog" id="confirmRegroundDialog">
+    <property name="width_request">670</property>
+    <property name="height_request">510</property>
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">再研磨工具か選択</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
@@ -2395,17 +2452,109 @@ message message message message message</property>
     </child>
     <child internal-child="vbox">
       <object class="GtkBox">
-        <property name="width_request">670</property>
         <property name="can_focus">False</property>
-        <property name="margin_top">50</property>
-        <property name="margin_bottom">50</property>
+        <property name="valign">center</property>
         <property name="orientation">vertical</property>
-        <property name="spacing">100</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox">
-            <property name="width_request">670</property>
             <property name="can_focus">False</property>
             <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="width_request">670</property>
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">100</property>
+            <child>
+              <object class="GtkLabel" id="confirmRegroundLabel">
+                <property name="height_request">90</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="label" translatable="yes">一度取り出された工具を検出しました
+再研磨された工具ですか？</property>
+                <property name="justify">center</property>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButtonBox">
+                <property name="width_request">400</property>
+                <property name="height_request">60</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="homogeneous">True</property>
+                <property name="layout_style">expand</property>
+                <child>
+                  <object class="GtkToggleButton" id="notRegroundButton">
+                    <property name="label" translatable="yes">いいえ</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border_3px"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkToggleButton" id="regroundButton">
+                    <property name="label" translatable="yes">はい</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border_3px"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-normal"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
             <child>
               <object class="GtkButton" id="confirmRegroundOkButton">
                 <property name="label" translatable="yes">OK</property>
@@ -2420,97 +2569,158 @@ message message message message message</property>
                   <class name="button"/>
                   <class name="trueButton"/>
                   <class name="border-normal"/>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
                 </style>
               </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="pack_type">end</property>
-                <property name="position">1</property>
+                <property name="position">2</property>
               </packing>
             </child>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="confirmRegroundLabel">
-            <property name="height_request">90</property>
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="label" translatable="yes">一度取り出された工具を検出しました
-再研磨された工具ですか？</property>
-            <property name="justify">center</property>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">0</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="confirmationDialog">
+    <property name="width_request">560</property>
+    <property name="height_request">350</property>
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">確認</property>
+    <property name="resizable">False</property>
+    <property name="modal">True</property>
+    <property name="window_position">center-on-parent</property>
+    <property name="type_hint">utility</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <property name="transient_for">mainWindow</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">1</property>
           </packing>
         </child>
         <child>
-          <object class="GtkButtonBox">
-            <property name="width_request">400</property>
-            <property name="height_request">60</property>
+          <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="halign">center</property>
-            <property name="homogeneous">True</property>
-            <property name="layout_style">expand</property>
+            <property name="valign">center</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">100</property>
             <child>
-              <object class="GtkToggleButton" id="notRegroundButton">
-                <property name="label" translatable="yes">いいえ</property>
+              <object class="GtkLabel" id="confirmationLabel">
+                <property name="height_request">90</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
+                <property name="halign">center</property>
+                <property name="margin_left">50</property>
+                <property name="margin_right">50</property>
+                <property name="label" translatable="yes">confirm confirm confirm
+confirm confirm confirm</property>
+                <property name="justify">center</property>
                 <style>
-                  <class name="button"/>
-                  <class name="falseButton"/>
-                  <class name="border_3px"/>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
                 </style>
               </object>
               <packing>
-                <property name="expand">True</property>
+                <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="regroundButton">
-                <property name="label" translatable="yes">はい</property>
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="spacing">60</property>
+                <child>
+                  <object class="GtkButton" id="confirmationNoButton">
+                    <property name="label" translatable="yes">いいえ</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">end</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="confirmationYesButton">
+                    <property name="label" translatable="yes">はい</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">start</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="trueButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
                 <style>
-                  <class name="button"/>
-                  <class name="falseButton"/>
-                  <class name="border_3px"/>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
                 </style>
               </object>
               <packing>
-                <property name="expand">True</property>
+                <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">1</property>
               </packing>
             </child>
-            <style>
-              <class name="font-normal"/>
-              <class name="font-size_30px"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -2524,117 +2734,9 @@ message message message message message</property>
       <class name="background-color_normal"/>
     </style>
   </object>
-  <object class="GtkDialog" id="logoutDialog">
-    <property name="can_focus">False</property>
-    <property name="resizable">False</property>
-    <property name="modal">True</property>
-    <property name="window_position">center-on-parent</property>
-    <property name="type_hint">utility</property>
-    <property name="deletable">False</property>
-    <property name="gravity">center</property>
-    <property name="transient_for">mainWindow</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
-    <child internal-child="vbox">
-      <object class="GtkBox">
-        <property name="width_request">670</property>
-        <property name="can_focus">False</property>
-        <property name="margin_top">50</property>
-        <property name="margin_bottom">50</property>
-        <property name="orientation">vertical</property>
-        <property name="spacing">100</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox">
-            <property name="width_request">670</property>
-            <property name="can_focus">False</property>
-            <property name="layout_style">center</property>
-            <child>
-              <object class="GtkButton" id="logoutNoButton">
-                <property name="label" translatable="yes">いいえ</property>
-                <property name="width_request">200</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">end</property>
-                <property name="margin_right">30</property>
-                <style>
-                  <class name="button"/>
-                  <class name="falseButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="logoutYesButton">
-                <property name="label" translatable="yes">はい</property>
-                <property name="width_request">200</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">start</property>
-                <property name="margin_left">30</property>
-                <style>
-                  <class name="button"/>
-                  <class name="trueButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel">
-            <property name="height_request">90</property>
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="label" translatable="yes">ログアウトしますか？</property>
-            <property name="justify">center</property>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    <style>
-      <class name="background-color_normal"/>
-    </style>
-  </object>
   <object class="GtkDialog" id="messageDialog">
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">通知</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
@@ -2700,141 +2802,11 @@ message message message</property>
       <class name="background-color_normal"/>
     </style>
   </object>
-  <object class="GtkDialog" id="passwordEntryDialog">
-    <property name="can_focus">False</property>
-    <property name="resizable">False</property>
-    <property name="modal">True</property>
-    <property name="window_position">center-on-parent</property>
-    <property name="type_hint">utility</property>
-    <property name="gravity">center</property>
-    <property name="transient_for">mainWindow</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
-    <child internal-child="vbox">
-      <object class="GtkBox">
-        <property name="width_request">670</property>
-        <property name="can_focus">False</property>
-        <property name="margin_top">50</property>
-        <property name="margin_bottom">50</property>
-        <property name="orientation">vertical</property>
-        <property name="spacing">100</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox">
-            <property name="width_request">670</property>
-            <property name="can_focus">False</property>
-            <property name="homogeneous">True</property>
-            <property name="layout_style">center</property>
-            <child>
-              <object class="GtkButton" id="passwordCancelButton">
-                <property name="label" translatable="yes">キャンセル</property>
-                <property name="width_request">200</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">end</property>
-                <property name="margin_right">30</property>
-                <style>
-                  <class name="button"/>
-                  <class name="falseButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="passwordEnterButton">
-                <property name="label" translatable="yes">確定</property>
-                <property name="width_request">200</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">start</property>
-                <property name="margin_left">30</property>
-                <style>
-                  <class name="button"/>
-                  <class name="trueButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="passwordEntryLabel">
-            <property name="height_request">90</property>
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="label" translatable="yes">パスワードを
-入力してください</property>
-            <property name="justify">center</property>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkEntry" id="passwordEntry">
-            <property name="width_request">550</property>
-            <property name="height_request">50</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="halign">center</property>
-            <property name="visibility">False</property>
-            <property name="invisible_char">●</property>
-            <style>
-              <class name="font-normal"/>
-              <class name="font-size_30px"/>
-              <class name="entry"/>
-            </style>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    <style>
-      <class name="background-color_normal"/>
-    </style>
-  </object>
-  <object class="GtkDialog" id="warningDialog">
+  <object class="GtkDialog" id="overrideConfirmDialog">
     <property name="width_request">1260</property>
     <property name="height_request">750</property>
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">警告</property>
     <property name="resizable">False</property>
     <property name="window_position">center-on-parent</property>
     <property name="type_hint">utility</property>
@@ -2849,23 +2821,17 @@ message message message</property>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
+        <property name="halign">center</property>
         <property name="valign">center</property>
-        <property name="margin_top">20</property>
-        <property name="margin_bottom">20</property>
         <property name="orientation">vertical</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox">
             <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="valign">center</property>
+            <property name="halign">end</property>
             <property name="layout_style">center</property>
             <child>
               <placeholder/>
             </child>
-            <style>
-              <class name="font-normal"/>
-              <class name="font-size_30px"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -2878,18 +2844,56 @@ message message message</property>
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="halign">center</property>
-            <property name="margin_left">80</property>
-            <property name="margin_right">80</property>
-            <property name="margin_top">80</property>
-            <property name="margin_bottom">80</property>
-            <property name="spacing">30</property>
+            <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">80</property>
             <child>
-              <object class="GtkImage">
-                <property name="width_request">360</property>
-                <property name="height_request">360</property>
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="pixbuf">material/warning.png</property>
+                <property name="halign">center</property>
+                <property name="spacing">30</property>
+                <child>
+                  <object class="GtkImage">
+                    <property name="width_request">360</property>
+                    <property name="height_request">360</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="valign">center</property>
+                    <property name="pixbuf">img/warning_351x346.png</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="overrideConfirmLabel">
+                    <property name="width_request">700</property>
+                    <property name="height_request">360</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="label" translatable="yes">warning warning warning
+warning warning warning
+warning warning warning
+warning warning warning</property>
+                    <property name="justify">center</property>
+                    <style>
+                      <class name="font-bold"/>
+                      <class name="font-size_50px"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -2898,21 +2902,59 @@ message message message</property>
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="warningLabel">
-                <property name="width_request">700</property>
-                <property name="height_request">360</property>
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <property name="label" translatable="yes">warning warning warning
-warning warning warning
-warning warning warning
-warning warning warning</property>
-                <property name="justify">center</property>
+                <property name="halign">end</property>
+                <property name="spacing">60</property>
+                <child>
+                  <object class="GtkButton" id="overrideConfirmOverrideButton">
+                    <property name="label" translatable="yes">無視して続ける</property>
+                    <property name="width_request">285</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">end</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="overrideConfirmCancelButton">
+                    <property name="label" translatable="yes">キャンセル</property>
+                    <property name="width_request">285</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">start</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="trueButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
                 <style>
                   <class name="font-bold"/>
-                  <class name="font-size_50px"/>
+                  <class name="font-size_30px"/>
                 </style>
               </object>
               <packing>
@@ -2925,7 +2967,488 @@ warning warning warning</property>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="passwordEntryDialog">
+    <property name="width_request">670</property>
+    <property name="height_request">500</property>
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">パスワード入力</property>
+    <property name="resizable">False</property>
+    <property name="modal">True</property>
+    <property name="window_position">center-on-parent</property>
+    <property name="type_hint">utility</property>
+    <property name="gravity">center</property>
+    <property name="transient_for">mainWindow</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
             <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">100</property>
+            <child>
+              <object class="GtkLabel" id="passwordEntryLabel">
+                <property name="height_request">90</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="label" translatable="yes">パスワードを
+入力してください</property>
+                <property name="justify">center</property>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="passwordEntry">
+                <property name="width_request">550</property>
+                <property name="height_request">50</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="halign">center</property>
+                <property name="visibility">False</property>
+                <property name="invisible_char">●</property>
+                <style>
+                  <class name="font-normal"/>
+                  <class name="font-size_30px"/>
+                  <class name="entry"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="spacing">60</property>
+                <child>
+                  <object class="GtkButton" id="passwordEnterButton">
+                    <property name="label" translatable="yes">確定</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">start</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="trueButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="passwordCancelButton">
+                    <property name="label" translatable="yes">キャンセル</property>
+                    <property name="width_request">200</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">end</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="warningDialog">
+    <property name="width_request">1260</property>
+    <property name="height_request">750</property>
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">警告</property>
+    <property name="resizable">False</property>
+    <property name="window_position">center-on-parent</property>
+    <property name="type_hint">utility</property>
+    <property name="accept_focus">False</property>
+    <property name="focus_on_map">False</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <property name="transient_for">mainWindow</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">80</property>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="spacing">30</property>
+                <child>
+                  <object class="GtkImage">
+                    <property name="width_request">360</property>
+                    <property name="height_request">360</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="valign">center</property>
+                    <property name="pixbuf">img/warning_351x346.png</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="warningLabel">
+                    <property name="width_request">700</property>
+                    <property name="height_request">360</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="label" translatable="yes">warning warning warning
+warning warning warning
+warning warning warning
+warning warning warning</property>
+                    <property name="justify">center</property>
+                    <style>
+                      <class name="font-bold"/>
+                      <class name="font-size_50px"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="warningListDialog">
+    <property name="width_request">1260</property>
+    <property name="height_request">895</property>
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">警告</property>
+    <property name="resizable">False</property>
+    <property name="window_position">center-on-parent</property>
+    <property name="type_hint">utility</property>
+    <property name="accept_focus">False</property>
+    <property name="focus_on_map">False</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <property name="transient_for">mainWindow</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="halign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="width_request">1100</property>
+            <property name="height_request">735</property>
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">20</property>
+            <child>
+              <object class="GtkImage">
+                <property name="width_request">90</property>
+                <property name="height_request">90</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="valign">center</property>
+                <property name="pixbuf">img/warning_90x89.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="width_request">1090</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="valign">center</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkTreeView" id="warningList">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="model">liststore1</property>
+                    <property name="search_column">0</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="fixed_width">1006</property>
+                        <property name="title" translatable="yes">警告</property>
+                        <property name="alignment">0.5</property>
+                        <child>
+                          <object class="GtkCellRendererText">
+                            <property name="height">78</property>
+                            <property name="wrap_width">996</property>
+                          </object>
+                          <attributes>
+                            <attribute name="cell-background-rgba">3</attribute>
+                            <attribute name="text">0</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="fixed_width">90</property>
+                        <property name="title" translatable="yes">発生件数</property>
+                        <property name="alignment">0.5</property>
+                        <child>
+                          <object class="GtkCellRendererText">
+                            <property name="xalign">0.20000000298023224</property>
+                            <property name="alignment">center</property>
+                            <property name="wrap_width">90</property>
+                          </object>
+                          <attributes>
+                            <attribute name="cell-background-rgba">4</attribute>
+                            <attribute name="text">1</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <style>
+                      <class name="warningTree-style"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="border_solid"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">end</property>
+                <property name="valign">end</property>
+                <property name="spacing">60</property>
+                <child>
+                  <object class="GtkButton" id="warningListSuppressButton">
+                    <property name="label" translatable="yes">しばらく無視</property>
+                    <property name="width_request">230</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">end</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="warningListCloseButton">
+                    <property name="label" translatable="yes">閉じる</property>
+                    <property name="width_request">230</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">start</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="pack_type">end</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
           </packing>
         </child>
       </object>
@@ -2952,7 +3475,10 @@ warning warning warning</property>
     </data>
   </object>
   <object class="GtkDialog" id="reconcileFilterDialog">
+    <property name="width_request">1060</property>
+    <property name="height_request">470</property>
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">絞り込み条件入力</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
@@ -2965,68 +3491,18 @@ warning warning warning</property>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
-        <property name="margin_left">10</property>
-        <property name="margin_right">10</property>
-        <property name="margin_top">10</property>
-        <property name="margin_bottom">10</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
         <property name="orientation">vertical</property>
-        <property name="spacing">50</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox">
-            <property name="width_request">1040</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkButton" id="reconcileFilterEnterButton">
-                <property name="label" translatable="yes">期間リセット</property>
-                <property name="width_request">250</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">end</property>
-                <property name="margin_right">300</property>
-                <style>
-                  <class name="button"/>
-                  <class name="falseButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">0</property>
-              </packing>
+              <placeholder/>
             </child>
             <child>
-              <object class="GtkButton" id="reconcileFilterResetButton">
-                <property name="label" translatable="yes">決定</property>
-                <property name="width_request">220</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="halign">start</property>
-                <property name="margin_left">300</property>
-                <style>
-                  <class name="button"/>
-                  <class name="trueButton"/>
-                  <class name="border-normal"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">1</property>
-              </packing>
+              <placeholder/>
             </child>
-            <style>
-              <class name="font-bold"/>
-              <class name="font-size_30px"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -3038,81 +3514,25 @@ warning warning warning</property>
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="halign">start</property>
-            <property name="valign">start</property>
-            <property name="spacing">80</property>
-            <child>
-              <object class="GtkLabel" id="reconcileToolTypeFilterLabel">
-                <property name="width_request">65</property>
-                <property name="height_request">50</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">start</property>
-                <property name="label" translatable="yes">分類</property>
-                <property name="xalign">0</property>
-                <style>
-                  <class name="font-bold"/>
-                  <class name="font-size_30px"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkComboBox" id="reconcileToolTypeFilterComboBox">
-                <property name="width_request">300</property>
-                <property name="height_request">60</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="halign">start</property>
-                <property name="model">reconcileToolTypeFilterListstore</property>
-                <property name="active">0</property>
-                <child>
-                  <object class="GtkCellRendererText"/>
-                  <attributes>
-                    <attribute name="text">0</attribute>
-                  </attributes>
-                </child>
-                <style>
-                  <class name="font-bold"/>
-                  <class name="font-size_30px"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
             <property name="orientation">vertical</property>
+            <property name="spacing">50</property>
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="spacing">20</property>
+                <property name="halign">start</property>
+                <property name="valign">start</property>
+                <property name="spacing">80</property>
                 <child>
-                  <object class="GtkLabel" id="reconcilePeriodFilterLabel">
-                    <property name="width_request">215</property>
+                  <object class="GtkLabel" id="reconcileToolTypeFilterLabel">
+                    <property name="width_request">65</property>
                     <property name="height_request">50</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="halign">start</property>
-                    <property name="label" translatable="yes">最終棚卸し日時</property>
+                    <property name="label" translatable="yes">分類</property>
                     <property name="xalign">0</property>
                     <style>
                       <class name="font-bold"/>
@@ -3126,14 +3546,25 @@ warning warning warning</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSwitch" id="reconcilePeriodFilterSwitch">
-                    <property name="width_request">70</property>
-                    <property name="height_request">35</property>
+                  <object class="GtkComboBox" id="reconcileToolTypeFilterComboBox">
+                    <property name="width_request">300</property>
+                    <property name="height_request">60</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
                     <property name="halign">start</property>
-                    <property name="valign">center</property>
-                    <property name="margin_top">5</property>
+                    <property name="model">reconcileToolTypeFilterListstore</property>
+                    <property name="active">0</property>
+                    <child>
+                      <object class="GtkCellRendererText"/>
+                      <attributes>
+                        <attribute name="text">0</attribute>
+                      </attributes>
+                    </child>
+                    <style>
+                      <class name="font-bold"/>
+                      <class name="font-size_30px"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -3150,92 +3581,27 @@ warning warning warning</property>
             </child>
             <child>
               <object class="GtkBox">
-                <property name="width_request">1040</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="halign">center</property>
-                <property name="spacing">20</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="valign">center</property>
                     <property name="spacing">20</property>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkLabel" id="reconcilePeriodFilterLabel">
+                        <property name="width_request">215</property>
+                        <property name="height_request">50</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="valign">center</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkButton" id="reconcileFilterStartYearIncrementButton">
-                            <property name="label" translatable="yes">▲</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkEntry" id="reconcileFilterStartYearEntry">
-                            <property name="width_request">170</property>
-                            <property name="height_request">50</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="editable">False</property>
-                            <property name="text" translatable="yes">2024</property>
-                            <property name="xalign">0.5</property>
-                            <property name="shadow_type">etched-out</property>
-                            <style>
-                              <class name="font-size_30px"/>
-                              <class name="entry"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">False</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="reconcileFilterStartYearDecrementButton">
-                            <property name="label" translatable="yes">▼</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">2</property>
-                          </packing>
-                        </child>
+                        <property name="halign">start</property>
+                        <property name="label" translatable="yes">最終棚卸し日時</property>
+                        <property name="xalign">0</property>
+                        <style>
+                          <class name="font-bold"/>
+                          <class name="font-size_30px"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -3244,125 +3610,19 @@ warning warning warning</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkLabel">
-                        <property name="width_request">40</property>
-                        <property name="height_request">50</property>
+                      <object class="GtkSwitch" id="reconcilePeriodFilterSwitch">
+                        <property name="width_request">70</property>
+                        <property name="height_request">35</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="halign">center</property>
+                        <property name="halign">start</property>
                         <property name="valign">center</property>
-                        <property name="label" translatable="yes">年</property>
-                        <style>
-                          <class name="font-normal"/>
-                          <class name="font-size_30px"/>
-                        </style>
+                        <property name="margin_top">5</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
                         <property name="position">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="valign">center</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkButton" id="reconcileFilterStartMonthIncrementButton">
-                            <property name="label" translatable="yes">▲</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkEntry" id="reconcileFilterStartMonthEntry">
-                            <property name="width_request">170</property>
-                            <property name="height_request">50</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="editable">False</property>
-                            <property name="text" translatable="yes">4</property>
-                            <property name="xalign">0.5</property>
-                            <property name="shadow_type">etched-out</property>
-                            <style>
-                              <class name="font-size_30px"/>
-                              <class name="entry"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="reconcileFilterStartMonthDecrementButton">
-                            <property name="label" translatable="yes">▼</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">2</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="width_request">40</property>
-                        <property name="height_request">50</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="halign">center</property>
-                        <property name="valign">center</property>
-                        <property name="label" translatable="yes">月</property>
-                        <style>
-                          <class name="font-normal"/>
-                          <class name="font-size_30px"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">3</property>
                       </packing>
                     </child>
                   </object>
@@ -3373,53 +3633,93 @@ warning warning warning</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
-                    <property name="width_request">40</property>
-                    <property name="height_request">50</property>
+                  <object class="GtkBox">
+                    <property name="width_request">1040</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="halign">center</property>
-                    <property name="valign">center</property>
-                    <property name="label" translatable="yes">～</property>
-                    <style>
-                      <class name="font-normal"/>
-                      <class name="font-size_30px"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkBox">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="valign">center</property>
                     <property name="spacing">20</property>
                     <child>
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">center</property>
-                        <property name="orientation">vertical</property>
+                        <property name="spacing">20</property>
                         <child>
-                          <object class="GtkButton" id="reconcileFilterEndYearIncrementButton">
-                            <property name="label" translatable="yes">▲</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
+                          <object class="GtkBox">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
                             <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterStartYearIncrementButton">
+                                <property name="label" translatable="yes">▲</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="reconcileFilterStartYearEntry">
+                                <property name="width_request">170</property>
+                                <property name="height_request">50</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="editable">False</property>
+                                <property name="text" translatable="yes">2024</property>
+                                <property name="xalign">0.5</property>
+                                <property name="shadow_type">etched-out</property>
+                                <style>
+                                  <class name="font-size_30px"/>
+                                  <class name="entry"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterStartYearDecrementButton">
+                                <property name="label" translatable="yes">▼</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -3428,49 +3728,125 @@ warning warning warning</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry" id="reconcileFilterEndYearEntry">
-                            <property name="width_request">170</property>
+                          <object class="GtkLabel">
+                            <property name="width_request">40</property>
                             <property name="height_request">50</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="halign">center</property>
                             <property name="valign">center</property>
-                            <property name="editable">False</property>
-                            <property name="text" translatable="yes">2025</property>
-                            <property name="xalign">0.5</property>
-                            <property name="shadow_type">etched-out</property>
+                            <property name="label" translatable="yes">年</property>
                             <style>
+                              <class name="font-normal"/>
                               <class name="font-size_30px"/>
-                              <class name="entry"/>
-                            </style>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">False</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="reconcileFilterEndYearDecrementButton">
-                            <property name="label" translatable="yes">▼</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
-                            <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
                             </style>
                           </object>
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="valign">center</property>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterStartMonthIncrementButton">
+                                <property name="label" translatable="yes">▲</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="reconcileFilterStartMonthEntry">
+                                <property name="width_request">170</property>
+                                <property name="height_request">50</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="editable">False</property>
+                                <property name="text" translatable="yes">4</property>
+                                <property name="xalign">0.5</property>
+                                <property name="shadow_type">etched-out</property>
+                                <style>
+                                  <class name="font-size_30px"/>
+                                  <class name="entry"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterStartMonthDecrementButton">
+                                <property name="label" translatable="yes">▼</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
                             <property name="position">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="width_request">40</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <property name="label" translatable="yes">月</property>
+                            <style>
+                              <class name="font-normal"/>
+                              <class name="font-size_30px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">3</property>
                           </packing>
                         </child>
                       </object>
@@ -3488,7 +3864,7 @@ warning warning warning</property>
                         <property name="can_focus">False</property>
                         <property name="halign">center</property>
                         <property name="valign">center</property>
-                        <property name="label" translatable="yes">年</property>
+                        <property name="label" translatable="yes">～</property>
                         <style>
                           <class name="font-normal"/>
                           <class name="font-size_30px"/>
@@ -3505,23 +3881,82 @@ warning warning warning</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="valign">center</property>
-                        <property name="orientation">vertical</property>
+                        <property name="spacing">20</property>
                         <child>
-                          <object class="GtkButton" id="reconcileFilterEndMonthIncrementButton">
-                            <property name="label" translatable="yes">▲</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
+                          <object class="GtkBox">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
                             <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterEndYearIncrementButton">
+                                <property name="label" translatable="yes">▲</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="reconcileFilterEndYearEntry">
+                                <property name="width_request">170</property>
+                                <property name="height_request">50</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="editable">False</property>
+                                <property name="text" translatable="yes">2025</property>
+                                <property name="xalign">0.5</property>
+                                <property name="shadow_type">etched-out</property>
+                                <style>
+                                  <class name="font-size_30px"/>
+                                  <class name="entry"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterEndYearDecrementButton">
+                                <property name="label" translatable="yes">▼</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -3530,20 +3965,17 @@ warning warning warning</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry" id="reconcileFilterEndMonthEntry">
-                            <property name="width_request">170</property>
+                          <object class="GtkLabel">
+                            <property name="width_request">40</property>
                             <property name="height_request">50</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="halign">center</property>
                             <property name="valign">center</property>
-                            <property name="editable">False</property>
-                            <property name="text" translatable="yes">3</property>
-                            <property name="xalign">0.5</property>
-                            <property name="shadow_type">etched-out</property>
+                            <property name="label" translatable="yes">年</property>
                             <style>
+                              <class name="font-normal"/>
                               <class name="font-size_30px"/>
-                              <class name="entry"/>
                             </style>
                           </object>
                           <packing>
@@ -3553,26 +3985,105 @@ warning warning warning</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkButton" id="reconcileFilterEndMonthDecrementButton">
-                            <property name="label" translatable="yes">▼</property>
-                            <property name="width_request">65</property>
-                            <property name="height_request">65</property>
+                          <object class="GtkBox">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="focus_on_click">False</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">center</property>
                             <property name="valign">center</property>
-                            <property name="relief">none</property>
-                            <style>
-                              <class name="font-size_40px"/>
-                              <class name="padding_0px"/>
-                            </style>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterEndMonthIncrementButton">
+                                <property name="label" translatable="yes">▲</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="reconcileFilterEndMonthEntry">
+                                <property name="width_request">170</property>
+                                <property name="height_request">50</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="editable">False</property>
+                                <property name="text" translatable="yes">3</property>
+                                <property name="xalign">0.5</property>
+                                <property name="shadow_type">etched-out</property>
+                                <style>
+                                  <class name="font-size_30px"/>
+                                  <class name="entry"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="reconcileFilterEndMonthDecrementButton">
+                                <property name="label" translatable="yes">▼</property>
+                                <property name="width_request">65</property>
+                                <property name="height_request">65</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="focus_on_click">False</property>
+                                <property name="receives_default">True</property>
+                                <property name="halign">center</property>
+                                <property name="valign">center</property>
+                                <property name="relief">none</property>
+                                <style>
+                                  <class name="font-size_40px"/>
+                                  <class name="padding_0px"/>
+                                </style>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
                             <property name="position">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="width_request">40</property>
+                            <property name="height_request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <property name="label" translatable="yes">月</property>
+                            <style>
+                              <class name="font-normal"/>
+                              <class name="font-size_30px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">3</property>
                           </packing>
                         </child>
                       </object>
@@ -3582,36 +4093,16 @@ warning warning warning</property>
                         <property name="position">2</property>
                       </packing>
                     </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="width_request">40</property>
-                        <property name="height_request">50</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="halign">center</property>
-                        <property name="valign">center</property>
-                        <property name="label" translatable="yes">月</property>
-                        <style>
-                          <class name="font-normal"/>
-                          <class name="font-size_30px"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">3</property>
-                      </packing>
-                    </child>
+                    <style>
+                      <class name="font-normal"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">2</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
-                <style>
-                  <class name="font-normal"/>
-                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -3619,11 +4110,71 @@ warning warning warning</property>
                 <property name="position">1</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkButton" id="reconcileFilterEnterButton">
+                    <property name="label" translatable="yes">期間リセット</property>
+                    <property name="width_request">250</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">end</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="reconcileFilterResetButton">
+                    <property name="label" translatable="yes">決定</property>
+                    <property name="width_request">220</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">start</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="trueButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">2</property>
+            <property name="position">0</property>
           </packing>
         </child>
       </object>
