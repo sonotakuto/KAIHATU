@@ -179,6 +179,7 @@ public:
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkDialog* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
 };
 
 /**

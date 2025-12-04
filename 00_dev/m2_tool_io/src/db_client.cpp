@@ -92,7 +92,7 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 						.category	= std::any_cast<std::string>				(row.at("tool_category")),
 						.material	= std::any_cast<std::string>				(row.at("tool_material")),
 						.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
-						.is_frozen	= std::any_cast<bool>						(row.at("is_frozen"))
+						.is_frozen	= static_cast<bool>(std::any_cast<signed char>(row.at("is_frozen")))
 					}
 				});
 			}
@@ -139,7 +139,8 @@ static std::optional<ToolingListInfo> query_and_populate_tooling_list(
 		if (print_time.has_value()) {
 			sql += "AND pal.program_print_time = ? ";
 		}
-		sql += "ORDER BY ta.tool_assignment_id ASC;";
+		// 並び順を指定
+		sql += "ORDER BY LENGTH(ta.tool_num) ASC, ta.tool_num ASC;";
 
 		stmt.prepare(sql);
 		stmt.bind(1, program_id);
@@ -375,31 +376,8 @@ bool save_history(const RecOperationTable& record) {
 
 		stmt.prepare(sql);
 
-		// OperationClass enumをデータベースの文字列に変換します。
-		std::string op_class_str;
-		switch (record.operation_class) {
-			case OperationClass::OUT:		op_class_str = "取出"; break;
-			case OperationClass::ADD:		op_class_str = "補充"; break;
-			case OperationClass::INVENTORY:	op_class_str = "棚卸"; break;
-			default:
-				DEV_PRINT(stderr, "Error: Unknown operation class provided to save_history.\n");
-				return false;
-		}
-
-		// TrackResult enumをデータベースの文字列に変換します。
-		std::optional<std::string> track_result_str_opt;
-		if (record.track_result.has_value()) {
-			switch (record.track_result.value()) {
-				case TrackResult::NORMAL:		track_result_str_opt = "正常"; break;
-				case TrackResult::OVERRIDDEN:	track_result_str_opt = "異常"; break;
-				default:
-					DEV_PRINT(stderr, "Error: Unknown track result provided to save_history.\n");
-					return false;
-			}
-		}
-
 		// 各プレースホルダにRecOperationTable構造体の値をバインドします。
-		stmt.bind(1, op_class_str);
+		stmt.bind(1, to_db_string(record.operation_class));
 		stmt.bind(2, record.user_id);
 		stmt.bind(3, record.proc_time);
 		stmt.bind(4, record.storage_area_id);
@@ -407,7 +385,10 @@ bool save_history(const RecOperationTable& record) {
 		stmt.bind(6, record.video_path);
 		stmt.bind(7, record.tool_num);
 		stmt.bind(8, record.line_id);
-		stmt.bind(9, track_result_str_opt);
+		stmt.bind(9, ((record.track_result.has_value())
+			? (std::make_optional(to_db_string(record.track_result.value())))
+			: (std::nullopt))
+		);
 
 		// 準備されたステートメントを実行します。
 		stmt.executePrepared();
@@ -478,12 +459,7 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		track_result_strs.reserve(records.size());
 
 		for (const auto& rec : records) {
-			switch (rec.operation_class) {
-				case OperationClass::OUT:		op_class_strs.push_back("取出"); break;
-				case OperationClass::ADD:		op_class_strs.push_back("補充"); break;
-				case OperationClass::INVENTORY:	op_class_strs.push_back("棚卸"); break;
-				default: throw std::runtime_error("Unknown operation class");
-			}
+			op_class_strs.push_back(to_db_string(rec.operation_class));
 			user_ids.push_back(rec.user_id);
 			proc_times.push_back(rec.proc_time);
 			storage_area_ids.push_back(rec.storage_area_id);
@@ -491,15 +467,10 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 			video_paths.push_back(rec.video_path);
 			tool_nums.push_back(rec.tool_num);
 			line_ids.push_back(rec.line_id);
-			if (rec.track_result.has_value()) {
-				switch (rec.track_result.value()) {
-					case TrackResult::NORMAL:		track_result_strs.push_back("正常"); break;
-					case TrackResult::OVERRIDDEN:	track_result_strs.push_back("異常"); break;
-					default: throw std::runtime_error("Unknown track result");
-				}
-			} else {
-				track_result_strs.push_back(std::nullopt);
-			}
+			track_result_strs.push_back((rec.track_result.has_value())
+				? (std::make_optional(to_db_string(rec.track_result.value())))
+				: (std::nullopt)
+			);
 		}
 
 		// 6. 各列のデータを一括でバインド
@@ -621,8 +592,12 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 
 		const auto& row = rows[0];
 
-		// enum を文字列として取得しておく
-		std::string condition_str	= std::any_cast<std::string>(row.at("storage_condition"));
+		// enum を取得しておく
+		std::optional<StorageCondition> storage_condition = from_db_string<StorageCondition>(std::any_cast<std::string>(row.at("storage_condition")));
+		if (!storage_condition.has_value()) {
+			DEV_PRINT(stderr, "DB Error in get_UniqueToolInfo: Invalid storage_condition value.\n");
+			return std::nullopt;
+		}
 
 		// mst_tool テーブルの情報を詰めて用意しておく
 		MstToolInfo mst_tool_info{
@@ -664,18 +639,7 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 				)
 			),
 
-			.storage_condition = (
-				(condition_str == "補充前") ? (
-					StorageCondition::NOT_STORED
-				) : (
-					(condition_str == "保管中") ? (
-						StorageCondition::STORED
-					) : (
-						StorageCondition::TAKEN_OUT
-					)
-				)
-			),
-
+			.storage_condition = storage_condition.value(),
 			.regrind_count = stdex::any_cast_optional<std::int32_t>(row.at("regrind_count")),
 		};
 
