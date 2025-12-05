@@ -233,6 +233,7 @@ MainWindow::MainWindow() :
 	passwordEntryDialog(glade, "passwordEntryDialog"),
 	warningDialog(glade, "warningDialog"),
 	warningListDialog(glade, "warningListDialog"),
+	reconcileFilterDialog(glade, "reconcileFilterDialog"),
 	// インサート枚数確認ダイアログ内
 	confirmInsertCountLabel(glade, "confirmInsertCountLabel"),
 	insertCountIncrementButton(glade, "insertCountIncrementButton"),
@@ -425,7 +426,7 @@ MainWindow::MainWindow() :
 	logoutButton.on_clicked([this]() { this->logoutButton_on_clicked(); });
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
 	listChangeButton.on_clicked([this]() { this->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); });
-	filterButton.on_clicked([this](){ reconcileFilterDialog.run(this); });
+	filterButton.on_clicked([this](){ this->reconcileFilterDialog.run(this); });
 	liststore3columnsAll.on_selection_changed_by_user([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
 	prevButton3columns.on_clicked([this]() { this->prevButton3columns_on_clicked(); });
 	nextButton3columns.on_clicked([this]() { this->nextButton3columns_on_clicked(); });
@@ -3705,7 +3706,6 @@ void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
 			},
 			// 通常の背景色で表示
 			.cell_state_0to4 = TableCellState::NORMAL,
-			.cell_state_5    = TableCellState::NORMAL,
 			// 後続の処理で使うため、元の StrageAreaInfo を保持しておく
 			.raw_data = area_info 
 		});
