@@ -3106,25 +3106,19 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	if (unique_info_opt.has_value()) {
 		UniqueToolInfo& unique_info = unique_info_opt.value();
 		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.value().id) {	// FIXME: nullopt対応
-			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
-			}, true);
+			add_warning(WarningType::DIFFERENT_TOOL);
 			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
-			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"この工具は既に『取り出し済み』になっています\n別の工具を読み取ってください", "この こうぐは すでに 『とりだしずみ』に なっています\nべつの こうぐを よみとってください"}
-			}, true);
+			add_warning(WarningType::ALREADY_RETRIEVED);
 			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::NOT_STORED) {
-			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"この工具は『補充待ち』になっています\n別の工具を読み取ってください", "この こうぐは 『ほじゅうまち』に なっています\nべつの こうぐを よみとってください"}
-			}, true);
+			add_warning(WarningType::NOT_YET_STORED);
 			qrCodeEntry.grab_focus();
 			return;
 		}
@@ -3132,9 +3126,7 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 		tracker::g_tool_tracker->notify_qr_scan();
 		m_pending_tool_info = std::move(unique_info);
 	} else {
-		update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
-		}, true);
+		add_warning(WarningType::NOT_FOUND);
 	}
 	qrCodeEntry.grab_focus();
 }
@@ -3235,11 +3227,11 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 			) {
 				DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が不正値です\n");
 				// BUG: 不正値対応
-//				update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-//					.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
-//				}, true);
+//				add_warning(WarningType::DIFFERENT_TOOL);
 				result = false;
 			} else {
+				remove_warning(WarningType::SCAN_FAILURE, true);	// true = 強制削除
+				remove_warning(WarningType::UNSCANNED_OUT_FRAME, false);
 				// 警告ダイアログが表示されていれば非表示に
 				if (warningDialog.get_mapped()) {
 					warningDialog.hide();
@@ -3349,39 +3341,22 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		break;
 	}
 	case tracker::NotificationType::SCAN_FAILURE: {
-		update_widget_state({&messageLabel, &warningLabel}, WidgetState{.text = UiText{
-			"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい。",
-			"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください。"
-		}}, true);
+		add_warning(WarningType::SCAN_FAILURE);
 		result = false;
 		break;
 	}
 	case tracker::NotificationType::SCANNED_IN_CONTAINER: {
-		if (!m_ignore_all_warnings) {
-			update_widget_state(&warningLabel, WidgetState{.text = UiText{
-				"スキャン済みの工具を\nコンテナに戻さないで下さい。",
-				"スキャンずみの こうぐを\nコンテナに もどさないでください。"
-			}}, true);
-			warningDialog.show_all();
-		}
+		add_warning(WarningType::SCANNED_IN_CONTAINER);
+		result = false;
 		break;
 	}
 	case tracker::NotificationType::OTHER_IN_CONTAINER: {
-		if (!m_ignore_all_warnings) {
-			update_widget_state(&warningLabel, WidgetState{.text = UiText{
-				"コンテナの外にあった工具を\nコンテナに入れないでください。",
-				"コンテナのそとに あった こうぐを\nコンテナに いれないでください。"
-			}}, true);
-			warningDialog.show_all();
-		}
+		add_warning(WarningType::OTHER_IN_CONTAINER);
+		result = false;
 		break;
 	}
 	case tracker::NotificationType::UNSCANNED_OUT_FRAME: {
-		update_widget_state(&warningLabel, WidgetState{.text = UiText{
-			"QRコードリーダーで読み取らずに\n工具を取り出そうとしています。\n\nQRコードリーダーで読み取ってから、\n工具を取り出して下さい。",
-			"QRコードリーダーで よみとらずに\nこうぐを とりだそうと しています。\n\nQRコードリーダーで よみとってから、\nこうぐを とりだしてください。"
-		}}, true);
-		warningDialog.show_all();
+		add_warning(WarningType::UNSCANNED_OUT_FRAME);
 		result = false;
 		break;
 	}
