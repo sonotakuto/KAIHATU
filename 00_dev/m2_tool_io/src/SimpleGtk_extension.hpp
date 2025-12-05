@@ -613,8 +613,9 @@ public:
 template<typename ItemType>
 class ListStoreModelBase {
 public:
-	/// @brief インデックスやサイズを表すための型エイリアス
-	using size_type = typename std::vector<ItemType>::size_type;
+	// --- 型定義 ---
+	using size_type = typename std::vector<ItemType>::size_type;			///< インデックスやサイズを表すための型エイリアス
+	using const_iterator = typename std::vector<ItemType>::const_iterator;	///< std::vector の const_iterator をそのまま使う型定義
 
 protected:
 	/// @brief (View) SimpleGtkでラップされたGtkListStoreの所有権を持つポインタ。
@@ -666,7 +667,23 @@ protected:
 		}
 	}
 
-	public:
+	/**
+	 * @brief (内部ヘルパー) 現在の m_data_model の内容で GTK側のストアを完全に作り直します。
+	 * @details clear() して append() するのと同等ですが、一括操作用です。
+	 */
+	void repopulate_store() {
+		// GTK側のストアをクリア
+		m_list_store_ptr->clear();
+
+		GtkTreeIter iter;
+		// データモデルの全要素をGTK側に追加
+		for (const auto& item : m_data_model) {
+			get_sg_store()->append(&iter);
+			set_row_to_store(&iter, item);
+		}
+	}
+
+public:
 	/**
 	 * @brief ListStoreModelBaseのコンストラクタ。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
@@ -691,6 +708,17 @@ protected:
 	 * 仮想デストラクタを定義しておくのが安全です。
 	 */
 	virtual ~ListStoreModelBase() = default;
+
+	// --- イテレータ対応 (読み取り専用) ---
+
+	const_iterator begin() const { return m_data_model.begin(); }
+	const_iterator end() const { return m_data_model.end(); }
+	const_reverse_iterator rbegin() const noexcept { return m_data_model.rbegin(); }
+	const_reverse_iterator rend() const noexcept { return m_data_model.rend(); }
+	const_iterator cbegin() const { return m_data_model.cbegin(); }
+	const_iterator cend() const { return m_data_model.cend(); }
+	const_reverse_iterator crbegin() const noexcept { return m_data_model.crbegin(); }
+	const_reverse_iterator crend() const noexcept { return m_data_model.crend(); }
 
 	// --- 基本的なデータ操作（単一行） ---
 
@@ -725,6 +753,14 @@ protected:
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_data_model.clear();
 		m_list_store_ptr->clear();
+	}
+
+	/**
+	 * @brief 内部データモデルの容量を事前に確保します。
+	 * @param[in] new_cap 確保する新しい容量。
+	 */
+	void reserve(size_type new_cap) {
+		m_data_model.reserve(new_cap);
 	}
 
 	/**
@@ -896,6 +932,85 @@ protected:
 			update(pos, item);
 		}
 		return true; // 全て成功
+	}
+
+	/**
+	 * @brief データモデル全体を新しいデータセットで置き換えます（コピー版）。
+	 * @details 既存のデータは破棄され、新しいデータでビューが再構築されます。
+	 * @param[in] new_data 新しいデータセット。
+	 */
+	void set_model_data(const std::vector<ItemType>& new_data) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_data_model = new_data; // コピー
+		repopulate_store();
+	}
+
+	/**
+	 * @brief データモデル全体を新しいデータセットで置き換えます（ムーブ版）。
+	 * @details 既存のデータは破棄され、新しいデータでビューが再構築されます。
+	 * @param[in] new_data 新しいデータセット（ムーブ元）。
+	 */
+	void set_model_data(std::vector<ItemType>&& new_data) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_data_model = std::move(new_data); // ムーブ
+		repopulate_store();
+	}
+
+	/**
+	 * @brief データモデルに新しいデータセットをコピーし、古いデータを返します。
+	 * @details Undo機能の実装や、一時的なデータ切り替えに便利です。
+	 * @param[in] new_data 新しいデータセット。
+	 * @return 置き換えられる前の古いデータセット。
+	 */
+	std::vector<ItemType> replace_model_data(const std::vector<ItemType>& new_data) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		std::vector<ItemType> old_data = std::move(m_data_model); // 現在のデータを退避
+		m_data_model = new_data; // 新しいデータをコピー
+
+		repopulate_store();
+		return old_data;
+	}
+
+	/**
+	 * @brief データモデルを新しいデータセットに置き換え、古いデータを返します（ムーブ版）。
+	 * @param[in] new_data 新しいデータセット（ムーブ元）。
+	 * @return 置き換えられる前の古いデータセット。
+	 */
+	std::vector<ItemType> replace_model_data(std::vector<ItemType>&& new_data) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		std::vector<ItemType> old_data = std::move(m_data_model); // 現在のデータを退避
+		m_data_model = std::move(new_data); // 新しいデータをムーブ
+
+		repopulate_store();
+		return old_data;
+	}
+
+	/**
+	 * @brief データモデルを直接編集するための関数オブジェクトを受け付けます。
+	 * @details
+	 * ソートや一括フィルタリングなど、vector全体に対する操作を行う場合に使用します。
+	 * 操作完了後、ビューは自動的に再構築されます。
+	 * @param[in] modifier データモデルへの参照を受け取り、編集を行う関数オブジェクト。
+	 *
+	 * ```cpp
+	 * // 使用例: IDでソートする
+	 * model.modify_model_data([](std::vector<MyItem>& data) {
+	 * 	std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) {
+	 * 		return a.id < b.id;
+	 * 	});
+	 * });
+	 * ```
+	 */
+	void modify_model_data(std::function<void(std::vector<ItemType>&)> modifier) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		// ユーザー関数にデータを渡して直接編集させる
+		modifier(m_data_model);
+
+		// 編集結果に合わせてビューを再構築
+		repopulate_store();
 	}
 
 	/**
@@ -1091,13 +1206,11 @@ public:
 	 * @param[in, out] combo_box 管理対象のComboBoxウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
 	 * @param[in] row_setter ItemTypeのデータをGtkListStoreの行に変換・設定する関数。
-	 * @param[in] text_column_index コンボボックスに表示するテキストが格納されているカラムのインデックス (デフォルト: 0)。
 	 */
 	ComboBoxListStoreModel(
 		sgex::ComboBox& combo_box,
 		const std::vector<GType>& column_types,
-		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter,
-		int text_column_index = 0
+		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
 	) :
 		ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラス初期化
 		m_combo_box(combo_box)
@@ -1652,7 +1765,9 @@ public:
 template<typename ItemType>
 class PaginatedListStoreModel : public ListStoreViewInterface {
 public:
-	using size_type = typename std::vector<ItemType>::size_type;
+	// --- 型定義 ---
+	using size_type = typename std::vector<ItemType>::size_type;			///< インデックスやサイズを表すための型エイリアス
+	using const_iterator = typename std::vector<ItemType>::const_iterator;	///< std::vector の const_iterator をそのまま使う型定義
 
 private:
 	/// @brief (Model) 全てのページのマスターデータ
@@ -1752,6 +1867,17 @@ public:
 		m_titles.resize(n_columns);
 	}
 
+	// --- イテレータ対応 (読み取り専用) ---
+
+	const_iterator begin() const { return m_master_data.begin(); }
+	const_iterator end() const { return m_master_data.end(); }
+	const_reverse_iterator rbegin() const noexcept { return m_master_data.rbegin(); }
+	const_reverse_iterator rend() const noexcept { return m_master_data.rend(); }
+	const_iterator cbegin() const { return m_master_data.cbegin(); }
+	const_iterator cend() const { return m_master_data.cend(); }
+	const_reverse_iterator crbegin() const noexcept { return m_master_data.crbegin(); }
+	const_reverse_iterator crend() const noexcept { return m_master_data.crend(); }
+
 	/**
 	 * @brief 指定されたページのデータを各TreeViewに表示する内部関数。
 	 * @param[in] page_index 表示するページのインデックス (0から始まる)。
@@ -1850,6 +1976,8 @@ public:
 		model->set_sensitive(m_sensitive);
 		model->set_visible(m_visible);
 		model->set_selection_mode(m_selection_mode);
+		model->reserve(m_rows_per_view);
+		model->unselect_all();
 
 		// 子モデルのコールバックに、親のハンドラを登録
 		model->on_selection_changed_by_user(
@@ -2252,83 +2380,6 @@ public:
 	}
 
 	/**
-	 * @brief 全てのページの元となるマスターデータをコピーしてセットします。
-	 * @details この関数を呼び出すと、データが内部にコピーされ、最初のページが表示されます。
-	 * @param[in] all_data 全てのデータを含むvector (コピー元)。
-	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
-	 */
-	void set_master_data(const std::vector<ItemType>& all_data, bool refresh_current_page = false) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		m_master_data = all_data; // コピーが発生
-		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
-	}
-
-	/**
-	 * @brief 全てのページの元となるマスターデータをムーブしてセットします。
-	 * @details この関数を呼び出すと、データの所有権が効率的に移動され、最初のページが表示されます。
-	 * 呼び出し元のvectorは空になります。
-	 * @param[in] all_data 全てのデータを含むvector (ムーブ元)。
-	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
-	 */
-	void set_master_data(std::vector<ItemType>&& all_data, bool refresh_current_page = false) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		m_master_data = std::move(all_data); // ムーブ (効率的)
-		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
-	}
-
-	/**
-	 * @brief マスターデータに新しいデータセットをコピーし、古いマスターデータを効率的に返します。
-	 * @details
-	 * 内部のマスターデータに `new_data` をコピーします。
-	 * 置き換え前の古いマスターデータはムーブされて返されます。
-	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
-	 * @param[in] new_data 新しく設定するマスターデータ。関数内でマスターデータにコピーされます。
-	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
-	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
-	 */
-	std::vector<ItemType> replace_master_data(const std::vector<ItemType>& new_data, bool refresh_current_page = false) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-
-		// 1. 現在のマスターデータを一時変数にムーブして退避
-		std::vector<ItemType> old_data = std::move(m_master_data);
-
-		// 2. 引数で受け取った新しいデータをマスターデータにコピー
-		m_master_data = new_data;
-
-		// 3. UIを更新
-		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
-
-		// 4. 退避しておいた古いデータを返す (これもムーブされる)
-		return old_data;
-	}
-
-	/**
-	 * @brief マスターデータを新しいデータセットに置き換え、古いマスターデータを効率的に返します。
-	 * @details
-	 * 内部のマスターデータを `new_data` に置き換えます。この操作はムーブセマンティクスを利用するため、
-	 * データのコピーは最小限に抑えられます。置き換え前の古いマスターデータはムーブされて返されます。
-	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
-	 * @param[in] new_data 新しく設定するマスターデータ (ムーブ元)。この関数の呼び出し後、`new_data` は空（または有効だが未定義の状態）になります。
-	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
-	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
-	 */
-	std::vector<ItemType> replace_master_data(std::vector<ItemType>&& new_data, bool refresh_current_page = false) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-
-		// 1. 現在のマスターデータを一時変数にムーブして退避
-		std::vector<ItemType> old_data = std::move(m_master_data);
-
-		// 2. 引数で受け取った新しいデータをマスターデータにムーブ
-		m_master_data = std::move(new_data);
-
-		// 3. UIを更新
-		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
-
-		// 4. 退避しておいた古いデータを返す (これもムーブされる)
-		return old_data;
-	}
-
-	/**
 	 * @brief 次のページへ切り替えます。
 	 * @return 次のページが存在し、切り替えに成功した場合はtrue。
 	 */
@@ -2403,6 +2454,14 @@ public:
 		if (update_display) {
 			display_page(0); // 0ページ目を表示（空になる）
 		}
+	}
+
+	/**
+	 * @brief 内部データモデルの容量を事前に確保します。
+	 * @param[in] new_cap 確保する新しい容量。
+	 */
+	void reserve(size_type new_cap) {
+		m_master_data.reserve(new_cap);
 	}
 
 	/**
@@ -2572,6 +2631,82 @@ public:
 		return true;
 	}
 
+	/**
+	 * @brief 全てのページの元となるマスターデータをコピーしてセットします。
+	 * @details この関数を呼び出すと、データが内部にコピーされ、最初のページが表示されます。
+	 * @param[in] all_data 全てのデータを含むvector (コピー元)。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
+	 */
+	void set_master_data(const std::vector<ItemType>& all_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_master_data = all_data; // コピーが発生
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+	}
+
+	/**
+	 * @brief 全てのページの元となるマスターデータをムーブしてセットします。
+	 * @details この関数を呼び出すと、データの所有権が効率的に移動され、最初のページが表示されます。
+	 * 呼び出し元のvectorは空になります。
+	 * @param[in] all_data 全てのデータを含むvector (ムーブ元)。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
+	 */
+	void set_master_data(std::vector<ItemType>&& all_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		m_master_data = std::move(all_data); // ムーブ (効率的)
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+	}
+
+	/**
+	 * @brief マスターデータに新しいデータセットをコピーし、古いマスターデータを効率的に返します。
+	 * @details
+	 * 内部のマスターデータに `new_data` をコピーします。
+	 * 置き換え前の古いマスターデータはムーブされて返されます。
+	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
+	 * @param[in] new_data 新しく設定するマスターデータ。関数内でマスターデータにコピーされます。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
+	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
+	 */
+	std::vector<ItemType> replace_master_data(const std::vector<ItemType>& new_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		// 1. 現在のマスターデータを一時変数にムーブして退避
+		std::vector<ItemType> old_data = std::move(m_master_data);
+
+		// 2. 引数で受け取った新しいデータをマスターデータにコピー
+		m_master_data = new_data;
+
+		// 3. UIを更新
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+
+		// 4. 退避しておいた古いデータを返す (これもムーブされる)
+		return old_data;
+	}
+
+	/**
+	 * @brief マスターデータを新しいデータセットに置き換え、古いマスターデータを効率的に返します。
+	 * @details
+	 * 内部のマスターデータを `new_data` に置き換えます。この操作はムーブセマンティクスを利用するため、
+	 * データのコピーは最小限に抑えられます。置き換え前の古いマスターデータはムーブされて返されます。
+	 * 操作後、UIは自動的に最初のページ（0ページ目）を表示するように更新されます。
+	 * @param[in] new_data 新しく設定するマスターデータ (ムーブ元)。この関数の呼び出し後、`new_data` は空（または有効だが未定義の状態）になります。
+	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
+	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
+	 */
+	std::vector<ItemType> replace_master_data(std::vector<ItemType>&& new_data, bool refresh_current_page = false) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		// 1. 現在のマスターデータを一時変数にムーブして退避
+		std::vector<ItemType> old_data = std::move(m_master_data);
+
+		// 2. 引数で受け取った新しいデータをマスターデータにムーブ
+		m_master_data = std::move(new_data);
+
+		// 3. UIを更新
+		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
+
+		// 4. 退避しておいた古いデータを返す (これもムーブされる)
+		return old_data;
+	}
 
 	/**
 	 * @brief マスターデータを直接編集するための関数オブジェクトを受け付けます。
