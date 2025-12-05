@@ -141,10 +141,14 @@ public:
 	 * @brief 警告の種類を定義する列挙型。
 	 */
 	enum class WarningType {
-		GENERAL,		// 一般的な警告
-		RETRIEVE,		// 取り出し関連の警告
-		STORE,			// 補充関連の警告
-		RECONCILE		// 棚卸し関連の警告
+		NOT_FOUND,				// 未登録工具
+		DIFFERENT_TOOL,			// 別の工具
+		NOT_YET_STORED,			// 未だ補充前
+		ALREADY_RETRIEVED,		// 既に取り出されていた
+		SCAN_FAILURE,			// スキャン失敗
+		UNSCANNED_OUT_FRAME,	// 未スキャン工具がフレーム外に出た
+		SCANNED_IN_CONTAINER,	// スキャン済工具がコンテナ内に入った
+		OTHER_IN_CONTAINER		// その他工具がコンテナ内に入った
 	};
 
 	/**
@@ -154,8 +158,6 @@ public:
 	struct WarningListData {
 		/// @brief 警告番号
 		WarningType type{};
-		/// @brief 警告メッセージ
-		std::string message{};
 		/// @brief その警告の発生件数
 		int count{};
 		/// @brief 行の状態
@@ -587,7 +589,7 @@ public:
 
 	/// @brief 「分類」ラベル (ID: reconcileToolTypeFilterLabel)
 	sgex::Label reconcileToolTypeFilterLabel;
-	/// @brief 「最終棚卸し日時」ラベル (ID: reconcilePeriodFilterLabel)
+	/// @brief 「期間を指定」ラベル (ID: reconcilePeriodFilterLabel)
 	sgex::Label reconcilePeriodFilterLabel;
 	/// @brief 「決定」ボタン (ID: reconcileFilterEnterButton)
 	sgex::Button reconcileFilterEnterButton;
@@ -597,30 +599,42 @@ public:
 	sgex::ComboBoxListStoreModel<std::string> reconcileToolTypeFilterComboBoxListstore;	// TODO: 型は自由に変更してください
 	/// @brief 期間フィルタON/OFFスイッチ (ID: reconcilePeriodFilterSwitch)
 	sgex::Switch reconcilePeriodFilterSwitch;
+	/// @brief 期間指定用 「開始年月」ラベル (ID: reconcileFilterStartYearMonthLabel)
+	sgex::Label reconcileFilterStartYearMonthLabel;
 	/// @brief 期間指定用 開始年増加ボタン (ID: reconcileFilterStartYearIncrementButton)
 	sgex::Button reconcileFilterStartYearIncrementButton;
 	/// @brief 期間指定用 開始年入力エントリ (ID: reconcileFilterStartYearEntry)
 	sgex::Entry reconcileFilterStartYearEntry;
 	/// @brief 期間指定用 開始年減少ボタン (ID: reconcileFilterStartYearDecrementButton)
 	sgex::Button reconcileFilterStartYearDecrementButton;
+	/// @brief 期間指定用 開始年月の「年」ラベル (ID: reconcileFilterStartYearLabel)
+	sgex::Label reconcileFilterStartYearLabel;
 	/// @brief 期間指定用 開始月増加ボタン (ID: reconcileFilterStartMonthIncrementButton)
 	sgex::Button reconcileFilterStartMonthIncrementButton;
 	/// @brief 期間指定用 開始月入力エントリ (ID: reconcileFilterStartMonthEntry)
 	sgex::Entry reconcileFilterStartMonthEntry;
 	/// @brief 期間指定用 開始月減少ボタン (ID: reconcileFilterStartMonthDecrementButton)
 	sgex::Button reconcileFilterStartMonthDecrementButton;
+	/// @brief 期間指定用 開始年月の「月」ラベル (ID: reconcileFilterStartMonthLabel)
+	sgex::Label reconcileFilterStartMonthLabel;
+	/// @brief 期間指定用 「終了年月」ラベル (ID: reconcileFilterEndYearMonthLabel)
+	sgex::Label reconcileFilterEndYearMonthLabel;
 	/// @brief 期間指定用 終了年増加ボタン (ID: reconcileFilterEndYearIncrementButton)
 	sgex::Button reconcileFilterEndYearIncrementButton;
 	/// @brief 期間指定用 終了年入力エントリ (ID: reconcileFilterEndYearEntry)
 	sgex::Entry reconcileFilterEndYearEntry;
 	/// @brief 期間指定用 終了年減少ボタン (ID: reconcileFilterEndYearDecrementButton)
 	sgex::Button reconcileFilterEndYearDecrementButton;
+	/// @brief 期間指定用 終了年月の「年」ラベル (ID: reconcileFilterEndYearLabel)
+	sgex::Label reconcileFilterEndYearLabel;
 	/// @brief 期間指定用 終了月増加ボタン (ID: reconcileFilterEndMonthIncrementButton)
 	sgex::Button reconcileFilterEndMonthIncrementButton;
 	/// @brief 期間指定用 終了月入力エントリ (ID: reconcileFilterEndMonthEntry)
 	sgex::Entry reconcileFilterEndMonthEntry;
 	/// @brief 期間指定用 終了月減少ボタン (ID: reconcileFilterEndMonthDecrementButton)
 	sgex::Button reconcileFilterEndMonthDecrementButton;
+	/// @brief 期間指定用 終了年月の「月」ラベル (ID: reconcileFilterEndMonthLabel)
+	sgex::Label reconcileFilterEndMonthLabel;
 
 private:
 	//=========================================================================
@@ -800,6 +814,26 @@ private:
 	 * @return ユーザーが「はい」を選択した場合はtrue、「いいえ」を選択した場合はfalseを返します。
 	 */
 	bool confirm_to_user(UiText&& message);
+
+	/**
+	 * @brief 警告を追加します。
+	 * @param[in] type 追加する警告の種類。
+	 */
+	void add_warning(WarningType type);
+
+	/**
+	 * @brief 警告を削除します。
+	 * @param[in] type 削除する警告の種類。
+	 * @param[in] force_clear (オプション・デフォルト false) trueの場合、カウントに関わらず即座に削除します。
+	 * @return 減らしたcountと、現在の警告のcountをペアで返します（first: 減らしたcount, second: 現在のcount）。
+	 */
+	std::pair<int, int> remove_warning(WarningType type, bool force_clear = false);
+
+	/**
+	 * @brief すべての警告をクリアします。
+	 * @return 削除した警告の数を返します。
+	 */
+	size_t clear_warnings();
 
 	// --- 認証用のヘルパー関数 ---
 
@@ -1361,6 +1395,9 @@ private:
 
 	/// @brief 各テーブル行の状態に対応する背景色を保持するマップ。
 	static const std::map<TableCellState, GdkRGBA> g_table_row_colors;
+
+	/// @brief 各警告種類に対応する警告メッセージを保持するマップ。
+	static const std::map<WarningType, UiText> g_warning_type_messages;
 
 	// --- ウィジェット制御用 ---
 

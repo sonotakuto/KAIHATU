@@ -27,6 +27,41 @@ const std::map<MainWindow::TableCellState, GdkRGBA> MainWindow::g_table_row_colo
 	{ TableCellState::RECONCILE_UNREAD		, TABLE_BGCOLOR_RECONCILE_UNREAD	}	// 棚卸し未読行背景色
 };
 
+const std::map<MainWindow::WarningType, MainWindow::UiText> MainWindow::g_warning_type_messages = {
+	{WarningType::NOT_FOUND, UiText{
+		"該当する工具データが見つかりません。\nもう一度QRコードを読み取って下さい。",
+		"がいとうする こうぐデータが みつかりません。\nもういちど QRコードを よみとってください。"
+	}},
+	{WarningType::DIFFERENT_TOOL, UiText{
+		"工具が違います。\n別の工具を読み取って下さい。",
+		"こうぐが ちがいます。\nべつのこうぐを よみとってください。"
+	}},
+	{WarningType::NOT_YET_STORED, UiText{
+		"この工具は『補充待ち』になっています。\n別の工具を読み取って下さい。",
+		"このこうぐは『ほじゅうまち』に なっています。\nべつのこうぐを よみとってください。"
+	}},
+	{WarningType::ALREADY_RETRIEVED, UiText{
+		"この工具は既に『取り出し済み』になっています。\n別の工具を読み取って下さい。",
+		"このこうぐは すでに『とりだしずみ』に なっています。\nべつのこうぐを よみとってください。"
+	}},
+	{WarningType::SCAN_FAILURE, UiText{
+		"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい。",
+		"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください。"
+	}},
+	{WarningType::UNSCANNED_OUT_FRAME, UiText{
+		"QRコードリーダーで読み取らずに工具を取り出そうとしています。\nQRコードリーダーで読み取ってから、工具を取り出して下さい。",
+		"QRコードリーダーで よみとらずに こうぐを とりだそうと しています。\nQRコードリーダーで よみとってから、こうぐを とりだしてください。"
+	}},
+	{WarningType::SCANNED_IN_CONTAINER, UiText{
+		"スキャン済みの工具を\nコンテナに戻さないで下さい。",
+		"スキャンずみの こうぐを\nコンテナに もどさないでください。"
+	}},
+	{WarningType::OTHER_IN_CONTAINER, UiText{
+		"コンテナの外にあった工具を\nコンテナに入れないで下さい。",
+		"コンテナのそとに あった こうぐを\nコンテナに いれないでください。"
+	}}
+};
+
 //=============================================================================
 // MainWindowのメンバクラスに関する関数
 //=============================================================================
@@ -233,12 +268,12 @@ MainWindow::MainWindow() :
 	warningListstore(
 		warningList,
 		{ G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const WarningListData& row) {
+		[this](sgex::ListStore* store, GtkTreeIter* iter, const WarningListData& row) {
 			try {
 				store->set(iter,
-					0, row.message.c_str(),
+					0, this->get_display_text(this->g_warning_type_messages.at(row.type)).c_str(),
 					1, std::to_string(row.count).c_str(),
-					2, MainWindow::g_table_row_colors.at(row.cell_state)
+					2, this->g_table_row_colors.at(row.cell_state)
 				);
 			} catch (const std::out_of_range& e) {
 				DEV_PRINT("Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state));
@@ -263,18 +298,24 @@ MainWindow::MainWindow() :
 		}
 	),
 	reconcilePeriodFilterSwitch(glade, "reconcilePeriodFilterSwitch"),
+	reconcileFilterStartYearMonthLabel(glade, "reconcileFilterStartYearMonthLabel"),
 	reconcileFilterStartYearIncrementButton(glade, "reconcileFilterStartYearIncrementButton"),
 	reconcileFilterStartYearEntry(glade, "reconcileFilterStartYearEntry"),
 	reconcileFilterStartYearDecrementButton(glade, "reconcileFilterStartYearDecrementButton"),
+	reconcileFilterStartYearLabel(glade, "reconcileFilterStartYearLabel"),
 	reconcileFilterStartMonthIncrementButton(glade, "reconcileFilterStartMonthIncrementButton"),
 	reconcileFilterStartMonthEntry(glade, "reconcileFilterStartMonthEntry"),
 	reconcileFilterStartMonthDecrementButton(glade, "reconcileFilterStartMonthDecrementButton"),
+	reconcileFilterStartMonthLabel(glade, "reconcileFilterStartMonthLabel"),
+	reconcileFilterEndYearMonthLabel(glade, "reconcileFilterEndYearMonthLabel"),
 	reconcileFilterEndYearIncrementButton(glade, "reconcileFilterEndYearIncrementButton"),
 	reconcileFilterEndYearEntry(glade, "reconcileFilterEndYearEntry"),
 	reconcileFilterEndYearDecrementButton(glade, "reconcileFilterEndYearDecrementButton"),
+	reconcileFilterEndYearLabel(glade, "reconcileFilterEndYearLabel"),
 	reconcileFilterEndMonthIncrementButton(glade, "reconcileFilterEndMonthIncrementButton"),
 	reconcileFilterEndMonthEntry(glade, "reconcileFilterEndMonthEntry"),
 	reconcileFilterEndMonthDecrementButton(glade, "reconcileFilterEndMonthDecrementButton"),
+	reconcileFilterEndMonthLabel(glade, "reconcileFilterEndMonthLabel"),
 	// 状態管理メンバ
 	m_is_first_show(true),
 	m_is_programmatically_changing_toggle(false),
@@ -351,6 +392,10 @@ MainWindow::MainWindow() :
 	liststore2types1st.set_enclosing_widget(&table2types1stBox);
 	liststore2types2nd.set_enclosing_widget(&table2types2ndBox);
 	warningListstore.set_enclosing_widget(&warningListBox);
+
+	// 単独で運用する TreeViewListStoreModel の容量を事前に確保
+	storingToolListstore.reserve(1);
+	warningListstore.reserve(6);	// 警告一覧は最大6種類の警告が表示される可能性があるため
 
 	// PaginatedListStoreModel に TreeViewListStoreModel を登録
 	liststore3columnsAll.add_model({&liststore3columns1st, &liststore3columns2nd, &liststore3columns3rd});
@@ -1092,7 +1137,7 @@ MainWindow::MainWindow() :
 	});
 	m_widget_states.try_emplace(&reconcilePeriodFilterLabel, WidgetStateUpdater{
 		{
-			.text = UiText{"期間を指定", "きかんをしてい"},
+			.text = UiText{"期間を指定", "きかんを してい"},
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
@@ -1115,6 +1160,66 @@ MainWindow::MainWindow() :
 			if (state.is_visible.has_value()	) { this->reconcileFilterEnterButton.set_visible(state.is_visible.value()); }
 		}
 	});
+	m_widget_states.try_emplace(&reconcileFilterStartYearMonthLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"開始年月", "かいし\nねんげつ"},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->reconcileFilterStartYearMonthLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterStartYearMonthLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+	m_widget_states.try_emplace(&reconcileFilterStartYearLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"年", "ねん"},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->reconcileFilterStartYearLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterStartYearLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+	m_widget_states.try_emplace(&reconcileFilterStartMonthLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"月", "がつ"},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->reconcileFilterStartMonthLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterStartMonthLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+	m_widget_states.try_emplace(&reconcileFilterEndYearMonthLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"終了年月", "しゅうりょう\nねんげつ"},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->reconcileFilterEndYearMonthLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterEndYearMonthLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+	m_widget_states.try_emplace(&reconcileFilterEndYearLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"年", "ねん"},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->reconcileFilterEndYearLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterEndYearLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+	m_widget_states.try_emplace(&reconcileFilterEndMonthLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"月", "がつ"},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->reconcileFilterEndMonthLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->reconcileFilterEndMonthLabel.set_visible(state.is_visible.value()); }
+		}
+	});
 
 	//=========================================================================
 	// 各テーブルのカラムヘッダー表示テキストを保持するマップの構築
@@ -1128,7 +1233,7 @@ MainWindow::MainWindow() :
 			{"型番", "かたばん"},
 			{"材質", "ざいしつ"}
 		},
-		.is_sensitive	= false,
+		.is_sensitive	= true,
 		.is_visible		= true,
 		.is_selectable	= false
 	});
@@ -1185,6 +1290,17 @@ MainWindow::MainWindow() :
 			{"型番", "かたばん"},
 			{"材質", "ざいしつ"},
 			{"再研磨\n  回数", "さいけんま\n  かいすう"}
+		},
+		.is_sensitive	= true,
+		.is_visible		= true,
+		.is_selectable	= false
+	});
+
+	// --- 警告一覧 ---
+	m_table_states.try_emplace(&warningListstore, TableState{
+		.column_headers = std::vector<UiText>{
+			{"警告", "けいこく"},
+			{"発生件数", "はっせい\nけんすう"}
 		},
 		.is_sensitive	= true,
 		.is_visible		= true,
@@ -1271,8 +1387,8 @@ MainWindow::MainWindow() :
 			// 選択された工具がある場合にのみ「確定」ボタンを有効化する
 			thiz->update_widget_state(&(thiz->trueButton), WidgetState{
 				.text = UiText{"確定", "かくてい"},
-				.is_sensitive = (thiz->liststore2columnsAll.find_first_index([](const MainTableData& selected_item) {
-					return selected_item.cell_state_0to4 == TableCellState::SELECTED;
+				.is_sensitive = (thiz->liststore2columnsAll.find_first_index([](const MainTableData& item) {
+					return item.cell_state_0to4 == TableCellState::SELECTED;
 				}).has_value())
 			}, true);
 		},
@@ -2152,7 +2268,7 @@ bool MainWindow::confirm_to_user(const UiText& message) {
 	update_widget_state(&confirmationLabel, WidgetState{ .text = message }, true);
 
 	// ダイアログをモーダル表示し、ユーザーの応答を待つ
-	if (confirmationDialog.run(this) == GTK_RESPONSE_OK) {
+	if (confirmationDialog.run(this) == GTK_RESPONSE_YES) {
 		// ユーザーが「はい」を選択した場合
 		DEV_PRINT("ユーザー確認: はい\n");
 		return true;
@@ -2168,7 +2284,7 @@ bool MainWindow::confirm_to_user(UiText&& message) {
 	update_widget_state(&confirmationLabel, WidgetState{ .text = std::move(message) }, true);
 
 	// ダイアログをモーダル表示し、ユーザーの応答を待つ
-	if (confirmationDialog.run(this) == GTK_RESPONSE_OK) {
+	if (confirmationDialog.run(this) == GTK_RESPONSE_YES) {
 		// ユーザーが「はい」を選択した場合
 		DEV_PRINT("ユーザー確認: はい\n");
 		return true;
@@ -2177,6 +2293,130 @@ bool MainWindow::confirm_to_user(UiText&& message) {
 		DEV_PRINT("ユーザー確認: いいえ\n");
 		return false;
 	}
+}
+
+void MainWindow::add_warning(WarningType type) {
+	// 既存のハイライトを探して解除
+	// (イテレータで回しても良いですが、更新にはindexが必要なので従来のループ推奨)
+	for (size_t i = 0; i < warningListstore.size(); ++i) {
+		// at() で要素参照
+		const auto& item_ref = warningListstore.at(i);
+
+		if (item_ref.cell_state == TableCellState::HIGHLIGHT) {
+			// 今回更新する対象と同じなら、リセットせずスキップ（後のステップで上書き更新されるため）
+			if (item_ref.type == type) {
+				break;
+			}
+
+			// 別の行ならNORMALに戻して更新
+			WarningListData item = item_ref;
+			item.cell_state = TableCellState::NORMAL;
+			warningListstore.update(i, item);
+			break; // ハイライトは1つという前提
+		}
+	}
+
+	// 二分探索 (std::lower_bound)
+	// モデル自体が begin()/end() を持っているので、直接渡せます
+	auto it = std::lower_bound(warningListstore.begin(), warningListstore.end(), type,
+		[](const WarningListData& a, WarningType b) {
+			return a.type < b;
+		}
+	);
+
+	// イテレータをインデックスに変換
+	// insert や update はインデックスを要求するため変換が必要です
+	size_t index = std::distance(warningListstore.begin(), it);
+
+	// 更新 または 挿入
+	// it が end() でなく、かつ値が一致すれば「既存あり」
+	if (it != warningListstore.end() && it->type == type) {
+		// --- 既に存在する場合 (Update) ---
+		warningListstore.update(index, WarningListData{
+			.type = it->type,
+			.count = it->count + 1,
+			.cell_state = TableCellState::HIGHLIGHT
+		});
+	} else {
+		// --- 存在しない場合 (Insert) ---
+		// 見つかった位置(index)に挿入してソート順を維持
+		warningListstore.insert(index, WarningListData{
+			.type = type,
+			.count = 1,
+			.cell_state = TableCellState::HIGHLIGHT
+		});
+	}
+
+	if (!warningListDialog.get_mapped()) {
+		warningListDialog.show_all();
+	}
+}
+
+std::pair<int, int> MainWindow::remove_warning(WarningType type, bool force_clear) {
+	// 二分探索で対象の要素を探す
+	auto it = std::lower_bound(warningListstore.begin(), warningListstore.end(), type,
+		[](const WarningListData& a, WarningType b) {
+			return a.type < b;
+		}
+	);
+
+	// 見つかったかどうかの判定
+	if (it != warningListstore.end() && it->type == type) {
+		size_t index = std::distance(warningListstore.begin(), it);
+		WarningListData item = *it;	// データをコピー
+
+		int decreased_count = 0;	// 減らした数
+
+		// カウント操作
+		if (force_clear) {
+			// 強制削除なら、現在のカウント全てを減らす
+			decreased_count = item.count;
+			item.count = 0;
+		} else {
+			// 通常削除なら、1つだけ減らす
+			decreased_count = 1;
+			item.count--;
+		}
+
+		item.cell_state = TableCellState::NORMAL;	// 状態をNORMALに
+
+		// 削除 または 更新
+		if (item.count <= 0) {
+			// カウントが0以下になったらリストから削除
+			warningListstore.erase(index);
+
+			// 警告がなくなったらダイアログを閉じる
+			if (warningListstore.size() == 0) {
+				warningListDialog.hide();
+			}
+		} else {
+			// まだ残っているなら更新
+			warningListstore.update(index, item);
+		}
+
+		// 結果を返す {減らした数, 現在の数}
+		return {decreased_count, item.count};
+	}
+
+	// 対象が見つからなかった場合
+	return {0, 0};
+}
+
+size_t MainWindow::clear_warnings() {
+	// 削除前の警告数を取得
+	size_t removed_count = warningListstore.size();
+
+	// 警告があればクリア処理を実行
+	if (removed_count > 0) {
+		// リストを全削除 (モデルとビューの両方がクリアされます)
+		warningListstore.clear();
+
+		// ダイアログを非表示にする
+		warningListDialog.hide();
+	}
+
+	// 削除した数を返す
+	return removed_count;
 }
 
 bool MainWindow::authenticate_with_password() {
@@ -2742,14 +2982,15 @@ void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
 		set_tool_assignments(liststore2columnsAll, tooling_list.tool_assignments);
 		update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 
-		for (int i = 0; i < 120; i++) {
-			liststore2columnsAll.append(MainTableData{
-				.id = i,
-				.data_columns = {std::to_string(i), "", "", "", "", ""},
-				.cell_state_0to4 = TableCellState::NORMAL
-			});
-		}
-
+/* BUG: テストデータ
+for (int i = 0; i < 120; i++) {
+	liststore2columnsAll.append(MainTableData{
+		.id = i,
+		.data_columns = {std::to_string(i), "", "", "", "", ""},
+		.cell_state_0to4 = TableCellState::NORMAL
+	});
+}
+*/
 		// 5. 次の状態へ遷移
 		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 
@@ -2772,7 +3013,7 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 	// 選択されていて、かつ無効化されていない行の場合
 	if (selected_index_opt.has_value()) {
 		auto selected_index = selected_index_opt.value();
-		auto selected_item = liststore2columnsAll.get_item(selected_index);
+		auto selected_item = liststore2columnsAll.at(selected_index);
 
 		DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index);
 
@@ -2789,8 +3030,8 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 	}
 
 	// 選択された工具がある場合にのみ「確定」ボタンを有効化する
-	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnsAll.find_first_index([](const MainTableData& selected_item) {
-		return selected_item.cell_state_0to4 == TableCellState::SELECTED;
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnsAll.find_first_index([](const MainTableData& item) {
+		return item.cell_state_0to4 == TableCellState::SELECTED;
 	}).has_value())}, true);
 }
 
@@ -2817,7 +3058,7 @@ void MainWindow::on_falseButton_retrieve_selecting_tools() {
 
 void MainWindow::on_enter_retrieve_confirming_selection() {
 	// 選択状態の行を抽出
-	auto vec = liststore2columnsAll.find_items([](const MainTableData& row) {
+	auto vec = liststore2columnsAll.find_values([](const MainTableData& row) {
 		return row.cell_state_0to4 == TableCellState::SELECTED;
 	});
 
@@ -2958,6 +3199,13 @@ void MainWindow::on_enter_retrieve_ready_for_reading() {
 
 // TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
+	// 既存の「スキャン系エラー」をすべて消す
+	// (これらは「前回のスキャン結果」なので、新しいスキャンをした時点でもう不要)
+	remove_warning(WarningType::NOT_FOUND, true);			// true = 強制削除
+	remove_warning(WarningType::DIFFERENT_TOOL, true);
+	remove_warning(WarningType::NOT_YET_STORED, true);
+	remove_warning(WarningType::ALREADY_RETRIEVED, true);
+
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
 	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
@@ -3131,12 +3379,12 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 
 						// 表(liststore2columnsAll)の個数を更新
 						// まず、表から該当する行のインデックスを検索
-						auto table_row_opt = liststore2columnsAll.find_first_index_and_item(
+						auto indexed_value_opt = liststore2columnsAll.find_first_indexed_value(
 							[&](const MainTableData& item){ return item.id == unique_info.id; }
 						);
 
-						if (table_row_opt.has_value()) {
-							auto [index, item] = table_row_opt.value();
+						if (indexed_value_opt.has_value()) {
+							auto [index, item] = indexed_value_opt.value();
 							item.data_columns[5] = std::to_string(m_insertCountEntry_current_count); // 6列目(個数)を更新
 							liststore2columnsAll.update(index, item); // 表の行を更新
 						} else {
