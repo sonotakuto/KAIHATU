@@ -1371,8 +1371,8 @@ MainWindow::MainWindow() :
 			// 選択された工具がある場合にのみ「確定」ボタンを有効化する
 			thiz->update_widget_state(&(thiz->trueButton), WidgetState{
 				.text = UiText{"確定", "かくてい"},
-				.is_sensitive = (thiz->liststore2columnsAll.find_first_index([](const MainTableData& selected_item) {
-					return selected_item.cell_state_0to4 == TableCellState::SELECTED;
+				.is_sensitive = (thiz->liststore2columnsAll.find_first_index([](const MainTableData& item) {
+					return item.cell_state_0to4 == TableCellState::SELECTED;
 				}).has_value())
 			}, true);
 		},
@@ -2252,7 +2252,7 @@ bool MainWindow::confirm_to_user(const UiText& message) {
 	update_widget_state(&confirmationLabel, WidgetState{ .text = message }, true);
 
 	// ダイアログをモーダル表示し、ユーザーの応答を待つ
-	if (confirmationDialog.run(this) == GTK_RESPONSE_OK) {
+	if (confirmationDialog.run(this) == GTK_RESPONSE_YES) {
 		// ユーザーが「はい」を選択した場合
 		DEV_PRINT("ユーザー確認: はい\n");
 		return true;
@@ -2268,7 +2268,7 @@ bool MainWindow::confirm_to_user(UiText&& message) {
 	update_widget_state(&confirmationLabel, WidgetState{ .text = std::move(message) }, true);
 
 	// ダイアログをモーダル表示し、ユーザーの応答を待つ
-	if (confirmationDialog.run(this) == GTK_RESPONSE_OK) {
+	if (confirmationDialog.run(this) == GTK_RESPONSE_YES) {
 		// ユーザーが「はい」を選択した場合
 		DEV_PRINT("ユーザー確認: はい\n");
 		return true;
@@ -2283,8 +2283,8 @@ void MainWindow::add_warning(WarningType type) {
 	// 既存のハイライトを探して解除
 	// (イテレータで回しても良いですが、更新にはindexが必要なので従来のループ推奨)
 	for (size_t i = 0; i < warningListstore.size(); ++i) {
-		// get_item() で要素参照
-		const auto& item_ref = warningListstore.get_item(i);
+		// at() で要素参照
+		const auto& item_ref = warningListstore.at(i);
 
 		if (item_ref.cell_state == TableCellState::HIGHLIGHT) {
 			// 今回更新する対象と同じなら、リセットせずスキップ（後のステップで上書き更新されるため）
@@ -2876,14 +2876,15 @@ void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
 		set_tool_assignments(liststore2columnsAll, tooling_list.tool_assignments);
 		update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 
-		for (int i = 0; i < 120; i++) {
-			liststore2columnsAll.append(MainTableData{
-				.id = i,
-				.data_columns = {std::to_string(i), "", "", "", "", ""},
-				.cell_state_0to4 = TableCellState::NORMAL
-			});
-		}
-
+/* BUG: テストデータ
+for (int i = 0; i < 120; i++) {
+	liststore2columnsAll.append(MainTableData{
+		.id = i,
+		.data_columns = {std::to_string(i), "", "", "", "", ""},
+		.cell_state_0to4 = TableCellState::NORMAL
+	});
+}
+*/
 		// 5. 次の状態へ遷移
 		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 
@@ -2906,7 +2907,7 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 	// 選択されていて、かつ無効化されていない行の場合
 	if (selected_index_opt.has_value()) {
 		auto selected_index = selected_index_opt.value();
-		auto selected_item = liststore2columnsAll.get_item(selected_index);
+		auto selected_item = liststore2columnsAll.at(selected_index);
 
 		DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index);
 
@@ -2923,8 +2924,8 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 	}
 
 	// 選択された工具がある場合にのみ「確定」ボタンを有効化する
-	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnsAll.find_first_index([](const MainTableData& selected_item) {
-		return selected_item.cell_state_0to4 == TableCellState::SELECTED;
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnsAll.find_first_index([](const MainTableData& item) {
+		return item.cell_state_0to4 == TableCellState::SELECTED;
 	}).has_value())}, true);
 }
 
@@ -2951,7 +2952,7 @@ void MainWindow::on_falseButton_retrieve_selecting_tools() {
 
 void MainWindow::on_enter_retrieve_confirming_selection() {
 	// 選択状態の行を抽出
-	auto vec = liststore2columnsAll.find_items([](const MainTableData& row) {
+	auto vec = liststore2columnsAll.find_values([](const MainTableData& row) {
 		return row.cell_state_0to4 == TableCellState::SELECTED;
 	});
 
@@ -3272,12 +3273,12 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 
 						// 表(liststore2columnsAll)の個数を更新
 						// まず、表から該当する行のインデックスを検索
-						auto table_row_opt = liststore2columnsAll.find_first_index_and_item(
+						auto indexed_value_opt = liststore2columnsAll.find_first_indexed_value(
 							[&](const MainTableData& item){ return item.id == unique_info.id; }
 						);
 
-						if (table_row_opt.has_value()) {
-							auto [index, item] = table_row_opt.value();
+						if (indexed_value_opt.has_value()) {
+							auto [index, item] = indexed_value_opt.value();
 							item.data_columns[5] = std::to_string(m_insertCountEntry_current_count); // 6列目(個数)を更新
 							liststore2columnsAll.update(index, item); // 表の行を更新
 						} else {

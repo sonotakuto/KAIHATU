@@ -392,11 +392,13 @@ public:
 	operator GtkComboBox*() const { return GTK_COMBO_BOX(this->object); }
 
 	// メソッド
-	DEFINE_METHOD(combo_box, get_active, gint)
-	DEFINE_METHOD_WITH_ARGS(combo_box, set_active, void, (gint index), index)
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+	DEFINE_PROPERTY_ACCESSORS(ComboBox, active, gint)
+	DEFINE_PROPERTY_ACCESSORS(ComboBox, model, GtkTreeModel*)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
@@ -544,7 +546,7 @@ public:
 	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
 
 	// メソッド
-	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
+//	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
 	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
 	DEFINE_METHOD(tree_view, get_n_columns, guint)
 	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
@@ -555,6 +557,7 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+	DEFINE_PROPERTY_ACCESSORS(TreeView, model, GtkTreeModel*)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
@@ -604,26 +607,32 @@ public:
 
 /**
  * @class ListStoreModelBase
- * @brief GtkListStoreとstd::vector<ItemType>を同期させる、汎用的なデータモデルの基底クラス。
+ * @brief GtkListStoreとstd::vector<_Tp>を同期させる、汎用的なデータモデルの基底クラス。
  * @details このクラスはTreeViewやComboBoxなどの特定のウィジェットには依存せず、
  * GtkListStoreそのものの生成と、C++側のデータモデル(std::vector)の基本的な
  * CRUD(Create, Read, Update, Delete)操作のみを提供します。
- * @tparam ItemType テーブルの1行分のデータを表現する構造体の型。
+ * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename ItemType>
+template<typename _Tp>
 class ListStoreModelBase {
 public:
 	// --- 型定義 ---
-	using size_type = typename std::vector<ItemType>::size_type;			///< インデックスやサイズを表すための型エイリアス
-	using const_iterator = typename std::vector<ItemType>::const_iterator;	///< std::vector の const_iterator をそのまま使う型定義
+	using vector_type				= std::vector<_Tp>;	///< 内部データモデルとして使用する std::vector の型エイリアス
+	using value_type				= typename vector_type::value_type;
+	using size_type					= typename vector_type::size_type;
+	using const_iterator			= typename vector_type::const_iterator;
+	using const_reverse_iterator	= typename vector_type::const_reverse_iterator;
+
+	using indexed_value_pair		= std::pair<size_type, value_type>;	///< インデックスと value_type のペア型エイリアス
+	using setter_function_type		= std::function<void(sgex::ListStore*, GtkTreeIter*, const value_type&)>;	///< セッター関数の型エイリアス
 
 protected:
-	/// @brief (View) SimpleGtkでラップされたGtkListStoreの所有権を持つポインタ。
+	/// @brief (View) SimpleGtk でラップされた GtkListStore の所有権を持つポインタ。
 	std::unique_ptr<sgex::ListStore> m_list_store_ptr;
 	/// @brief (Model) C++側のデータ本体。アプリケーションロジックの「信頼できる唯一の情報源」。
-	std::vector<ItemType> m_data_model;
-	/// @brief ItemTypeからGtkListStoreの行データに変換するためのセッター関数。
-	std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> m_row_setter;
+	vector_type m_data_model;
+	/// @brief value_type から GtkListStore の行データに変換するためのセッター関数。
+	setter_function_type m_row_setter;
 	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
 	bool m_is_programmatically_changing;
 
@@ -659,11 +668,11 @@ protected:
 	/**
 	 * @brief 保持しているセッター関数(m_row_setter)を呼び出して、GtkListStoreの行に値を設定します。
 	 * @param[out] iter 値を設定する行を指すGtkTreeIter。
-	 * @param[in] item セットするデータを持つItemType。
+	 * @param[in] value セットするデータを持つ _Tp。
 	 */
-	void set_row_to_store(GtkTreeIter* iter, const ItemType& item) {
+	void set_row_to_store(GtkTreeIter* iter, const value_type& value) {
 		if (m_row_setter) {
-			m_row_setter(get_sg_store(), iter, item);
+			m_row_setter(get_sg_store(), iter, value);
 		}
 	}
 
@@ -677,9 +686,9 @@ protected:
 
 		GtkTreeIter iter;
 		// データモデルの全要素をGTK側に追加
-		for (const auto& item : m_data_model) {
+		for (const auto& value : m_data_model) {
 			get_sg_store()->append(&iter);
-			set_row_to_store(&iter, item);
+			set_row_to_store(&iter, value);
 		}
 	}
 
@@ -687,11 +696,11 @@ public:
 	/**
 	 * @brief ListStoreModelBaseのコンストラクタ。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter ItemTypeのデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ListStoreModelBase(
 		const std::vector<GType>& column_types,
-		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
+		setter_function_type row_setter
 	) :
 		m_row_setter(row_setter),
 		m_is_programmatically_changing(false)
@@ -737,7 +746,7 @@ public:
 			return; // データがない場合は何もしない
 		}
 
-		size_t index = 0;
+		size_type index = 0;
 		do {
 			if (index >= m_data_model.size()) { break; }	// 安全策（念のため）
 
@@ -765,33 +774,33 @@ public:
 
 	/**
 	 * @brief 末尾に単一の行を追加します。
-	 * @param[in] item 追加する行のデータ。
+	 * @param[in] value 追加する行のデータ。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	bool append(const ItemType& item) {
+	bool append(const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		m_data_model.push_back(item);
+		m_data_model.push_back(value);
 		GtkTreeIter iter;
 		get_sg_store()->append(&iter);
-		set_row_to_store(&iter, item);
+		set_row_to_store(&iter, value);
 		return true; // 成功
 	}
 
 	/**
 	 * @brief 末尾に複数の行をまとめて追加します。
-	 * @param[in] items 追加する行データのvector。
+	 * @param[in] values 追加する行データのvector。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	bool append(const std::vector<ItemType>& items) {
+	bool append(const vector_type& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) {
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		for (const auto& item : items) {
-			append(item); // 単行appendをループで呼び出す
+		for (const auto& value : values) {
+			append(value); // 単行appendをループで呼び出す
 		}
 		return true; // 成功
 	}
@@ -801,10 +810,10 @@ public:
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] position 0から始まる挿入位置のインデックス。
-	 * @param[in] item 挿入する行のデータ。
+	 * @param[in] value 挿入する行のデータ。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool insert(size_type position, const ItemType& item) {
+	bool insert(size_type position, const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		size_type original_position = position;
 		bool position_was_clamped = false;
@@ -821,10 +830,10 @@ public:
 			position_was_clamped = true;
 		}
 
-		m_data_model.insert(m_data_model.begin() + position, item);
+		m_data_model.insert(m_data_model.begin() + position, value);
 		GtkTreeIter iter;
 		get_sg_store()->insert(&iter, position);
-		set_row_to_store(&iter, item);
+		set_row_to_store(&iter, value);
 
 		return !position_was_clamped;
 	}
@@ -834,21 +843,21 @@ public:
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] position 0から始まる挿入位置のインデックス。
-	 * @param[in] items 挿入する行データのvector。
+	 * @param[in] values 挿入する行データのvector。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool insert(size_type position, const std::vector<ItemType>& items) {
+	bool insert(size_type position, const vector_type& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) {
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		// 開始位置が有効範囲内([0, size()])にあるかチェック
 		bool position_was_valid = (position <= size());
 
 		size_type current_pos = position;
-		for (const auto& item : items) {
+		for (const auto& value : values) {
 			// 単行insertは自動で位置を丸めてくれる
-			insert(current_pos++, item);
+			insert(current_pos++, value);
 		}
 		return position_was_valid;
 	}
@@ -896,19 +905,19 @@ public:
 	/**
 	 * @brief 指定した位置の行を上書きします。
 	 * @param[in] position 上書き位置のインデックス。
-	 * @param[in] item 新しい行データ。
+	 * @param[in] value 新しい行データ。
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
-	bool update(size_type position, const ItemType& item) {
+	bool update(size_type position, const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (position >= m_data_model.size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
 
-		m_data_model[position] = item;
+		m_data_model.at(position) = value;
 		GtkTreeIter iter;
 		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
-			set_row_to_store(&iter, item);
+			set_row_to_store(&iter, value);
 		}
 
 		return true; // 成功
@@ -919,17 +928,17 @@ public:
 	 * @param[in] updates 上書きする位置のインデックスと、新しい行データのmap。
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
-	bool update(const std::map<size_type, ItemType>& updates) {
+	bool update(const std::map<size_type, value_type>& updates) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		// ★ 先に全てのインデックスが有効かチェック
-		for (const auto& [pos, item] : updates) {
+		for (const auto& [pos, value] : updates) {
 			if (pos >= size()) {
 				return false; // 一つでも無効なインデックスがあれば失敗
 			}
 		}
 
-		for (const auto& [pos, item] : updates) {
-			update(pos, item);
+		for (const auto& [pos, value] : updates) {
+			update(pos, value);
 		}
 		return true; // 全て成功
 	}
@@ -939,7 +948,7 @@ public:
 	 * @details 既存のデータは破棄され、新しいデータでビューが再構築されます。
 	 * @param[in] new_data 新しいデータセット。
 	 */
-	void set_model_data(const std::vector<ItemType>& new_data) {
+	void set_model_data(const vector_type& new_data) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_data_model = new_data; // コピー
 		repopulate_store();
@@ -950,7 +959,7 @@ public:
 	 * @details 既存のデータは破棄され、新しいデータでビューが再構築されます。
 	 * @param[in] new_data 新しいデータセット（ムーブ元）。
 	 */
-	void set_model_data(std::vector<ItemType>&& new_data) {
+	void set_model_data(vector_type&& new_data) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_data_model = std::move(new_data); // ムーブ
 		repopulate_store();
@@ -962,10 +971,10 @@ public:
 	 * @param[in] new_data 新しいデータセット。
 	 * @return 置き換えられる前の古いデータセット。
 	 */
-	std::vector<ItemType> replace_model_data(const std::vector<ItemType>& new_data) {
+	vector_type replace_model_data(const vector_type& new_data) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		std::vector<ItemType> old_data = std::move(m_data_model); // 現在のデータを退避
+		vector_type old_data = std::move(m_data_model); // 現在のデータを退避
 		m_data_model = new_data; // 新しいデータをコピー
 
 		repopulate_store();
@@ -977,10 +986,10 @@ public:
 	 * @param[in] new_data 新しいデータセット（ムーブ元）。
 	 * @return 置き換えられる前の古いデータセット。
 	 */
-	std::vector<ItemType> replace_model_data(std::vector<ItemType>&& new_data) {
+	vector_type replace_model_data(vector_type&& new_data) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		std::vector<ItemType> old_data = std::move(m_data_model); // 現在のデータを退避
+		vector_type old_data = std::move(m_data_model); // 現在のデータを退避
 		m_data_model = std::move(new_data); // 新しいデータをムーブ
 
 		repopulate_store();
@@ -996,14 +1005,14 @@ public:
 	 *
 	 * ```cpp
 	 * // 使用例: IDでソートする
-	 * model.modify_model_data([](std::vector<MyItem>& data) {
-	 * 	std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) {
+	 * model.modify_model_data([](std::vector<_Tp>& values) {
+	 * 	std::sort(values.begin(), values.end(), [](const auto& a, const auto& b) {
 	 * 		return a.id < b.id;
 	 * 	});
 	 * });
 	 * ```
 	 */
-	void modify_model_data(std::function<void(std::vector<ItemType>&)> modifier) {
+	void modify_model_data(std::function<void(vector_type&)> modifier) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		// ユーザー関数にデータを渡して直接編集させる
@@ -1013,20 +1022,30 @@ public:
 		repopulate_store();
 	}
 
-	/**
+/**
 	 * @brief 指定した位置の行データを取得します。
+	 * @details std::vector::at と同様、範囲外アクセスの場合は例外が投げられます。
 	 * @param[in] position 0から始まる取得位置のインデックス。
 	 * @return 行データへのconst参照。
 	 */
-	const ItemType& get_item(size_type position) const {
+	const value_type& at(size_type position) const {
 		return m_data_model.at(position);
+	}
+
+	/**
+	 * @brief 指定した位置の行データを取得します。（旧・互換版）
+	 * @deprecated Use 'at' instead.
+	 */
+	[[deprecated("Use 'at' instead.")]]
+	const value_type& get_item(size_type position) const {
+		return at(position);
 	}
 
 	/**
 	 * @brief C++モデル内の全ての行データを取得します。
 	 * @return 全ての行データを含むvectorへのconst参照。
 	 */
-	const std::vector<ItemType>& get_data_model() const {
+	const vector_type& get_data_model() const {
 		return m_data_model;
 	}
 
@@ -1045,14 +1064,14 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indices = find_indices([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto indices = find_indices([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::vector<size_type> find_indices(std::function<bool(const ItemType&)> predicate) const {
+	std::vector<size_type> find_indices(std::function<bool(const value_type&)> predicate) const {
 		std::vector<size_type> found_indices;
-		for (size_t i = 0; i < m_data_model.size(); i++) {
+		for (size_type i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				found_indices.push_back(i);
 			}
@@ -1067,19 +1086,28 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto items = find_items([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto values = find_values([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::vector<ItemType> find_items(std::function<bool(const ItemType&)> predicate) const {
-		std::vector<ItemType> found_items;
-		for (const auto& item : m_data_model) {
-			if (predicate(item)) {
-				found_items.push_back(item);
+	vector_type find_values(std::function<bool(const value_type&)> predicate) const {
+		vector_type found_values;
+		for (const auto& value : m_data_model) {
+			if (predicate(value)) {
+				found_values.push_back(value);
 			}
 		}
-		return found_items;
+		return found_values;
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行データを検索します。（旧・互換版）
+	 * @deprecated Use 'find_values' instead.
+	 */
+	[[deprecated("Use 'find_values' instead.")]]
+	vector_type find_items(std::function<bool(const value_type&)> predicate) const {
+		return find_values(predicate);
 	}
 
 	/**
@@ -1089,19 +1117,28 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto [indices, items] = find_indices_and_items([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * std::vector<std::pair<size_t, _Tp>> pairs = find_indexed_value_pairs([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::vector<std::pair<size_type, ItemType>> find_indices_and_items(std::function<bool(const ItemType&)> predicate) const {
-		std::vector<std::pair<size_type, ItemType>> found_pairs;
-		for (size_t i = 0; i < m_data_model.size(); i++) {
+	std::vector<indexed_value_pair> find_indexed_value_pairs(std::function<bool(const value_type&)> predicate) const {
+		std::vector<indexed_value_pair> found_pairs;
+		for (size_type i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				found_pairs.emplace_back(i, m_data_model[i]);
 			}
 		}
 		return found_pairs;
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行のインデックスと行データのペアを検索します。（旧・互換版）
+	 * @deprecated Use 'find_indexed_value_pairs' instead.
+	 */
+	[[deprecated("Use 'find_indexed_value_pairs' instead.")]]
+	std::vector<indexed_value_pair> find_indices_and_items(std::function<bool(const value_type&)> predicate) const {
+		return find_indexed_value_pairs(predicate);
 	}
 
 	/**
@@ -1111,13 +1148,13 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_opt = find_first_index([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto index_opt = find_first_index([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::optional<size_type> find_first_index(std::function<bool(const ItemType&)> predicate) const {
-		for (size_t i = 0; i < m_data_model.size(); i++) {
+	std::optional<size_type> find_first_index(std::function<bool(const value_type&)> predicate) const {
+		for (size_type i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				return i;
 			}
@@ -1132,18 +1169,27 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto item_opt = find_first_item([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto value_opt = find_first_value([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::optional<ItemType> find_first_item(std::function<bool(const ItemType&)> predicate) const {
-		for (const auto& item : m_data_model) {
-			if (predicate(item)) {
-				return item;
+	std::optional<value_type> find_first_value(std::function<bool(const value_type&)> predicate) const {
+		for (const auto& value : m_data_model) {
+			if (predicate(value)) {
+				return value;
 			}
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行データを検索します。（旧・互換版）
+	 * @deprecated Use 'find_first_value' instead.
+	 */
+	[[deprecated("Use 'find_first_value' instead.")]]
+	std::optional<value_type> find_first_item(std::function<bool(const value_type&)> predicate) const {
+		return find_first_value(predicate);
 	}
 
 	/**
@@ -1153,18 +1199,27 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_and_item_opt = find_first_index_and_item([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto indexed_value_opt = find_first_indexed_value([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::optional<std::pair<size_type, ItemType>> find_first_index_and_item(std::function<bool(const ItemType&)> predicate) const {
-		for (size_t i = 0; i < m_data_model.size(); i++) {
+	std::optional<indexed_value_pair> find_first_indexed_value(std::function<bool(const value_type&)> predicate) const {
+		for (size_type i = 0; i < m_data_model.size(); i++) {
 			if (predicate(m_data_model[i])) {
 				return std::make_pair(i, m_data_model[i]);
 			}
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行のインデックスと行データのペアを検索します。（旧・互換版）
+	 * @deprecated Use 'find_first_indexed_value' instead.
+	 */
+	[[deprecated("Use 'find_first_indexed_value' instead.")]]
+	std::optional<indexed_value_pair> find_first_index_and_item(std::function<bool(const value_type&)> predicate) const {
+		return find_first_indexed_value(predicate);
 	}
 };
 
@@ -1172,12 +1227,20 @@ public:
  * @class ComboBoxListStoreModel
  * @brief ListStoreModelBaseを継承し、GtkComboBoxに特化した機能を追加した派生クラス。
  * @details セルレンダラーの自動設定や、選択状態の管理機能を提供します。
- * @tparam ItemType テーブルの1行分のデータを表現する構造体の型。
+ * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename ItemType>
-class ComboBoxListStoreModel : public ListStoreModelBase<ItemType> {
+template<typename _Tp>
+class ComboBoxListStoreModel : public ListStoreModelBase<_Tp> {
 public:
-	using size_type = typename ListStoreModelBase<ItemType>::size_type;
+	// --- 型定義 ---
+	using base_type					= ListStoreModelBase<_Tp>;	///< 基底クラスの型エイリアス
+	using vector_type				= typename base_type::vector_type;
+	using value_type				= typename base_type::value_type;
+	using size_type					= typename base_type::size_type;
+	using const_iterator			= typename base_type::const_iterator;
+	using const_reverse_iterator	= typename base_type::const_reverse_iterator;
+	using indexed_value_pair		= typename base_type::indexed_value_pair;
+	using setter_function_type		= typename base_type::setter_function_type;
 
 private:
 	/// @brief このモデルが関連付けられている ComboBox ウィジェット。
@@ -1196,7 +1259,7 @@ private:
 
 		// コールバックが登録されていれば呼び出す
 		if (m_user_activation_callback) {
-			m_user_activation_callback(get_selected_index());
+			m_user_activation_callback(get_active_index());
 		}
 	}
 
@@ -1205,14 +1268,14 @@ public:
 	 * @brief ComboBoxListStoreModelのコンストラクタ。
 	 * @param[in, out] combo_box 管理対象のComboBoxウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter ItemTypeのデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ComboBoxListStoreModel(
 		sgex::ComboBox& combo_box,
 		const std::vector<GType>& column_types,
-		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
+		setter_function_type row_setter
 	) :
-		ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラス初期化
+		base_type(column_types, row_setter), // 基底クラス初期化
 		m_combo_box(combo_box)
 	{
 		// ComboBoxにモデルをセット
@@ -1220,6 +1283,54 @@ public:
 
 		// 内部シグナルハンドラを接続
 		m_combo_box.on_changed([this]() { this->internal_on_changed(); });
+	}
+
+	/**
+	 * @brief ComboBoxのフォーカス可否を設定します。
+	 * @param[in] can_focus フォーカス可能にする場合はtrue、不可能にする場合はfalse。
+	 */
+	void set_can_focus(bool can_focus) {
+		m_combo_box.set_can_focus(can_focus);
+	}
+
+	/**
+	 * @brief ComboBoxのフォーカス可否を取得します。
+	 * @return フォーカス可能であればtrue、不可能であればfalse。
+	 */
+	bool get_can_focus() {
+		return m_combo_box.get_can_focus();
+	}
+
+	/**
+	 * @brief ComboBoxの感応可否を設定します。
+	 * @param[in] sensitive 感応可能にする場合はtrue、無効にする場合はfalse。
+	 */
+	void set_sensitive(bool sensitive) {
+		m_combo_box.set_sensitive(sensitive);
+	}
+
+	/**
+	 * @brief ComboBoxの感応可否を取得します。
+	 * @return 感応可能であればtrue、無効であればfalse。
+	 */
+	bool get_sensitive() {
+		return m_combo_box.get_sensitive();
+	}
+
+	/**
+	 * @brief ComboBoxの表示・非表示を設定します。
+	 * @param[in] visible 表示する場合はtrue、非表示にする場合はfalse。
+	 */
+	void set_visible(bool visible) {
+		m_combo_box.set_visible(visible);
+	}
+
+	/**
+	 * @brief ComboBoxの表示・非表示を取得します。
+	 * @return 表示されていればtrue、非表示であればfalse。
+	 */
+	bool get_visible() {
+		return m_combo_box.get_visible();
 	}
 
 	/**
@@ -1247,20 +1358,42 @@ public:
 	 * @brief 現在選択されている行のデータを取得します。
 	 * @return 選択されている行のデータ。未選択なら std::nullopt。
 	 */
-	std::optional<ItemType> get_active_item() {
+std::optional<value_type> get_active_value() {
 		auto index_opt = get_active_index();
 		if (index_opt.has_value()) {
-			return this->get_item(index_opt.value());
+			return this->at(index_opt.value());
 		}
 		return std::nullopt;
 	}
 
-	std::optional<std::pair<size_type, ItemType>> get_active_index_and_item() {
+	/**
+	 * @brief 現在選択されている行のデータを取得します。（旧・互換版）
+	 * @deprecated Use 'get_active_value' instead.
+	 */
+	[[deprecated("Use 'get_active_value' instead.")]]
+	std::optional<value_type> get_active_item() {
+		return get_active_value();
+	}
+
+	/**
+	 * @brief 現在選択されている行のインデックスと行データのペアを取得します。
+	 * @return 選択されている行のインデックスとデータのペア。未選択なら std::nullopt。
+	 */
+	std::optional<indexed_value_pair> get_active_indexed_value() {
 		auto index_opt = get_active_index();
 		if (index_opt.has_value()) {
-			return std::make_pair(index_opt.value(), this->get_item(index_opt.value()));
+			return std::make_pair(index_opt.value(), this->at(index_opt.value()));
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のインデックスと行データのペアを取得します。（旧・互換版）
+	 * @deprecated Use 'get_active_indexed_value' instead.
+	 */
+	[[deprecated("Use 'get_active_indexed_value' instead.")]]
+	std::optional<indexed_value_pair> get_active_index_and_item() {
+		return get_active_indexed_value();
 	}
 
 	/**
@@ -1286,7 +1419,7 @@ public:
 
 /**
  * @class ListStoreViewInterface
- * @brief ItemTypeに依存しない、ListStore系モデルの共通ビュー操作インターフェース。
+ * @brief テンプレートに依存しない、ListStore系モデルの共通ビュー操作インターフェース。
  * @details テンプレート引数なしでポインタを保持し、表示設定やタイトル変更などを統一的に行うために使用します。
  */
 class ListStoreViewInterface {
@@ -1412,12 +1545,21 @@ public:
  * @class TreeViewListStoreModel
  * @brief ListStoreModelBaseを継承し、GtkTreeViewに特化した機能を追加した派生クラス。
  * @details 選択行の取得や、パフォーマンスを考慮した複数行の一括更新機能などを提供します。
- * @tparam ItemType テーブルの1行分のデータを表現する構造体の型。
+ * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename ItemType>
-class TreeViewListStoreModel : public ListStoreModelBase<ItemType>, public ListStoreViewInterface {
+template<typename _Tp>
+class TreeViewListStoreModel : public ListStoreModelBase<_Tp>, public ListStoreViewInterface {
 public:
-	using size_type = typename ListStoreModelBase<ItemType>::size_type;
+	// --- 型定義 ---
+	using base_type					= ListStoreModelBase<_Tp>;	///< 基底クラスの型エイリアス
+	using vector_type				= typename base_type::vector_type;
+	using value_type				= typename base_type::value_type;
+	using size_type					= typename base_type::size_type;
+	using const_iterator			= typename base_type::const_iterator;
+	using const_reverse_iterator	= typename base_type::const_reverse_iterator;
+	using indexed_value_pair		= typename base_type::indexed_value_pair;
+	using setter_function_type		= typename base_type::setter_function_type;
+
 private:
 	/// @brief このモデルが関連付けられている TreeView ウィジェット。
 	sgex::TreeView& m_tree_view;
@@ -1466,14 +1608,14 @@ public:
 	 * @brief TreeViewListStoreModelのコンストラクタ。
 	 * @param[in, out] tree_view 管理対象のTreeViewウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter ItemTypeのデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	TreeViewListStoreModel(
 		sgex::TreeView& tree_view,
 		const std::vector<GType>& column_types,
-		std::function<void(sgex::ListStore*, GtkTreeIter*, const ItemType&)> row_setter
+		setter_function_type row_setter
 	) :
-		ListStoreModelBase<ItemType>(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
+		base_type(column_types, row_setter), // 基底クラスのコンストラクタを呼び出し
 		m_tree_view(tree_view),
 		m_tree_selection(tree_view.get_selection()),
 		m_user_initiated_selection(false)
@@ -1624,7 +1766,7 @@ public:
 	 * @brief TreeViewの感応可否を取得します。
 	 * @return 感応可能であればtrue、無効であればfalse。
 	 */
-	bool get_sensitive() {
+	bool get_sensitive() override {
 		return m_tree_view.get_sensitive();
 	}
 
@@ -1726,12 +1868,21 @@ public:
 	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていれば行データ、なければ空のoptional。
 	 */
-	std::optional<ItemType> get_selected_item() {
+	std::optional<value_type> get_selected_value() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
-			return this->get_item(index_opt.value());
+			return this->at(index_opt.value());
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のデータをC++モデルから取得します。（旧・互換版）
+	 * @deprecated Use 'get_selected_value' instead.
+	 */
+	[[deprecated("Use 'get_selected_value' instead.")]]
+	std::optional<value_type> get_selected_item() {
+		return get_selected_value();
 	}
 
 	/**
@@ -1747,12 +1898,21 @@ public:
 	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていればインデックスと行データのペア、なければ空のoptional。
 	 */
-	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() {
+	std::optional<indexed_value_pair> get_selected_indexed_value() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
-			return std::make_pair(index_opt.value(), this->get_item(index_opt.value()));
+			return std::make_pair(index_opt.value(), this->at(index_opt.value()));
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のインデックスと行データのペアを取得します。（旧・互換版）
+	 * @deprecated Use 'get_selected_indexed_value' instead.
+	 */
+	[[deprecated("Use 'get_selected_indexed_value' instead.")]]
+	std::optional<indexed_value_pair> get_selected_index_and_item() {
+		return get_selected_indexed_value();
 	}
 };
 
@@ -1760,22 +1920,28 @@ public:
  * @class PaginatedListStoreModel
  * @brief 複数のTreeViewListStoreModelを1ページとして扱い、ページネーション機能を提供するクラス。
  * @details 全データ(マスターデータ)を内部に保持し、データ操作とページ表示を完全にカプセル化します。
- * @tparam ItemType 1行分のデータを表現する構造体の型。
+ * @tparam _Tp 1行分のデータを表現する構造体の型。
  */
-template<typename ItemType>
+template<typename _Tp>
 class PaginatedListStoreModel : public ListStoreViewInterface {
 public:
 	// --- 型定義 ---
-	using size_type = typename std::vector<ItemType>::size_type;			///< インデックスやサイズを表すための型エイリアス
-	using const_iterator = typename std::vector<ItemType>::const_iterator;	///< std::vector の const_iterator をそのまま使う型定義
+	using vector_type				= std::vector<_Tp>;	///< 内部データモデルとして使用する std::vector の型エイリアス
+	using value_type				= typename vector_type::value_type;
+	using size_type					= typename vector_type::size_type;
+	using const_iterator			= typename vector_type::const_iterator;
+	using const_reverse_iterator	= typename vector_type::const_reverse_iterator;
+
+	using indexed_value_pair		= std::pair<size_type, value_type>;		///< インデックスと value_type のペア型エイリアス
+	using model_type				= TreeViewListStoreModel<value_type>;	///< 内部で使用する TreeViewListStoreModel の型エイリアス
 
 private:
 	/// @brief (Model) 全てのページのマスターデータ
-	std::vector<ItemType> m_master_data;
+	vector_type m_master_data;
 	/// @brief 1つのTreeViewが表示できる最大行数
-	size_t m_rows_per_view;
+	size_type m_rows_per_view;
 	/// @brief 1ページに含まれるTreeViewListStoreModelのリスト
-	std::vector<TreeViewListStoreModel<ItemType>*> m_page_models;
+	std::vector<model_type*> m_page_models;
 	/// @brief 現在表示中のページ番号 (0から始まるインデックス)
 	int m_current_page_index;
 	/// @brief 外部に通知するコールバック (グローバルインデックスを渡す)
@@ -1849,7 +2015,7 @@ public:
 	 * @param[in] config (オプション) その他の設定
 	 */
 	PaginatedListStoreModel(
-		size_t rows_per_view,
+		size_type rows_per_view,
 		guint n_columns,
 		Config config = {} // デフォルト値で初期化
 	) :
@@ -1899,7 +2065,7 @@ public:
 		}
 
 		// 1ページあたりが表示できる合計行数
-		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+		size_type total_rows_per_page = m_rows_per_view * m_page_models.size();
 
 		if (total_rows_per_page == 0) { // モデルが登録されていない場合は何もしない
 			m_current_page_index = 0; // ページ番号をリセット
@@ -1907,15 +2073,15 @@ public:
 		}
 
 		// 表示を開始するマスターデータのインデックス
-		size_t start_index = page_index * total_rows_per_page;
+		size_type start_index = page_index * total_rows_per_page;
 
 		// マスターデータから現在のページに表示すべき部分を切り出して表示
-		for (size_t i = 0; i < total_rows_per_page; i++) {
-			size_t master_index = start_index + i;
+		for (size_type i = 0; i < total_rows_per_page; i++) {
+			size_type master_index = start_index + i;
 			if (master_index >= m_master_data.size()) { break; }	// マスターデータの終端を超えたらループ終了
 
 			// どのTreeViewに表示するかを計算
-			size_t view_index = i / m_rows_per_view;
+			size_type view_index = i / m_rows_per_view;
 			if (view_index < m_page_models.size()) {	// 念のため範囲チェック
 				m_page_models[view_index]->append(m_master_data[master_index]);
 			}
@@ -1952,7 +2118,7 @@ public:
 	 * @param[in] update_ui (オプション・デフォルト true) trueの場合、登録後に画面を更新します。
 	 * @return 登録に成功した場合はtrue、失敗した場合はfalse。
 	 */
-	bool add_model(TreeViewListStoreModel<ItemType>* model, bool update_ui = true) {
+	bool add_model(model_type* model, bool update_ui = true) {
 		// NULLチェック
 		if (!model) {
 			return false; // 無効なモデルポインタ
@@ -1999,7 +2165,7 @@ public:
 	 * @param[in] update_ui (オプション・デフォルト true) trueの場合、登録後に画面を更新します。
 	 * @return 登録に成功した場合はtrue、失敗した場合はfalse。
 	 */
-	bool add_model(const std::vector<TreeViewListStoreModel<ItemType>*>& models, bool update_ui = true) {
+	bool add_model(const std::vector<model_type*>& models, bool update_ui = true) {
 		// 登録前に全てのモデルをチェック
 		for (auto* model : models) {
 			// NULLチェック
@@ -2050,7 +2216,7 @@ public:
 	 * @param[in] rows_per_view 1つのTreeViewが表示できる最大行数。
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 設定後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 */
-	void set_rows_per_view(size_t rows_per_view, bool refresh_current_page = false) {
+	void set_rows_per_view(size_type rows_per_view, bool refresh_current_page = false) {
 		if (rows_per_view == m_rows_per_view) {
 			return; // 変更なし
 		}
@@ -2063,7 +2229,7 @@ public:
 	 * @brief 1つのTreeViewが表示できる最大行数を取得します。
 	 * @return 1つのTreeViewが表示できる最大行数。
 	 */
-	size_t get_rows_per_view() const {
+	size_type get_rows_per_view() const {
 		return m_rows_per_view;
 	}
 
@@ -2413,7 +2579,7 @@ public:
 	 */
 	int get_total_pages() const {
 		if (m_master_data.empty()) { return 1; }
-		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
+		size_type total_rows_per_page = m_rows_per_view * m_page_models.size();
 		if (total_rows_per_page == 0) { return 1; }
 		return (m_master_data.size() + total_rows_per_page - 1) / total_rows_per_page;
 	}
@@ -2466,14 +2632,14 @@ public:
 
 	/**
 	 * @brief マスターデータの末尾に単一の行を追加し、UIを更新します。
-	 * @param[in] item 追加する行のデータ。
+	 * @param[in] value 追加する行のデータ。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	bool append(const ItemType& item, bool update_display = true) {
+	bool append(const value_type& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
-		m_master_data.push_back(item);
+		m_master_data.push_back(value);
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2482,14 +2648,14 @@ public:
 
 	/**
 	 * @brief マスターデータの末尾に複数の行をまとめて追加し、UIを更新します。
-	 * @param[in] items 追加する行データのvector。
+	 * @param[in] values 追加する行データのvector。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	bool append(const std::vector<ItemType>& items, bool update_display = true) {
+	bool append(const vector_type& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) return false;
-		m_master_data.insert(m_master_data.end(), items.begin(), items.end());
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) return false;
+		m_master_data.insert(m_master_data.end(), values.begin(), values.end());
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2501,11 +2667,11 @@ public:
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] global_position 挿入位置のグローバルインデックス。
-	 * @param[in] item 挿入する行のデータ。
+	 * @param[in] value 挿入する行のデータ。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool insert(size_type global_position, const ItemType& item, bool update_display = true) {
+	bool insert(size_type global_position, const value_type& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		size_type original_position = global_position;
@@ -2513,7 +2679,7 @@ public:
 
 		if (global_position > m_master_data.size()) global_position = m_master_data.size();
 
-		m_master_data.insert(m_master_data.begin() + global_position, item);
+		m_master_data.insert(m_master_data.begin() + global_position, value);
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2525,19 +2691,19 @@ public:
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] global_position 挿入位置のグローバルインデックス。
-	 * @param[in] items 挿入する行データのvector。
+	 * @param[in] values 挿入する行データのvector。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool insert(size_type global_position, const std::vector<ItemType>& items, bool update_display = true) {
+	bool insert(size_type global_position, const vector_type& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		if (size() + items.size() > (size_type)(std::numeric_limits<int>::max())) return false;
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) return false;
 		bool position_was_valid = (global_position <= size());
 
 		if (global_position > size()) global_position = size();
 
-		m_master_data.insert(m_master_data.begin() + global_position, items.begin(), items.end());
+		m_master_data.insert(m_master_data.begin() + global_position, values.begin(), values.end());
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2593,16 +2759,16 @@ public:
 	/**
 	 * @brief マスターデータの指定したグローバルインデックスの行を上書きし、UIを更新します。
 	 * @param[in] global_position 上書きする行のグローバルインデックス。
-	 * @param[in] item 新しい行データ。
+	 * @param[in] value 新しい行データ。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
-	bool update(size_type global_position, const ItemType& item, bool update_display = true) {
+	bool update(size_type global_position, const value_type& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		if (global_position >= size()) return false;
 
-		m_master_data[global_position] = item;
+		m_master_data[global_position] = value;
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2616,14 +2782,14 @@ public:
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
-	bool update(const std::map<size_type, ItemType>& updates, bool update_display = true) {
+	bool update(const std::map<size_type, value_type>& updates, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		for (const auto& [pos, item] : updates) {
+		for (const auto& [pos, value] : updates) {
 			if (pos >= size()) return false;
 		}
-		for (const auto& [pos, item] : updates) {
-			m_master_data[pos] = item;
+		for (const auto& [pos, value] : updates) {
+			m_master_data[pos] = value;
 		}
 		if (update_display) {
 			display_page(m_current_page_index);
@@ -2637,7 +2803,7 @@ public:
 	 * @param[in] all_data 全てのデータを含むvector (コピー元)。
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 */
-	void set_master_data(const std::vector<ItemType>& all_data, bool refresh_current_page = false) {
+	void set_master_data(const vector_type& all_data, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_master_data = all_data; // コピーが発生
 		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
@@ -2650,7 +2816,7 @@ public:
 	 * @param[in] all_data 全てのデータを含むvector (ムーブ元)。
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 */
-	void set_master_data(std::vector<ItemType>&& all_data, bool refresh_current_page = false) {
+	void set_master_data(vector_type&& all_data, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_master_data = std::move(all_data); // ムーブ (効率的)
 		display_page(((refresh_current_page) ? (m_current_page_index) : (0)));
@@ -2666,11 +2832,11 @@ public:
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
 	 */
-	std::vector<ItemType> replace_master_data(const std::vector<ItemType>& new_data, bool refresh_current_page = false) {
+	vector_type replace_master_data(const vector_type& new_data, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		// 1. 現在のマスターデータを一時変数にムーブして退避
-		std::vector<ItemType> old_data = std::move(m_master_data);
+		vector_type old_data = std::move(m_master_data);
 
 		// 2. 引数で受け取った新しいデータをマスターデータにコピー
 		m_master_data = new_data;
@@ -2692,11 +2858,11 @@ public:
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 * @return 置き換えられる前の古いマスターデータ (ムーブされて返される)。
 	 */
-	std::vector<ItemType> replace_master_data(std::vector<ItemType>&& new_data, bool refresh_current_page = false) {
+	vector_type replace_master_data(vector_type&& new_data, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		// 1. 現在のマスターデータを一時変数にムーブして退避
-		std::vector<ItemType> old_data = std::move(m_master_data);
+		vector_type old_data = std::move(m_master_data);
 
 		// 2. 引数で受け取った新しいデータをマスターデータにムーブ
 		m_master_data = std::move(new_data);
@@ -2718,7 +2884,7 @@ public:
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
 	 * ページが存在しなくなっていれば最終ページが表示されます。falseの場合は0ページ目を表示します。デフォルトはfalse。
 	 */
-	void modify_master_data(std::function<void(std::vector<ItemType>&)> modifier, bool refresh_current_page = false) {
+	void modify_master_data(std::function<void(vector_type&)> modifier, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		// 1. 渡された関数を実行し、m_master_data を直接変更してもらう
@@ -2731,18 +2897,28 @@ public:
 
 	/**
 	 * @brief 指定したグローバルインデックスの行データをマスターデータから取得します。
+	 * @details std::vector::at と同様、範囲外アクセスの場合は例外が投げられます。
 	 * @param[in] global_position 取得する行のグローバルインデックス。
 	 * @return 行データへのconst参照。
 	 */
-	const ItemType& get_item(size_type global_position) const {
+	const value_type& at(size_type global_position) const {
 		return m_master_data.at(global_position);
+	}
+
+	/**
+	 * @brief 指定したグローバルインデックスの行データをマスターデータから取得します。（旧・互換版）
+	 * @deprecated Use 'at' instead.
+	 */
+	[[deprecated("Use 'at' instead.")]]
+	const value_type& get_item(size_type global_position) const {
+		return at(global_position);
 	}
 
 	/**
 	 * @brief マスターデータ内の全ての行データを取得します。
 	 * @return 全ての行データを含むvectorへのconst参照。
 	 */
-	const std::vector<ItemType>& get_master_data() const {
+	const vector_type& get_master_data() const {
 		return m_master_data;
 	}
 
@@ -2758,14 +2934,14 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indices = find_indices([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto indices = find_indices([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::vector<size_type> find_indices(std::function<bool(const ItemType&)> predicate) const {
+	std::vector<size_type> find_indices(std::function<bool(const value_type&)> predicate) const {
 		std::vector<size_type> found_indices;
-		for (size_t i = 0; i < m_master_data.size(); i++) {
+		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				found_indices.push_back(i);
 			}
@@ -2780,19 +2956,28 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto items = find_items([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto values = find_values([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::vector<ItemType> find_items(std::function<bool(const ItemType&)> predicate) const {
-		std::vector<ItemType> found_items;
-		for (const auto& item : m_master_data) {
-			if (predicate(item)) {
-				found_items.push_back(item);
+	vector_type find_values(std::function<bool(const value_type&)> predicate) const {
+		vector_type found_values;
+		for (const auto& value : m_master_data) {
+			if (predicate(value)) {
+				found_values.push_back(value);
 			}
 		}
-		return found_items;
+		return found_values;
+	}
+
+	/**
+	 * @brief 条件に一致する全ての行データを検索します。（旧・互換版）
+	 * @deprecated Use 'find_values' instead.
+	 */
+	[[deprecated("Use 'find_values' instead.")]]
+	vector_type find_items(std::function<bool(const value_type&)> predicate) const {
+		return find_values(predicate);
 	}
 
 	/**
@@ -2802,13 +2987,13 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto [indices, items] = find_indices_and_items([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * std::vector<std::pair<size_t, _Tp>> pairs = find_indexed_value_pairs([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::vector<std::pair<size_type, ItemType>> find_indices_and_items(std::function<bool(const ItemType&)> predicate) const {
-		std::vector<std::pair<size_type, ItemType>> found_pairs;
+	std::vector<indexed_value_pair> find_indexed_value_pairs(std::function<bool(const value_type&)> predicate) const {
+		std::vector<indexed_value_pair> found_pairs;
 		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				found_pairs.emplace_back(i, m_master_data[i]);
@@ -2818,18 +3003,27 @@ public:
 	}
 
 	/**
+	 * @brief 条件に一致する全ての行のインデックスと行データのペアを検索します。（旧・互換版）
+	 * @deprecated Use 'find_indexed_value_pairs' instead.
+	 */
+	[[deprecated("Use 'find_indexed_value_pairs' instead.")]]
+	std::vector<indexed_value_pair> find_indices_and_items(std::function<bool(const value_type&)> predicate) const {
+		return find_indexed_value_pairs(predicate);
+	}
+
+	/**
 	 * @brief 条件に一致する最初の行のグローバルインデックスを検索します。
 	 * @param[in] predicate 検索条件となる述語関数。
 	 * @return 条件に一致した最初の行のグローバルインデックス。
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_opt = find_first_index([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto index_opt = find_first_index([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::optional<size_type> find_first_index(std::function<bool(const ItemType&)> predicate) const {
+	std::optional<size_type> find_first_index(std::function<bool(const value_type&)> predicate) const {
 		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				return i;
@@ -2845,18 +3039,27 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto item_opt = find_first_item([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto value_opt = find_first_value([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::optional<ItemType> find_first_item(std::function<bool(const ItemType&)> predicate) const {
-		for (const auto& item : m_master_data) {
-			if (predicate(item)) {
-				return item;
+	std::optional<value_type> find_first_value(std::function<bool(const value_type&)> predicate) const {
+		for (const auto& value : m_master_data) {
+			if (predicate(value)) {
+				return value;
 			}
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行データを検索します。（旧・互換版）
+	 * @deprecated Use 'find_first_value' instead.
+	 */
+	[[deprecated("Use 'find_first_value' instead.")]]
+	std::optional<value_type> find_first_item(std::function<bool(const value_type&)> predicate) const {
+		return find_first_value(predicate);
 	}
 
 	/**
@@ -2866,18 +3069,27 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_and_item_opt = find_first_index_and_item([](const ItemType& item) {
-	 * 	return item.age >= 30;
+	 * auto indexed_value_opt = find_first_indexed_value([](const _Tp& value) {
+	 * 	return value.age >= 30;
 	 * });
 	 * ```
 	 */
-	std::optional<std::pair<size_type, ItemType>> find_first_index_and_item(std::function<bool(const ItemType&)> predicate) const {
+	std::optional<indexed_value_pair> find_first_indexed_value(std::function<bool(const value_type&)> predicate) const {
 		for (size_type i = 0; i < m_master_data.size(); i++) {
 			if (predicate(m_master_data[i])) {
 				return std::make_pair(i, m_master_data[i]);
 			}
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 条件に一致する最初の行のインデックスと行データのペアを検索します。（旧・互換版）
+	 * @deprecated Use 'find_first_indexed_value' instead.
+	 */
+	[[deprecated("Use 'find_first_indexed_value' instead.")]]
+	std::optional<indexed_value_pair> find_first_index_and_item(std::function<bool(const value_type&)> predicate) const {
+		return find_first_indexed_value(predicate);
 	}
 
 	/**
@@ -2894,16 +3106,16 @@ public:
 	 * @return 選択されていればグローバルインデックス、なければ空のoptional。
 	 */
 	std::optional<size_type> get_selected_index() {
-		size_t total_rows_per_page = m_rows_per_view * m_page_models.size();
-		size_t page_start_index = m_current_page_index * total_rows_per_page;
+		size_type total_rows_per_page = m_rows_per_view * m_page_models.size();
+		size_type page_start_index = m_current_page_index * total_rows_per_page;
 
 		// 管理している全てのTreeViewをチェック
-		for (size_t i = 0; i < m_page_models.size(); i++) {
+		for (size_type i = 0; i < m_page_models.size(); i++) {
 			auto local_index_opt = m_page_models[i]->get_selected_index();
 			if (local_index_opt.has_value()) {
 				int local_index = local_index_opt.value();
 				// TreeView内での開始インデックスを計算
-				size_t view_start_index = i * m_rows_per_view;
+				size_type view_start_index = i * m_rows_per_view;
 				// グローバルインデックスを計算して返す
 				return page_start_index + view_start_index + local_index;
 			}
@@ -2924,12 +3136,21 @@ public:
 	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていれば行データ、なければ空のoptional。
 	 */
-	std::optional<ItemType> get_selected_item() {
+	std::optional<value_type> get_selected_value() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
-			return get_item(index_opt.value());
+			return this->at(index_opt.value());
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のデータをマスターデータから取得します。（旧・互換版）
+	 * @deprecated Use 'get_selected_value' instead.
+	 */
+	[[deprecated("Use 'get_selected_value' instead.")]]
+	std::optional<value_type> get_selected_item() {
+		return get_selected_value();
 	}
 
 	/**
@@ -2945,12 +3166,21 @@ public:
 	 * 現在の選択状態を問い合わせる目的で使うのは安全です。
 	 * @return 選択されていればグローバルインデックスと行データのペア、なければ空のoptional。
 	 */
-	std::optional<std::pair<size_type, ItemType>> get_selected_index_and_item() {
+	std::optional<indexed_value_pair> get_selected_indexed_value() {
 		auto index_opt = get_selected_index();
 		if (index_opt.has_value()) {
-			return std::make_pair(index_opt.value(), get_item(index_opt.value()));
+			return std::make_pair(index_opt.value(), this->at(index_opt.value()));
 		}
 		return std::nullopt;
+	}
+
+	/**
+	 * @brief 現在選択されている行のグローバルインデックスと行データのペアを取得します。（旧・互換版）
+	 * @deprecated Use 'get_selected_indexed_value' instead.
+	 */
+	[[deprecated("Use 'get_selected_indexed_value' instead.")]]
+	std::optional<indexed_value_pair> get_selected_index_and_item() {
+		return get_selected_indexed_value();
 	}
 };
 } // namespace sgex
