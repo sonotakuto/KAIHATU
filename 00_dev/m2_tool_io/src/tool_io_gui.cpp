@@ -252,8 +252,16 @@ MainWindow::MainWindow() :
 	reconcileToolTypeFilterLabel(glade, "reconcileToolTypeFilterLabel"),
 	reconcilePeriodFilterLabel(glade, "reconcilePeriodFilterLabel"),
 	reconcileFilterEnterButton(glade, "reconcileFilterEnterButton"),
-	reconcileFilterResetButton(glade, "reconcileFilterResetButton"),
 	reconcileToolTypeFilterComboBox(glade, "reconcileToolTypeFilterComboBox"),
+	reconcileToolTypeFilterComboBoxListstore(
+		reconcileToolTypeFilterComboBox,
+		{ G_TYPE_STRING },
+		[](sgex::ListStore* store, GtkTreeIter* iter, const std::string& row) {
+			store->set(iter,
+				0, row.c_str()
+			);
+		}
+	),
 	reconcilePeriodFilterSwitch(glade, "reconcilePeriodFilterSwitch"),
 	reconcileFilterStartYearIncrementButton(glade, "reconcileFilterStartYearIncrementButton"),
 	reconcileFilterStartYearEntry(glade, "reconcileFilterStartYearEntry"),
@@ -350,6 +358,17 @@ MainWindow::MainWindow() :
 	paginatedListstore2types1st.add_model(&liststore2types1st);
 	paginatedListstore2types2nd.add_model(&liststore2types2nd);
 
+	// --- 棚卸し絞り込みコンボボックスの初期化 ---
+	// 選択肢データをセット
+	reconcileToolTypeFilterComboBoxListstore.append("全て");
+	reconcileToolTypeFilterComboBoxListstore.append("インサート");
+	reconcileToolTypeFilterComboBoxListstore.append("ドリル");
+	reconcileToolTypeFilterComboBoxListstore.append("リーマ");
+	reconcileToolTypeFilterComboBoxListstore.append("タップ");
+	reconcileToolTypeFilterComboBoxListstore.append("エンドミル");
+	// 初期状態で「全て」を選択
+	reconcileToolTypeFilterComboBoxListstore.set_active_index(0);
+
 	//=========================================================================
 	// イベントハンドラの登録
 	//=========================================================================
@@ -392,6 +411,9 @@ MainWindow::MainWindow() :
 	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });
 	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
+	// --- 棚卸し絞り込みダイアログ関係 ---
+	reconcileFilterDialog.on_show([this](){ this->reconcileFilterDialog_on_show(); });
+	reconcileFilterEnterButton.on_clicked([this](){ this->reconcileFilterEnterButton_on_clicked(); });
 
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
@@ -1070,7 +1092,7 @@ MainWindow::MainWindow() :
 	});
 	m_widget_states.try_emplace(&reconcilePeriodFilterLabel, WidgetStateUpdater{
 		{
-			.text = UiText{"最終棚卸し日時", "さいしゅうたなおろしにちじ"},
+			.text = UiText{"期間を指定", "きかんをしてい"},
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
@@ -1078,6 +1100,7 @@ MainWindow::MainWindow() :
 			if (state.is_visible.has_value()	) { this->reconcilePeriodFilterLabel.set_visible(state.is_visible.value()); }
 		}
 	});
+	
 	m_widget_states.try_emplace(&reconcileFilterEnterButton, WidgetStateUpdater{
 		{
 			.text = UiText{"決定", "けってい"},
@@ -1090,20 +1113,6 @@ MainWindow::MainWindow() :
 			if (state.can_focus.has_value()		) { this->reconcileFilterEnterButton.set_can_focus(state.can_focus.value()); }
 			if (state.is_sensitive.has_value()	) { this->reconcileFilterEnterButton.set_sensitive(state.is_sensitive.value()); }
 			if (state.is_visible.has_value()	) { this->reconcileFilterEnterButton.set_visible(state.is_visible.value()); }
-		}
-	});
-	m_widget_states.try_emplace(&reconcileFilterResetButton, WidgetStateUpdater{
-		{
-			.text = UiText{"期間リセット", "きかんリセット"},
-			.can_focus		= false,
-			.is_sensitive	= true,
-			.is_visible		= true
-		},
-		[this](const WidgetState& state){
-			if (state.text.has_value()			) { this->reconcileFilterResetButton.set_label(get_display_text(state.text.value()).c_str()); }
-			if (state.can_focus.has_value()		) { this->reconcileFilterResetButton.set_can_focus(state.can_focus.value()); }
-			if (state.is_sensitive.has_value()	) { this->reconcileFilterResetButton.set_sensitive(state.is_sensitive.value()); }
-			if (state.is_visible.has_value()	) { this->reconcileFilterResetButton.set_visible(state.is_visible.value()); }
 		}
 	});
 
@@ -2597,6 +2606,96 @@ void MainWindow::notRegroundButton_on_toggled() {
 	}
 }
 
+void MainWindow::reconcileFilterDialog_on_show() {
+	// 1. カテゴリ設定をUIに反映
+	// コンボボックスのモデルから、現在のフィルタ設定(m_reconcile_filter_category)に一致する項目を探して選択
+	std::string target_category = m_reconcile_filter_category.value_or("全て");
+	
+	auto index_opt = reconcileToolTypeFilterComboBoxListstore.find_first_index(
+		[&](const std::string& item){ return item == target_category; }
+	);
+	
+	if (index_opt.has_value()) {
+		reconcileToolTypeFilterComboBoxListstore.set_active_index(index_opt.value());
+	} else {
+		reconcileToolTypeFilterComboBoxListstore.set_active_index(0); // 見つからなければ「全て」
+	}
+
+	// 2. 期間設定をUIに反映
+	if (m_reconcile_filter_start_date.has_value()) {
+		reconcilePeriodFilterSwitch.set_active(true);
+		
+		// start_date を年月へ分解
+		auto start_tm = sg::to_tm(m_reconcile_filter_start_date.value());
+		reconcileFilterStartYearEntry.set_text(std::to_string(start_tm.tm_year + 1900).c_str());
+		reconcileFilterStartMonthEntry.set_text(std::to_string(start_tm.tm_mon + 1).c_str());
+		
+		// end_date を年月へ分解
+		auto end_tm = sg::to_tm(m_reconcile_filter_end_date.value());
+		reconcileFilterEndYearEntry.set_text(std::to_string(end_tm.tm_year + 1900).c_str());
+		reconcileFilterEndMonthEntry.set_text(std::to_string(end_tm.tm_mon + 1).c_str());
+	} else {
+		reconcilePeriodFilterSwitch.set_active(false);
+		
+		// 現在日時をデフォルトとしてセットしておく
+		auto tp = sg::now();
+		auto now_tm = sg::to_tm(tp);
+		std::string year_str = std::to_string(now_tm.tm_year + 1900);
+		std::string month_str = std::to_string(now_tm.tm_mon + 1);
+		
+		reconcileFilterStartYearEntry.set_text(year_str.c_str());
+		reconcileFilterStartMonthEntry.set_text(month_str.c_str());
+		reconcileFilterEndYearEntry.set_text(year_str.c_str());
+		reconcileFilterEndMonthEntry.set_text(month_str.c_str());
+	}
+}
+
+void MainWindow::reconcileFilterEnterButton_on_clicked() {
+	// 1. カテゴリ設定を保存
+	// 選択中のアイテム文字列を取得
+	auto selected_opt = reconcileToolTypeFilterComboBoxListstore.get_active_item();
+	if (selected_opt.has_value()) {
+		std::string category = selected_opt.value();
+		if (category == "全て") {
+			m_reconcile_filter_category = std::nullopt;
+		} else {
+			m_reconcile_filter_category = category;
+		}
+	} else {
+		m_reconcile_filter_category = std::nullopt;
+	}
+
+	// 2. 期間設定を保存
+	if (reconcilePeriodFilterSwitch.get_active()) {
+		try {
+			int start_y = std::stoi(reconcileFilterStartYearEntry.get_text());
+			int start_m = std::stoi(reconcileFilterStartMonthEntry.get_text());
+			// 開始月の1日 00:00:00
+			m_reconcile_filter_start_date = sg::make_time_point(start_y, start_m, 1, 0, 0, 0);
+
+			int end_y = std::stoi(reconcileFilterEndYearEntry.get_text());
+			int end_m = std::stoi(reconcileFilterEndMonthEntry.get_text());
+			
+			// 終了月の「翌月1日 00:00:00」を作成し、そこから1秒引くことで「当月末 23:59:59」を表現する
+			// (sg::make_time_point が月>12 を翌年に繰り越して処理してくれる前提)
+			auto next_month_first = sg::make_time_point(end_y, end_m + 1, 1, 0, 0, 0);
+			m_reconcile_filter_end_date = next_month_first - std::chrono::seconds(1);
+
+		} catch (...) {
+			// 数値変換エラーなどは一旦無視（あるいはエラーメッセージ表示）
+			m_reconcile_filter_start_date = std::nullopt;
+			m_reconcile_filter_end_date = std::nullopt;
+		}
+	} else {
+		m_reconcile_filter_start_date = std::nullopt;
+		m_reconcile_filter_end_date = std::nullopt;
+	}
+
+	// 3. ダイアログを閉じ、リストを更新
+	reconcileFilterDialog.hide();
+	on_enter_reconcile_waiting_for_container_selection();
+}
+
 //=========================================================================
 // プライベートメンバ関数 (状態毎の関数) 実装
 //=========================================================================
@@ -3424,41 +3523,41 @@ void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection
 }
 
 void MainWindow::on_enter_reconcile_container_retrieving() {
-// 1. 搬出コマンドの送信
-	// m_operating_area は前の画面(選択待ち)で「搬出」ボタンを押した際に保存されている前提
-	try {
-		int control_addr = std::stoi(m_operating_area.mst_address_info.control_address);
-		plc::retrieve_container(control_addr);
-	} catch (const std::exception& e) {
-		DEV_PRINT(stderr, "Error: Invalid control address for retrieval.\n");
-		return;
-	}
+// // 1. 搬出コマンドの送信
+// 	// m_operating_area は前の画面(選択待ち)で「搬出」ボタンを押した際に保存されている前提
+// 	try {
+// 		int control_addr = std::stoi(m_operating_area.mst_address_info.control_address);
+// 		plc::retrieve_container(control_addr);
+// 	} catch (const std::exception& e) {
+// 		DEV_PRINT(stderr, "Error: Invalid control address for retrieval.\n");
+// 		return;
+// 	}
 
-	// 2. 搬出完了信号(M80)の監視を開始
-	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
-		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
-		}
-	});
+// 	// 2. 搬出完了信号(M80)の監視を開始
+// 	plc::g_command_queue.push(plc::WatchCommand{
+// 		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
+// 		.flags = plc::WatchFlags{
+// 			.enable_rise_notification = true,
+// 			.rise_is_one_shot = true
+// 		}
+// 	});
 
-	// 3. 外部システムとの連携開始
-	// (エラーハンドリングは簡易的に実装)
-	tracker::g_tool_tracker->connect();
-	tracker::g_recorder_client->start_recording();
+// 	// 3. 外部システムとの連携開始
+// 	// (エラーハンドリングは簡易的に実装)
+// 	tracker::g_tool_tracker->connect();
+// 	tracker::g_recorder_client->start_recording();
 
-	// 4. リスト表示の更新
-	// 選択されていたコンテナだけを強調表示し、他はグレーアウトする
-	liststore2columnsAll.modify_master_data([this](std::vector<MainTableData>& data) {
-		for (auto& row : data) {
-			if (row.id == m_operating_area.id) {
-				row.cell_state_0to4 = TableCellState::HIGHLIGHT; // 操作対象
-			} else {
-				row.cell_state_0to4 = TableCellState::FADED;     // その他
-			}
-		}
-	}, true);
+// 	// 4. リスト表示の更新
+// 	// 選択されていたコンテナだけを強調表示し、他はグレーアウトする
+// 	liststore2columnsAll.modify_master_data([this](std::vector<MainTableData>& data) {
+// 		for (auto& row : data) {
+// 			if (row.id == m_operating_area.id) {
+// 				row.cell_state_0to4 = TableCellState::HIGHLIGHT; // 操作対象
+// 			} else {
+// 				row.cell_state_0to4 = TableCellState::FADED;     // その他
+// 			}
+// 		}
+// 	}, true);
 }
 
 void MainWindow::on_plc_reconcile_container_retrieving(const plc::Notification& notification) {

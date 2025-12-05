@@ -591,8 +591,6 @@ public:
 	sgex::Label reconcilePeriodFilterLabel;
 	/// @brief 「決定」ボタン (ID: reconcileFilterEnterButton)
 	sgex::Button reconcileFilterEnterButton;
-	/// @brief 「期間リセット」ボタン (ID: reconcileFilterResetButton)
-	sgex::Button reconcileFilterResetButton;
 	/// @brief 工具分類選択コンボボックス (ID: reconcileToolTypeFilterComboBox)
 	sgex::ComboBox reconcileToolTypeFilterComboBox;
 	/// @brief 工具分類選択コンボボックスのリストストア
@@ -1024,6 +1022,18 @@ private:
 	 * @details 「いいえ」が選択された状態への切り替えを試みる。
 	 */
 	void notRegroundButton_on_toggled();
+
+	/**
+	 * @brief reconcileFilterDialog_on_show の "show" シグナルに対応するハンドラ。
+	 * @details ダイアログが表示された直後に呼び出され、フィルタの初期値を設定する。
+	 */
+	void reconcileFilterDialog_on_show();
+
+	/**
+	 * @brief reconcileFilterEnterButton の "clicked" シグナルに対応するハンドラ。
+	 * @details フィルタ設定を確定し、棚卸し画面に戻る。
+	 */
+	void reconcileFilterEnterButton_on_clicked();
 
 	//=========================================================================
 	// プライベートメンバ関数 (状態毎の関数)
