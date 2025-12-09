@@ -461,6 +461,15 @@ MainWindow::MainWindow() :
 	reconcileFilterDialog.on_show([this](){ this->reconcileFilterDialog_on_show(); });
 	reconcileFilterEnterButton.on_clicked([this](){ this->reconcileFilterEnterButton_on_clicked(); });
 
+	reconcileFilterStartYearIncrementButton.on_clicked([this](){ this->reconcileFilterStartYearIncrementButton_on_clicked(); });
+	reconcileFilterStartYearDecrementButton.on_clicked([this](){ this->reconcileFilterStartYearDecrementButton_on_clicked(); });
+	reconcileFilterStartMonthIncrementButton.on_clicked([this](){ this->reconcileFilterStartMonthIncrementButton_on_clicked(); });
+	reconcileFilterStartMonthDecrementButton.on_clicked([this](){ this->reconcileFilterStartMonthDecrementButton_on_clicked(); });
+	reconcileFilterEndYearIncrementButton.on_clicked([this](){ this->reconcileFilterEndYearIncrementButton_on_clicked(); });
+	reconcileFilterEndYearDecrementButton.on_clicked([this](){ this->reconcileFilterEndYearDecrementButton_on_clicked(); });
+	reconcileFilterEndMonthIncrementButton.on_clicked([this](){ this->reconcileFilterEndMonthIncrementButton_on_clicked(); });
+	reconcileFilterEndMonthDecrementButton.on_clicked([this](){ this->reconcileFilterEndMonthDecrementButton_on_clicked(); });
+
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
 	//=========================================================================
@@ -2935,6 +2944,55 @@ void MainWindow::reconcileFilterEnterButton_on_clicked() {
 	// 3. ダイアログを閉じ、リストを更新
 	reconcileFilterDialog.hide();
 	on_enter_reconcile_waiting_for_container_selection();
+}
+
+// --- ファイル内ヘルパー関数 (このファイル内でのみ使用) ---
+static void modify_filter_entry_value(sgex::Entry& entry, int delta, int min_val, int max_val) {
+	try {
+		int val = std::stoi(entry.get_text());
+		val += delta;
+		// 範囲制限
+		if (val < min_val) val = min_val;
+		if (val > max_val) val = max_val;
+		
+		entry.set_text(std::to_string(val).c_str());
+	} catch (...) {
+		// 数値以外が入っていた場合などは無視（または初期値リセットなど）
+	}
+}
+
+// --- カレンダー操作ボタンのハンドラ実装 ---
+
+void MainWindow::reconcileFilterStartYearIncrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterStartYearEntry, 1, 2020, 2040);
+}
+
+void MainWindow::reconcileFilterStartYearDecrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterStartYearEntry, -1, 2020, 2040);
+}
+
+void MainWindow::reconcileFilterStartMonthIncrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterStartMonthEntry, 1, 1, 12);
+}
+
+void MainWindow::reconcileFilterStartMonthDecrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterStartMonthEntry, -1, 1, 12);
+}
+
+void MainWindow::reconcileFilterEndYearIncrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterEndYearEntry, 1, 2020, 2040);
+}
+
+void MainWindow::reconcileFilterEndYearDecrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterEndYearEntry, -1, 2020, 2040);
+}
+
+void MainWindow::reconcileFilterEndMonthIncrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterEndMonthEntry, 1, 1, 12);
+}
+
+void MainWindow::reconcileFilterEndMonthDecrementButton_on_clicked() {
+	modify_filter_entry_value(reconcileFilterEndMonthEntry, -1, 1, 12);
 }
 
 //=========================================================================
