@@ -1058,6 +1058,14 @@ public:
 	}
 
 	/**
+	 * @brief C++モデルが空かどうかを返します。
+	 * @return 空であればtrue、そうでなければfalse。
+	 */
+	bool empty() const {
+		return m_data_model.empty();
+	}
+
+	/**
 	 * @brief 条件に一致する全ての行のインデックスを検索します。
 	 * @param[in] predicate 検索条件となる述語関数。
 	 * @return 条件に一致した行のインデックスのリスト。
@@ -2922,9 +2930,20 @@ public:
 		return m_master_data;
 	}
 
-	/// @brief マスターデータ内の現在の行数を返します。
+	/**
+	 * @brief マスターデータ内の現在の行数を返します。
+	 * @return マスターデータ内の行数。
+	 */
 	size_type size() const {
 		return m_master_data.size();
+	}
+
+	/**
+	 * @brief マスターデータが空かどうかを返します。
+	 * @return 空であればtrue、そうでなければfalse。
+	 */
+	bool empty() const {
+		return m_master_data.empty();
 	}
 
 	/**
