@@ -709,9 +709,7 @@ std::vector<StrageAreaInfo> get_reconcile_container_list(
 	auto& stmt = stmt_opt.value();
 
 	try {
-		// SQL構築:
-		// storage_area をベースに、mst_tool, mst_address を結合。
-		// rec_operation から「棚卸し(INVENTORY)」区分の最終日時を取得するサブクエリを結合。
+		// SQL: storage_area テーブルの last_reconciliation_time を直接取得
 		std::string sql = R"(
 			SELECT
 				sa.storage_area_id,
@@ -745,9 +743,8 @@ std::vector<StrageAreaInfo> get_reconcile_container_list(
 		// パラメータバインド (indexは1から)
 		int param_idx = 1;
 		
-		// OperationClass::INVENTORY を int にキャストしてバインド (サブクエリ用)
-		// ※ OperationClass は typedef.hpp で定義されている enum class
-		stmt.bind(param_idx++, static_cast<int>(OperationClass::INVENTORY));
+		// 【修正】以前あった OperationClass::INVENTORY のバインドは完全に削除します
+		// stmt.bind(param_idx++, static_cast<int>(OperationClass::INVENTORY)); // ← これが残っているとバグになります！
 
 		if (category.has_value()) {
 			stmt.bind(param_idx++, category.value());
@@ -776,16 +773,14 @@ std::vector<StrageAreaInfo> get_reconcile_container_list(
 			// 最終棚卸し日時
 			info.last_reconciliation_time = stmt.getData<std::chrono::system_clock::time_point>(12);
 
-			// --- 日付フィルタリング (SQLが複雑になるためC++側で簡易実施) ---
+			// --- 日付フィルタリング (C++側で実施) ---
 			bool include_record = true;
 			if (start_date.has_value()) {
-				// 開始日指定があるのに履歴がない、または開始日より前なら除外
 				if (!info.last_reconciliation_time.has_value() || info.last_reconciliation_time.value() < start_date.value()) {
 					include_record = false;
 				}
 			}
 			if (end_date.has_value()) {
-				// 終了日指定があるのに履歴がない(これはOKとするか仕様次第)、または終了日より後なら除外
 				if (info.last_reconciliation_time.has_value() && info.last_reconciliation_time.value() > end_date.value()) {
 					include_record = false;
 				}
@@ -804,7 +799,6 @@ std::vector<StrageAreaInfo> get_reconcile_container_list(
 
 	return result;
 }
-
 std::vector<UniqueToolInfo> get_tools_in_container(int storage_area_id) {
 	std::vector<UniqueToolInfo> result;
 
