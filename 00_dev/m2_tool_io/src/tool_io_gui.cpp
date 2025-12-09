@@ -3,11 +3,12 @@
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
 #include "./opt_extension.hpp"
+#include "./utility.hpp"
+#include "./container_utils.hpp"
 #include "./SimpleGtk_extension.hpp"
 #include "./includes.hpp"
 #include "./db_client.hpp"
 #include "./tracking_communicator.hpp"
-#include "./utility.hpp"
 #include "./tool_io_gui.hpp"
 
 namespace gui {
@@ -274,10 +275,10 @@ MainWindow::MainWindow() :
 				store->set(iter,
 					0, this->get_display_text(this->g_warning_type_messages.at(row.type)).c_str(),
 					1, std::to_string(row.count).c_str(),
-					2, this->g_table_row_colors.at(row.cell_state)
+					2, utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL)
 				);
 			} catch (const std::out_of_range& e) {
-				DEV_PRINT("Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state));
+				DEV_PRINT("Error: WarningType enum value out of range: {}\n", static_cast<int>(row.type));
 				throw; // 再スローして呼び出し元で処理させる
 			}
 		}
@@ -1902,31 +1903,27 @@ void MainWindow::reset_header_buttons(bool update_ui) {
 }
 
 void MainWindow::update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui) {
-	// m_widget_statesから現在のWidgetStateUpdaterのコピーを取得
-	auto updater = m_widget_states.at(widget);
+	// widget に対応する WidgetStateUpdater をその場で更新し、変更があった場合に更新を記録
+	bool changed = m_widget_states.modify(widget, [&](auto& updater) {
+		// その場の参照に対して merge を実行し、変更があったかどうかを返す
+		return updater.state.merge(state);
+	});
 
-	// stateメンバーだけを新しい状態に更新
-	if (updater.state.merge(state)) {
-		// 変更があった場合、更新したWidgetStateUpdaterをマップに書き戻す
-		m_widget_states.insert_or_assign(widget, std::move(updater));
-	}
-
-	if (update_ui) {
+	// 変更があった場合、UIを更新
+	if (update_ui && changed) {
 		refresh_ui(false);
 	}
 }
 
 void MainWindow::update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui) {
-	// m_widget_statesから現在のWidgetStateUpdaterのコピーを取得
-	auto updater = m_widget_states.at(widget);
+	// widget に対応する WidgetStateUpdater をその場で更新し、変更があった場合に更新を記録
+	bool changed = m_widget_states.modify(widget, [&](auto& updater) {
+		// その場の参照に対して merge を実行し、変更があったかどうかを返す
+		return updater.state.merge(std::move(state));
+	});
 
-	// stateメンバーだけを新しい状態に更新
-	if (updater.state.merge(std::move(state))) {
-		// 変更があった場合、更新したWidgetStateUpdaterをマップに書き戻す
-		m_widget_states.insert_or_assign(widget, std::move(updater));
-	}
-
-	if (update_ui) {
+	// 変更があった場合、UIを更新
+	if (update_ui && changed) {
 		refresh_ui(false);
 	}
 }
@@ -1942,31 +1939,27 @@ void MainWindow::update_widget_state(const std::vector<sg::Widget*>& widgets, co
 }
 
 void MainWindow::update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui) {
-	// m_table_statesから現在のTableStateのコピーを取得
-	auto current_state = m_table_states.at(table);
+	// table に対応する TableState をその場で更新し、変更があった場合に更新を記録
+	bool changed = m_table_states.modify(table, [&](auto& current_state) {
+		// その場の参照に対して merge を実行し、変更があったかどうかを返す
+		return current_state.merge(state);
+	});
 
-	// stateメンバーだけを新しい状態に更新
-	if (current_state.merge(state)) {
-		// 変更があった場合、更新したTableStateをマップに書き戻す
-		m_table_states.insert_or_assign(table, std::move(current_state));
-	}
-
-	if (update_ui) {
+	// 変更があった場合、UIを更新
+	if (update_ui && changed) {
 		refresh_ui(false);
 	}
 }
 
 void MainWindow::update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui) {
-	// m_table_statesから現在のTableStateのコピーを取得
-	auto current_state = m_table_states.at(table);
+	// table に対応する TableState をその場で更新し、変更があった場合に更新を記録
+	bool changed = m_table_states.modify(table, [&](auto& current_state) {
+		// その場の参照に対して merge を実行し、変更があったかどうかを返す
+		return current_state.merge(std::move(state));
+	});
 
-	// stateメンバーだけを新しい状態に更新
-	if (current_state.merge(std::move(state))) {
-		// 変更があった場合、更新したTableStateをマップに書き戻す
-		m_table_states.insert_or_assign(table, std::move(current_state));
-	}
-
-	if (update_ui) {
+	// 変更があった場合、UIを更新
+	if (update_ui && changed) {
 		refresh_ui(false);
 	}
 }
@@ -1982,39 +1975,55 @@ void MainWindow::update_table_state(const std::vector<sgex::ListStoreViewInterfa
 }
 
 void MainWindow::refresh_ui(bool force_redraw_all) {
-	// 1. 更新対象となるウィジェットのリストを取得
-	auto widgets_to_update = ((force_redraw_all)
-		? (m_widget_states.get_all(true))				// 全ウィジェットを取得し、取得後に更新リストをクリア
-		: (m_widget_states.get_updated_elements(true))	// 更新されたウィジェットのみ取得し、取得後に更新リストをクリア
-	);
+	// --- ウィジェットの更新処理 ---
 
-	// 2. 対象ウィジェットの表示を更新
-	for (const auto& [widget, state_updater] : widgets_to_update) {
+	// 共通の更新ロジックをラムダ式で定義 (DRY原則)
+	auto apply_widget_update = [](const auto& key, const auto& state_updater) {
 		// セッター関数が登録されていれば呼び出す
 		if (state_updater.setter) {
 			// セッター関数を呼び出して、テキストと状態を更新
 			state_updater.setter(state_updater.state);
 		}
+	};
+
+	if (force_redraw_all) {
+		// 全要素を走査 (ロック内/参照アクセス) + 履歴クリア
+		m_widget_states.for_each(apply_widget_update, true);
+	} else {
+		// 更新要素のみ走査 (ロック内/参照アクセス) + 履歴クリア
+		m_widget_states.for_each_updated(apply_widget_update, true);
 	}
 
-	// 3. 更新対象となるテーブルのリストを取得
-	auto tables_to_update = ((force_redraw_all)
-		? (m_table_states.get_all(true))				// 全テーブルを取得し、取得後に更新リストをクリア
-		: (m_table_states.get_updated_elements(true))	// 更新されたテーブルのみ取得し、取得後に更新リストをクリア
-	);
+	// --- テーブルの更新処理 ---
 
-	// 4. 対象テーブルのカラムヘッダー表示を更新
-	for (const auto& [table, state] : tables_to_update) {
+	// 共通の更新ロジックをラムダ式で定義
+	auto apply_table_update = [this](const auto& table, const auto& state) {
 		if (state.column_headers.has_value()) {
 			guint n_columns = table->get_n_columns();	// カラム数
 			guint n_headers = state.column_headers.value().size();	// ヘッダー数
 			for (guint i = 0; (i < n_headers && i < n_columns); i++) {
-				table->set_title(i, get_display_text(state.column_headers.value().at(i)).c_str());
+				// get_display_text はメンバ関数と仮定して this-> で呼び出し
+				table->set_title(i, this->get_display_text(state.column_headers.value().at(i)).c_str());
 			}
 		}
-		if (state.is_sensitive.has_value()	) { table->set_sensitive(state.is_sensitive.value()); }
-		if (state.is_visible.has_value()	) { table->set_visible(state.is_visible.value()); }
-		if (state.is_selectable.has_value()	) { table->set_selection_mode(((state.is_selectable.value()) ? (GtkSelectionMode::GTK_SELECTION_SINGLE) : (GtkSelectionMode::GTK_SELECTION_NONE))); }
+		if (state.is_sensitive.has_value()) {
+			table->set_sensitive(state.is_sensitive.value());
+		}
+		if (state.is_visible.has_value()) {
+			table->set_visible(state.is_visible.value());
+		}
+		if (state.is_selectable.has_value()){
+			table->set_selection_mode(((state.is_selectable.value())
+				? (GtkSelectionMode::GTK_SELECTION_SINGLE)
+				: (GtkSelectionMode::GTK_SELECTION_NONE)
+			));
+		}
+	};
+
+	if (force_redraw_all) {
+		m_table_states.for_each(apply_table_update, true);
+	} else {
+		m_table_states.for_each_updated(apply_table_update, true);
 	}
 }
 
@@ -2119,16 +2128,11 @@ void MainWindow::set_text_mode(TextMode text_mode, bool update_ui) {
 void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) {
 	GdkRGBA bgcolor_0to4;
 	GdkRGBA bgcolor_5;
-	try {
-		bgcolor_0to4 = MainWindow::g_table_row_colors.at(row.cell_state_0to4);
-		bgcolor_5 = ((row.cell_state_5 == TableCellState::NONE)
-			? (bgcolor_0to4)
-			: (MainWindow::g_table_row_colors.at(row.cell_state_5))
-		);
-	} catch (const std::out_of_range& e) {
-		DEV_PRINT(stderr, "Error: TableCellState enum value out of range: {}\n", static_cast<int>(row.cell_state_0to4));
-		throw; // 再スローして呼び出し元で処理させる
-	}
+	bgcolor_0to4 = utils::at_or(g_table_row_colors, row.cell_state_0to4, TABLE_BGCOLOR_NORMAL);
+	bgcolor_5 = ((row.cell_state_5 == TableCellState::NONE)
+		? (bgcolor_0to4)
+		: (utils::at_or(g_table_row_colors, row.cell_state_5, bgcolor_0to4))
+	);
 	store->set(iter,
 		0, row.data_columns[0].c_str(),
 		1, row.data_columns[1].c_str(),
@@ -2306,6 +2310,9 @@ bool MainWindow::confirm_to_user(UiText&& message) {
 }
 
 void MainWindow::add_warning(WarningType type) {
+	if (!is_state_warning(type)) {
+
+	}
 	// 既存のハイライトを探して解除
 	// (イテレータで回しても良いですが、更新にはindexが必要なので従来のループ推奨)
 	for (size_t i = 0; i < warningListstore.size(); ++i) {
@@ -2505,10 +2512,12 @@ void MainWindow::set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWin
 
 void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 	// GUIの条件を判定
-	bool gui_ready_for_action = !warningDialog.get_mapped() && !m_pending_tool_info.has_value();
+	bool gui_ready_for_action = !warningDialog.get_mapped()
+		&& !warningListDialog.get_mapped()
+		&& !m_pending_tool_info.has_value();
 
 	// 選択された中で最後の工具の時 (またはリストが空の時)
-	bool is_last_tool = (!m_retrieving_index.has_value() || m_retrieving_index.value() + 1 >= m_retrieving_tools.size());
+	bool is_last_tool = (!m_retrieving_index.has_value() || (m_retrieving_index.value() + 1 >= m_retrieving_tools.size()));
 
 	// 全システムの準備状態を判定
 	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action && m_tracker_ready_for_action;
@@ -3271,25 +3280,19 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	if (unique_info_opt.has_value()) {
 		UniqueToolInfo& unique_info = unique_info_opt.value();
 		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.value().id) {	// FIXME: nullopt対応
-			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
-			}, true);
+			add_warning(WarningType::DIFFERENT_TOOL);
 			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
-			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"この工具は既に『取り出し済み』になっています\n別の工具を読み取ってください", "この こうぐは すでに 『とりだしずみ』に なっています\nべつの こうぐを よみとってください"}
-			}, true);
+			add_warning(WarningType::ALREADY_RETRIEVED);
 			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::NOT_STORED) {
-			update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-				.text = UiText{"この工具は『補充待ち』になっています\n別の工具を読み取ってください", "この こうぐは 『ほじゅうまち』に なっています\nべつの こうぐを よみとってください"}
-			}, true);
+			add_warning(WarningType::NOT_YET_STORED);
 			qrCodeEntry.grab_focus();
 			return;
 		}
@@ -3297,9 +3300,7 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 		tracker::g_tool_tracker->notify_qr_scan();
 		m_pending_tool_info = std::move(unique_info);
 	} else {
-		update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
-		}, true);
+		add_warning(WarningType::NOT_FOUND);
 	}
 	qrCodeEntry.grab_focus();
 }
@@ -3400,11 +3401,11 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 			) {
 				DEV_PRINT(stderr, "on_tracker_retrieve_read_completed: m_pending_tool_info が不正値です\n");
 				// BUG: 不正値対応
-//				update_widget_state({&messageLabel, &warningLabel}, WidgetState{	// ラベルのテキストを更新
-//					.text = UiText{"工具が違います\n別の工具を読み取ってください", "こうぐが ちがいます\nべつの こうぐを よみとってください"}
-//				}, true);
+//				add_warning(WarningType::DIFFERENT_TOOL);
 				result = false;
 			} else {
+				remove_warning(WarningType::SCAN_FAILURE, true);	// true = 強制削除
+				remove_warning(WarningType::UNSCANNED_OUT_FRAME, false);
 				// 警告ダイアログが表示されていれば非表示に
 				if (warningDialog.get_mapped()) {
 					warningDialog.hide();
@@ -3514,39 +3515,22 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		break;
 	}
 	case tracker::NotificationType::SCAN_FAILURE: {
-		update_widget_state({&messageLabel, &warningLabel}, WidgetState{.text = UiText{
-			"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい。",
-			"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください。"
-		}}, true);
+		add_warning(WarningType::SCAN_FAILURE);
 		result = false;
 		break;
 	}
 	case tracker::NotificationType::SCANNED_IN_CONTAINER: {
-		if (!m_ignore_all_warnings) {
-			update_widget_state(&warningLabel, WidgetState{.text = UiText{
-				"スキャン済みの工具を\nコンテナに戻さないで下さい。",
-				"スキャンずみの こうぐを\nコンテナに もどさないでください。"
-			}}, true);
-			warningDialog.show_all();
-		}
+		add_warning(WarningType::SCANNED_IN_CONTAINER);
+		result = false;
 		break;
 	}
 	case tracker::NotificationType::OTHER_IN_CONTAINER: {
-		if (!m_ignore_all_warnings) {
-			update_widget_state(&warningLabel, WidgetState{.text = UiText{
-				"コンテナの外にあった工具を\nコンテナに入れないでください。",
-				"コンテナのそとに あった こうぐを\nコンテナに いれないでください。"
-			}}, true);
-			warningDialog.show_all();
-		}
+		add_warning(WarningType::OTHER_IN_CONTAINER);
+		result = false;
 		break;
 	}
 	case tracker::NotificationType::UNSCANNED_OUT_FRAME: {
-		update_widget_state(&warningLabel, WidgetState{.text = UiText{
-			"QRコードリーダーで読み取らずに\n工具を取り出そうとしています。\n\nQRコードリーダーで読み取ってから、\n工具を取り出して下さい。",
-			"QRコードリーダーで よみとらずに\nこうぐを とりだそうと しています。\n\nQRコードリーダーで よみとってから、\nこうぐを とりだしてください。"
-		}}, true);
-		warningDialog.show_all();
+		add_warning(WarningType::UNSCANNED_OUT_FRAME);
 		result = false;
 		break;
 	}
@@ -3556,7 +3540,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 	}
 	}
 
-	m_tracker_ready_for_action = result;
+	m_tracker_ready_for_action = warningListstore.empty();	// 警告が無ければ true
 	update_retrieve_read_completed_buttons();
 
 	if (result) {

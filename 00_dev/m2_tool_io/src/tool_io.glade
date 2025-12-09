@@ -3134,346 +3134,6 @@ warning warning warning</property>
       <class name="background-color_normal"/>
     </style>
   </object>
-  <object class="GtkDialog" id="warningDialog">
-    <property name="width_request">1260</property>
-    <property name="height_request">750</property>
-    <property name="can_focus">False</property>
-    <property name="title" translatable="yes">警告</property>
-    <property name="resizable">False</property>
-    <property name="window_position">center-on-parent</property>
-    <property name="type_hint">utility</property>
-    <property name="accept_focus">False</property>
-    <property name="focus_on_map">False</property>
-    <property name="deletable">False</property>
-    <property name="gravity">center</property>
-    <property name="transient_for">mainWindow</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
-    <child internal-child="vbox">
-      <object class="GtkBox">
-        <property name="can_focus">False</property>
-        <property name="halign">center</property>
-        <property name="valign">center</property>
-        <property name="orientation">vertical</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox">
-            <property name="can_focus">False</property>
-            <property name="halign">end</property>
-            <property name="layout_style">center</property>
-            <child>
-              <placeholder/>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="valign">center</property>
-            <property name="margin_top">50</property>
-            <property name="margin_bottom">50</property>
-            <property name="orientation">vertical</property>
-            <property name="spacing">80</property>
-            <child>
-              <object class="GtkBox">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">center</property>
-                <property name="spacing">30</property>
-                <child>
-                  <object class="GtkImage">
-                    <property name="width_request">360</property>
-                    <property name="height_request">360</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="valign">center</property>
-                    <property name="pixbuf">img/warning_351x346.png</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="warningLabel">
-                    <property name="width_request">700</property>
-                    <property name="height_request">360</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">center</property>
-                    <property name="valign">center</property>
-                    <property name="label" translatable="yes">warning warning warning
-warning warning warning
-warning warning warning
-warning warning warning</property>
-                    <property name="justify">center</property>
-                    <style>
-                      <class name="font-bold"/>
-                      <class name="font-size_50px"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    <style>
-      <class name="background-color_normal"/>
-    </style>
-  </object>
-  <object class="GtkDialog" id="warningListDialog">
-    <property name="width_request">1260</property>
-    <property name="height_request">895</property>
-    <property name="can_focus">False</property>
-    <property name="title" translatable="yes">警告</property>
-    <property name="resizable">False</property>
-    <property name="window_position">center-on-parent</property>
-    <property name="type_hint">utility</property>
-    <property name="accept_focus">False</property>
-    <property name="focus_on_map">False</property>
-    <property name="deletable">False</property>
-    <property name="gravity">center</property>
-    <property name="transient_for">mainWindow</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
-    <child internal-child="vbox">
-      <object class="GtkBox">
-        <property name="can_focus">False</property>
-        <property name="halign">center</property>
-        <property name="orientation">vertical</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox">
-            <property name="can_focus">False</property>
-            <property name="halign">end</property>
-            <property name="layout_style">center</property>
-            <child>
-              <placeholder/>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="width_request">1100</property>
-            <property name="height_request">735</property>
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="halign">center</property>
-            <property name="valign">center</property>
-            <property name="margin_top">50</property>
-            <property name="margin_bottom">50</property>
-            <property name="orientation">vertical</property>
-            <property name="spacing">20</property>
-            <child>
-              <object class="GtkImage">
-                <property name="width_request">90</property>
-                <property name="height_request">90</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="valign">center</property>
-                <property name="pixbuf">img/warning_90x89.png</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkBox" id="warningListBox">
-                <property name="width_request">1090</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="valign">center</property>
-                <property name="orientation">vertical</property>
-                <child>
-                  <object class="GtkTreeView" id="warningList">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="model">liststore1</property>
-                    <property name="search_column">0</property>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
-                    </child>
-                    <child>
-                      <object class="GtkTreeViewColumn">
-                        <property name="fixed_width">1006</property>
-                        <property name="title" translatable="yes">警告</property>
-                        <property name="alignment">0.5</property>
-                        <child>
-                          <object class="GtkCellRendererText">
-                            <property name="height">78</property>
-                            <property name="wrap_width">996</property>
-                          </object>
-                          <attributes>
-                            <attribute name="cell-background-rgba">3</attribute>
-                            <attribute name="text">0</attribute>
-                          </attributes>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkTreeViewColumn">
-                        <property name="fixed_width">90</property>
-                        <property name="title" translatable="yes">発生件数</property>
-                        <property name="alignment">0.5</property>
-                        <child>
-                          <object class="GtkCellRendererText">
-                            <property name="xalign">0.20000000298023224</property>
-                            <property name="alignment">center</property>
-                            <property name="wrap_width">90</property>
-                          </object>
-                          <attributes>
-                            <attribute name="cell-background-rgba">4</attribute>
-                            <attribute name="text">1</attribute>
-                          </attributes>
-                        </child>
-                      </object>
-                    </child>
-                    <style>
-                      <class name="warningTree-style"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <style>
-                  <class name="border_solid"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkBox">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">end</property>
-                <property name="valign">end</property>
-                <property name="spacing">60</property>
-                <child>
-                  <object class="GtkButton" id="warningListSuppressButton">
-                    <property name="label" translatable="yes">しばらく無視</property>
-                    <property name="width_request">230</property>
-                    <property name="height_request">60</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="focus_on_click">False</property>
-                    <property name="receives_default">True</property>
-                    <property name="halign">end</property>
-                    <style>
-                      <class name="button"/>
-                      <class name="falseButton"/>
-                      <class name="border-normal"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="warningListCloseButton">
-                    <property name="label" translatable="yes">閉じる</property>
-                    <property name="width_request">230</property>
-                    <property name="height_request">60</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="focus_on_click">False</property>
-                    <property name="receives_default">True</property>
-                    <property name="halign">start</property>
-                    <style>
-                      <class name="button"/>
-                      <class name="falseButton"/>
-                      <class name="border-normal"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="pack_type">end</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <style>
-                  <class name="font-bold"/>
-                  <class name="font-size_30px"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    <style>
-      <class name="background-color_normal"/>
-    </style>
-  </object>
-  <object class="GtkListStore" id="reconcileToolTypeFilterListstore">
-    <columns>
-      <!-- column-name 分類 -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">全て</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">ドリル</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">インサート</col>
-      </row>
-    </data>
-  </object>
   <object class="GtkDialog" id="reconcileFilterDialog">
     <property name="width_request">830</property>
     <property name="height_request">680</property>
@@ -3536,10 +3196,6 @@ warning warning warning</property>
                     <property name="halign">start</property>
                     <property name="label" translatable="yes">分類</property>
                     <property name="xalign">0</property>
-                    <style>
-                      <class name="font-bold"/>
-                      <class name="font-size_30px"/>
-                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -3555,7 +3211,6 @@ warning warning warning</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
                     <property name="halign">start</property>
-                    <property name="model">reconcileToolTypeFilterListstore</property>
                     <property name="active">0</property>
                     <child>
                       <object class="GtkCellRendererText"/>
@@ -3563,10 +3218,6 @@ warning warning warning</property>
                         <attribute name="text">0</attribute>
                       </attributes>
                     </child>
-                    <style>
-                      <class name="font-bold"/>
-                      <class name="font-size_30px"/>
-                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -3574,6 +3225,10 @@ warning warning warning</property>
                     <property name="position">1</property>
                   </packing>
                 </child>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -3598,12 +3253,8 @@ warning warning warning</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="halign">start</property>
-                        <property name="label" translatable="yes">期間を指定</property>
+                        <property name="label" translatable="yes">最終棚卸し日時</property>
                         <property name="xalign">0</property>
-                        <style>
-                          <class name="font-bold"/>
-                          <class name="font-size_30px"/>
-                        </style>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -3612,14 +3263,20 @@ warning warning warning</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkSwitch" id="reconcilePeriodFilterSwitch">
-                        <property name="width_request">70</property>
-                        <property name="height_request">35</property>
+                      <object class="GtkComboBox" id="reconcileToolPeriodFilterComboBox">
+                        <property name="width_request">360</property>
+                        <property name="height_request">60</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="focus_on_click">False</property>
                         <property name="halign">start</property>
-                        <property name="valign">center</property>
-                        <property name="margin_top">5</property>
+                        <property name="active">0</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">0</attribute>
+                          </attributes>
+                        </child>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -3627,6 +3284,10 @@ warning warning warning</property>
                         <property name="position">1</property>
                       </packing>
                     </child>
+                    <style>
+                      <class name="font-bold"/>
+                      <class name="font-size_30px"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -3635,7 +3296,7 @@ warning warning warning</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkBox">
+                  <object class="GtkBox" id="reconcilePeriodFilterBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="halign">center</property>
@@ -4241,6 +3902,329 @@ warning warning warning</property>
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="warningDialog">
+    <property name="width_request">1260</property>
+    <property name="height_request">750</property>
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">警告</property>
+    <property name="resizable">False</property>
+    <property name="window_position">center-on-parent</property>
+    <property name="type_hint">utility</property>
+    <property name="accept_focus">False</property>
+    <property name="focus_on_map">False</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <property name="transient_for">mainWindow</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">80</property>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="spacing">30</property>
+                <child>
+                  <object class="GtkImage">
+                    <property name="width_request">360</property>
+                    <property name="height_request">360</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="valign">center</property>
+                    <property name="pixbuf">img/warning_351x346.png</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="warningLabel">
+                    <property name="width_request">700</property>
+                    <property name="height_request">360</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="label" translatable="yes">warning warning warning
+warning warning warning
+warning warning warning
+warning warning warning</property>
+                    <property name="justify">center</property>
+                    <style>
+                      <class name="font-bold"/>
+                      <class name="font-size_50px"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="warningListDialog">
+    <property name="width_request">1260</property>
+    <property name="height_request">895</property>
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">警告</property>
+    <property name="resizable">False</property>
+    <property name="window_position">center-on-parent</property>
+    <property name="type_hint">utility</property>
+    <property name="accept_focus">False</property>
+    <property name="focus_on_map">False</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <property name="transient_for">mainWindow</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="halign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="layout_style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="width_request">1100</property>
+            <property name="height_request">735</property>
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">20</property>
+            <child>
+              <object class="GtkImage">
+                <property name="width_request">90</property>
+                <property name="height_request">90</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="valign">center</property>
+                <property name="pixbuf">img/warning_90x89.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox" id="warningListBox">
+                <property name="width_request">1090</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="valign">center</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkTreeView" id="warningList">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="model">liststore1</property>
+                    <property name="search_column">0</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="fixed_width">1006</property>
+                        <property name="title" translatable="yes">警告</property>
+                        <property name="alignment">0.5</property>
+                        <child>
+                          <object class="GtkCellRendererText">
+                            <property name="height">78</property>
+                            <property name="wrap_width">996</property>
+                          </object>
+                          <attributes>
+                            <attribute name="cell-background-rgba">3</attribute>
+                            <attribute name="text">0</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="fixed_width">90</property>
+                        <property name="title" translatable="yes">発生件数</property>
+                        <property name="alignment">0.5</property>
+                        <child>
+                          <object class="GtkCellRendererText">
+                            <property name="xalign">0.20000000298023224</property>
+                            <property name="alignment">center</property>
+                            <property name="wrap_width">90</property>
+                          </object>
+                          <attributes>
+                            <attribute name="cell-background-rgba">4</attribute>
+                            <attribute name="text">1</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <style>
+                      <class name="warningTree-style"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="border_solid"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">end</property>
+                <property name="valign">end</property>
+                <property name="spacing">60</property>
+                <child>
+                  <object class="GtkButton" id="warningListSuppressButton">
+                    <property name="label" translatable="yes">しばらく無視</property>
+                    <property name="width_request">230</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">end</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="warningListCloseButton">
+                    <property name="label" translatable="yes">閉じる</property>
+                    <property name="width_request">230</property>
+                    <property name="height_request">60</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">start</property>
+                    <style>
+                      <class name="button"/>
+                      <class name="falseButton"/>
+                      <class name="border-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="pack_type">end</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
           </packing>
         </child>
       </object>

@@ -815,6 +815,21 @@ private:
 	 */
 	bool confirm_to_user(UiText&& message);
 
+	// --- 警告管理用のヘルパー関数 ---
+
+	/**
+	 * @brief 指定した警告の種類が、状態に対する警告かを確認します。
+	 * @param[in] type 確認する警告の種類。
+	 * @return 状態に対する警告であればtrue、そうでなければfalseを返します。
+	 */
+	static bool is_state_warning(WarningType type) {
+		return (
+			(type == WarningType::UNSCANNED_OUT_FRAME) ||
+			(type == WarningType::SCANNED_IN_CONTAINER) ||
+			(type == WarningType::OTHER_IN_CONTAINER)
+		);
+	}
+
 	/**
 	 * @brief 警告を追加します。
 	 * @param[in] type 追加する警告の種類。
