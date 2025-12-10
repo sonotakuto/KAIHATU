@@ -299,7 +299,15 @@ MainWindow::MainWindow() :
 			);
 		}
 	),
-	reconcilePeriodFilterSwitch(glade, "reconcilePeriodFilterSwitch"),
+	reconcileToolPeriodFilterComboBox(glade, "reconcileToolPeriodFilterComboBox"),
+	reconcileToolPeriodFilterComboBoxListstore(
+		reconcileToolPeriodFilterComboBox,
+		{ G_TYPE_STRING },
+		[](sgex::ListStore* store, GtkTreeIter* iter, const std::string& row) {
+			store->set(iter, 0, row.c_str());
+		}
+	),
+	reconcilePeriodFilterBox(glade, "reconcilePeriodFilterBox"),
 	reconcileFilterStartYearMonthLabel(glade, "reconcileFilterStartYearMonthLabel"),
 	reconcileFilterStartYearIncrementButton(glade, "reconcileFilterStartYearIncrementButton"),
 	reconcileFilterStartYearEntry(glade, "reconcileFilterStartYearEntry"),
@@ -416,6 +424,12 @@ MainWindow::MainWindow() :
 	// 初期状態で「全て」を選択
 	reconcileToolTypeFilterComboBoxListstore.set_active_index(0);
 
+	// --- 期間フィルタ用コンボボックスの初期化 ---
+	reconcileToolPeriodFilterComboBoxListstore.append("全期間＋棚卸し未実施"); // Index 0
+	reconcileToolPeriodFilterComboBoxListstore.append("期間を指定");           // Index 1
+	reconcileToolPeriodFilterComboBoxListstore.append("棚卸し未実施のみ");     // Index 2
+	reconcileToolPeriodFilterComboBoxListstore.set_active_index(0); // 初期状態で「全期間＋棚卸し未実施」を選択
+
 	//=========================================================================
 	// イベントハンドラの登録
 	//=========================================================================
@@ -461,6 +475,7 @@ MainWindow::MainWindow() :
 	// --- 棚卸し絞り込みダイアログ関係 ---
 	reconcileFilterDialog.on_show([this](){ this->reconcileFilterDialog_on_show(); });
 	reconcileFilterEnterButton.on_clicked([this](){ this->reconcileFilterEnterButton_on_clicked(); });
+	reconcileToolPeriodFilterComboBox.on_changed([this](){ this->reconcileToolPeriodFilterComboBox_on_changed(); });
 
 	reconcileFilterStartYearIncrementButton.on_clicked([this](){ this->reconcileFilterStartYearIncrementButton_on_clicked(); });
 	reconcileFilterStartYearDecrementButton.on_clicked([this](){ this->reconcileFilterStartYearDecrementButton_on_clicked(); });
@@ -1148,7 +1163,7 @@ MainWindow::MainWindow() :
 	});
 	m_widget_states.try_emplace(&reconcilePeriodFilterLabel, WidgetStateUpdater{
 		{
-			.text = UiText{"期間を指定", "きかんを してい"},
+			.text = UiText{"最終棚卸し日時", "さいしゅうたなおろしにちじ"},
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
@@ -2865,43 +2880,52 @@ void MainWindow::notRegroundButton_on_toggled() {
 	}
 }
 
+void MainWindow::reconcileToolPeriodFilterComboBox_on_changed() {
+	int index = reconcileToolPeriodFilterComboBox.get_active();
+	// Index 1 ("期間を指定") の時だけ、カレンダー操作ボックスを有効化する
+	reconcilePeriodFilterBox.set_sensitive(index == 1);
+}
+
 void MainWindow::reconcileFilterDialog_on_show() {
-	// 1. カテゴリ設定をUIに反映
-	// コンボボックスのモデルから、現在のフィルタ設定(m_reconcile_filter_category)に一致する項目を探して選択
+	// 1. カテゴリ設定をUIに反映 (既存コード維持)
 	std::string target_category = m_reconcile_filter_category.value_or("全て");
-	
 	auto index_opt = reconcileToolTypeFilterComboBoxListstore.find_first_index(
 		[&](const std::string& item){ return item == target_category; }
 	);
-	
 	if (index_opt.has_value()) {
 		reconcileToolTypeFilterComboBoxListstore.set_active_index(index_opt.value());
 	} else {
-		reconcileToolTypeFilterComboBoxListstore.set_active_index(0); // 見つからなければ「全て」
+		reconcileToolTypeFilterComboBoxListstore.set_active_index(0);
 	}
 
-	// 2. 期間設定をUIに反映
+	// 2. 期間設定をUIに反映 (修正)
+	int period_index = 0; // デフォルト: 全期間＋棚卸し未実施
+	if (m_reconcile_filter_unreconciled_only) {
+		period_index = 2; // 棚卸し未処理のみ
+	} else if (m_reconcile_filter_start_date.has_value()) {
+		period_index = 1; // 期間を指定
+	}
+	reconcileToolPeriodFilterComboBoxListstore.set_active_index(period_index);
+	
+	// コンボボックスの状態に合わせてBoxの活性/非活性を更新
+	reconcileToolPeriodFilterComboBox_on_changed();
+
+	// カレンダーの表示更新 (期間指定モードでなくても、前回の値や現在値を表示しておく)
 	if (m_reconcile_filter_start_date.has_value()) {
-		reconcilePeriodFilterSwitch.set_active(true);
-		
-		// start_date を年月へ分解
 		auto start_tm = sg::to_tm(m_reconcile_filter_start_date.value());
 		reconcileFilterStartYearEntry.set_text(std::to_string(start_tm.tm_year + 1900).c_str());
 		reconcileFilterStartMonthEntry.set_text(std::to_string(start_tm.tm_mon + 1).c_str());
 		
-		// end_date を年月へ分解
-		auto end_tm = sg::to_tm(m_reconcile_filter_end_date.value());
+		auto end_tp = m_reconcile_filter_end_date.value_or(sg::now());
+		auto end_tm = sg::to_tm(end_tp);
 		reconcileFilterEndYearEntry.set_text(std::to_string(end_tm.tm_year + 1900).c_str());
 		reconcileFilterEndMonthEntry.set_text(std::to_string(end_tm.tm_mon + 1).c_str());
 	} else {
-		reconcilePeriodFilterSwitch.set_active(false);
-		
-		// 現在日時をデフォルトとしてセットしておく
-		auto tp = sg::now();
-		auto now_tm = sg::to_tm(tp);
+		// デフォルト値
+		auto now_tp = sg::now();
+		auto now_tm = sg::to_tm(now_tp);
 		std::string year_str = std::to_string(now_tm.tm_year + 1900);
 		std::string month_str = std::to_string(now_tm.tm_mon + 1);
-		
 		reconcileFilterStartYearEntry.set_text(year_str.c_str());
 		reconcileFilterStartMonthEntry.set_text(month_str.c_str());
 		reconcileFilterEndYearEntry.set_text(year_str.c_str());
@@ -2910,8 +2934,7 @@ void MainWindow::reconcileFilterDialog_on_show() {
 }
 
 void MainWindow::reconcileFilterEnterButton_on_clicked() {
-	// 1. カテゴリ設定を保存
-	// 選択中のアイテム文字列を取得
+	// 1. カテゴリ設定を保存 (既存コード維持)
 	auto selected_opt = reconcileToolTypeFilterComboBoxListstore.get_active_item();
 	if (selected_opt.has_value()) {
 		std::string category = selected_opt.value();
@@ -2924,28 +2947,30 @@ void MainWindow::reconcileFilterEnterButton_on_clicked() {
 		m_reconcile_filter_category = std::nullopt;
 	}
 
-	// 2. 期間設定を保存
-	if (reconcilePeriodFilterSwitch.get_active()) {
+	// 2. 期間設定を保存 (修正)
+	int period_index = reconcileToolPeriodFilterComboBox.get_active();
+	
+	if (period_index == 1) { // "期間を指定"
+		m_reconcile_filter_unreconciled_only = false;
 		try {
 			int start_y = std::stoi(reconcileFilterStartYearEntry.get_text());
 			int start_m = std::stoi(reconcileFilterStartMonthEntry.get_text());
-			// 開始月の1日 00:00:00
 			m_reconcile_filter_start_date = sg::make_time_point(start_y, start_m, 1, 0, 0, 0);
 
 			int end_y = std::stoi(reconcileFilterEndYearEntry.get_text());
 			int end_m = std::stoi(reconcileFilterEndMonthEntry.get_text());
-			
-			// 終了月の「翌月1日 00:00:00」を作成し、そこから1秒引くことで「当月末 23:59:59」を表現する
-			// (sg::make_time_point が月>12 を翌年に繰り越して処理してくれる前提)
 			auto next_month_first = sg::make_time_point(end_y, end_m + 1, 1, 0, 0, 0);
 			m_reconcile_filter_end_date = next_month_first - std::chrono::seconds(1);
-
 		} catch (...) {
-			// 数値変換エラーなどは一旦無視（あるいはエラーメッセージ表示）
 			m_reconcile_filter_start_date = std::nullopt;
 			m_reconcile_filter_end_date = std::nullopt;
 		}
-	} else {
+	} else if (period_index == 2) { // "棚卸し未処理のみ"
+		m_reconcile_filter_unreconciled_only = true;
+		m_reconcile_filter_start_date = std::nullopt;
+		m_reconcile_filter_end_date = std::nullopt;
+	} else { // "全期間＋棚卸し未実施" (Index 0) またはその他
+		m_reconcile_filter_unreconciled_only = false;
 		m_reconcile_filter_start_date = std::nullopt;
 		m_reconcile_filter_end_date = std::nullopt;
 	}
@@ -3722,6 +3747,12 @@ void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
 	table_data_list.reserve(container_list.size());
 
 	for (const auto& area_info : container_list) {
+		if (m_reconcile_filter_unreconciled_only) {
+			// 最終棚卸し日時が存在する場合はスキップ（＝実施済みなので除外）
+			if (area_info.last_reconciliation_time.has_value()) {
+				continue;
+			}
+		}
 		// 最終棚卸し日時の文字列化
 		std::string last_time_str = "----/--/--";
 		if (area_info.last_reconciliation_time.has_value()) {

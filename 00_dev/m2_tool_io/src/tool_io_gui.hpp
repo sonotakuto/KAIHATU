@@ -597,8 +597,12 @@ public:
 	sgex::ComboBox reconcileToolTypeFilterComboBox;
 	/// @brief 工具分類選択コンボボックスのリストストア
 	sgex::ComboBoxListStoreModel<std::string> reconcileToolTypeFilterComboBoxListstore;	// TODO: 型は自由に変更してください
-	/// @brief 期間フィルタON/OFFスイッチ (ID: reconcilePeriodFilterSwitch)
-	sgex::Switch reconcilePeriodFilterSwitch;
+	/// @brief 期間フィルタ選択コンボボックス (ID: reconcileToolPeriodFilterComboBox)
+	sgex::ComboBox reconcileToolPeriodFilterComboBox;
+	/// @brief 期間フィルタ選択コンボボックスのリストストア
+	sgex::ComboBoxListStoreModel<std::string> reconcileToolPeriodFilterComboBoxListstore;
+	/// @brief 期間指定カレンダー全体をまとめるボックス (ID: reconcilePeriodFilterBox)
+	sgex::Box reconcilePeriodFilterBox;
 	/// @brief 期間指定用 「開始年月」ラベル (ID: reconcileFilterStartYearMonthLabel)
 	sgex::Label reconcileFilterStartYearMonthLabel;
 	/// @brief 期間指定用 開始年増加ボタン (ID: reconcileFilterStartYearIncrementButton)
@@ -1085,6 +1089,12 @@ private:
 	void reconcileFilterEnterButton_on_clicked();
 
 	/**
+	 * @brief reconcileToolPeriodFilterComboBox の "changed" シグナルに対応するハンドラ。
+	 * @details フィルタの期間を変更する。
+	 */
+	void reconcileToolPeriodFilterComboBox_on_changed();
+
+	/**
 	 * @brief reconcileFilterStartYearIncrementButton の "clicked" シグナルに対応するハンドラ。
 	 */
 	void reconcileFilterStartYearIncrementButton_on_clicked();
@@ -1517,6 +1527,9 @@ private:
 
 	/// @brief 棚卸しコンテナ一覧の絞り込み期間（終了）
 	std::optional<std::chrono::system_clock::time_point> m_reconcile_filter_end_date;
+	
+	/// @brief 「棚卸し未処理のみ」で絞り込むかどうか
+	bool m_reconcile_filter_unreconciled_only = false;
 };
 
 

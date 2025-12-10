@@ -211,6 +211,8 @@ public:
 	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 
 	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
@@ -245,6 +247,8 @@ public:
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
 
 	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
