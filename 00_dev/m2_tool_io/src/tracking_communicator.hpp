@@ -138,9 +138,11 @@ public:
 	explicit ToolTrackerClient(std::function<void(const Notification&)> callback); // IPとPortを削除
 	~ToolTrackerClient();
 
-	// コピー禁止
+	// コピー・ムーブを完全に禁止 (this キャプチャが存在するため)
 	ToolTrackerClient(const ToolTrackerClient&) = delete;
 	ToolTrackerClient& operator=(const ToolTrackerClient&) = delete;
+	ToolTrackerClient(ToolTrackerClient&&) = delete;
+	ToolTrackerClient& operator=(ToolTrackerClient&&) = delete;
 
 	/**
 	 * @brief サーバーへの接続を試みます。
@@ -189,11 +191,17 @@ public:
 	 */
 	RecorderClient(); // 引数を削除
 
+	// コピー・ムーブを完全に禁止 (ミューテックスが存在するため)
+	RecorderClient(const RecorderClient&) = delete;
+	RecorderClient& operator=(const RecorderClient&) = delete;
+	RecorderClient(RecorderClient&&) = delete;
+	RecorderClient& operator=(RecorderClient&&) = delete;
+
 	/**
 	 * @brief 現在時刻に基づいて "recording_YYYYMMDD_HHMMSS.mp4" 形式のファイル名を生成します。
 	 * @return 生成されたファイル名文字列。
 	 */
-	std::string generate_timestamp_filename() const; // ★★★ public に移動 ★★★
+	std::string generate_timestamp_filename() const;
 
 	/**
 	 * @brief 録画開始コマンドを送信します。
