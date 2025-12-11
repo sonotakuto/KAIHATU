@@ -73,64 +73,72 @@ std::string OdbcException::getOdbcError(SQLHANDLE handle, SQLSMALLINT handleType
 	return errorMsg;
 }
 
-OdbcException::OdbcException(const std::string& msg, SQLHANDLE handle, SQLSMALLINT handleType)
-	: std::runtime_error(msg + " - " + getOdbcError(handle, handleType)) {}
+OdbcException::OdbcException(const std::string& msg, SQLHANDLE handle, SQLSMALLINT handleType) :
+	std::runtime_error(msg + " - " + getOdbcError(handle, handleType))
+{}
 
 //============================================
 // OdbcConnection
 //============================================
 
 OdbcConnection::OdbcConnection(const std::string& dsn, const std::string& user, const std::string& pass) {
+	SQLRETURN ret;
+
 	// 1. 環境ハンドルの割り当て
-	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &henv);
-	// 2. 使用するODBCのバージョンを3.xに設定
-	SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
-	// 3. 接続ハンドルの割り当て
-	SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc);
-	// 4. データベースへの接続実行
-	SQLRETURN ret = SQLConnect(hdbc, (SQLCHAR*)dsn.c_str(), SQL_NTS, (SQLCHAR*)user.c_str(), SQL_NTS, (SQLCHAR*)pass.c_str(), SQL_NTS);
+	SQLHENV tmp_henv = SQL_NULL_HENV;
+	ret = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &tmp_henv);
+	// 確保できた時点で管理を unique_ptr に移譲する (失敗時は nullptr なので安全)
+	henv.reset(tmp_henv);
 
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-		throw OdbcException("Failed to connect to database", hdbc, SQL_HANDLE_DBC);
+		throw OdbcException("Failed to alloc env handle", nullptr, 0);
 	}
-}
 
-OdbcConnection::~OdbcConnection() {
-	if (hdbc != SQL_NULL_HDBC) {
-		SQLDisconnect(hdbc);
-		SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
-	}
-	if (henv != SQL_NULL_HENV) {
-		SQLFreeHandle(SQL_HANDLE_ENV, henv);
-	}
-}
+	// 2. ODBCバージョンの設定
+	// unique_ptr.get() で生ポインタを取り出して渡す
+	SQLSetEnvAttr(getEnvHandle(), SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
 
-SQLHDBC OdbcConnection::getHandle() const {
-	return hdbc;
-}
+	// 3. 接続ハンドルの割り当て
+	SQLHDBC tmp_hdbc = SQL_NULL_HDBC;
+	ret = SQLAllocHandle(SQL_HANDLE_DBC, getEnvHandle(), &tmp_hdbc);
+	hdbc.reset(tmp_hdbc); // 管理移譲
+
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to alloc dbc handle", getEnvHandle(), SQL_HANDLE_ENV);
+	}
+
+	// 4. 接続実行
+	ret = SQLConnect(getConnHandle(), (SQLCHAR*)dsn.c_str(), SQL_NTS, (SQLCHAR*)user.c_str(), SQL_NTS, (SQLCHAR*)pass.c_str(), SQL_NTS);
+
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		// 接続失敗時、hdbcのデストラクタが走るが、
+		// まだ接続されていないので SQLDisconnect はエラーになる(or 何もしない)。
+		// その後 SQLFreeHandle が呼ばれてメモリは解放される。安全。
+		throw OdbcException("Failed to connect to database", getConnHandle(), SQL_HANDLE_DBC);
+	}}
 
 void OdbcConnection::beginTransaction() {
-	SQLRETURN ret = SQLSetConnectAttr(hdbc, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_OFF, SQL_IS_UINTEGER);
+	SQLRETURN ret = SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_OFF, SQL_IS_UINTEGER);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-		throw OdbcException("Failed to begin transaction (disable autocommit)", hdbc, SQL_HANDLE_DBC);
+		throw OdbcException("Failed to begin transaction (disable autocommit)", getConnHandle(), SQL_HANDLE_DBC);
 	}
 }
 
 void OdbcConnection::commit() {
-	SQLRETURN ret = SQLEndTran(SQL_HANDLE_DBC, hdbc, SQL_COMMIT);
+	SQLRETURN ret = SQLEndTran(SQL_HANDLE_DBC, getConnHandle(), SQL_COMMIT);
 	// オートコミットを有効に戻す
-	SQLSetConnectAttr(hdbc, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
+	SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-		throw OdbcException("Failed to commit transaction", hdbc, SQL_HANDLE_DBC);
+		throw OdbcException("Failed to commit transaction", getConnHandle(), SQL_HANDLE_DBC);
 	}
 }
 
 void OdbcConnection::rollback() {
-	SQLRETURN ret = SQLEndTran(SQL_HANDLE_DBC, hdbc, SQL_ROLLBACK);
+	SQLRETURN ret = SQLEndTran(SQL_HANDLE_DBC, getConnHandle(), SQL_ROLLBACK);
 	// オートコミットを有効に戻す
-	SQLSetConnectAttr(hdbc, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
+	SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-		throw OdbcException("Failed to rollback transaction", hdbc, SQL_HANDLE_DBC);
+		throw OdbcException("Failed to rollback transaction", getConnHandle(), SQL_HANDLE_DBC);
 	}
 }
 
@@ -139,25 +147,25 @@ void OdbcConnection::rollback() {
 //============================================
 
 OdbcStatement::OdbcStatement(const OdbcConnection& conn) {
-	SQLAllocHandle(SQL_HANDLE_STMT, conn.getHandle(), &hstmt);
-}
+	SQLHSTMT tmp_hstmt = SQL_NULL_HSTMT;
+	SQLRETURN ret = SQLAllocHandle(SQL_HANDLE_STMT, conn.getConnHandle(), &tmp_hstmt);
+	hstmt.reset(tmp_hstmt); // 管理移譲
 
-OdbcStatement::~OdbcStatement() {
-	if (hstmt != SQL_NULL_HSTMT) {
-		SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to alloc statement handle", conn.getConnHandle(), SQL_HANDLE_DBC);
 	}
 }
 
 int OdbcStatement::execute(const std::string& sql) {
-	SQLRETURN ret = SQLExecDirect(hstmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+	SQLRETURN ret = SQLExecDirect(getStmtHandle(), (SQLCHAR*)sql.c_str(), SQL_NTS);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-		throw OdbcException("Failed to execute query", hstmt, SQL_HANDLE_STMT);
+		throw OdbcException("Failed to execute query", getStmtHandle(), SQL_HANDLE_STMT);
 	}
 	return getAffectedRowCount();
 }
 
 bool OdbcStatement::fetch() {
-	SQLRETURN ret = SQLFetch(hstmt);
+	SQLRETURN ret = SQLFetch(getStmtHandle());
 
 	if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) {
 		return true;	// 次の行の取得に成功
@@ -166,7 +174,7 @@ bool OdbcStatement::fetch() {
 		return false;	// 結果セットの終端に到達
 	}
 	// 上記以外は予期せぬエラー
-	throw OdbcException("Failed to fetch row", hstmt, SQL_HANDLE_STMT);
+	throw OdbcException("Failed to fetch row", getStmtHandle(), SQL_HANDLE_STMT);
 }
 
 // --- getData<T>のテンプレート特殊化実装群 ---
@@ -176,7 +184,7 @@ template<> std::optional<std::string> OdbcStatement::getData<std::string>(int co
 	char buffer[BUFFER_SIZE];
 	SQLLEN indicator;
 	// 固定長バッファに文字列を読み込む
-	SQLRETURN ret = SQLGetData(hstmt, col, SQL_C_CHAR, buffer, BUFFER_SIZE, &indicator);
+	SQLRETURN ret = SQLGetData(getStmtHandle(), col, SQL_C_CHAR, buffer, BUFFER_SIZE, &indicator);
 	if (ret == SQL_NO_DATA || indicator == SQL_NULL_DATA) {
 		return std::nullopt;
 	}
@@ -192,13 +200,13 @@ template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<c
 	char chunk[CHUNK_SIZE];
 
 	// まずデータがNULLでないかを確認するために、バッファ長0で呼び出す
-	ret = SQLGetData(hstmt, col, SQL_C_BINARY, chunk, 0, &indicator);
+	ret = SQLGetData(getStmtHandle(), col, SQL_C_BINARY, chunk, 0, &indicator);
 	if (indicator == SQL_NULL_DATA) {
 		return std::nullopt;
 	}
 
 	// データがNULLでなければ、SQL_NO_DATAが返されるまでチャンク単位で全て読み出す
-	while ((ret = SQLGetData(hstmt, col, SQL_C_BINARY, chunk, CHUNK_SIZE, &indicator)) != SQL_NO_DATA) {
+	while ((ret = SQLGetData(getStmtHandle(), col, SQL_C_BINARY, chunk, CHUNK_SIZE, &indicator)) != SQL_NO_DATA) {
 		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 			return std::nullopt;	// 読み取り中にエラー
 		}
@@ -212,7 +220,7 @@ template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<c
 template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::getData<std::chrono::system_clock::time_point>(int col) {
 	SQL_TIMESTAMP_STRUCT ts;
 	SQLLEN indicator;
-	SQLGetData(hstmt, col, SQL_C_TYPE_TIMESTAMP, &ts, sizeof(ts), &indicator);	// ODBCのTIMESTAMP構造体で取得
+	SQLGetData(getStmtHandle(), col, SQL_C_TYPE_TIMESTAMP, &ts, sizeof(ts), &indicator);	// ODBCのTIMESTAMP構造体で取得
 	if (indicator == SQL_NULL_DATA) {
 		return std::nullopt;
 	}
@@ -220,14 +228,14 @@ template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::g
 }
 
 void OdbcStatement::closeCursor() {
-	SQLRETURN ret = SQLCloseCursor(hstmt);
+	SQLRETURN ret = SQLCloseCursor(getStmtHandle());
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 		// 失敗した場合、それが「既に閉じている」エラー(24000)か確認する
 		SQLCHAR sqlState[6];
-		SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlState, NULL, NULL, 0, NULL);
+		SQLGetDiagRec(SQL_HANDLE_STMT, getStmtHandle(), 1, sqlState, NULL, NULL, 0, NULL);
 		// '24000'でなければ、それは予期せぬエラーなので例外をスロー
 		if (std::string(reinterpret_cast<char*>(sqlState)) != "24000") {
-			throw OdbcException("Failed to close cursor with an unexpected error", hstmt, SQL_HANDLE_STMT);
+			throw OdbcException("Failed to close cursor with an unexpected error", getStmtHandle(), SQL_HANDLE_STMT);
 		}
 		// '24000'の場合は何もしない（べき等性を保証）
 	}
@@ -237,13 +245,13 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 	std::vector<std::map<std::string, std::any>> allRows;
 	// 1. 結果セットの列情報を取得 (列数、名前、型)
 	SQLSMALLINT columnCount = 0;
-	SQLNumResultCols(hstmt, &columnCount);
+	SQLNumResultCols(getStmtHandle(), &columnCount);
 	std::vector<std::string> columnNames;
 	std::vector<SQLSMALLINT> columnTypes;
 	for (SQLUSMALLINT i = 1; i <= columnCount; i++) {
 		SQLCHAR columnName[256];
 		SQLSMALLINT dataType;
-		SQLDescribeCol(hstmt, i, columnName, sizeof(columnName), NULL, &dataType, NULL, NULL, NULL);
+		SQLDescribeCol(getStmtHandle(), i, columnName, sizeof(columnName), NULL, &dataType, NULL, NULL, NULL);
 		columnNames.push_back(std::string(reinterpret_cast<char*>(columnName)));
 		columnTypes.push_back(dataType);
 	}
@@ -323,9 +331,9 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 
 void OdbcStatement::prepare(const std::string& sql) {
 	// 1. ODBCドライバにSQL文をコンパイルさせる
-	SQLRETURN ret = SQLPrepare(hstmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+	SQLRETURN ret = SQLPrepare(getStmtHandle(), (SQLCHAR*)sql.c_str(), SQL_NTS);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-		throw OdbcException("Failed to prepare statement", hstmt, SQL_HANDLE_STMT);
+		throw OdbcException("Failed to prepare statement", getStmtHandle(), SQL_HANDLE_STMT);
 	}
 	// 2. prepareが成功した場合のみ、古いバインド情報をクリアする
 	bound_params.clear();
@@ -377,7 +385,7 @@ void OdbcStatement::bind(int paramIndex, const std::optional<long double>& opt_v
 void OdbcStatement::setParamsetSize(size_t size) {
 	paramset_size = size;
 	// SQL_ATTR_PARAMSET_SIZEを設定し、一括実行モードをドライバに通知する
-	SQLSetStmtAttr(hstmt, SQL_ATTR_PARAMSET_SIZE, (SQLPOINTER)paramset_size, 0);
+	SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAMSET_SIZE, (SQLPOINTER)paramset_size, 0);
 }
 
 void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::string>& values) {
@@ -588,7 +596,7 @@ void OdbcStatement::bindFixedSizeParam(int index, const std::any& any_val, SQLLE
 		col_size = (opt_val.has_value()) ? *indicator_ptr : 0;
 	}
 
-	SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, c_type, sql_type, col_size, decimal_digits, data_ptr, 0, final_indicator_ptr);
+	SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, c_type, sql_type, col_size, decimal_digits, data_ptr, 0, final_indicator_ptr);
 }
 
 
@@ -614,7 +622,7 @@ void OdbcStatement::bindFixedSizeColumn(int index, std::any& any_val, std::vecto
 		col_size = sizeof(SQL_TIMESTAMP_STRUCT);
 	}
 
-	SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, c_type, sql_type, col_size, 0, data_ptr, 0, indicators.data());
+	SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, c_type, sql_type, col_size, 0, data_ptr, 0, indicators.data());
 }
 
 int OdbcStatement::executePrepared() {
@@ -659,7 +667,7 @@ int OdbcStatement::executePrepared() {
 				size_t stride = bulk_param_strides.at(index);
 				SQLSMALLINT sql_type = bulk_param_sql_types.at(index);
 				SQLSMALLINT c_type = (sql_type == SQL_VARCHAR) ? SQL_C_CHAR : SQL_C_BINARY;
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, c_type, sql_type, stride, 0, (SQLPOINTER)vec.data(), stride, bulk_param_indicators.at(index).data());
+				SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, c_type, sql_type, stride, 0, (SQLPOINTER)vec.data(), stride, bulk_param_indicators.at(index).data());
 			}
 		}
 	} else {
@@ -696,24 +704,24 @@ int OdbcStatement::executePrepared() {
 			// --- 可変長データ (特別扱い) ---
 			} else if (any_val.type() == typeid(std::optional<std::string>)) {
 				const std::optional<std::string>& opt_val = std::any_cast<const std::optional<std::string>&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value()) ? ((SQLPOINTER)opt_val.value().c_str()) : (NULL)), 0, &param_indicators.at(index));
+				SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value()) ? ((SQLPOINTER)opt_val.value().c_str()) : (NULL)), 0, &param_indicators.at(index));
 			} else if (any_val.type() == typeid(std::optional<std::vector<char>>)) {
 				const std::optional<std::vector<char>>& opt_val = std::any_cast<const std::optional<std::vector<char>>&>(any_val);
-				SQLBindParameter(hstmt, index, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value() && !opt_val.value().empty()) ? ((SQLPOINTER)opt_val.value().data()) : (NULL)), 0, &param_indicators.at(index));
+				SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value() && !opt_val.value().empty()) ? ((SQLPOINTER)opt_val.value().data()) : (NULL)), 0, &param_indicators.at(index));
 			}
 		}
 	}
 
 	// SQLを実行
-	SQLRETURN ret = SQLExecute(hstmt);
+	SQLRETURN ret = SQLExecute(getStmtHandle());
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO && ret != SQL_NO_DATA) {
-		throw OdbcException("Failed to execute prepared statement", hstmt, SQL_HANDLE_STMT);
+		throw OdbcException("Failed to execute prepared statement", getStmtHandle(), SQL_HANDLE_STMT);
 	}
 	return getAffectedRowCount();
 }
 
 int OdbcStatement::getAffectedRowCount() {
 	SQLLEN rowCount = 0;
-	SQLRowCount(hstmt, &rowCount);
+	SQLRowCount(getStmtHandle(), &rowCount);
 	return static_cast<int>(rowCount);
 }

@@ -4,10 +4,11 @@
  */
 #pragma once
 
-#include <string>
-#include <vector>
+#include <memory>
 #include <stdexcept>
-#include <utility> // std::pair用
+#include <string>
+#include <utility>
+#include <vector>
 #include <curl/curl.h>
 
 namespace url_transfer {
@@ -53,18 +54,12 @@ public:
 	 */
 	CurlRequest();
 
-	/**
-	 * @brief CurlRequest のデストラクタ。
-	 * @details libcurlのEasy Handleとヘッダーリストをクリーンアップします。
-	 */
-	~CurlRequest();
-
 	// コピーは禁止
 	CurlRequest(const CurlRequest&) = delete;
 	CurlRequest& operator=(const CurlRequest&) = delete;
 
 	// ムーブは許可
-	CurlRequest(CurlRequest&&) = default;
+	CurlRequest(CurlRequest&& other) = default;
 	CurlRequest& operator=(CurlRequest&&) = default;
 
 	/**
@@ -143,6 +138,28 @@ public:
 	const std::string& get_response_body() const;
 
 private:
+	// ■ カスタムデリータの定義 ■
+	// curl_easy_cleanup を呼ぶための構造体
+	struct CurlHandleDeleter {
+		void operator()(CURL* ptr) const {
+			if (ptr) { curl_easy_cleanup(ptr); }
+		}
+	};
+
+	// curl_slist_free_all を呼ぶための構造体
+	struct CurlSlistDeleter {
+		void operator()(struct curl_slist* ptr) const {
+			if (ptr) { curl_slist_free_all(ptr); }
+		}
+	};
+
+	/// @brief HTTPヘッダーリスト。
+	std::unique_ptr<struct curl_slist, CurlSlistDeleter> headers;
+	/// @brief libcurlのEasy Handle。
+	std::unique_ptr<CURL, CurlHandleDeleter> easyhandle;
+	/// @brief レスポンスボディを格納するバッファ。
+	std::string response_body_buffer;
+
 	/**
 	 * @brief libcurl がレスポンスボディを受信したときに呼び出す静的コールバック関数。
 	 * @param[in] contents 受信データへのポインタ。
@@ -152,13 +169,6 @@ private:
 	 * @return 処理したバイト数。
 	 */
 	static size_t write_callback_static(void* contents, size_t size, size_t nmemb, void* userp);
-
-	/// @brief libcurlのEasy Handle。
-	CURL* easyhandle = nullptr;
-	/// @brief HTTPヘッダーリスト。
-	struct curl_slist* headers = nullptr;
-	/// @brief レスポンスボディを格納するバッファ。
-	std::string response_body_buffer;
 };
 
 } // namespace url_transfer

@@ -98,21 +98,24 @@ public:
 	 * @param[in] pass パスワード。
 	 * @throw OdbcException 接続に失敗した場合。
 	 */
-	OdbcConnection(const std::string& dsn, const std::string& user, const std::string& pass);
+	explicit OdbcConnection(const std::string& dsn, const std::string& user, const std::string& pass);
 
-	/**
-	 * @brief データベースから切断し、リソースを解放するデストラクタ。
-	 */
-	~OdbcConnection();
-
+	// コピーは禁止
 	OdbcConnection(const OdbcConnection&) = delete;
 	OdbcConnection& operator=(const OdbcConnection&) = delete;
 
+	// ムーブは許可
+	OdbcConnection(OdbcConnection&&) = default;
+	OdbcConnection& operator=(OdbcConnection&&) = default;
+
 	/**
 	 * @brief ODBC接続ハンドル(HDBC)を取得します。
+	 * @details インライン関数にしたいのでヘッダーファイル内で定義しています。
 	 * @return OdbcStatementの生成などに必要な接続ハンドル。
 	 */
-	SQLHDBC getHandle() const;
+	SQLHDBC getConnHandle() const {
+		return static_cast<SQLHDBC>(hdbc.get());
+	}
 
 	/**
 	 * @brief トランザクションを開始します。
@@ -134,10 +137,43 @@ public:
 	void rollback();
 
 private:
+	// 環境ハンドル用デリータ
+	struct EnvDeleter {
+		void operator()(SQLHENV h) const {
+			if (h != SQL_NULL_HENV) { SQLFreeHandle(SQL_HANDLE_ENV, h); }
+		}
+	};
+
+	// 接続ハンドル用デリータ
+	// ※重要: 接続ハンドルは「切断(Disconnect)」してから「解放(Free)」する必要がある
+	struct DbcDeleter {
+		void operator()(SQLHDBC h) const {
+			if (h != SQL_NULL_HDBC) {
+				SQLDisconnect(h); // 失敗してもデストラクタ内なので無視するしかない
+				SQLFreeHandle(SQL_HANDLE_DBC, h);
+			}
+		}
+	};
+
+// ■ スマートポインタでの宣言 ■
+	// ODBCハンドルは通常 void* なので unique_ptr<void, Deleter> を使う
+	// 注意: 宣言順序が重要です (henv が先に宣言されていれば最後に破棄される…と言いたいところですが、
+	//      DbcDeleter内で完結しているので、ここでは henv が hdbc より長生きしていれば安全です)
+	//      したがって、メンバ変数は 1. henv, 2. hdbc の順で宣言します。
+
 	/// @brief ODBC環境ハンドル。
-	SQLHENV henv = SQL_NULL_HENV;
+	std::unique_ptr<void, EnvDeleter> henv;
 	/// @brief ODBC接続ハンドル。
-	SQLHDBC hdbc = SQL_NULL_HDBC;
+	std::unique_ptr<void, DbcDeleter> hdbc;
+
+	/**
+	 * @brief ODBC環境ハンドル(HENV)を取得します。
+	 * @details インライン関数にしたいのでヘッダーファイル内で定義しています。
+	 * @return ODBC環境ハンドル。
+	 */
+	SQLHENV getEnvHandle() const {
+		return static_cast<SQLHENV>(henv.get());
+	}
 };
 
 //============================================
@@ -249,13 +285,13 @@ public:
 	 */
 	explicit OdbcStatement(const OdbcConnection& conn);
 
-	/**
-	 * @brief ステートメントハンドルを解放するデストラクタ。
-	 */
-	~OdbcStatement();
-
+	// コピーは禁止
 	OdbcStatement(const OdbcStatement&) = delete;
 	OdbcStatement& operator=(const OdbcStatement&) = delete;
+
+	// ムーブは許可
+	OdbcStatement(OdbcStatement&&) = default;
+	OdbcStatement& operator=(OdbcStatement&&) = default;
 
 	/**
 	 * @brief SQL文を直接実行します。
@@ -287,11 +323,11 @@ public:
 		SQLLEN indicator;
 		// OdbcTypeTraits から型情報を取得
 		constexpr SQLSMALLINT c_type = OdbcTypeTraits<T>::c_type;
-		SQLRETURN ret = SQLGetData(hstmt, col, c_type, &value, sizeof(value), &indicator);
+		SQLRETURN ret = SQLGetData(getStmtHandle(), col, c_type, &value, sizeof(value), &indicator);
 
 		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 			// (エラー処理: 例外をスローする)
-			OdbcException("Failed to get data", hstmt, SQL_HANDLE_STMT);
+			OdbcException("Failed to get data", getStmtHandle(), SQL_HANDLE_STMT);
 		}
 		if (indicator == SQL_NULL_DATA) {
 			return std::nullopt;
@@ -542,8 +578,17 @@ public:
 	int getAffectedRowCount();
 
 private:
+	// ■ カスタムデリータ ■
+	struct StmtDeleter {
+		void operator()(SQLHSTMT h) const {
+			if (h != SQL_NULL_HSTMT) SQLFreeHandle(SQL_HANDLE_STMT, h);
+		}
+	};
+
+	// ■ スマートポインタ ■
 	/// @brief ODBCステートメントハンドル。
-	SQLHSTMT hstmt = SQL_NULL_HSTMT;
+	std::unique_ptr<void, StmtDeleter> hstmt;
+
 	/// @brief (単一行用) バインドされたパラメータの値を、実行時まで保持するためのコンテナ。
 	std::map<int, std::any> bound_params;
 	/// @brief (単一行用) バインドされた文字列やBLOBの長さを保持するためのコンテナ。
@@ -559,6 +604,15 @@ private:
 	std::map<int, SQLSMALLINT> bulk_param_sql_types;
 	/// @brief 一括実行で処理する行数。
 	size_t paramset_size = 0;
+
+	/**
+	 * @brief ODBCステートメントハンドル(HSTMT)を取得します。
+	 * @details インライン関数にしたいのでヘッダーファイル内で定義しています。
+	 * @return ODBCステートメントハンドル。
+	 */
+	SQLHSTMT getStmtHandle() const {
+		return static_cast<SQLHSTMT>(hstmt.get());
+	}
 
 	/**
 	 * @brief (Helper) 単一行用の固定長パラメータをバインドします。
@@ -608,56 +662,90 @@ template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::g
 
 /**
  * @struct OdbcSession
- * @brief データベース接続と複数のステートメントを安全に一元管理する高レベルクラス。
+ * @brief データベース接続と、任意のキーに関連付けられた複数のステートメントを安全に一元管理する高レベルクラス。
  * @details このクラスのunique_ptrを一つ保持して利用するのが基本的な使い方です。
  * RAIIにより、このクラスのオブジェクトが破棄される際に、全てのステートメントが破棄された後で
  * 接続が安全に破棄されることを保証します。
+ * @tparam _Key ステートメントを識別するキーの型 (デフォルト: std::string)。
+ * @tparam _Compare キーの比較を行う関数オブジェクト (デフォルト: std::less<_Key>)。
  */
+template <typename _Key = std::string, typename _Compare = std::less<_Key>>
 struct OdbcSession {
+	// --- 型定義 ---
+	using map_type					= std::map<_Key, std::unique_ptr<OdbcStatement>, _Compare>;
+	using key_type					= typename map_type::key_type;
+	using mapped_type				= typename map_type::mapped_type;
+	using value_type				= typename map_type::value_type;
+	using key_compare				= typename map_type::key_compare;
+	using allocator_type			= typename map_type::allocator_type;
+	using size_type					= typename map_type::size_type;
+	using iterator					= typename map_type::iterator;
+	using const_iterator			= typename map_type::const_iterator;
+	using reverse_iterator			= typename map_type::reverse_iterator;
+	using const_reverse_iterator	= typename map_type::const_reverse_iterator;
+
 	/// @brief このセッションが使用する唯一のデータベース接続。
 	std::unique_ptr<OdbcConnection> connection;
 	/// @brief 名前付きで複数のステートメントを保持するコンテナ。
-	std::map<std::string, std::unique_ptr<OdbcStatement>> statements;
+	map_type statements;
 
 	/**
 	 * @brief コンストラクタ。与えられた接続の所有権を移動します。
 	 * @param[in] conn OdbcConnectionへのunique_ptr。
 	 */
-	OdbcSession(std::unique_ptr<OdbcConnection> conn)
-		: connection(std::move(conn)) {}
+	explicit OdbcSession(std::unique_ptr<OdbcConnection> conn) :
+		connection(std::move(conn))
+	{}
+
+	/**
+	 * @brief コンストラクタ。与えられた引数を使って内部で接続を確立します。
+	 * @param[in] dsn データソース名。
+	 * @param[in] user ユーザー名。
+	 * @param[in] pass パスワード。
+	 * @throw OdbcException 接続に失敗した場合。
+	 */
+	OdbcSession(const std::string& dsn, const std::string& user, const std::string& pass)
+		: connection(std::make_unique<OdbcConnection>(dsn, user, pass))
+	{
+		// OdbcConnectionのコンストラクタで接続に失敗した場合、
+		// ここで例外(OdbcException)がそのままスローされます。
+		// connection はまだ完全に構築されていないため、デストラクタは呼ばれませんが、
+		// unique_ptr の初期化中なのでメモリリークは起きません。安全です。
+	}
 
 	/**
 	 * @brief このセッションに新しい名前付きステートメントを追加または取得します。
-	 * @param[in] name このステートメントを識別するためのユニークな名前。
+	 * @param[in] key このステートメントを識別するためのキー。
 	 * @param[in] overwrite (オプション・デフォルト false) 同名のステートメントが既に存在する場合に上書きするかどうか。
 	 * @param[out] is_new (オプション・デフォルト nullptr) 新規に挿入された場合にtrue、既存だった場合にfalseが設定されます。
 	 * @return 作成された、または既存のステートメントへの参照。
 	 */
-	OdbcStatement& add_statement(const std::string& name, bool overwrite = false, bool* is_new = nullptr) {
+	OdbcStatement& add_statement(const key_type& key, bool overwrite = false, bool* is_new = nullptr) {
 		if (!connection) {
 			throw std::runtime_error("Cannot add statement: OdbcConnection is null.");
 		}
 
-		// 1. try_emplaceで挿入を試みる
-		auto result = statements.try_emplace(name, new OdbcStatement(*connection));
+		// 1. まず検索する
+		auto it = statements.find(key);
 
-		// result.first は要素へのイテレータ
-		// result.second は挿入に成功したか(true=新規, false=既存)
-		auto& stmt_ptr_ref = result.first->second;
-		bool inserted_now = result.second; // try_emplaceの結果(bool)
-
-		// 2. 挿入に失敗（キーが既に存在）し、かつ 'overwrite' がtrueの場合
-		if (!inserted_now && overwrite) {
-			stmt_ptr_ref = std::make_unique<OdbcStatement>(*connection);
+		if (it != statements.end()) {
+			// --- 既に存在する場合 ---
+			if (overwrite) {
+				// 上書き指示があれば、新しいインスタンスで置換する
+				it->second = std::make_unique<OdbcStatement>(*connection);
+				if (is_new) { *is_new = false; } // "新規キー"ではないが、インスタンスは新しい
+			} else {
+				// 上書き不要なら何もしない（既存を返す）
+				if (is_new) { *is_new = false; }
+			}
+			return *it->second;
+		} else {
+			// --- 存在しない場合 ---
+			// 新規作成して挿入 (emplace は構築した要素へのイテレータと成功boolのペアを返す)
+			auto result = statements.emplace(key, std::make_unique<OdbcStatement>(*connection));
+			if (is_new) { *is_new = true; }
+			return *result.first->second;
 		}
-
-		// 3. 出力引数が指定されていれば、結果を書き込む
-		if (is_new) {
-			*is_new = inserted_now;
-		}
-
-		// 4. ステートメントへの参照を返す
-		return *stmt_ptr_ref;
 	}
 };
 

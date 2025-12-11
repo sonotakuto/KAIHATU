@@ -13,32 +13,26 @@ namespace url_transfer {
 
 // CurlRequestクラスの実装
 CurlRequest::CurlRequest() {
-	easyhandle = curl_easy_init();
-	if (!easyhandle) {
+	// コンストラクタで初期化し、unique_ptrに所有させる
+	// reset() で生ポインタを渡すと管理が始まる
+	CURL* ptr = curl_easy_init();
+	if (!ptr) {
 		// 例外を投げる前に libcurl のエラーコードを取得するのは難しい
 		// 通常 easy_init が失敗することは稀
 		throw std::runtime_error("curl_easy_init() failed");
 	}
-}
-
-CurlRequest::~CurlRequest() {
-	if (headers) {
-		curl_slist_free_all(headers);
-	}
-	if (easyhandle) {
-		curl_easy_cleanup(easyhandle);
-	}
+	easyhandle.reset(ptr);
 }
 
 void CurlRequest::set_url(const std::string& url) {
-	curl_easy_setopt(easyhandle, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(easyhandle.get(), CURLOPT_URL, url.c_str());
 }
 
 void CurlRequest::set_post_data(const std::string& post_data, const std::string& content_type) {
 	// POSTメソッドを指定
-	curl_easy_setopt(easyhandle, CURLOPT_POST, 1L);
+	curl_easy_setopt(easyhandle.get(), CURLOPT_POST, 1L);
 	// POSTデータを設定
-	curl_easy_setopt(easyhandle, CURLOPT_POSTFIELDS, post_data.c_str());
+	curl_easy_setopt(easyhandle.get(), CURLOPT_POSTFIELDS, post_data.c_str());
 
 	// TODO: 将来的な改善：
 	// 内部コンテナにヘッダーを保持する場合、ここで既存の "Content-Type" を削除してから追加する。
@@ -61,10 +55,25 @@ void CurlRequest::add_header(const std::string& header) {
 	// header文字列を解析し、ヘッダー名が "Content-Type" や "Authorization" など、
 	// 専用セッターで設定すべきものであれば、std::invalid_argument 例外をスローする。
 	// そのためには、まずヘッダーを内部コンテナに保持する方式に変更する必要がある。
-	headers = curl_slist_append(headers, header.c_str());
-	if (!headers) {
-		throw std::runtime_error("curl_slist_append() failed to add header: " + header);
+
+	// 引数に「現在のリスト」を渡し、戻り値で「新しいリストの先頭」を返します。
+
+	// 1. unique_ptr から所有権を一時的に放棄 (release) して生ポインタを得る
+	struct curl_slist* current_ptr = headers.release();
+
+	// 2. リストに追加
+	struct curl_slist* new_ptr = curl_slist_append(current_ptr, header.c_str());
+
+	if (!new_ptr) {
+		// 失敗時、current_ptr のメモリリークを防ぐために戻してから例外を投げる
+		// (ただし append 失敗時に元のリストがどうなるかは libcurl の仕様によるが、
+		//  通常はメモリ不足以外で失敗せず、その場合は元のリストは有効)
+		headers.reset(current_ptr);
+		throw std::runtime_error("curl_slist_append() failed");
 	}
+
+	// 3. 新しいポインタを unique_ptr に管理させる
+	headers.reset(new_ptr);
 }
 
 void CurlRequest::add_header(const std::string& header_name, const std::string& header_value) {
@@ -78,20 +87,20 @@ void CurlRequest::add_header(const std::pair<std::string, std::string>& header_p
 }
 
 void CurlRequest::set_timeout(long timeout_seconds) {
-	curl_easy_setopt(easyhandle, CURLOPT_TIMEOUT, timeout_seconds);
+	curl_easy_setopt(easyhandle.get(), CURLOPT_TIMEOUT, timeout_seconds);
 }
 
 void CurlRequest::perform() {
 	// ヘッダーリストを設定 (add_headerが呼ばれていなくても headers == nullptr なので問題ない)
-	curl_easy_setopt(easyhandle, CURLOPT_HTTPHEADER, headers);
+	curl_easy_setopt(easyhandle.get(), CURLOPT_HTTPHEADER, headers.get());
 
 	// レスポンスボディをバッファに書き込むための設定
 	response_body_buffer.clear(); // 前回の結果をクリア
-	curl_easy_setopt(easyhandle, CURLOPT_WRITEFUNCTION, write_callback_static);
-	curl_easy_setopt(easyhandle, CURLOPT_WRITEDATA, this); // コールバックにthisポインタを渡す
+	curl_easy_setopt(easyhandle.get(), CURLOPT_WRITEFUNCTION, write_callback_static);
+	curl_easy_setopt(easyhandle.get(), CURLOPT_WRITEDATA, this); // コールバックにthisポインタを渡す
 
 	// HTTPリクエストを実行
-	CURLcode res = curl_easy_perform(easyhandle);
+	CURLcode res = curl_easy_perform(easyhandle.get());
 
 	// エラーチェック
 	if (res != CURLE_OK) {
@@ -102,7 +111,7 @@ void CurlRequest::perform() {
 long CurlRequest::get_response_code() const {
 	long http_code = 0;
 	// perform() が成功した後でのみ意味のある値を返す
-	curl_easy_getinfo(easyhandle, CURLINFO_RESPONSE_CODE, &http_code);
+	curl_easy_getinfo(easyhandle.get(), CURLINFO_RESPONSE_CODE, &http_code);
 	return http_code;
 }
 

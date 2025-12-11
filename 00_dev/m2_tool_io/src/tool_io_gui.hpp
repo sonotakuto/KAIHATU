@@ -141,6 +141,7 @@ public:
 	 * @brief 警告の種類を定義する列挙型。
 	 */
 	enum class WarningType {
+		NONE,					// 警告なし
 		NOT_FOUND,				// 未登録工具
 		DIFFERENT_TOOL,			// 別の工具
 		NOT_YET_STORED,			// 未だ補充前
@@ -169,10 +170,119 @@ public:
 	 * @brief UI要素の かな/漢字 両方のテキストを定義する構造体。
 	 */
 	struct UiText {
+		using size_type = std::string::size_type;
+
 		/// @brief 漢字テキスト
 		std::string kanji{};
 		/// @brief かなテキスト
 		std::string kana{};
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type total_length() const {
+			return kanji.length() + kana.length();
+		}
+
+		/**
+		 * @brief 両方のテキストの最大文字数を取得する。
+		 * @return 最大文字数。
+		 */
+		size_type max_length() const {
+			return std::max(kanji.length(), kana.length());
+		}
+
+		/**
+		 * @brief 両方のテキストの最小文字数を取得する。
+		 * @return 最小文字数。
+		 */
+		size_type min_length() const {
+			return std::min(kanji.length(), kana.length());
+		}
+
+		/**
+		 * @brief 指定したモードのテキストの文字数を取得する。
+		 * @param[in] mode 取得するテキストのモード。
+		 * @return 指定したモードの文字数。
+		 */
+		size_type length_in_mode(TextMode mode) const noexcept {
+			return (mode == TextMode::KANJI) ? kanji.length() : kana.length();
+		}
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type length() const {
+			return total_length();
+		}
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type total_size() const {
+			return total_length();
+		}
+
+		/**
+		 * @brief 両方のテキストの最大文字数を取得する。
+		 * @return 最大文字数。
+		 */
+		size_type max_size() const {
+			return max_length();
+		}
+
+		/**
+		 * @brief 両方のテキストの最小文字数を取得する。
+		 * @return 最小文字数。
+		 */
+		size_type min_size() const {
+			return min_length();
+		}
+
+		/**
+		 * @brief 指定したモードのテキストの文字数を取得する。
+		 * @param[in] mode 取得するテキストのモード。
+		 * @return 指定したモードの文字数。
+		 */
+		size_type size_in_mode(TextMode mode) const noexcept {
+			return length_in_mode(mode);
+		}
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type size() const {
+			return total_size();
+		}
+
+		/**
+		 * @brief 両方のテキストが空かどうかを判定する。
+		 * @return 両方のテキストが空の場合にtrue、それ以外の場合にfalseを返す。
+		 */
+		bool empty() const noexcept {
+			return kanji.empty() && kana.empty();
+		}
+
+		/**
+		 * @brief 両方のテキストをクリアする。
+		 */
+		void clear() noexcept {
+			kanji.clear();
+			kana.clear();
+		}
+
+		/**
+		 * @brief 指定したモードのテキストを取得する。
+		 * @param[in] mode 取得するテキストのモード。
+		 * @return 指定したモードの文字列参照。
+		 */
+		const std::string& at(TextMode mode) const noexcept {
+			return ((mode == TextMode::KANJI) ? (kanji) : (kana));
+		}
 	};
 
 	/**
@@ -560,12 +670,12 @@ public:
 
 	/// @brief ダイアログのメインメッセージラベル (ID: passwordEntryLabel)
 	sgex::Label passwordEntryLabel;
+	/// @brief パスワード入力欄 (ID: passwordEntry)
+	sgex::Entry passwordEntry;
 	/// @brief 「キャンセル」ボタン (ID: passwordCancelButton)
 	sgex::Button passwordCancelButton;
 	/// @brief 「確定」ボタン (ID: passwordEnterButton)
 	sgex::Button passwordEnterButton;
-	/// @brief パスワード入力欄 (ID: passwordEntry)
-	sgex::Entry passwordEntry;
 
 	// --- 警告ダイアログ内のウィジェット ---
 
@@ -650,9 +760,7 @@ private:
 	 * @return 表示用の文字列 (かな or 漢字)。
 	 */
 	const std::string& get_display_text(const UiText& ui_text) const {
-		return ((m_text_mode == TextMode::KANA)
-				? (ui_text.kana)
-				: (ui_text.kanji));
+		return ui_text.at(m_text_mode);
 	}
 
 	/**
@@ -815,6 +923,20 @@ private:
 	 */
 	bool confirm_to_user(UiText&& message);
 
+	/**
+	 * @brief 強制実行確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。
+	 * @param[in] message ダイアログに設定するメッセージ。
+	 * @return ユーザーが「無視して続ける」を選択した場合はtrue、「キャンセル」を選択した場合はfalseを返します。
+	 */
+	bool override_confirm_to_user(const UiText& message);
+
+	/**
+	 * @brief 強制実行確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。(ムーブ版)
+	 * @param[in] message ダイアログにムーブ設定するメッセージ。
+	 * @return ユーザーが「無視して続ける」を選択した場合はtrue、「キャンセル」を選択した場合はfalseを返します。
+	 */
+	bool override_confirm_to_user(UiText&& message);
+
 	// --- 警告管理用のヘルパー関数 ---
 
 	/**
@@ -823,12 +945,22 @@ private:
 	 * @return 状態に対する警告であればtrue、そうでなければfalseを返します。
 	 */
 	static bool is_state_warning(WarningType type) {
-		return (
-			(type == WarningType::UNSCANNED_OUT_FRAME) ||
-			(type == WarningType::SCANNED_IN_CONTAINER) ||
-			(type == WarningType::OTHER_IN_CONTAINER)
-		);
+		switch (type) {
+		case WarningType::UNSCANNED_OUT_FRAME:
+		case WarningType::SCANNED_IN_CONTAINER:
+		case WarningType::OTHER_IN_CONTAINER:
+			return true;	// ダイアログを出すべき重要警告
+		default:
+			return false;	// メッセージラベルで済ませるスキャン警告
+		}
 	}
+
+	/**
+	 * @brief 警告表示を更新します。
+	 * @details 現在の警告状態に基づいて、メッセージラベルで済ませるか警告ダイアログで表示するかを判定し、内容を更新します。
+	 * @return 警告ダイアログを表示した場合はtrue、メッセージラベルで済ませた場合はfalseを返します。
+	 */
+	bool update_warning_display();
 
 	/**
 	 * @brief 警告を追加します。
@@ -945,54 +1077,6 @@ private:
 	 * @details メインテーブルの選択が変更されたときに呼び出される。現在の状態に応じたコールバックを実行する。
 	 */
 	void mainTableSelection_on_changed(std::optional<size_t> selected_index_opt);
-
-	/**
-	 * @brief prevButton3columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton3columns_on_clicked();
-
-	/**
-	 * @brief nextButton3columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton3columns_on_clicked();
-
-	/**
-	 * @brief prevButton2columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton2columns_on_clicked();
-
-	/**
-	 * @brief nextButton2columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton2columns_on_clicked();
-
-	/**
-	 * @brief prevButton2types1st の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton2types1st_on_clicked();
-
-	/**
-	 * @brief nextButton2types1st の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton2types1st_on_clicked();
-
-	/**
-	 * @brief prevButton2types2nd の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton2types2nd_on_clicked();
-
-	/**
-	 * @brief nextButton2types2nd の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton2types2nd_on_clicked();
 
 	/**
 	 * @brief qrCodeEntry の "activate" シグナルに対応するハンドラ。

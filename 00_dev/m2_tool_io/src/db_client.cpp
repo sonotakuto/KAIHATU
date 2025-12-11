@@ -16,7 +16,7 @@ using namespace odbc;
 namespace db {
 
 // データベースへの接続を管理するクラスをまとめた構造体へのポインタ
-static std::unique_ptr<OdbcSession> db_session;
+static std::unique_ptr<OdbcSession<>> db_session;
 
 // --- このファイル内部でのみ使用するヘルパー関数 ---
 
@@ -326,8 +326,7 @@ bool connect(void) {
 	for (int i = 0; i < RETRY_LIMIT; i++) {
 		try {
 			// DBに接続
-			auto conn = make_unique<OdbcConnection>(ODBC_DSN, ODBC_USER, ODBC_PASS);
-			db_session = make_unique<OdbcSession>(move(conn));
+			db_session = make_unique<OdbcSession<>>(ODBC_DSN, ODBC_USER, ODBC_PASS);
 
 			// 成功したらループを抜ける
 			return true;

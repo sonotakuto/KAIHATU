@@ -258,9 +258,9 @@ MainWindow::MainWindow() :
 	overrideConfirmCancelButton(glade, "overrideConfirmCancelButton"),
 	// パスワード入力ダイアログ内
 	passwordEntryLabel(glade, "passwordEntryLabel"),
+	passwordEntry(glade, "passwordEntry"),
 	passwordCancelButton(glade, "passwordCancelButton"),
 	passwordEnterButton(glade, "passwordEnterButton"),
-	passwordEntry(glade, "passwordEntry"),
 	// 警告ダイアログ内
 	warningLabel(glade, "warningLabel"),
 	// 警告一覧ダイアログ内
@@ -416,35 +416,35 @@ MainWindow::MainWindow() :
 	userIdEntry.on_activate([this]() { this->userIdEntry_on_activate(); });
 	listChangeButton.on_clicked([this]() { this->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); });
 	liststore3columnsAll.on_selection_changed_by_user([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
-	prevButton3columns.on_clicked([this]() { this->prevButton3columns_on_clicked(); });
-	nextButton3columns.on_clicked([this]() { this->nextButton3columns_on_clicked(); });
+	prevButton3columns.on_clicked([this]() { this->update_and_handle_pagination_3columns(PaginationAction::GO_TO_PREV, true); });
+	nextButton3columns.on_clicked([this]() { this->update_and_handle_pagination_3columns(PaginationAction::GO_TO_NEXT, true); });
 	liststore2columnsAll.on_selection_changed_by_user([this](std::optional<size_t> selected_index_opt) { this->mainTableSelection_on_changed(selected_index_opt); });
-	prevButton2columns.on_clicked([this]() { this->prevButton2columns_on_clicked(); });
-	nextButton2columns.on_clicked([this]() { this->nextButton2columns_on_clicked(); });
-	prevButton2types1st.on_clicked([this]() { this->prevButton2types1st_on_clicked(); });
-	nextButton2types1st.on_clicked([this]() { this->nextButton2types1st_on_clicked(); });
-	prevButton2types2nd.on_clicked([this]() { this->prevButton2types2nd_on_clicked(); });
-	nextButton2types2nd.on_clicked([this]() { this->nextButton2types2nd_on_clicked(); });
+	prevButton2columns.on_clicked([this]() { this->update_and_handle_pagination_2columns(PaginationAction::GO_TO_PREV, true); });
+	nextButton2columns.on_clicked([this]() { this->update_and_handle_pagination_2columns(PaginationAction::GO_TO_NEXT, true); });
+	prevButton2types1st.on_clicked([this]() { this->update_and_handle_pagination_2types1st(PaginationAction::GO_TO_PREV, true); });
+	nextButton2types1st.on_clicked([this]() { this->update_and_handle_pagination_2types1st(PaginationAction::GO_TO_NEXT, true); });
+	prevButton2types2nd.on_clicked([this]() { this->update_and_handle_pagination_2types2nd(PaginationAction::GO_TO_PREV, true); });
+	nextButton2types2nd.on_clicked([this]() { this->update_and_handle_pagination_2types2nd(PaginationAction::GO_TO_NEXT, true); });
 	qrCodeEntry.on_activate([this]() { this->qrCodeEntry_on_activate(); });
 	falseButton.on_clicked([this]() { this->falseButton_on_clicked(); });
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
-	confirmationNoButton.on_clicked([this]() { this->confirmationDialog.response(GTK_RESPONSE_NO); });
-	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GTK_RESPONSE_YES); });
 	confirmInsertCountDialog.on_show([this]() { this->confirmInsertCountDialog_on_show(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
-	warningDialog.on_response([this](gint response_id) { this->warningDialog.hide(); });
-	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
-	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
 	insertCountDetectButton.on_clicked([this]() { this->insertCountDetectButton_on_clicked(); });
 	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
-	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
+	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	confirmRegroundOkButton.on_clicked([this]() { confirmRegroundDialog.response(GTK_RESPONSE_OK); });
+	confirmationNoButton.on_clicked([this]() { this->confirmationDialog.response(GTK_RESPONSE_NO); });
+	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GTK_RESPONSE_YES); });
+	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });
-	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
+	warningDialog.on_response([this](gint response_id) { this->warningDialog.hide(); });
+	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
+	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
 
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
@@ -2283,10 +2283,88 @@ bool MainWindow::confirm_to_user(UiText&& message) {
 	}
 }
 
-void MainWindow::add_warning(WarningType type) {
-	if (!is_state_warning(type)) {
+bool MainWindow::override_confirm_to_user(const UiText& message) {
+	// ラベルにメッセージを設定
+	update_widget_state(&overrideConfirmLabel, WidgetState{ .text = message }, true);
 
+	// ダイアログをモーダル表示し、ユーザーの応答を待つ
+	if (overrideConfirmDialog.run(this) == GTK_RESPONSE_YES) {
+		// ユーザーが「はい」を選択した場合
+		DEV_PRINT("ユーザー確認: はい\n");
+		return true;
+	} else {
+		// ユーザーが「いいえ」を選択した場合
+		DEV_PRINT("ユーザー確認: いいえ\n");
+		return false;
 	}
+}
+
+bool MainWindow::override_confirm_to_user(UiText&& message) {
+	// ラベルにメッセージを設定
+	update_widget_state(&overrideConfirmLabel, WidgetState{ .text = std::move(message) }, true);
+
+	// ダイアログをモーダル表示し、ユーザーの応答を待つ
+	if (overrideConfirmDialog.run(this) == GTK_RESPONSE_YES) {
+		// ユーザーが「はい」を選択した場合
+		DEV_PRINT("ユーザー確認: はい\n");
+		return true;
+	} else {
+		// ユーザーが「いいえ」を選択した場合
+		DEV_PRINT("ユーザー確認: いいえ\n");
+		return false;
+	}
+}
+
+bool MainWindow::update_warning_display() {
+	bool has_state_warning = false;
+	WarningType scan_error_type = WarningType::NONE;
+
+	// リスト内の警告をチェック
+	// (ListStoreModelBase に const_iterator がある前提)
+	for (const auto& item : warningListstore) {
+		if (is_state_warning(item.type)) {
+			has_state_warning = true;
+		} else {
+			// スキャンエラーのタイプを保持しておく（最新1件を表示するため）
+			// リストの末尾にあるものが最新と仮定
+			scan_error_type = item.type;
+		}
+	}
+
+	if (has_state_warning) {
+		// --- パターンA: 重要警告がある場合 ---
+		// ダイアログを表示 (スキャンエラーもリストに含まれているので一緒に見える)
+		if (!warningListDialog.get_mapped()) {
+			warningListDialog.show_all();
+		}
+	} else if (scan_error_type != WarningType::NONE) {
+		// --- パターンB: スキャン警告のみの場合 ---
+		// ダイアログは隠す
+		warningListDialog.hide();
+
+		// メッセージラベルに警告用のスタイルを適用してエラー内容を表示
+		GtkStyleContext* context = gtk_widget_get_style_context(messageLabel);
+		gtk_style_context_add_class(context, "background-color_warning");	// スタイルを適用
+
+		update_widget_state(&messageLabel, WidgetState{
+			.text = g_warning_type_messages.at(scan_error_type)	// 内容を表示
+		}, true);
+
+	} else {
+		// --- パターンC: 警告なし ---
+		warningListDialog.hide();
+
+		// エラー表示用スタイルを外す
+		GtkStyleContext* context = gtk_widget_get_style_context(messageLabel);
+		gtk_style_context_remove_class(context, "background-color_warning");
+
+		// ここで本来の案内メッセージに戻すが、
+		// スキャン成功時には自動的に現在の画面に再遷移するため、ここでの書き換えは不要
+	}
+	return has_state_warning;
+}
+
+void MainWindow::add_warning(WarningType type) {
 	// 既存のハイライトを探して解除
 	// (イテレータで回しても良いですが、更新にはindexが必要なので従来のループ推奨)
 	for (size_t i = 0; i < warningListstore.size(); ++i) {
@@ -2302,7 +2380,7 @@ void MainWindow::add_warning(WarningType type) {
 			// 別の行ならNORMALに戻して更新
 			WarningListData item = item_ref;
 			item.cell_state = TableCellState::NORMAL;
-			warningListstore.update(i, item);
+			warningListstore.update(i, std::move(item));
 			break; // ハイライトは1つという前提
 		}
 	}
@@ -2338,9 +2416,7 @@ void MainWindow::add_warning(WarningType type) {
 		});
 	}
 
-	if (!warningListDialog.get_mapped()) {
-		warningListDialog.show_all();
-	}
+	update_warning_display();	// 警告表示を更新
 }
 
 std::pair<int, int> MainWindow::remove_warning(WarningType type, bool force_clear) {
@@ -2375,18 +2451,13 @@ std::pair<int, int> MainWindow::remove_warning(WarningType type, bool force_clea
 		if (item.count <= 0) {
 			// カウントが0以下になったらリストから削除
 			warningListstore.erase(index);
-
-			// 警告がなくなったらダイアログを閉じる
-			if (warningListstore.size() == 0) {
-				warningListDialog.hide();
-			}
 		} else {
 			// まだ残っているなら更新
-			warningListstore.update(index, item);
+			warningListstore.update(index, std::move(item));
 		}
 
-		// 結果を返す {減らした数, 現在の数}
-		return {decreased_count, item.count};
+		update_warning_display();	// 警告表示を更新
+		return {decreased_count, item.count};	// 結果を返す {減らした数, 現在の数}
 	}
 
 	// 対象が見つからなかった場合
@@ -2401,13 +2472,10 @@ size_t MainWindow::clear_warnings() {
 	if (removed_count > 0) {
 		// リストを全削除 (モデルとビューの両方がクリアされます)
 		warningListstore.clear();
-
-		// ダイアログを非表示にする
-		warningListDialog.hide();
 	}
 
-	// 削除した数を返す
-	return removed_count;
+	update_warning_display();	// 警告表示を更新
+	return removed_count;		// 削除した数を返す
 }
 
 bool MainWindow::authenticate_with_password() {
@@ -2676,46 +2744,6 @@ void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_in
 	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
 }
 
-void MainWindow::prevButton3columns_on_clicked() {
-	DEV_PRINT("前のページへ\n");
-	update_and_handle_pagination_3columns(PaginationAction::GO_TO_PREV, true);
-}
-
-void MainWindow::nextButton3columns_on_clicked() {
-	DEV_PRINT("次のページへ\n");
-	update_and_handle_pagination_3columns(PaginationAction::GO_TO_NEXT, true);
-}
-
-void MainWindow::prevButton2columns_on_clicked() {
-	DEV_PRINT("前のページへ\n");
-	update_and_handle_pagination_2columns(PaginationAction::GO_TO_PREV, true);
-}
-
-void MainWindow::nextButton2columns_on_clicked() {
-	DEV_PRINT("次のページへ\n");
-	update_and_handle_pagination_2columns(PaginationAction::GO_TO_NEXT, true);
-}
-
-void MainWindow::prevButton2types1st_on_clicked() {
-	DEV_PRINT("前のページへ\n");
-	update_and_handle_pagination_2types1st(PaginationAction::GO_TO_PREV, true);
-}
-
-void MainWindow::nextButton2types1st_on_clicked() {
-	DEV_PRINT("次のページへ\n");
-	update_and_handle_pagination_2types1st(PaginationAction::GO_TO_NEXT, true);
-}
-
-void MainWindow::prevButton2types2nd_on_clicked() {
-	DEV_PRINT("前のページへ\n");
-	update_and_handle_pagination_2types2nd(PaginationAction::GO_TO_PREV, true);
-}
-
-void MainWindow::nextButton2types2nd_on_clicked() {
-	DEV_PRINT("次のページへ\n");
-	update_and_handle_pagination_2types2nd(PaginationAction::GO_TO_NEXT, true);
-}
-
 void MainWindow::qrCodeEntry_on_activate() {
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
@@ -2766,13 +2794,13 @@ void MainWindow::passwordEntryDialog_on_show() {
 
 void MainWindow::warningListCloseButton_on_clicked() {
 	m_warning_closed_by_user = true;
-	warningDialog.response(GTK_RESPONSE_CLOSE);
+	warningListDialog.response(GTK_RESPONSE_CLOSE);
 }
 
 void MainWindow::warningListSuppressButton_on_clicked() {
 	m_warning_closed_by_user = true;
 	m_ignore_all_warnings = true;
-	warningDialog.response(GTK_RESPONSE_CLOSE);
+	warningListDialog.response(GTK_RESPONSE_CLOSE);
 }
 
 void MainWindow::insertCountIncrementButton_on_clicked() {
@@ -2893,7 +2921,7 @@ for (int i = 0; i < 120; i++) {
 		.cell_state_0to4 = TableCellState::NORMAL
 	});
 }
-*/
+//*/
 		// 5. 次の状態へ遷移
 		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 
@@ -2915,21 +2943,20 @@ void MainWindow::on_enter_retrieve_selecting_tools()
 void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<size_t> selected_index_opt) {
 	// 選択されていて、かつ無効化されていない行の場合
 	if (selected_index_opt.has_value()) {
-		auto selected_index = selected_index_opt.value();
-		auto selected_item = liststore2columnsAll.at(selected_index);
+		// 状態をトグルして描画を更新
+		liststore2columnsAll.modify_master_data([&selected_index_opt](std::vector<MainTableData>& master_data){
+			auto& selected_item = master_data.at(selected_index_opt.value());
 
-		DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index);
+			DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index_opt.value());
 
-		if (selected_item.cell_state_0to4 != TableCellState::FADED) {
-			// 状態をトグルする
-			selected_item.cell_state_0to4 = ((selected_item.cell_state_0to4 == TableCellState::SELECTED)
-				? (TableCellState::NORMAL)
-				: (TableCellState::SELECTED)
-			);
-		}
-
-		// モデルを更新 (これにより GtkListStore も更新される)
-		liststore2columnsAll.update(selected_index, selected_item);
+			if (selected_item.cell_state_0to4 != TableCellState::FADED) {
+				// 状態をトグルする
+				selected_item.cell_state_0to4 = ((selected_item.cell_state_0to4 == TableCellState::SELECTED)
+					? (TableCellState::NORMAL)
+					: (TableCellState::SELECTED)
+				);
+			}
+		}, true);
 	}
 
 	// 選択された工具がある場合にのみ「確定」ボタンを有効化する
@@ -3224,10 +3251,10 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 	switch (notification.type) {
 	case tracker::NotificationType::SCAN_SUCCESS: {
 		if (m_pending_tool_info.has_value()) {
-			// 念のため基本工具情報等が合致しているかチェック
 			UniqueToolInfo unique_info = std::move(m_pending_tool_info).value();
 			m_pending_tool_info.reset();
 
+			// 念のため基本工具情報等が合致しているかチェック
 			if (
 				unique_info.mst_tool_info.id != retrieving_tool.id &&
 				unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.value().id &&	// FIXME: nullopt対応
@@ -3241,9 +3268,8 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 			} else {
 				remove_warning(WarningType::SCAN_FAILURE, true);	// true = 強制削除
 				remove_warning(WarningType::UNSCANNED_OUT_FRAME, false);
-				// 警告ダイアログが表示されていれば非表示に
-				if (warningDialog.get_mapped()) {
-					warningDialog.hide();
+				if (m_unscanned_count > 0) {
+					m_unscanned_count--;
 				}
 
 				// この工具が既に取り出しリスト (m_operated_records) に存在するか検索
@@ -3359,8 +3385,30 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		result = false;
 		break;
 	}
+	case tracker::NotificationType::SCANNED_OUT_CONTAINER: {
+		remove_warning(WarningType::SCANNED_IN_CONTAINER, false);
+		result = false;
+		break;
+	}
 	case tracker::NotificationType::OTHER_IN_CONTAINER: {
 		add_warning(WarningType::OTHER_IN_CONTAINER);
+		result = false;
+		break;
+	}
+	case tracker::NotificationType::OTHER_OUT_CONTAINER: {
+		remove_warning(WarningType::OTHER_IN_CONTAINER);
+		result = false;
+		break;
+	}
+	case tracker::NotificationType::UNSCANNED_IN_CONTAINER: {
+		if (m_unscanned_count > 0) {
+			m_unscanned_count--;
+		}
+		result = false;
+		break;
+	}
+	case tracker::NotificationType::UNSCANNED_OUT_CONTAINER: {
+		m_unscanned_count++;
 		result = false;
 		break;
 	}
