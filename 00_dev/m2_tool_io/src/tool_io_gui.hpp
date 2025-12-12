@@ -149,7 +149,8 @@ public:
 		SCAN_FAILURE,			// スキャン失敗
 		UNSCANNED_OUT_FRAME,	// 未スキャン工具がフレーム外に出た
 		SCANNED_IN_CONTAINER,	// スキャン済工具がコンテナ内に入った
-		OTHER_IN_CONTAINER		// その他工具がコンテナ内に入った
+		OTHER_IN_CONTAINER,		// その他工具がコンテナ内に入った
+		END
 	};
 
 	/**
@@ -965,22 +966,37 @@ private:
 	/**
 	 * @brief 警告を追加します。
 	 * @param[in] type 追加する警告の種類。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void add_warning(WarningType type);
+	void add_warning(WarningType type, bool update_ui = true);
 
 	/**
 	 * @brief 警告を削除します。
 	 * @param[in] type 削除する警告の種類。
 	 * @param[in] force_clear (オプション・デフォルト false) trueの場合、カウントに関わらず即座に削除します。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 * @return 減らしたcountと、現在の警告のcountをペアで返します（first: 減らしたcount, second: 現在のcount）。
 	 */
-	std::pair<int, int> remove_warning(WarningType type, bool force_clear = false);
+	std::pair<int, int> remove_warning(WarningType type, bool force_clear = false, bool update_ui = true);
+
+	/**
+	 * @brief スキャン警告をすべて削除します。
+	 * @details
+	 * WarningType の追加時に、削除する警告種類の追加を is_state_warning と一緒に忘れずできるよう、
+	 * ヘッダで定義します (実装も順番にいくつか関数を呼び出すだけで軽量なため)。
+	 */
+	void clear_scan_warnings(bool update_ui = true) {
+		remove_warning(WarningType::NOT_FOUND, true, false);
+		remove_warning(WarningType::DIFFERENT_TOOL, true, false);
+		remove_warning(WarningType::NOT_YET_STORED, true, false);
+		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);
+		if (update_ui) { update_warning_display(); }
+	}
 
 	/**
 	 * @brief すべての警告をクリアします。
-	 * @return 削除した警告の数を返します。
 	 */
-	size_t clear_warnings();
+	void clear_warnings(bool update_ui = true);
 
 	// --- 認証用のヘルパー関数 ---
 
@@ -1109,16 +1125,11 @@ private:
 	void passwordEntryDialog_on_show();
 
 	/**
-	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 警告ダイアログを閉じる。
+	 * @brief warningListDialog の "response" シグナルに対応するハンドラ。
+	 * @details ダイアログにレスポンスシグナルが発生した直後に呼び出され、warningListStore をクリアする。
+	 * @param response_id 発行されたレスポンスID
 	 */
-	void warningListCloseButton_on_clicked();
-
-	/**
-	 * @brief warningListSuppressButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
-	 */
-	void warningListSuppressButton_on_clicked();
+	void warningListDialog_on_response(gint response_id);
 
 	/**
 	 * @brief insertCountIncrementButton の "clicked" シグナルに対応するハンドラ。
@@ -1145,16 +1156,28 @@ private:
 	void insertCountOkButton_on_clicked();
 
 	/**
+	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。
+	 * @details 「いいえ」が選択された状態への切り替えを試みる。
+	 */
+	void notRegroundButton_on_toggled();
+
+	/**
 	 * @brief regroundButton の "toggled" シグナルに対応するハンドラ。
 	 * @details 「はい」が選択された状態への切り替えを試みる。
 	 */
 	void regroundButton_on_toggled();
 
 	/**
-	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。
-	 * @details 「いいえ」が選択された状態への切り替えを試みる。
+	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じる。
 	 */
-	void notRegroundButton_on_toggled();
+	void warningListCloseButton_on_clicked();
+
+	/**
+	 * @brief warningListSuppressButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
+	 */
+	void warningListSuppressButton_on_clicked();
 
 	//=========================================================================
 	// プライベートメンバ関数 (状態毎の関数)
@@ -1498,6 +1521,9 @@ private:
 
 	/// @brief 操作している保管領域。
 	std::optional<StrageAreaInfo> m_operating_area;
+
+	/// @brief 操作している工具の基本情報
+	std::optional<MstToolInfo> m_operating_tool;
 
 	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
 	std::vector<RecOperationTable> m_operated_records;

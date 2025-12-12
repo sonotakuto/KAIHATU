@@ -6,7 +6,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 
-namespace SdlWrapper {
+namespace sdl {
 
 // オーディオ関連の例外クラス
 class AudioException : public std::runtime_error {
@@ -46,9 +46,11 @@ public:
 	);
 	~AudioPlayer();
 
-	// 安全のためコピーコンストラクタと代入演算子を削除（リソースの二重解放防止）
+	// コピー・ムーブを完全に禁止（リソースの二重解放防止）
 	AudioPlayer(const AudioPlayer&) = delete;
 	AudioPlayer& operator=(const AudioPlayer&) = delete;
+	AudioPlayer(AudioPlayer&&) = delete;
+	AudioPlayer& operator=(AudioPlayer&&) = delete;
 
 	/**
 	 * 効果音(SE)を再生する

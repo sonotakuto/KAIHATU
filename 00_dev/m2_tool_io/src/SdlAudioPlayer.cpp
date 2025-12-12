@@ -1,6 +1,6 @@
 #include "SdlAudioPlayer.hpp"
 
-namespace SdlWrapper {
+namespace sdl {
 
 AudioPlayer::AudioPlayer(int flags, int frequency, Uint16 format, int channels, int chunksize) :
 	currentBgm(nullptr),
@@ -16,6 +16,7 @@ AudioPlayer::AudioPlayer(int flags, int frequency, Uint16 format, int channels, 
 		int initted = Mix_Init(flags);
 		if ((initted & flags) != flags) {
 			// 失敗時: SDLを閉じてから投げる
+			SDL_Quit();
 			throw AudioException(std::string("Mix_Init: Some formats not loaded: ") + Mix_GetError());
 		}
 	}
@@ -113,8 +114,8 @@ void AudioPlayer::stopBGM() {
 
 void AudioPlayer::setVolume(int volume) {
 	// 0〜128の範囲にクランプ
-	if (volume < 0) volume = 0;
-	if (volume > 128) volume = 128;
+	if (volume < 0) { volume = 0; }
+	if (volume > 128) { volume = 128; }
 
 	// 全チャンネルのSE音量設定
 	Mix_Volume(-1, volume);
