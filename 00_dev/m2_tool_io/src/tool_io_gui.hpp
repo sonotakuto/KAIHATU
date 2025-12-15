@@ -146,6 +146,7 @@ public:
 		DIFFERENT_TOOL,			// 別の工具
 		NOT_YET_STORED,			// 未だ補充前
 		ALREADY_RETRIEVED,		// 既に取り出されていた
+		ALREADY_STORED,			// 既に補充されていた
 		SCAN_FAILURE,			// スキャン失敗
 		UNSCANNED_OUT_FRAME,	// 未スキャン工具がフレーム外に出た
 		SCANNED_IN_CONTAINER,	// スキャン済工具がコンテナ内に入った
@@ -938,6 +939,12 @@ private:
 	 */
 	bool override_confirm_to_user(UiText&& message);
 
+	/**
+	 * @brief 現在の状態に応じた update_**_read_completed_buttons を呼び出す。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_read_completed_buttons(bool update_ui = true);
+
 	// --- 警告管理用のヘルパー関数 ---
 
 	/**
@@ -984,12 +991,14 @@ private:
 	 * @details
 	 * WarningType の追加時に、削除する警告種類の追加を is_state_warning と一緒に忘れずできるよう、
 	 * ヘッダで定義します (実装も順番にいくつか関数を呼び出すだけで軽量なため)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void clear_scan_warnings(bool update_ui = true) {
 		remove_warning(WarningType::NOT_FOUND, true, false);
 		remove_warning(WarningType::DIFFERENT_TOOL, true, false);
 		remove_warning(WarningType::NOT_YET_STORED, true, false);
 		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);
+		remove_warning(WarningType::ALREADY_STORED, true, false);
 		if (update_ui) { update_warning_display(); }
 	}
 
@@ -1352,36 +1361,23 @@ private:
 	void on_qrCodeEntry_store_ready_for_reading();
 
 	/**
-	 * @brief STORE_READ_COMPLETED 状態に入ったときの処理
-	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
-	 */
-	void on_enter_store_read_completed();
-
-	/**
-	 * @brief STORE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
-	 * @details 読み取られた工具情報をDBから取得して表に追加する。
-	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
-	 */
-	bool on_qrCodeEntry_store_read_completed();
-
-	/**
-	 * @brief STORE_READ_COMPLETED 状態の falseButton.on_clicked の処理
+	 * @brief STORE_READY_FOR_READING 状態の falseButton.on_clicked の処理
 	 * @details 補充機能を終了する。
 	 */
-	void on_falseButton_store_read_completed();
+	void on_falseButton_store_ready_for_reading();
 
 	/**
-	 * @brief STORE_READ_COMPLETED 状態の trueButton.on_clicked の処理
+	 * @brief STORE_READY_FOR_READING 状態の trueButton.on_clicked の処理
 	 * @details 補充機能の最初の画面に戻る。
 	 */
-	void on_trueButton_store_read_completed();
+	void on_trueButton_store_ready_for_reading();
 
 	/**
-	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
+	 * @brief STORE_READY_FOR_READING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_read_completed(const plc::Notification& notification);
+	void on_plc_store_ready_for_reading(const plc::Notification& notification);
 
 	// --- 棚卸しモードの状態遷移関数 ---
 	/**
@@ -1537,9 +1533,6 @@ private:
 	/// @brief PLCの操作許可状態 (例: 扉が閉まっているか)
 	bool m_plc_ready_for_action;
 
-	/// @brief 追跡システムの操作許可状態 (例: 不正が検知されていないか)
-	bool m_tracker_ready_for_action;
-
 	/// @brief ユーザーによって警告が閉じられたかどうか
 	bool m_warning_closed_by_user;
 
@@ -1564,6 +1557,10 @@ private:
 	int m_unscanned_count;
 
 	// --- 操作中の状態保持用 (補充専用) ---
+
+	/// @brief [補充用] 再研磨工具のリスト。
+	std::vector<int64_t> m_reground_tools;
+
 	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };
 

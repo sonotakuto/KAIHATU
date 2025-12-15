@@ -324,8 +324,7 @@ MainWindow::MainWindow() :
 	m_gui_mode(GuiMode::RETRIEVE),
 	m_app_state(AppState::WAITING_FOR_USER_LOGIN),
 	m_text_mode(TextMode::KANJI),
-	m_plc_ready_for_action(true),		// 最初は扉が閉まっているので true
-	m_tracker_ready_for_action(true)	// 最初は不正なしなので true
+	m_plc_ready_for_action(true)		// 最初は扉が閉まっているので true
 {
 	// --- コンストラクタ本体 ---
 
@@ -1604,7 +1603,10 @@ MainWindow::MainWindow() :
 			}, false);
 		},
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_ready_for_reading(); },
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); }
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); },
+		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_ready_for_reading(); },
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_ready_for_reading(); },
+		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_store_ready_for_reading(notification); }
 	});
 
 	// --- 状態：補充 - 実際に補充を行う - 工具読み取り後 ---
@@ -1616,11 +1618,10 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		.tableStackPageName	= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_store_read_completed(); },
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_read_completed(); },
-		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_read_completed(); },
-		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_read_completed(); },
-		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_store_read_completed(notification); }
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_store_ready_for_reading(); },
+		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_store_ready_for_reading(); },
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_store_ready_for_reading(); },
+		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_store_ready_for_reading(notification); }
 	});
 
 	// --- 状態：棚卸し - 移行 ---
@@ -1834,7 +1835,6 @@ void MainWindow::reset_variables() {
 	m_operated_records.clear();
 	m_pending_tool_info.reset();
 	m_plc_ready_for_action = false;
-	m_tracker_ready_for_action = false;
 	m_warning_closed_by_user = false;
 	m_ignore_all_warnings = false;
 	m_retrieving_list.reset();
@@ -2322,6 +2322,17 @@ bool MainWindow::override_confirm_to_user(UiText&& message) {
 	}
 }
 
+void MainWindow::update_read_completed_buttons(bool update_ui) {
+	switch (m_app_state) {
+	case AppState::RETRIEVE_READY_FOR_READING :
+	case AppState::RETRIEVE_READ_COMPLETED :
+		update_retrieve_read_completed_buttons(update_ui);
+		break;
+	default :
+		break;
+	}
+}
+
 bool MainWindow::update_warning_display() {
 	bool has_state_warning = false;
 	WarningType scan_error_type = WarningType::NONE;
@@ -2355,7 +2366,7 @@ bool MainWindow::update_warning_display() {
 
 		update_widget_state(&messageLabel, WidgetState{
 			.text = g_warning_type_messages.at(scan_error_type)	// 内容を表示
-		}, true);
+		}, false);
 
 	} else {
 		// --- パターンC: 警告なし ---
@@ -2368,6 +2379,9 @@ bool MainWindow::update_warning_display() {
 		// ここで本来の案内メッセージに戻すが、
 		// スキャン成功時には自動的に現在の画面に再遷移するため、ここでの書き換えは不要
 	}
+
+	update_read_completed_buttons(false);
+	refresh_ui(false);
 	return has_state_warning;
 }
 
@@ -2571,13 +2585,13 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 	// GUIの条件を判定
 	bool gui_ready_for_action = !warningDialog.get_mapped()
 		&& !warningListDialog.get_mapped()
-		&& !m_pending_tool_info.has_value();
+		&& !m_pending_tool_info.has_value();	// BUG: 固まって応答が無いときの対応を考える (https://gemini.google.com/share/759604d1a439 ←最後の方の2つの会話)
 
 	// 選択された中で最後の工具の時 (またはリストが空の時)
 	bool is_last_tool = (!m_retrieving_index.has_value() || (m_retrieving_index.value() + 1 >= m_retrieving_tools.size()));
 
 	// 全システムの準備状態を判定
-	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action && m_tracker_ready_for_action;
+	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action;
 
 	// ボタンの状態を更新 (update_ui = false で即時描画はしない)
 
@@ -2633,7 +2647,7 @@ void MainWindow::on_window_show() {
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 		refresh_ui(true);
-		m_is_first_show = false; // フラグを倒して次回以降は実行しない
+		m_is_first_show = false;	// フラグを倒して次回以降は実行しない
 	}
 }
 
@@ -2878,12 +2892,22 @@ void MainWindow::regroundButton_on_toggled() {
 }
 
 void MainWindow::warningListCloseButton_on_clicked() {
-	m_warning_closed_by_user = true;
+	if (!m_warning_closed_by_user) {
+		m_warning_closed_by_user = true;
+		for (auto& val : m_operated_records) {
+			val.track_result = TrackResult::OVERRIDDEN;
+		}
+	}
 	warningListDialog.response(GtkResponseType::GTK_RESPONSE_CLOSE);
 }
 
 void MainWindow::warningListSuppressButton_on_clicked() {
-	m_warning_closed_by_user = true;
+	if (!m_warning_closed_by_user) {
+		m_warning_closed_by_user = true;
+		for (auto& val : m_operated_records) {
+			val.track_result = TrackResult::OVERRIDDEN;
+		}
+	}
 	m_ignore_all_warnings = true;
 	warningListDialog.response(GtkResponseType::GTK_RESPONSE_CLOSE);
 }
@@ -2956,8 +2980,7 @@ for (int i = 0; i < 120; i++) {
 	}
 }
 
-void MainWindow::on_enter_retrieve_selecting_tools()
-{
+void MainWindow::on_enter_retrieve_selecting_tools() {
 	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 }
 
@@ -3119,7 +3142,6 @@ void MainWindow::on_plc_retrieve_container_retrieved(const plc::Notification& no
 void MainWindow::on_enter_retrieve_ready_for_reading() {
 	// 状態変数を初期化
 	m_plc_ready_for_action = false;		// 扉が閉まるのを待つため、最初は false
-	m_tracker_ready_for_action = true;	// 最初は不正なし
 
 	// PLCの監視コマンドを登録
 #ifdef STUB_PLC
@@ -3242,7 +3264,6 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	m_operating_area.reset();
 	m_operated_records.clear();
 	m_plc_ready_for_action = false;
-	m_tracker_ready_for_action = true;
 	m_warning_closed_by_user = false;
 	m_ignore_all_warnings = false;
 	m_unscanned_count = 0;
@@ -3304,9 +3325,6 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 			} else {
 				remove_warning(WarningType::SCAN_FAILURE, true, false);	// 強制削除
 				remove_warning(WarningType::UNSCANNED_OUT_FRAME, false, true);
-				if (m_unscanned_count > 0) {
-					m_unscanned_count--;
-				}
 
 				// この工具が既に取り出しリスト (m_operated_records) に存在するか検索
 				auto it = std::find_if(m_operated_records.begin(), m_operated_records.end(),
@@ -3354,7 +3372,12 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 						// 2b. インサートでない場合: 何もしない
 						DEV_PRINT("重複スキャン (非インサート): ID {} を無視します。\n", unique_info.id);
 					}
-				} else {
+				} else {	// 新規スキャン
+					// 場にある未スキャン工具の数を減らす
+					if (m_unscanned_count > 0) {
+						m_unscanned_count--;
+					}
+
 					if (m_is_insert_operation) {
 						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
 							"使用するインサートの枚数を\n入力して下さい",
@@ -3391,6 +3414,11 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 						.tool_num			= ((m_is_insert_operation)
 							? (m_insertCountEntry_current_count)
 							: (1)
+						),
+						.line_id			= m_retrieving_list.value().line.id,
+						.track_result		= ((m_warning_closed_by_user)
+							? (TrackResult::OVERRIDDEN)
+							: (TrackResult::NORMAL)
 						)
 					});
 
@@ -3462,7 +3490,6 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 	}
 	}
 
-	m_tracker_ready_for_action = warningListstore.empty();	// 警告が無ければ true
 	update_retrieve_read_completed_buttons();
 
 	if (result) {
@@ -3583,32 +3610,45 @@ void MainWindow::on_enter_store_ready_for_reading() {
 	qrCodeEntry.grab_focus();
 }
 
-void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
-	if (on_qrCodeEntry_store_read_completed()) {
-		set_app_state(AppState::STORE_READ_COMPLETED);
-	}
-}
-
-void MainWindow::on_enter_store_read_completed() {
-	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_READY_TO_STORE,
-		.flags = plc::WatchFlags{
-			.enable_fall_notification = true,
-			.enable_rise_notification = true,
-			.fall_is_one_shot = false,
-			.rise_is_one_shot = false
-		}
-	});
-}
-
 // TODO: storage_condition の値に応じた警告表示を追加
-bool MainWindow::on_qrCodeEntry_store_read_completed() {
+void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
+	// 既存の「スキャン系エラー」をすべて消す
+	// (これらは「前回のスキャン結果」なので、新しいスキャンをした時点でもう不要)
+	clear_scan_warnings(true);
+
 	bool result = false;
 	bool is_reground = false;
+	const MstToolInfo& operating_tool = m_operating_tool.value();	// BUG: nullopt対応
 	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
 	if (unique_info_opt.has_value()) {
 		UniqueToolInfo& unique_info = unique_info_opt.value();
+		if (unique_info.mst_tool_info.id != operating_tool.id) {	// FIXME: nullopt対応
+			add_warning(WarningType::DIFFERENT_TOOL, true);
+			qrCodeEntry.grab_focus();
+			return;
+		}
+
+		if (unique_info.storage_condition == StorageCondition::STORED) {
+			add_warning(WarningType::ALREADY_STORED, true);
+			qrCodeEntry.grab_focus();
+			return;
+		}
+
+		auto it = std::find_if(m_operated_records.begin(), m_operated_records.end(),
+			[&](const RecOperationTable& rec) {
+				return rec.unique_tool_id.has_value() && rec.unique_tool_id.value() == unique_info.id;
+			}
+		);
+
+		if (it != m_operated_records.end()) {
+			if (!m_is_insert_operation && unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
+				// 再補充工具の場合
+
+			}
+		}
+
+
 		if (!m_is_insert_operation && unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
 			if ((is_reground = confirm_if_reground())) {
 				// 再研磨操作の場合、再研磨回数を1増やす
@@ -3634,27 +3674,26 @@ bool MainWindow::on_qrCodeEntry_store_read_completed() {
 		update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 		result = true;
 	} else {
-		// TODO: 該当データが無い場合の処理
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"該当する工具データが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"}
-		}, true);
-		result = false;
+		add_warning(WarningType::NOT_FOUND, true);
 	}
 	qrCodeEntry.grab_focus();
-	return result;
+
+	if (result) {
+		set_app_state(AppState::STORE_READ_COMPLETED);
+	}
 }
 
-void MainWindow::on_falseButton_store_read_completed() {
+void MainWindow::on_falseButton_store_ready_for_reading() {
 	save_store_history();
 	set_mode(GuiMode::NONE);
 }
 
-void MainWindow::on_trueButton_store_read_completed() {
+void MainWindow::on_trueButton_store_ready_for_reading() {
 	save_store_history();
 	set_app_state(AppState::STORE);
 }
 
-void MainWindow::on_plc_store_read_completed(const plc::Notification& notification) {
+void MainWindow::on_plc_store_ready_for_reading(const plc::Notification& notification) {
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
 		auto result = notification.monitor_result.value();
 		if (result.addr == plc::M_DEVICE_READY_TO_STORE) {
