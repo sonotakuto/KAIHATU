@@ -3329,7 +3329,7 @@ public:
 	 * 関数オブジェクトの実行が完了した後、自動的にUIが更新されます。
 	 * @param[in] modifier マスターデータへの非const参照を受け取り、編集を行う関数オブジェクト。
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
-	 * ページが存在しなくなっていれば最終ページが表示されます。falseの場合は0ページ目を表示します。デフォルトはfalse。
+	 * trueの場合に現在のページが消滅していれば最終ページが表示されます。デフォルトはfalse。
 	 */
 	void modify_master_data(std::function<void(vector_type&)> modifier, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);

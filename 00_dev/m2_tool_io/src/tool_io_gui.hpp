@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <cstdint>
+#include <set>
 #include <SimpleGtk>
 #include "./opt_extension.hpp"
 #include "./SimpleGtk_extension.hpp"
@@ -1035,15 +1036,10 @@ private:
 
 	/**
 	 * @brief [補充用] 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
+	 * @param[in] default_value (オプション・デフォルト true) デフォルトで「はい」/「いいえ」のどちらを選択した状態にするかを指定。
 	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
-	bool confirm_if_reground();
-
-	/**
-	 * @brief 補充履歴を保存します。
-	 * @details 補充モードで補充が完了した際に呼び出されます。
-	 */
-	void save_store_history();
+	bool confirm_if_reground(bool default_value = true);
 
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
@@ -1558,8 +1554,8 @@ private:
 
 	// --- 操作中の状態保持用 (補充専用) ---
 
-	/// @brief [補充用] 再研磨工具のリスト。
-	std::vector<int64_t> m_reground_tools;
+	/// @brief [補充用] 再研磨工具のIDリスト。
+	std::set<std::int64_t> m_reground_tools;
 
 	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };

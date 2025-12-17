@@ -5,10 +5,6 @@
 #include "url_transfer.hpp"
 #include <SimpleGtk>
 
-// SimpleGtkのヘルパー関数を使う (sg名前空間をusing)
-// 必要に応じて #include "sg/crypto" などを直接インクルード
-using namespace sg; // sg::base64_encode のため
-
 namespace url_transfer {
 
 // CurlRequestクラスの実装
@@ -42,7 +38,7 @@ void CurlRequest::set_post_data(const std::string& post_data, const std::string&
 void CurlRequest::set_basic_auth(const std::string& username, const std::string& password) {
 	std::string credentials = username + ":" + password;
 	// SimpleGtk の base64_encode を使用
-	std::string encoded_credentials = base64_encode(credentials);
+	std::string encoded_credentials = sg::base64_encode(credentials);
 	std::string auth_header = "Authorization: Basic " + encoded_credentials;
 
 	// TODO: 将来的な改善：

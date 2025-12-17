@@ -70,6 +70,14 @@ void disconnect(void);
 bool user_authenticate(const std::string& qr_string);
 
 /**
+ * @brief システムパスワードを認証します。
+ * @details mst_password テーブル内のハッシュと照合します。
+ * @param[in] input_password ユーザーが入力した平文のパスワード。
+ * @return パスワードが一致すれば true、不一致またはエラーの場合は false。
+ */
+bool authenticate_with_password(const std::string& input_password);
+
+/**
  * @brief 操作履歴のレコードをデータベースに保存します。
  * @param[in] record 保存する履歴データを含む RecOperationTable 構造体。
  * @return 保存に成功した場合はtrue、失敗した場合はfalse。
@@ -84,7 +92,14 @@ bool save_history(const RecOperationTable& record);
  */
 bool save_history(const std::vector<RecOperationTable>& records);
 
-// TODO: 再研磨回数を増やす関数を追加
+/**
+ * @brief 指定された工具リストの再研磨回数を1ずつ増やします。
+ * @details regrind_count が NULL の場合は 0 とみなして 1 に設定します。
+ * トランザクション内で一括処理されます。
+ * @param[in] tool_ids 再研磨を行った工具のユニークIDリスト。
+ * @return 全ての更新に成功した場合はtrue、失敗した場合はfalse。
+ */
+bool increment_regrind_counts(const std::set<std::int64_t>& tool_ids);
 
 /**
  * @brief QRコード文字列を基にユーザー情報をデータベースから取得します。
