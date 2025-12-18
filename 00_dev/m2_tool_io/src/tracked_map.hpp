@@ -161,6 +161,7 @@ public:
 	 * @param[in] keys 確認するキー群。
 	 * @return 更新されたキーが1つ以上あればtrue、なければfalse。
 	 */
+	template <typename KeyContainer>
 	bool is_updated(const KeyContainer& keys) const {
 		for (const auto& key : keys) {
 			if (updated_keys.find(key) != updated_keys.end()) {
@@ -1113,6 +1114,7 @@ public:
 	 * @param[in] keys 確認するキー群。
 	 * @return 更新されたキーが1つ以上あればtrue、なければfalse。
 	 */
+	template <typename KeyContainer>
 	bool is_updated(const KeyContainer& keys) const {
 		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 		for (const auto& key : keys) {
