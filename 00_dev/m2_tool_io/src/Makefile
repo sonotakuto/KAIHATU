@@ -17,7 +17,7 @@ CXXFLAGS = -std=c++17 -Wall -MMD -MP `pkg-config --cflags $(PACKAGES)`
 
 # リンク時のオプション
 # `pkg-config --libs $(PACKAGES)` : 各パッケージに必要なライブラリフラグを取得
-LDFLAGS = `pkg-config --libs $(PACKAGES)`
+LDFLAGS = `pkg-config --libs $(PACKAGES)` -lcrypt
 
 # デバッグビルド時のみ追加されるオプション
 # -g	: デバッグ情報（シンボルなど）を埋め込む

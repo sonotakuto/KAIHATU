@@ -696,6 +696,151 @@ protected:
 		}
 	}
 
+private:
+	// ---  内部ヘルパー ---
+	/**
+	 * @brief 末尾に単一の行をコピー追加します。
+	 * @param[in] value 追加する行のデータ。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	void _append(const value_type& value) {
+		m_data_model.push_back(value);
+		GtkTreeIter iter;
+		get_sg_store()->append(&iter);
+		set_row_to_store(&iter, value);
+	}
+
+	/**
+	 * @brief 末尾に単一の行をムーブ追加します。
+	 * @param[in] value 追加する行のデータ（右辺値）。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	void _append(value_type&& value) {
+		// vector にムーブ
+		m_data_model.push_back(std::move(value));
+
+		GtkTreeIter iter;
+		get_sg_store()->append(&iter);
+
+		// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
+		set_row_to_store(&iter, m_data_model.back());
+	}
+
+	/**
+	 * @brief 指定した位置に単一の行をコピー挿入します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param[in] position 0から始まる挿入位置のインデックス。
+	 * @param[in] value 挿入する行のデータ。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool _insert(size_type position, const value_type& value) {
+		size_type original_position = position;
+		bool position_was_clamped = false;
+		if (position > size()) {
+			position = size();
+		}
+
+		// 要求された位置と、実際の挿入位置が違うか判定
+		if (position != original_position) {
+			position_was_clamped = true;
+		}
+
+		m_data_model.insert(m_data_model.begin() + position, value);
+		GtkTreeIter iter;
+		get_sg_store()->insert(&iter, position);
+		set_row_to_store(&iter, value);
+		return !position_was_clamped;
+	}
+
+	/**
+	 * @brief 指定した位置に単一の行をムーブ挿入します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * @param[in] position 0から始まる挿入位置のインデックス。
+	 * @param[in] value 挿入する行のデータ（右辺値）。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool _insert(size_type position, value_type&& value) {
+		size_type original_position = position;
+		bool position_was_clamped = false;
+		if (position > size()) {
+			position = size();
+		}
+
+		// 要求された位置と、実際の挿入位置が違うか判定
+		if (position != original_position) {
+			position_was_clamped = true;
+		}
+
+		// vector にムーブ挿入
+		auto it = m_data_model.insert(m_data_model.begin() + position, std::move(value));
+
+		GtkTreeIter iter;
+		get_sg_store()->insert(&iter, position);
+
+		// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
+		set_row_to_store(&iter, *it);
+
+		return !position_was_clamped;
+	}
+
+	/**
+	 * @brief 指定した位置の行を削除します。
+	 * @param[in] position 削除位置のインデックス。
+	 */
+	void _erase(size_type position) {
+		m_data_model.erase(m_data_model.begin() + position);
+		GtkTreeIter iter;
+		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+			get_sg_store()->remove(&iter);
+		}
+	}
+
+	/**
+	 * @brief 指定した位置の行をコピー上書きします。
+	 * @param[in] position 上書き位置のインデックス。
+	 * @param[in] value 新しい行データ。
+	 */
+	void _update(size_type position, const value_type& value) {
+		m_data_model[position] = value;
+		GtkTreeIter iter;
+		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+			set_row_to_store(&iter, value);
+		}
+	}
+
+	/**
+	 * @brief 指定した位置の行をコピー上書きします。
+	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア。
+	 */
+	void _update(const indexed_value_pair& indexed_value) {
+		_update(indexed_value.first, indexed_value.second);	// 別のオーバーロードへ処理を委譲
+	}
+
+	/**
+	 * @brief 指定した位置の行をムーブ上書きします。
+	 * @param[in] position 上書き位置のインデックス。
+	 * @param[in] value 新しい行データ（右辺値）。
+	 */
+	void _update(size_type position, value_type&& value) {
+		// vector にムーブ代入
+		m_data_model[position] = std::move(value);
+
+		GtkTreeIter iter;
+		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+			// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
+			set_row_to_store(&iter, m_data_model[position]);
+		}
+	}
+
+	/**
+	 * @brief 指定した位置の行をムーブ上書きします。
+	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア（右辺値）。
+	 */
+	void _update(indexed_value_pair&& indexed_value) {
+		_update(indexed_value.first, std::move(indexed_value.second));	// 別のオーバーロードへ処理を委譲
+	}
+
 public:
 	/**
 	 * @brief ListStoreModelBaseのコンストラクタ。
@@ -721,6 +866,12 @@ public:
 	 * 仮想デストラクタを定義しておくのが安全です。
 	 */
 	virtual ~ListStoreModelBase() = default;
+
+	// コピー・ムーブを完全に禁止（アドレスを固定するため）
+	ListStoreModelBase(const ListStoreModelBase&) = delete;
+	ListStoreModelBase& operator=(const ListStoreModelBase&) = delete;
+	ListStoreModelBase(ListStoreModelBase&&) = delete;
+	ListStoreModelBase& operator=(ListStoreModelBase&&) = delete;
 
 	// --- イテレータ対応 (読み取り専用) ---
 
@@ -755,7 +906,7 @@ public:
 			if (index >= m_data_model.size()) { break; }	// 安全策（念のため）
 
 			// 現在の行のデータをセッターに渡して更新
-			set_row_to_store(&iter, m_data_model.at(index));
+			set_row_to_store(&iter, m_data_model[index]);
 
 			index++;
 		} while (get_sg_store()->iter_next(&iter));	// 次の行へ移動。次がなければループ終了
@@ -777,7 +928,7 @@ public:
 	}
 
 	/**
-	 * @brief 末尾に単一の行を追加します。
+	 * @brief 末尾に単一の行をコピー追加します。
 	 * @param[in] value 追加する行のデータ。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
@@ -786,31 +937,71 @@ public:
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		m_data_model.push_back(value);
-		GtkTreeIter iter;
-		get_sg_store()->append(&iter);
-		set_row_to_store(&iter, value);
+		_append(value);
 		return true; // 成功
 	}
 
 	/**
-	 * @brief 末尾に複数の行をまとめて追加します。
+	 * @brief 末尾に単一の行をムーブ追加します。
+	 * @param[in] value 追加する行のデータ（右辺値）。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	bool append(value_type&& value) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
+			return false; // 失敗: 行数がintの最大値を超える
+		}
+		_append(std::move(value));
+		return true; // 成功
+	}
+
+	/**
+	 * @brief 末尾に複数の行をまとめてコピー追加します。
 	 * @param[in] values 追加する行データのvector。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const vector_type& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) {
-			return false; // 失敗: 行数がintの最大値を超える
+		size_type appended_size = size() + values.size();
+		if (appended_size > (size_type)(std::numeric_limits<int>::max())) {
+			return false;	// 失敗: 行数がintの最大値を超える
 		}
+
+		// パフォーマンス向上のため、あらかじめメモリを確保
+		reserve(appended_size);
+
 		for (const auto& value : values) {
-			append(value); // 単行appendをループで呼び出す
+			_append(value);	// 内部ヘルパーをループで呼び出す
 		}
-		return true; // 成功
+		return true;	// 成功
 	}
 
 	/**
-	 * @brief 指定した位置に単一の行を挿入します。
+	 * @brief 末尾に複数の行をまとめて追加します（ムーブ版）。
+	 * @details 引数のvector内の各要素をムーブして追加します。処理後、引数のvectorの中身は不定（空など）になります。
+	 * @param[in] values 追加する行データのvector（右辺値）。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	bool append(vector_type&& values) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		size_type appended_size = size() + values.size();
+		if (appended_size > (size_type)(std::numeric_limits<int>::max())) {
+			return false;	// 失敗: 行数がintの最大値を超える
+		}
+
+		// パフォーマンス向上のため、あらかじめメモリを確保
+		reserve(appended_size);
+
+		for (auto& value : values) {
+			// 単一行のムーブ版 append を呼び出す
+			// (value自体は左辺値なので、std::moveで右辺値キャストして渡す)
+			_append(std::move(value));
+		}
+		return true;	// 成功
+	}
+
+	/**
+	 * @brief 指定した位置に単一の行をコピー挿入します。
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] position 0から始まる挿入位置のインデックス。
@@ -819,31 +1010,29 @@ public:
 	 */
 	bool insert(size_type position, const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		size_type original_position = position;
-		bool position_was_clamped = false;
-
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		if (position > m_data_model.size()) {
-			position = m_data_model.size();
-		}
-
-		// 要求された位置と、実際の挿入位置が違うか判定
-		if (position != original_position) {
-			position_was_clamped = true;
-		}
-
-		m_data_model.insert(m_data_model.begin() + position, value);
-		GtkTreeIter iter;
-		get_sg_store()->insert(&iter, position);
-		set_row_to_store(&iter, value);
-
-		return !position_was_clamped;
+		return _insert(position, value);
 	}
 
 	/**
-	 * @brief 指定した位置に複数の行をまとめて挿入します。
+	 * @brief 指定した位置に単一の行をムーブ挿入します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * @param[in] position 0から始まる挿入位置のインデックス。
+	 * @param[in] value 挿入する行のデータ（右辺値）。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool insert(size_type position, value_type&& value) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
+			return false; // 失敗: 行数がintの最大値を超える
+		}
+		return _insert(position, std::move(value));
+	}
+
+	/**
+	 * @brief 指定した位置に複数の行をまとめてコピー挿入します。
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] position 0から始まる挿入位置のインデックス。
@@ -852,16 +1041,50 @@ public:
 	 */
 	bool insert(size_type position, const vector_type& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) {
+		size_type inserted_size = size() + values.size();
+		if (inserted_size > (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		// 開始位置が有効範囲内([0, size()])にあるかチェック
 		bool position_was_valid = (position <= size());
-
 		size_type current_pos = position;
+
+		// パフォーマンス向上のため、あらかじめメモリを確保
+		reserve(inserted_size);
+
 		for (const auto& value : values) {
-			// 単行insertは自動で位置を丸めてくれる
-			insert(current_pos++, value);
+			// 位置補正(Clamp)は単一行版がやってくれるので、ここではインクリメントするだけで良い
+			_insert(current_pos++, value);
+		}
+		return position_was_valid;
+	}
+
+	/**
+	 * @brief 指定した位置に複数の行をまとめてムーブ挿入します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param[in] position 0から始まる挿入位置のインデックス。
+	 * @param[in] values 挿入する行データのvector（右辺値）。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool insert(size_type position, vector_type&& values) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		size_type inserted_size = size() + values.size();
+		if (inserted_size > (size_type)(std::numeric_limits<int>::max())) {
+			return false; // 失敗
+		}
+
+		// 開始位置が有効範囲内かチェック
+		bool position_was_valid = (position <= size());
+		size_type current_pos = position;
+
+		// パフォーマンス向上のためメモリ確保
+		reserve(inserted_size);
+
+		for (auto& value : values) {
+			// 単一行のムーブ版 insert を呼び出す
+			// 位置補正(Clamp)は単一行版がやってくれるので、ここではインクリメントするだけで良い
+			_insert(current_pos++, std::move(value));
 		}
 		return position_was_valid;
 	}
@@ -876,12 +1099,7 @@ public:
 		if (position >= m_data_model.size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-
-		m_data_model.erase(m_data_model.begin() + position);
-		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
-			get_sg_store()->remove(&iter);
-		}
+		_erase(position);
 		return true; // 成功
 	}
 
@@ -901,34 +1119,61 @@ public:
 
 		std::sort(positions.rbegin(), positions.rend());
 		for (size_type pos : positions) {
-			erase(pos);
+			_erase(pos);
 		}
 		return true; // 全て成功
 	}
 
 	/**
-	 * @brief 指定した位置の行を上書きします。
+	 * @brief 指定した位置の行をコピー上書きします。
 	 * @param[in] position 上書き位置のインデックス。
 	 * @param[in] value 新しい行データ。
 	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
 	 */
 	bool update(size_type position, const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (position >= m_data_model.size()) {
+		if (position >= size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-
-		m_data_model.at(position) = value;
-		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
-			set_row_to_store(&iter, value);
-		}
-
+		_update(position, value);
 		return true; // 成功
 	}
 
 	/**
-	 * @brief 指定した複数の位置の行をまとめて上書きします。
+	 * @brief 指定した位置の行をコピー上書きします。
+	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(const indexed_value_pair& indexed_value) {
+		return update(indexed_value.first, indexed_value.second);	// 別のオーバーロードへ処理を委譲
+	}
+
+	/**
+	 * @brief 指定した位置の行をムーブ上書きします。
+	 * @param[in] position 上書き位置のインデックス。
+	 * @param[in] value 新しい行データ（右辺値）。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(size_type position, value_type&& value) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		if (position >= size()) {
+			return false; // 失敗: インデックスが範囲外
+		}
+		_update(position, std::move(value));
+		return true; // 成功
+	}
+
+	/**
+	 * @brief 指定した位置の行をムーブ上書きします。
+	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア（右辺値）。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(indexed_value_pair&& indexed_value) {
+		return update(indexed_value.first, std::move(indexed_value.second));	// 別のオーバーロードへ処理を委譲
+	}
+
+	/**
+	 * @brief 指定した複数の位置の行をまとめてコピー上書きします。
 	 * @param[in] updates 上書きする位置のインデックスと、新しい行データのmap。
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
 	 */
@@ -941,10 +1186,29 @@ public:
 			}
 		}
 
-		for (const auto& [pos, value] : updates) {
-			update(pos, value);
+		for (const auto& pair : updates) {
+			_update(pair);
 		}
 		return true; // 全て成功
+	}
+
+	/**
+	 * @brief 指定した複数の位置の行をまとめてムーブ上書きします。
+	 * @param[in] updates 上書きする位置のインデックスと、新しい行データのmap（右辺値）。
+	 * @return 全て成功ならtrue。
+	 */
+	bool update(std::map<size_type, value_type>&& updates) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		// インデックスチェック
+		for (const auto& [pos, value] : updates) {
+			if (pos >= size()) { return false; }
+		}
+
+		for (auto& pair : updates) {
+			// 単一行のムーブ版 update を呼び出す
+			_update(std::move(pair));
+		}
+		return true;
 	}
 
 	/**
@@ -1026,7 +1290,7 @@ public:
 		repopulate_store();
 	}
 
-/**
+	/**
 	 * @brief 指定した位置の行データを取得します。
 	 * @details std::vector::at と同様、範囲外アクセスの場合は例外が投げられます。
 	 * @param[in] position 0から始まる取得位置のインデックス。
@@ -1370,7 +1634,7 @@ public:
 	 * @brief 現在選択されている行のデータを取得します。
 	 * @return 選択されている行のデータ。未選択なら std::nullopt。
 	 */
-std::optional<value_type> get_active_value() {
+	std::optional<value_type> get_active_value() {
 		auto index_opt = get_active_index();
 		if (index_opt.has_value()) {
 			return this->at(index_opt.value());
@@ -2045,6 +2309,12 @@ public:
 		m_titles.resize(n_columns);
 	}
 
+	// コピー・ムーブを完全に禁止（thisキャプチャがあるため必須）
+	PaginatedListStoreModel(const PaginatedListStoreModel&) = delete;
+	PaginatedListStoreModel& operator=(const PaginatedListStoreModel&) = delete;
+	PaginatedListStoreModel(PaginatedListStoreModel&&) = delete;
+	PaginatedListStoreModel& operator=(PaginatedListStoreModel&&) = delete;
+
 	// --- イテレータ対応 (読み取り専用) ---
 
 	const_iterator begin() const { return m_master_data.begin(); }
@@ -2270,12 +2540,12 @@ public:
 		if (n < 0 || static_cast<guint>(n) >= m_n_columns) {
 			return false; // 列数が一致しない
 		}
-		if (m_titles.at(n) == title && !force_update) {
+		if (m_titles[n] == title && !force_update) {
 			return true; // 変更なし
 		}
 
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		m_titles.at(n) = std::string(title);
+		m_titles[n] = std::string(title);
 		for (auto* model : m_page_models) {
 			model->set_title(n, title);
 		}
@@ -2370,6 +2640,14 @@ public:
 	 * @return カラムタイトルのリスト。
 	 */
 	std::vector<std::string> get_titles() override {
+		return m_titles;
+	}
+
+	/**
+	 * @brief カラムタイトルのリストの参照を取得します。
+	 * @return カラムタイトルのリストの const 参照。
+	 */
+	const std::vector<std::string>& get_titles_ref() {
 		return m_titles;
 	}
 
@@ -2643,14 +2921,14 @@ public:
 	}
 
 	/**
-	 * @brief マスターデータの末尾に単一の行を追加し、UIを更新します。
+	 * @brief マスターデータの末尾に単一の行をコピー追加し、UIを更新します。
 	 * @param[in] value 追加する行のデータ。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const value_type& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
 		m_master_data.push_back(value);
 		if (update_display) {
 			display_page(m_current_page_index);
@@ -2659,14 +2937,33 @@ public:
 	}
 
 	/**
-	 * @brief マスターデータの末尾に複数の行をまとめて追加し、UIを更新します。
+	 * @brief マスターデータの末尾に単一の行をムーブ追加し、UIを更新します。
+	 * @param[in] value 追加する行のデータ（右辺値）。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
+	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
+	 */
+	bool append(value_type&& value, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
+
+		// vector にムーブ
+		m_master_data.push_back(std::move(value));
+
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの末尾に複数の行をまとめてコピー追加し、UIを更新します。
 	 * @param[in] values 追加する行データのvector。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
 	bool append(const vector_type& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) return false;
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
 		m_master_data.insert(m_master_data.end(), values.begin(), values.end());
 		if (update_display) {
 			display_page(m_current_page_index);
@@ -2675,7 +2972,30 @@ public:
 	}
 
 	/**
-	 * @brief マスターデータの指定したグローバルインデックスに行を挿入し、UIを更新します。
+	 * @brief マスターデータの末尾に複数の行をまとめてムーブ追加し、UIを更新します。
+	 * @param[in] values 追加する行データのvector（右辺値）。
+	 * @param[in] update_display UI更新フラグ。
+	 * @return 成功ならtrue。
+	 */
+	bool append(vector_type&& values, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
+
+		// std::make_move_iterator を使って、vectorの要素を一括で移動させる
+		m_master_data.insert(
+			m_master_data.end(),
+			std::make_move_iterator(values.begin()),
+			std::make_move_iterator(values.end())
+		);
+
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスに行をコピー挿入し、UIを更新します。
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] global_position 挿入位置のグローバルインデックス。
@@ -2687,9 +3007,9 @@ public:
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		size_type original_position = global_position;
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) return false;
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
 
-		if (global_position > m_master_data.size()) global_position = m_master_data.size();
+		if (global_position > size()) { global_position = size(); }
 
 		m_master_data.insert(m_master_data.begin() + global_position, value);
 		if (update_display) {
@@ -2699,7 +3019,32 @@ public:
 	}
 
 	/**
-	 * @brief マスターデータの指定したグローバルインデックスに複数の行をまとめて挿入し、UIを更新します。
+	 * @brief マスターデータの指定したグローバルインデックスに行をムーブ挿入し、UIを更新します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param[in] global_position 挿入位置のグローバルインデックス。
+	 * @param[in] value 挿入する行のデータ（右辺値）。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool insert(size_type global_position, value_type&& value, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		size_type original_position = global_position;
+		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
+
+		if (global_position > size()) { global_position = size(); }
+
+		m_master_data.insert(m_master_data.begin() + global_position, std::move(value));
+
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+		return global_position == original_position;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスに複数の行をまとめてコピー挿入し、UIを更新します。
 	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
 	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
 	 * @param[in] global_position 挿入位置のグローバルインデックス。
@@ -2710,12 +3055,42 @@ public:
 	bool insert(size_type global_position, const vector_type& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) return false;
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
 		bool position_was_valid = (global_position <= size());
 
-		if (global_position > size()) global_position = size();
+		if (global_position > size()) { global_position = size(); }
 
 		m_master_data.insert(m_master_data.begin() + global_position, values.begin(), values.end());
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+		return position_was_valid;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスに複数の行をまとめてムーブ挿入し、UIを更新します。
+	 * @details positionが範囲外の場合、有効な範囲([0, size()])に丸められます。
+	 * size()以上の値を指定した場合は、末尾に追加(append)されます。
+	 * @param[in] global_position 挿入位置。
+	 * @param[in] values 挿入する行データのvector（右辺値）。
+	 * @param[in] update_display UI更新フラグ。
+	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
+	 */
+	bool insert(size_type global_position, vector_type&& values, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
+		bool position_was_valid = (global_position <= size());
+
+		if (global_position > size()) { global_position = size(); }
+
+		// std::make_move_iterator で一括移動挿入
+		m_master_data.insert(
+			m_master_data.begin() + global_position,
+			std::make_move_iterator(values.begin()),
+			std::make_move_iterator(values.end())
+		);
+
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2731,7 +3106,7 @@ public:
 	bool erase(size_type global_position, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		if (global_position >= size()) return false;
+		if (global_position >= size()) { return false; }
 		m_master_data.erase(m_master_data.begin() + global_position);
 
 		if (m_current_page_index >= get_total_pages() && m_current_page_index > 0) {
@@ -2753,7 +3128,7 @@ public:
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		for (size_type pos : global_positions) {
-			if (pos >= size()) return false;
+			if (pos >= size()) { return false; }
 		}
 		std::sort(global_positions.rbegin(), global_positions.rend());
 		for (size_type pos : global_positions) {
@@ -2769,7 +3144,7 @@ public:
 	}
 
 	/**
-	 * @brief マスターデータの指定したグローバルインデックスの行を上書きし、UIを更新します。
+	 * @brief マスターデータの指定したグローバルインデックスの行をコピー上書きし、UIを更新します。
 	 * @param[in] global_position 上書きする行のグローバルインデックス。
 	 * @param[in] value 新しい行データ。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
@@ -2778,7 +3153,7 @@ public:
 	bool update(size_type global_position, const value_type& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		if (global_position >= size()) return false;
+		if (global_position >= size()) { return false; }
 
 		m_master_data[global_position] = value;
 		if (update_display) {
@@ -2789,7 +3164,47 @@ public:
 	}
 
 	/**
-	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめて上書きします。
+	 * @brief マスターデータの指定したグローバルインデックスの行をコピー上書きします。
+	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(const indexed_value_pair& indexed_value, bool update_display = true) {
+		return update(indexed_value.first, indexed_value.second, update_display);	// 別のオーバーロードへ処理を委譲
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスの行をムーブ上書きし、UIを更新します。
+	 * @param[in] global_position 上書きする行のグローバルインデックス。
+	 * @param[in] value 新しい行データ（右辺値）。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(size_type global_position, value_type&& value, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		if (global_position >= size()) { return false; }
+
+		m_master_data[global_position] = std::move(value);
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定したグローバルインデックスの行をムーブ上書きします。
+	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア（右辺値）。
+	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
+	 * @return 更新に成功すればtrue、インデックスが無効な場合はfalse。
+	 */
+	bool update(indexed_value_pair&& indexed_value, bool update_display = true) {
+		return update(indexed_value.first, std::move(indexed_value.second), update_display);	// 別のオーバーロードへ処理を委譲
+	}
+
+	/**
+	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめてコピー上書きします。
 	 * @param[in] updates 上書きする行のグローバルインデックスと新しい行データのmap。
 	 * @param[in] update_display (オプション・デフォルト true) trueの場合に、画面を更新します。
 	 * @return 指定されたインデックスが全て有効な場合のみtrue。一つでも無効なら処理せずfalse。
@@ -2798,11 +3213,35 @@ public:
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		for (const auto& [pos, value] : updates) {
-			if (pos >= size()) return false;
+			if (pos >= size()) { return false; }
 		}
 		for (const auto& [pos, value] : updates) {
 			m_master_data[pos] = value;
 		}
+		if (update_display) {
+			display_page(m_current_page_index);
+		}
+		return true;
+	}
+
+	/**
+	 * @brief マスターデータの指定した複数のグローバルインデックスの行をまとめてムーブ上書きします。
+	 * @param[in] updates 更新マップ（右辺値）。
+	 * @param[in] update_display UI更新フラグ。
+	 * @return 成功ならtrue。
+	 */
+	bool update(std::map<size_type, value_type>&& updates, bool update_display = true) {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		for (const auto& pair : updates) {
+			if (pair.first >= size()) return false;
+		}
+
+		// mapからムーブして更新
+		for (auto& [pos, value] : updates) {
+			m_master_data[pos] = std::move(value);
+		}
+
 		if (update_display) {
 			display_page(m_current_page_index);
 		}
@@ -2894,7 +3333,7 @@ public:
 	 * 関数オブジェクトの実行が完了した後、自動的にUIが更新されます。
 	 * @param[in] modifier マスターデータへの非const参照を受け取り、編集を行う関数オブジェクト。
 	 * @param[in] refresh_current_page (オプション・デフォルト false) 編集後に、trueの場合は現在のページを、falseの場合は最初のページを、再表示します。
-	 * ページが存在しなくなっていれば最終ページが表示されます。falseの場合は0ページ目を表示します。デフォルトはfalse。
+	 * trueの場合に現在のページが消滅していれば最終ページが表示されます。デフォルトはfalse。
 	 */
 	void modify_master_data(std::function<void(vector_type&)> modifier, bool refresh_current_page = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);

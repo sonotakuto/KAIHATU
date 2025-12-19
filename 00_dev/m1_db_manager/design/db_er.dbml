@@ -69,7 +69,7 @@ Table rec_operation {
 	video_path varchar(50) [default: '0', note: '動画の保存先リンク']
 	tool_num int(2) [default: 0, note: '操作個数']
 	line_id int(4) [note: 'ラインID']
-	track_result enum('正常','異常') [note: '工具追跡の結果']
+	track_result enum('あり','なし') [note: '工具追跡の結果']
 }
 
 Table rec_stock {

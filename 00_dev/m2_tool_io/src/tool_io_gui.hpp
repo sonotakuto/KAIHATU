@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <cstdint>
+#include <set>
 #include <SimpleGtk>
 #include "./opt_extension.hpp"
 #include "./SimpleGtk_extension.hpp"
@@ -141,14 +142,17 @@ public:
 	 * @brief 警告の種類を定義する列挙型。
 	 */
 	enum class WarningType {
+		NONE,					// 警告なし
 		NOT_FOUND,				// 未登録工具
 		DIFFERENT_TOOL,			// 別の工具
 		NOT_YET_STORED,			// 未だ補充前
 		ALREADY_RETRIEVED,		// 既に取り出されていた
+		ALREADY_STORED,			// 既に補充されていた
 		SCAN_FAILURE,			// スキャン失敗
 		UNSCANNED_OUT_FRAME,	// 未スキャン工具がフレーム外に出た
 		SCANNED_IN_CONTAINER,	// スキャン済工具がコンテナ内に入った
-		OTHER_IN_CONTAINER		// その他工具がコンテナ内に入った
+		OTHER_IN_CONTAINER,		// その他工具がコンテナ内に入った
+		END
 	};
 
 	/**
@@ -169,10 +173,119 @@ public:
 	 * @brief UI要素の かな/漢字 両方のテキストを定義する構造体。
 	 */
 	struct UiText {
+		using size_type = std::string::size_type;
+
 		/// @brief 漢字テキスト
 		std::string kanji{};
 		/// @brief かなテキスト
 		std::string kana{};
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type total_length() const {
+			return kanji.length() + kana.length();
+		}
+
+		/**
+		 * @brief 両方のテキストの最大文字数を取得する。
+		 * @return 最大文字数。
+		 */
+		size_type max_length() const {
+			return std::max(kanji.length(), kana.length());
+		}
+
+		/**
+		 * @brief 両方のテキストの最小文字数を取得する。
+		 * @return 最小文字数。
+		 */
+		size_type min_length() const {
+			return std::min(kanji.length(), kana.length());
+		}
+
+		/**
+		 * @brief 指定したモードのテキストの文字数を取得する。
+		 * @param[in] mode 取得するテキストのモード。
+		 * @return 指定したモードの文字数。
+		 */
+		size_type length_in_mode(TextMode mode) const noexcept {
+			return (mode == TextMode::KANJI) ? kanji.length() : kana.length();
+		}
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type length() const {
+			return total_length();
+		}
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type total_size() const {
+			return total_length();
+		}
+
+		/**
+		 * @brief 両方のテキストの最大文字数を取得する。
+		 * @return 最大文字数。
+		 */
+		size_type max_size() const {
+			return max_length();
+		}
+
+		/**
+		 * @brief 両方のテキストの最小文字数を取得する。
+		 * @return 最小文字数。
+		 */
+		size_type min_size() const {
+			return min_length();
+		}
+
+		/**
+		 * @brief 指定したモードのテキストの文字数を取得する。
+		 * @param[in] mode 取得するテキストのモード。
+		 * @return 指定したモードの文字数。
+		 */
+		size_type size_in_mode(TextMode mode) const noexcept {
+			return length_in_mode(mode);
+		}
+
+		/**
+		 * @brief 両方のテキストの合計文字数を取得する。
+		 * @return 合計文字数。
+		 */
+		size_type size() const {
+			return total_size();
+		}
+
+		/**
+		 * @brief 両方のテキストが空かどうかを判定する。
+		 * @return 両方のテキストが空の場合にtrue、それ以外の場合にfalseを返す。
+		 */
+		bool empty() const noexcept {
+			return kanji.empty() && kana.empty();
+		}
+
+		/**
+		 * @brief 両方のテキストをクリアする。
+		 */
+		void clear() noexcept {
+			kanji.clear();
+			kana.clear();
+		}
+
+		/**
+		 * @brief 指定したモードのテキストを取得する。
+		 * @param[in] mode 取得するテキストのモード。
+		 * @return 指定したモードの文字列参照。
+		 */
+		const std::string& at(TextMode mode) const noexcept {
+			return ((mode == TextMode::KANJI) ? (kanji) : (kana));
+		}
 	};
 
 	/**
@@ -560,12 +673,12 @@ public:
 
 	/// @brief ダイアログのメインメッセージラベル (ID: passwordEntryLabel)
 	sgex::Label passwordEntryLabel;
+	/// @brief パスワード入力欄 (ID: passwordEntry)
+	sgex::Entry passwordEntry;
 	/// @brief 「キャンセル」ボタン (ID: passwordCancelButton)
 	sgex::Button passwordCancelButton;
 	/// @brief 「確定」ボタン (ID: passwordEnterButton)
 	sgex::Button passwordEnterButton;
-	/// @brief パスワード入力欄 (ID: passwordEntry)
-	sgex::Entry passwordEntry;
 
 	// --- 警告ダイアログ内のウィジェット ---
 
@@ -654,9 +767,7 @@ private:
 	 * @return 表示用の文字列 (かな or 漢字)。
 	 */
 	const std::string& get_display_text(const UiText& ui_text) const {
-		return ((m_text_mode == TextMode::KANA)
-				? (ui_text.kana)
-				: (ui_text.kanji));
+		return ui_text.at(m_text_mode);
 	}
 
 	/**
@@ -819,6 +930,26 @@ private:
 	 */
 	bool confirm_to_user(UiText&& message);
 
+	/**
+	 * @brief 強制実行確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。
+	 * @param[in] message ダイアログに設定するメッセージ。
+	 * @return ユーザーが「無視して続ける」を選択した場合はtrue、「キャンセル」を選択した場合はfalseを返します。
+	 */
+	bool override_confirm_to_user(const UiText& message);
+
+	/**
+	 * @brief 強制実行確認ダイアログを用いて、ユーザーに確認を取るヘルパー関数。(ムーブ版)
+	 * @param[in] message ダイアログにムーブ設定するメッセージ。
+	 * @return ユーザーが「無視して続ける」を選択した場合はtrue、「キャンセル」を選択した場合はfalseを返します。
+	 */
+	bool override_confirm_to_user(UiText&& message);
+
+	/**
+	 * @brief 現在の状態に応じた update_**_read_completed_buttons を呼び出す。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_read_completed_buttons(bool update_ui = true);
+
 	// --- 警告管理用のヘルパー関数 ---
 
 	/**
@@ -827,32 +958,59 @@ private:
 	 * @return 状態に対する警告であればtrue、そうでなければfalseを返します。
 	 */
 	static bool is_state_warning(WarningType type) {
-		return (
-			(type == WarningType::UNSCANNED_OUT_FRAME) ||
-			(type == WarningType::SCANNED_IN_CONTAINER) ||
-			(type == WarningType::OTHER_IN_CONTAINER)
-		);
+		switch (type) {
+		case WarningType::UNSCANNED_OUT_FRAME:
+		case WarningType::SCANNED_IN_CONTAINER:
+		case WarningType::OTHER_IN_CONTAINER:
+			return true;	// ダイアログを出すべき重要警告
+		default:
+			return false;	// メッセージラベルで済ませるスキャン警告
+		}
 	}
+
+	/**
+	 * @brief 警告表示を更新します。
+	 * @details 現在の警告状態に基づいて、メッセージラベルで済ませるか警告ダイアログで表示するかを判定し、内容を更新します。
+	 * @return 警告ダイアログを表示した場合はtrue、メッセージラベルで済ませた場合はfalseを返します。
+	 */
+	bool update_warning_display();
 
 	/**
 	 * @brief 警告を追加します。
 	 * @param[in] type 追加する警告の種類。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
-	void add_warning(WarningType type);
+	void add_warning(WarningType type, bool update_ui = true);
 
 	/**
 	 * @brief 警告を削除します。
 	 * @param[in] type 削除する警告の種類。
 	 * @param[in] force_clear (オプション・デフォルト false) trueの場合、カウントに関わらず即座に削除します。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 * @return 減らしたcountと、現在の警告のcountをペアで返します（first: 減らしたcount, second: 現在のcount）。
 	 */
-	std::pair<int, int> remove_warning(WarningType type, bool force_clear = false);
+	std::pair<int, int> remove_warning(WarningType type, bool force_clear = false, bool update_ui = true);
+
+	/**
+	 * @brief スキャン警告をすべて削除します。
+	 * @details
+	 * WarningType の追加時に、削除する警告種類の追加を is_state_warning と一緒に忘れずできるよう、
+	 * ヘッダで定義します (実装も順番にいくつか関数を呼び出すだけで軽量なため)。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void clear_scan_warnings(bool update_ui = true) {
+		remove_warning(WarningType::NOT_FOUND, true, false);
+		remove_warning(WarningType::DIFFERENT_TOOL, true, false);
+		remove_warning(WarningType::NOT_YET_STORED, true, false);
+		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);
+		remove_warning(WarningType::ALREADY_STORED, true, false);
+		if (update_ui) { update_warning_display(); }
+	}
 
 	/**
 	 * @brief すべての警告をクリアします。
-	 * @return 削除した警告の数を返します。
 	 */
-	size_t clear_warnings();
+	void clear_warnings(bool update_ui = true);
 
 	// --- 認証用のヘルパー関数 ---
 
@@ -882,15 +1040,10 @@ private:
 
 	/**
 	 * @brief [補充用] 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
+	 * @param[in] default_value (オプション・デフォルト true) デフォルトで「はい」/「いいえ」のどちらを選択した状態にするかを指定。
 	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
-	bool confirm_if_reground();
-
-	/**
-	 * @brief 補充履歴を保存します。
-	 * @details 補充モードで補充が完了した際に呼び出されます。
-	 */
-	void save_store_history();
+	bool confirm_if_reground(bool default_value = true);
 
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
@@ -951,54 +1104,6 @@ private:
 	void mainTableSelection_on_changed(std::optional<size_t> selected_index_opt);
 
 	/**
-	 * @brief prevButton3columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton3columns_on_clicked();
-
-	/**
-	 * @brief nextButton3columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton3columns_on_clicked();
-
-	/**
-	 * @brief prevButton2columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton2columns_on_clicked();
-
-	/**
-	 * @brief nextButton2columns の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton2columns_on_clicked();
-
-	/**
-	 * @brief prevButton2types1st の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton2types1st_on_clicked();
-
-	/**
-	 * @brief nextButton2types1st の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton2types1st_on_clicked();
-
-	/**
-	 * @brief prevButton2types2nd の "clicked" シグナルに対応するハンドラ。
-	 * @details 前のページに移動する。
-	 */
-	void prevButton2types2nd_on_clicked();
-
-	/**
-	 * @brief nextButton2types2nd の "clicked" シグナルに対応するハンドラ。
-	 * @details 次のページに移動する。
-	 */
-	void nextButton2types2nd_on_clicked();
-
-	/**
 	 * @brief qrCodeEntry の "activate" シグナルに対応するハンドラ。
 	 * @details 現在の状態に応じたコールバックを実行する。
 	 */
@@ -1029,16 +1134,11 @@ private:
 	void passwordEntryDialog_on_show();
 
 	/**
-	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 警告ダイアログを閉じる。
+	 * @brief warningListDialog の "response" シグナルに対応するハンドラ。
+	 * @details ダイアログにレスポンスシグナルが発生した直後に呼び出され、warningListStore をクリアする。
+	 * @param response_id 発行されたレスポンスID
 	 */
-	void warningListCloseButton_on_clicked();
-
-	/**
-	 * @brief warningListSuppressButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
-	 */
-	void warningListSuppressButton_on_clicked();
+	void warningListDialog_on_response(gint response_id);
 
 	/**
 	 * @brief insertCountIncrementButton の "clicked" シグナルに対応するハンドラ。
@@ -1065,16 +1165,28 @@ private:
 	void insertCountOkButton_on_clicked();
 
 	/**
+	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。
+	 * @details 「いいえ」が選択された状態への切り替えを試みる。
+	 */
+	void notRegroundButton_on_toggled();
+
+	/**
 	 * @brief regroundButton の "toggled" シグナルに対応するハンドラ。
 	 * @details 「はい」が選択された状態への切り替えを試みる。
 	 */
 	void regroundButton_on_toggled();
 
 	/**
-	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。
-	 * @details 「いいえ」が選択された状態への切り替えを試みる。
+	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じる。
 	 */
-	void notRegroundButton_on_toggled();
+	void warningListCloseButton_on_clicked();
+
+	/**
+	 * @brief warningListSuppressButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
+	 */
+	void warningListSuppressButton_on_clicked();
 
 	/**
 	 * @brief reconcileFilterDialog_on_show の "show" シグナルに対応するハンドラ。
@@ -1307,36 +1419,23 @@ private:
 	void on_qrCodeEntry_store_ready_for_reading();
 
 	/**
-	 * @brief STORE_READ_COMPLETED 状態に入ったときの処理
-	 * @details 扉を閉めるまで待機するよう、PLC連携用スレッドに命令する。
-	 */
-	void on_enter_store_read_completed();
-
-	/**
-	 * @brief STORE_READ_COMPLETED 状態の qrCodeEntry.on_activate の処理
-	 * @details 読み取られた工具情報をDBから取得して表に追加する。
-	 * @return 読み取った工具をDBから取得できた場合true、取得できなかった場合false。
-	 */
-	bool on_qrCodeEntry_store_read_completed();
-
-	/**
-	 * @brief STORE_READ_COMPLETED 状態の falseButton.on_clicked の処理
+	 * @brief STORE_READY_FOR_READING 状態の falseButton.on_clicked の処理
 	 * @details 補充機能を終了する。
 	 */
-	void on_falseButton_store_read_completed();
+	void on_falseButton_store_ready_for_reading();
 
 	/**
-	 * @brief STORE_READ_COMPLETED 状態の trueButton.on_clicked の処理
+	 * @brief STORE_READY_FOR_READING 状態の trueButton.on_clicked の処理
 	 * @details 補充機能の最初の画面に戻る。
 	 */
-	void on_trueButton_store_read_completed();
+	void on_trueButton_store_ready_for_reading();
 
 	/**
-	 * @brief STORE_READ_COMPLETED 状態の on_plc_notified の処理。
+	 * @brief STORE_READY_FOR_READING 状態の on_plc_notified の処理。
 	 * @details PLCからの通知を受け取り、扉が閉じられたらtrue/falseボタンを有効にする。
 	 * @param[in] notification PLCモニタースレッドからの通知。
 	 */
-	void on_plc_store_read_completed(const plc::Notification& notification);
+	void on_plc_store_ready_for_reading(const plc::Notification& notification);
 
 	// --- 棚卸しモードの状態遷移関数 ---
 	/**
@@ -1477,6 +1576,9 @@ private:
 	/// @brief 操作している保管領域。
 	std::optional<StrageAreaInfo> m_operating_area;
 
+	/// @brief 操作している工具の基本情報
+	std::optional<MstToolInfo> m_operating_tool;
+
 	/// @brief 操作した工具ぞれぞれの操作記録をまとめておく vector。
 	std::vector<RecOperationTable> m_operated_records;
 
@@ -1488,9 +1590,6 @@ private:
 
 	/// @brief PLCの操作許可状態 (例: 扉が閉まっているか)
 	bool m_plc_ready_for_action;
-
-	/// @brief 追跡システムの操作許可状態 (例: 不正が検知されていないか)
-	bool m_tracker_ready_for_action;
 
 	/// @brief ユーザーによって警告が閉じられたかどうか
 	bool m_warning_closed_by_user;
@@ -1516,6 +1615,10 @@ private:
 	int m_unscanned_count;
 
 	// --- 操作中の状態保持用 (補充専用) ---
+
+	/// @brief [補充用] 再研磨工具のIDリスト。
+	std::set<std::int64_t> m_reground_tools;
+
 	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 
 	// --- 棚卸しフィルタ用メンバ変数 ---

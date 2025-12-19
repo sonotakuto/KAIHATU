@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <unistd.h>
 #include "./any_extension.hpp"
 #include "./odbc.hpp"
 #include "./includes.hpp"
@@ -16,7 +17,7 @@ using namespace odbc;
 namespace db {
 
 // データベースへの接続を管理するクラスをまとめた構造体へのポインタ
-static std::unique_ptr<OdbcSession> db_session;
+static std::unique_ptr<OdbcSession<>> db_session;
 
 // --- このファイル内部でのみ使用するヘルパー関数 ---
 
@@ -92,7 +93,7 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 						.category	= std::any_cast<std::string>				(row.at("tool_category")),
 						.material	= std::any_cast<std::string>				(row.at("tool_material")),
 						.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
-						.is_frozen	= static_cast<bool>(std::any_cast<signed char>(row.at("is_frozen")))
+						.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 					}
 				});
 			}
@@ -215,7 +216,7 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 				.category	= std::any_cast<std::string>				(row.at("tool_category")),
 				.material	= std::any_cast<std::string>				(row.at("tool_material")),
 				.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
-				.is_frozen	= std::any_cast<bool>						(row.at("is_frozen"))
+				.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 			},
 
 			.toolcase_stc_num	= stdex::any_cast_optional<std::int32_t>(row.at("toolcase_stc_num")),
@@ -326,8 +327,7 @@ bool connect(void) {
 	for (int i = 0; i < RETRY_LIMIT; i++) {
 		try {
 			// DBに接続
-			auto conn = make_unique<OdbcConnection>(ODBC_DSN, ODBC_USER, ODBC_PASS);
-			db_session = make_unique<OdbcSession>(move(conn));
+			db_session = make_unique<OdbcSession<>>(ODBC_DSN, ODBC_USER, ODBC_PASS);
 
 			// 成功したらループを抜ける
 			return true;
@@ -354,6 +354,58 @@ void disconnect(void) {
 bool user_authenticate(const std::string& qr_string) {
 	g_logged_in_user_info = get_MstUserInfo(qr_string);
 	return g_logged_in_user_info.has_value();
+}
+
+bool authenticate_with_password(const std::string& input_password) {
+	// 1. ステートメントの作成 (リトライ付き)
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt.has_value()) {
+		DEV_PRINT(stderr, "Error: Failed to create statement for password verification.\n");
+		return false;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// 2. 登録されているパスワードハッシュを全て取得
+		// (通常は1件ですが、複数登録されている可能性も考慮してループでチェックします)
+		const std::string sql = "SELECT password FROM mst_password;";
+		stmt.prepare(sql);
+		stmt.executePrepared();
+
+		auto rows = stmt.fetchAll();
+		if (rows.empty()) {
+			DEV_PRINT("Password Check: No password registered in DB.\n");
+			return false;
+		}
+
+		// 3. ハッシュ検証
+		for (const auto& row : rows) {
+			// DBからハッシュ文字列を取得
+			std::string stored_hash;
+			try {
+				stored_hash = std::any_cast<std::string>(row.at("password"));
+			} catch (const std::bad_any_cast&) {
+				continue; // データ不正
+			}
+
+			if (stored_hash.empty()) continue;
+
+			// crypt(平文, ハッシュ) を実行すると、ハッシュと同じソルトを使って計算されたハッシュが返ります
+			// これが stored_hash と一致すれば認証成功です
+			char* computed_hash = crypt(input_password.c_str(), stored_hash.c_str());
+
+			if (computed_hash != nullptr && stored_hash == computed_hash) {
+				return true; // 一致した
+			}
+		}
+
+		// 全てチェックしても一致しなかった場合
+		return false;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in verify_system_password: {}\n", e.what());
+		return false;
+	}
 }
 
 bool save_history(const RecOperationTable& record) {
@@ -501,6 +553,72 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 	}
 }
 
+bool increment_regrind_counts(const std::set<std::int64_t>& tool_ids) {
+	if (tool_ids.empty()) {
+		return true;	// 更新対象なし、成功とみなす
+	}
+
+	// 1. 接続セッションを確認
+	if (!db_session || !db_session->connection) {
+		DEV_PRINT(stderr, "Error: DB connection not available for incrementing regrind counts.\n");
+		return false;
+	}
+
+	// 2. トランザクションを開始
+	try {
+		db_session->connection->beginTransaction();
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error starting transaction: {}\n", e.what());
+		return false;
+	}
+
+	try {
+		// 3. ステートメントを準備
+		auto stmt_opt = create_statement_with_retry();
+		if (!stmt_opt.has_value()) {
+			DEV_PRINT(stderr, "Error: Failed to create statement for incrementing regrind counts.\n");
+			db_session->connection->rollback();
+			return false;
+		}
+		auto& stmt = stmt_opt.value();
+
+		// COALESCE(regrind_count, 0) : NULLなら0に変換してから+1する
+		const std::string sql =
+			"UPDATE unique_tool "
+			"SET regrind_count = COALESCE(regrind_count, 0) + 1 "
+			"WHERE unique_tool_id = ?;";
+
+		stmt.prepare(sql);
+
+		// 4. ループで実行
+		// (ループ内で bind -> executePrepared を繰り返すことで、同じプリペアドステートメントを使い回せます)
+		for (std::int64_t id : tool_ids) {
+			// パラメータをバインド (1番目の?に id をセット)
+			// OdbcStatement::bind は int64_t (long long) に対応しています
+			stmt.bind(1, id);
+
+			// 実行
+			stmt.executePrepared();
+		}
+
+		// 5. 全て成功したらコミット
+		db_session->connection->commit();
+		DEV_PRINT("[DB] increment_regrind_counts successful for {} tools.\n", tool_ids.size());
+		return true;
+
+	} catch (const std::exception& e) {
+		// エラー発生時はロールバック
+		DEV_PRINT(stderr, "DB Error in increment_regrind_counts, rolling back: {}\n", e.what());
+		try {
+			db_session->connection->rollback();
+		} catch (const std::exception& e_rollback) {
+			// ロールバック自体の失敗はログのみで無視
+			DEV_PRINT(stderr, "ロールバック失敗[increment_regrind_counts]: {}\n", e.what());
+		}
+		return false;
+	}
+}
+
 std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string) {
 	auto code_opt = parse_qr(qr_string);
 	auto stmt_opt = create_statement_with_retry();
@@ -607,7 +725,7 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 			.category	= std::any_cast<std::string>				(row.at("tool_category")),
 			.material	= std::any_cast<std::string>				(row.at("tool_material")),
 			.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
-			.is_frozen	= std::any_cast<bool>						(row.at("is_frozen"))
+			.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 		};
 
 		// unique_tool テーブルの情報を詰めて返す
