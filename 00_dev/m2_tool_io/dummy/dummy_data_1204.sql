@@ -23,7 +23,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- パスワード
 INSERT INTO `mst_password` (`password`) VALUES
-('$2a$08$L1Hyqo3Cas585TYIjXSnBeh5uHo8teHI53GtD.61MS7HPFFjDFUni');
+('$2a$08$6UffR9fo4CT4iMmaqm9cNOouuBrIpyfsR4bEe0DXHDPKRho1Uio.m'); -- パスワード: "1234"
 
 -- 住所（A01～B02）
 INSERT INTO `mst_address` (`display_address`, `control_address`) VALUES

@@ -196,7 +196,7 @@ std::string RecorderClient::generate_timestamp_filename() const {
 	return fmt::format("recording_{:%Y%m%d_%H%M%S}.mp4", sg::now());
 }
 
-std::optional<std::string> RecorderClient::start_recording(std::string filename /* = "" */) {
+std::optional<std::string> RecorderClient::start_recording(std::string filename) {
 	// ファイル名が指定されなかった場合は生成
 	if (filename.empty()) {
 		filename = generate_timestamp_filename();

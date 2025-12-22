@@ -271,10 +271,11 @@ MainWindow::MainWindow() :
 		{ G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const WarningListData& row) {
 			try {
+				GdkRGBA bgcolor = utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL);
 				store->set(iter,
 					0, this->get_display_text(this->g_warning_type_messages.at(row.type)).c_str(),
 					1, std::to_string(row.count).c_str(),
-					2, utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL)
+					2, &bgcolor
 				);
 			} catch (const std::out_of_range& e) {
 				DEV_PRINT("Error: WarningType enum value out of range: {}\n", static_cast<int>(row.type));
@@ -429,6 +430,7 @@ MainWindow::MainWindow() :
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
 	confirmInsertCountDialog.on_show([this]() { this->confirmInsertCountDialog_on_show(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
+	warningListDialog.on_show([this]() { this->warningListstore.refresh(); });
 	warningListDialog.on_response([this](gint response_id) { this->warningDialog.hide(); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
@@ -3083,7 +3085,10 @@ void MainWindow::on_trueButton_retrieve_confirming_selection() {
 }
 
 void MainWindow::on_enter_retrieve_container_retrieving() {
+	// 操作対象を取得
 	const MstToolInfo& mst_tool_info = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// FIXME: nullopt対応
+
+	// コンテナ搬出
 	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
 	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address));	// FIXME: nullopt対応	// FIXME: 例外処理
 	plc::g_command_queue.push(plc::WatchCommand{
@@ -3094,6 +3099,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 		}
 	});
 
+	// 追跡システムの開始
 	// FIXME: エラー対応
 	tracker::g_tool_tracker->connect();
 	tracker::g_recorder_client->start_recording();
@@ -3101,6 +3107,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 	// インサートの操作か判定
 	m_is_insert_operation = (mst_tool_info.category == TOOL_CATEGORY_INSERT);
 
+	// 表を作る
 	std::vector<MainTableData> vec;
 	vec.reserve(m_retrieving_tools.size());
 	for (size_t i = 0; i < m_retrieving_tools.size(); i++) {
