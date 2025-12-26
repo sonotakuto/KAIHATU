@@ -406,7 +406,7 @@ public:
 		/// @brief PLCモニタースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*, const plc::Notification&)> on_plc_notified = nullptr;
 		/// @brief 工具追跡システムのリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, const tracker::Notification&)> on_tracker_notified = nullptr;
+		std::function<void(MainWindow*, const tracker::ToolTrackerClient::Notification&)> on_tracker_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -444,7 +444,7 @@ public:
 	 * @brief 工具追跡システムのリスナースレッドから通知を受け取り、GUIスレッドで実行されるコールバック。
 	 * @param[in] notification 工具追跡システムのリスナースレッドからの通知。
 	 */
-	void tracker_on_notified(const tracker::Notification& notification);
+	void tracker_on_notified(const tracker::ToolTrackerClient::Notification& notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -1302,7 +1302,7 @@ private:
 	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
 	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
 	 */
-	void on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification);
+	void on_tracker_retrieve_ready_for_reading(const tracker::ToolTrackerClient::Notification& notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**

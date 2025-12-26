@@ -5,7 +5,7 @@
  */
 #pragma once
 #include <optional>
-#include <SimpleGtk> // インストール済みのSimpleGtkライブラリをインクルード
+#include <SimpleGtk>
 #include "./utility.hpp"
 
 /**
@@ -151,7 +151,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWindow* self)
+	DEFINE_SIGNAL_HANDLER("map", map, Window, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
 };
 
 /**
@@ -178,6 +179,7 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Dialog, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkDialog* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
 };
@@ -214,6 +216,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Box, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Box, GtkWidget* self)
 };
 
 /**
@@ -248,6 +252,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Stack, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Stack, GtkWidget* self)
 };
 
 /**
@@ -266,6 +272,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Button, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Button, GtkWidget* self)
 };
 
 /**
@@ -284,6 +292,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, CheckButton, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, CheckButton, GtkWidget* self)
 };
 
 /**
@@ -303,6 +313,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, RadioButton, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, RadioButton, GtkWidget* self)
 };
 
 /**
@@ -324,6 +336,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(editable)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Entry, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Entry, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
 };
 
@@ -379,6 +393,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Switch, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Switch, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
 };
 
@@ -401,6 +417,8 @@ public:
 	DEFINE_PROPERTY_ACCESSORS(ComboBox, model, GtkTreeModel*)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, ComboBox, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, ComboBox, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
 };
 
@@ -419,6 +437,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Label, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Label, GtkWidget* self)
 };
 
 /**
@@ -562,6 +582,8 @@ public:
 	// シグナル
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
+	DEFINE_SIGNAL_HANDLER("map", map, TreeView, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, TreeView, GtkWidget* self)
 };
 
 /**

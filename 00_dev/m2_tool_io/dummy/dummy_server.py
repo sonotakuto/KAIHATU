@@ -10,6 +10,8 @@ TRACKER_PORT = 5000        # ToolTrackerClient用
 COUNTER_PORT = 12345       # InsertCounter用
 MSG_LENGTH = 24            # 固定長メッセージ長
 
+DUMMY_COUNT = 3            # インサートカウントのダミー個数
+
 # 通知メッセージの定義 (tracking_communicator.hppより)
 NOTIFICATIONS = {
     "1": "Scan_S",                  # スキャン成功
@@ -95,8 +97,8 @@ def handle_counter_client(conn, addr):
     print(f"[Counter] 接続: {addr}")
     try:
         # 接続されたら即座に数値を送って切断する仕様
-        # 任意の個数（例: 100）を送信
-        response = "3"
+        # 任意の個数（DUMMY_COUNT）を送信
+        response = f"{DUMMY_COUNT}"
         conn.sendall(response.encode('utf-8'))
         print(f"[Counter] データ送信: {response}")
     except Exception as e:
@@ -160,9 +162,9 @@ if __name__ == "__main__":
     t_tracker.start()
 
     # インサート個数サーバーを別スレッドで起動
-    #t_counter = threading.Thread(target=counter_server_thread)
-    #t_counter.daemon = True
-    #t_counter.start()
+    t_counter = threading.Thread(target=counter_server_thread)
+    t_counter.daemon = True
+    t_counter.start()
 
     # メインスレッドで入力待ち
     input_loop()

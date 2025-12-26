@@ -430,7 +430,6 @@ MainWindow::MainWindow() :
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
 	confirmInsertCountDialog.on_show([this]() { this->confirmInsertCountDialog_on_show(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
-	warningListDialog.on_show([this]() { this->warningListstore.refresh(); });
 	warningListDialog.on_response([this](gint response_id) { this->warningDialog.hide(); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
@@ -446,6 +445,7 @@ MainWindow::MainWindow() :
 	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	warningList.on_show([this]() { this->warningListstore.refresh(); });
 	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
 	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
 
@@ -1484,7 +1484,7 @@ MainWindow::MainWindow() :
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_ready_for_reading(); },
 		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_retrieve_ready_for_reading(); },
 		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_ready_for_reading(notification); },
-		.on_tracker_notified		= [](MainWindow* thiz, const tracker::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
+		.on_tracker_notified		= [](MainWindow* thiz, const tracker::ToolTrackerClient::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
 	});
 
 	// --- 状態：取り出し - 実際に補充を行う - 工具読み取り後 ---
@@ -1505,7 +1505,7 @@ MainWindow::MainWindow() :
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_ready_for_reading(); },
 		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_retrieve_ready_for_reading(); },
 		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_ready_for_reading(notification); },
-		.on_tracker_notified		= [](MainWindow* thiz, const tracker::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
+		.on_tracker_notified		= [](MainWindow* thiz, const tracker::ToolTrackerClient::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
 	});
 
 	// --- 状態：補充 - 移行 ---
@@ -1809,7 +1809,7 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 	}
 }
 
-void MainWindow::tracker_on_notified(const tracker::Notification& notification) {
+void MainWindow::tracker_on_notified(const tracker::ToolTrackerClient::Notification& notification) {
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
 		if (state_config.on_tracker_notified) {
@@ -3325,12 +3325,12 @@ void MainWindow::on_plc_retrieve_ready_for_reading(const plc::Notification& noti
 	}
 }
 
-void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification) {
+void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTrackerClient::Notification& notification) {
 	bool result = false;
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
 
 	switch (notification.type) {
-	case tracker::NotificationType::SCAN_SUCCESS: {
+	case tracker::ToolTrackerClient::NotificationType::SCAN_SUCCESS: {
 		if (m_pending_tool_info.has_value()) {
 			UniqueToolInfo unique_info = std::move(m_pending_tool_info).value();
 			m_pending_tool_info.reset();
@@ -3472,32 +3472,32 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		}
 		break;
 	}
-	case tracker::NotificationType::SCAN_FAILURE: {
+	case tracker::ToolTrackerClient::NotificationType::SCAN_FAILURE: {
 		add_warning(WarningType::SCAN_FAILURE, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::SCANNED_IN_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::SCANNED_IN_CONTAINER: {
 		add_warning(WarningType::SCANNED_IN_CONTAINER, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::SCANNED_OUT_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::SCANNED_OUT_CONTAINER: {
 		remove_warning(WarningType::SCANNED_IN_CONTAINER, false, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::OTHER_IN_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::OTHER_IN_CONTAINER: {
 		add_warning(WarningType::OTHER_IN_CONTAINER, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::OTHER_OUT_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::OTHER_OUT_CONTAINER: {
 		remove_warning(WarningType::OTHER_IN_CONTAINER, false, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::UNSCANNED_IN_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::UNSCANNED_IN_CONTAINER: {
 		if (m_unscanned_count > 0) {
 			m_unscanned_count--;
 		}
@@ -3507,12 +3507,12 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::UNSCANNED_OUT_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::UNSCANNED_OUT_CONTAINER: {
 		m_unscanned_count++;
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::UNSCANNED_OUT_FRAME: {
+	case tracker::ToolTrackerClient::NotificationType::UNSCANNED_OUT_FRAME: {
 		add_warning(WarningType::UNSCANNED_OUT_FRAME, true);
 		result = false;
 		break;

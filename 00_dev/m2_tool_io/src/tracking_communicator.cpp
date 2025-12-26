@@ -12,8 +12,10 @@ namespace tracker {
 // ToolTrackerClient クラス実装
 // =================================
 
-ToolTrackerClient::ToolTrackerClient(std::function<void(const Notification&)> callback)
-	: keep_listening(false), notification_callback(callback) {}
+ToolTrackerClient::ToolTrackerClient(std::function<void(const Notification&)> callback) :
+	keep_listening(false),
+	notification_callback(callback)
+{}
 
 ToolTrackerClient::~ToolTrackerClient() {
 	disconnect();
@@ -25,24 +27,24 @@ bool ToolTrackerClient::connect() {
 	}
 
 	try {
-		if (!socket.connect(TRACKER_IP, TRACKER_PORT)) {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Connection Failed to {}:{}\n", TRACKER_IP, TRACKER_PORT);
+		if (!socket.connect(HOST, PORT)) {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Connection Failed to {}:{}\n", HOST, PORT);
 			return false;
 		}
 
-		if (socket.send(TRACKER_PADDED_MSG_CONNECT.data(), TRACKER_PADDED_MSG_CONNECT.size()) < 0) {
+		if (socket.send(PADDED_MSG_CONNECT.data(), PADDED_MSG_CONNECT.size()) < 0) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Connect' message.\n");
 			socket.close();
 			return false;
 		}
 
-		socket.set_timeout(5000);
-		std::array<char, TRACKER_MSG_LENGTH> buffer{};
+		socket.set_timeout(TIMEOUT_SECONDS);
+		std::array<char, MSG_LENGTH> buffer{};
 		ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
 		socket.set_timeout(0); // ブロッキングモードに戻す
 		std::string raw_message(buffer.data(), bytes_read);
 
-		if (bytes_read == TRACKER_MSG_LENGTH && sg::rtrim(raw_message) == TRACKER_MSG_CONNECT_ACK) {
+		if (bytes_read == MSG_LENGTH && sg::rtrim(raw_message) == MSG_CONNECT_ACK) {
 			keep_listening = true;
 			listener_thread = std::thread(&ToolTrackerClient::listener_thread_func, this);
 			return true;
@@ -70,15 +72,15 @@ void ToolTrackerClient::disconnect() {
 	keep_listening = false;
 	if (socket.is_connected()) {
 		try {
-			socket.send(TRACKER_PADDED_MSG_DISCONNECT.data(), TRACKER_PADDED_MSG_DISCONNECT.size());
-			if (socket.send(TRACKER_PADDED_MSG_DISCONNECT.data(), TRACKER_PADDED_MSG_DISCONNECT.size()) >= 0) {
-				socket.set_timeout(5000);
-				std::array<char, TRACKER_MSG_LENGTH> buffer{};
+			socket.send(PADDED_MSG_DISCONNECT.data(), PADDED_MSG_DISCONNECT.size());
+			if (socket.send(PADDED_MSG_DISCONNECT.data(), PADDED_MSG_DISCONNECT.size()) >= 0) {
+				socket.set_timeout(TIMEOUT_SECONDS);
+				std::array<char, MSG_LENGTH> buffer{};
 				ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
 				socket.set_timeout(0); // ブロッキングモードに戻す
 				std::string raw_message(buffer.data(), bytes_read);
 
-				if (bytes_read == TRACKER_MSG_LENGTH && sg::rtrim(raw_message) != TRACKER_MSG_DISCONNECT_ACK) {
+				if (bytes_read == MSG_LENGTH && sg::rtrim(raw_message) != MSG_DISCONNECT_ACK) {
 					DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
 							((bytes_read > 0) ? (raw_message) : ("(No data or error)")));
 				}
@@ -104,7 +106,7 @@ bool ToolTrackerClient::notify_qr_scan() {
 		return false;
 	}
 	try {
-		if (socket.send(TRACKER_PADDED_MSG_QR_SCAN.data(), TRACKER_PADDED_MSG_QR_SCAN.size()) < 0) {
+		if (socket.send(PADDED_MSG_QR_SCAN.data(), PADDED_MSG_QR_SCAN.size()) < 0) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
 			disconnect();
 			notification_callback({NotificationType::ERROR, {}, "Send failed"});
@@ -120,7 +122,7 @@ bool ToolTrackerClient::notify_qr_scan() {
 }
 
 void ToolTrackerClient::listener_thread_func() {
-	std::array<char, TRACKER_MSG_LENGTH> buffer{};
+	std::array<char, MSG_LENGTH> buffer{};
 
 	while (keep_listening) {
 		try {
@@ -131,20 +133,20 @@ void ToolTrackerClient::listener_thread_func() {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received {} bytes\n", bytes_read);
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", raw_message);
 
-			if (bytes_read == TRACKER_MSG_LENGTH) {
+			if (bytes_read == MSG_LENGTH) {
 				Notification notification;
 				std::string trimmed_message = sg::rtrim(raw_message);
 
 				// 固定長メッセージの比較を行い、通知タイプを判別、設定
-				if		(trimmed_message == TRACKER_MSG_SCAN_S					) { notification.type = NotificationType::SCAN_SUCCESS;				}
-				else if	(trimmed_message == TRACKER_MSG_SCAN_F					) { notification.type = NotificationType::SCAN_FAILURE;				}
-				else if	(trimmed_message == TRACKER_MSG_SCANNED_IN_CONTAINER	) { notification.type = NotificationType::SCANNED_IN_CONTAINER;		}
-				else if	(trimmed_message == TRACKER_MSG_SCANNED_OUT_CONTAINER	) { notification.type = NotificationType::SCANNED_OUT_CONTAINER;	}
-				else if	(trimmed_message == TRACKER_MSG_OTHER_IN_CONTAINER		) { notification.type = NotificationType::OTHER_IN_CONTAINER;		}
-				else if	(trimmed_message == TRACKER_MSG_OTHER_OUT_CONTAINER		) { notification.type = NotificationType::OTHER_OUT_CONTAINER;		}
-				else if	(trimmed_message == TRACKER_MSG_UNSCANNED_IN_CONTAINER	) { notification.type = NotificationType::UNSCANNED_IN_CONTAINER;	}
-				else if	(trimmed_message == TRACKER_MSG_UNSCANNED_OUT_CONTAINER	) { notification.type = NotificationType::UNSCANNED_OUT_CONTAINER;	}
-				else if	(trimmed_message == TRACKER_MSG_UNSCANNED_OUT_FRAME		) { notification.type = NotificationType::UNSCANNED_OUT_FRAME;		}
+				if		(trimmed_message == MSG_SCAN_S					) { notification.type = NotificationType::SCAN_SUCCESS;				}
+				else if	(trimmed_message == MSG_SCAN_F					) { notification.type = NotificationType::SCAN_FAILURE;				}
+				else if	(trimmed_message == MSG_SCANNED_IN_CONTAINER	) { notification.type = NotificationType::SCANNED_IN_CONTAINER;		}
+				else if	(trimmed_message == MSG_SCANNED_OUT_CONTAINER	) { notification.type = NotificationType::SCANNED_OUT_CONTAINER;	}
+				else if	(trimmed_message == MSG_OTHER_IN_CONTAINER		) { notification.type = NotificationType::OTHER_IN_CONTAINER;		}
+				else if	(trimmed_message == MSG_OTHER_OUT_CONTAINER		) { notification.type = NotificationType::OTHER_OUT_CONTAINER;		}
+				else if	(trimmed_message == MSG_UNSCANNED_IN_CONTAINER	) { notification.type = NotificationType::UNSCANNED_IN_CONTAINER;	}
+				else if	(trimmed_message == MSG_UNSCANNED_OUT_CONTAINER	) { notification.type = NotificationType::UNSCANNED_OUT_CONTAINER;	}
+				else if	(trimmed_message == MSG_UNSCANNED_OUT_FRAME		) { notification.type = NotificationType::UNSCANNED_OUT_FRAME;		}
 				else { notification.type = NotificationType::UNKNOWN; }
 
 				notification.raw_message = std::move(buffer);	// 固定長配列をムーブ
@@ -185,10 +187,10 @@ void ToolTrackerClient::listener_thread_func() {
 
 // コンストラクタ: 定数を使ってメンバ変数を初期化
 RecorderClient::RecorderClient() :
-	base_url(RECORDER_BASE_URL),
-	context_path(RECORDER_CONTEXT_PATH),
-	username(RECORDER_USERNAME),
-	password(RECORDER_PASSWORD),
+	base_url(BASE_URL),
+	context_path(CONTEXT_PATH),
+	username(USERNAME),
+	password(PASSWORD),
 	m_current_filename(std::nullopt)
 {}
 
@@ -210,7 +212,7 @@ std::optional<std::string> RecorderClient::start_recording(std::string filename)
 		request.set_url(url);
 		request.set_post_data(post_data);
 		request.set_basic_auth(username, password);
-		request.set_timeout(5L);
+		request.set_timeout(TIMEOUT_SECONDS);
 		request.perform();
 
 		long http_code = request.get_response_code();
@@ -244,7 +246,7 @@ bool RecorderClient::stop_recording() {
 		request.set_url(url);
 		request.set_post_data("");
 		request.set_basic_auth(username, password);
-		request.set_timeout(5L);
+		request.set_timeout(TIMEOUT_SECONDS);
 		request.perform();
 
 		long http_code = request.get_response_code();
@@ -272,20 +274,20 @@ std::optional<std::string> RecorderClient::get_current_filename() const {
 // インサート個数取得クライアント 実装
 // =================================
 
-std::optional<int> get_insert_count(const char* ip, int port, int timeout_ms) {
+std::optional<int> get_insert_count(const char* host, int port, std::uint32_t timeout_sec) {
 	sg::Socket local_socket; // ローカル変数としてソケットを作成 (RAII)
 	std::optional<int> result = std::nullopt;
 	DEV_PRINT("インサート個数取得サーバーと通信します\n");
 
 	try {
 		// 1. 接続
-		if (!local_socket.connect(ip, port)) {
-			DEV_PRINT(stderr, "[InsertCounter] Connection Failed to {}:{}\n", ip, port);
+		if (!local_socket.connect(host, port)) {
+			DEV_PRINT(stderr, "[InsertCounter] Connection Failed to {}:{}\n", host, port);
 			return std::nullopt; // RAIIによりソケットは自動で閉じられる
 		}
 
 		// 2. 受信 (タイムアウト付き)
-		local_socket.set_timeout(timeout_ms);
+		local_socket.set_timeout(timeout_sec);
 		std::string data_str = local_socket.receive(1024); // 最大1024バイト受信
 
 		if (!data_str.empty()) {

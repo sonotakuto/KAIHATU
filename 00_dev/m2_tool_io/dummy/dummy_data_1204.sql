@@ -32,7 +32,7 @@ INSERT INTO `mst_address` (`display_address`, `control_address`) VALUES
 
 -- ライン
 INSERT INTO `mst_line` (`line_name`) VALUES
-('Line-A'), ('Line-B'), ('Line-C');
+('MC1'), ('MC2'), ('MC3');
 
 -- ユーザー
 INSERT INTO `mst_user` (`user_id`, `user_name`, `user_print_time`, `per_add`, `per_inventory`, `per_user`, `per_tool`, `per_line`, `per_analysis`, `per_history`, `per_db`, `per_setting`) VALUES
@@ -51,10 +51,10 @@ INSERT INTO `mst_tool` (`basic_tool_id`, `tool_name`, `maker`, `tool_category`, 
 
 -- プログラム割当
 INSERT INTO `mst_program` (`program_id`, `line_id`, `program_name`, `program_print_time`) VALUES
-(001, 1, 'PROG-001', '20251216172322');
+(001, 1, 'O02031J507', '20251216172322');
 
 INSERT INTO `mst_tool_assignment` (`program_id`, `tool_num`, `basic_tool_id`) VALUES
-(1, 'T01', 20001), (1, 'T02', 10001);
+(1, 'T1', 20001), (1, 'T2', 10001);
 
 -- --------------------------------------------------------
 -- 4. 保管領域の初期定義 (箱だけ用意する)
@@ -75,6 +75,7 @@ INSERT INTO `unique_tool` (`unique_tool_id`, `tool_print_time`, `basic_tool_id`,
 (2000100002, '20251216172322', 20001, 00002, 1, NULL, '補充前'), -- パターンE: 後で A01 に補充し、取り出す
 (4000100001, '20251216172322', 40001, 00001, 1, NULL, '補充前'), -- パターンC: そのまま放置（補充待ち）
 (1000100001, '20251216172322', 10001, 00001, 10, NULL, '補充前'), -- パターンB: 後で A02 に補充(10個)
+(1000100002, '20251216172322', 10001, 00002, 10, NULL, '補充前'), -- パターンB: 後で A02 に補充(10個)
 (3000100001, '20251216172322', 30001, 00001, 1, NULL, '補充前'); -- パターンD: 後で A03 に補充し、取り出す
 
 -- --------------------------------------------------------
