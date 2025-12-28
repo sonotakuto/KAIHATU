@@ -437,15 +437,15 @@ MainWindow::MainWindow() :
 	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
-	confirmRegroundOkButton.on_clicked([this]() { confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	confirmationNoButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_NO); });
 	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
 	overrideConfirmOverrideButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
 	overrideConfirmCancelButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
-	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
-	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
-	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
-	warningList.on_show([this]() { this->warningListstore.refresh(); });
+	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
+	passwordCancelButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
+	passwordEnterButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	warningList.on_map([this]() { this->warningListCloseButton_on_map(); });
 	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
 	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
 
@@ -2025,6 +2025,10 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 	} else {
 		m_table_states.for_each_updated(apply_table_update, true);
 	}
+
+	if (force_redraw_all) {
+		warningListstore.refresh(false);
+	}
 }
 
 void MainWindow::set_app_state(AppState state) {
@@ -2662,6 +2666,7 @@ void MainWindow::on_window_show() {
 		liststore2columnsAll.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);			// テーブルのグリッド線を表示
 		paginatedListstore2types1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
+		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
 
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
@@ -2908,6 +2913,13 @@ void MainWindow::regroundButton_on_toggled() {
 		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
 		notRegroundButton.set_active(false);	// 「いいえ」をオフにする
 	}
+}
+
+void MainWindow::warningListCloseButton_on_map() {
+	auto* func = new std::function<void()>([this]() {
+		this->warningListstore.refresh(true);
+	});
+	g_idle_add(MainWindow::dispatch_to_gui_thread, func);
 }
 
 void MainWindow::warningListCloseButton_on_clicked() {

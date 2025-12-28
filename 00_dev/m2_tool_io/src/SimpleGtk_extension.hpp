@@ -906,12 +906,21 @@ public:
 
 	/**
 	 * @brief Gtk側（GtkListStore）の内容を強制的に更新します。
-	 * @details 保持しているデータモデル(m_data_model)の値を使って、全ての行に対してセッター関数(m_row_setter)を再実行します。
-	 * セッター内で外部フラグ（言語設定など）を参照している場合に、表示を切り替えるために使用します。
+	 * @details 保持しているデータモデル(m_data_model)の値を使って、ビューを同期させます。
+	 * @param[in] force_repopulate (オプション・デフォルト false)
+	 * trueの場合、GTKストアをクリアして全行を作り直します（行の増減や順序変更も反映されます）。
+	 * falseの場合、既存の行に対して値を再設定するだけです（高速ですが、行数の不整合は解消されません）。
 	 */
-	void refresh() {
+	void refresh(bool force_repopulate = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
+		// trueなら全作り直し
+		if (force_repopulate) {
+			repopulate_store();
+			return;
+		}
+
+		// falseなら既存の行の値更新のみ
 		GtkTreeIter iter;
 
 		// 最初の行を取得
@@ -2396,11 +2405,26 @@ public:
 
 	/**
 	 * @brief 現在表示中のページの表示を更新します。
-	 * @details セッターロジックが外部状態に依存している場合などに、表示を最新の状態にします。
-	 * 内部的に display_page を呼び出します。
+	 * @param[in] force_repopulate (オプション・デフォルト false)
+	 * trueの場合、ページを再構築します（マスターデータからデータを再取得し、リストを作り直します）。
+	 * falseの場合、各子モデルのrefresh(false)を呼び出し、再描画のみ行います（外部変数による表示切り替えなどに使用）。
 	 */
-	void refresh() {
-		display_page(m_current_page_index);
+	void refresh(bool force_repopulate = false) {
+		// trueなら構造再構築（Master Data -> Child Model -> View）
+		if (force_repopulate) {
+			display_page(m_current_page_index);
+			return;
+		}
+
+		// falseなら各子モデルの再描画（Child Model -> View）
+		// データそのものは変更せず、セッター関数を再実行して表示を更新します。
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		for (auto* model : m_page_models) {
+			if (model) {
+				model->refresh(false);
+			}
+		}
 	}
 
 	/**

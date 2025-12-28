@@ -4112,7 +4112,7 @@ warning warning warning</property>
                             <property name="wrap_width">996</property>
                           </object>
                           <attributes>
-                            <attribute name="cell-background-rgba">3</attribute>
+                            <attribute name="cell-background-rgba">2</attribute>
                             <attribute name="text">0</attribute>
                           </attributes>
                         </child>
@@ -4130,7 +4130,7 @@ warning warning warning</property>
                             <property name="wrap_width">90</property>
                           </object>
                           <attributes>
-                            <attribute name="cell-background-rgba">4</attribute>
+                            <attribute name="cell-background-rgba">2</attribute>
                             <attribute name="text">1</attribute>
                           </attributes>
                         </child>

@@ -1173,6 +1173,12 @@ private:
 	void regroundButton_on_toggled();
 
 	/**
+	 * @brief warningList の "map" シグナルに対応するハンドラ。
+	 * @details 表を再描画する。
+	 */
+	void warningListCloseButton_on_map();
+
+	/**
 	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
 	 * @details 警告ダイアログを閉じる。
 	 */
@@ -1470,7 +1476,7 @@ private:
 	 */
 	bool m_is_programmatically_changing_toggle;
 
-	// --- 状態遷移管理用 ---
+	// --- 状態管理用 ---
 
 	/// @brief パスワード認証が成功したかどうかのフラグ。
 	bool m_password_authenticated;
