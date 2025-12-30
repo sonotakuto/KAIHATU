@@ -333,7 +333,7 @@ bool connect(void) {
 			return true;
 		} catch (const odbc::OdbcException& e) {
 			// 接続に失敗した場合
-			// TODO:ログを残すか表示する？
+			// TODO: ログを残すか表示する？
 			DEV_PRINT(stderr, "[LOG] 接続失敗 (試行 {}): {}\n", i + 1, e.what());
 
 			// 5秒待機

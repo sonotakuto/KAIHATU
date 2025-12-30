@@ -143,7 +143,7 @@ public:
 	 */
 	enum class WarningType {
 		NONE,					// 警告なし
-		NOT_FOUND,				// 未登録工具
+		TOOL_NOT_FOUND,			// 未登録工具
 		DIFFERENT_TOOL,			// 別の工具
 		NOT_YET_STORED,			// 未だ補充前
 		ALREADY_RETRIEVED,		// 既に取り出されていた
@@ -995,7 +995,7 @@ private:
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void clear_scan_warnings(bool update_ui = true) {
-		remove_warning(WarningType::NOT_FOUND, true, false);
+		remove_warning(WarningType::TOOL_NOT_FOUND, true, false);
 		remove_warning(WarningType::DIFFERENT_TOOL, true, false);
 		remove_warning(WarningType::NOT_YET_STORED, true, false);
 		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);

@@ -130,6 +130,26 @@ static return_type on_##c_signal_name##_static para_static { \
  */
 namespace sgex {
 
+#define DEFINE_CSS_CLASS_ACCESSORS() \
+	void add_css_class(const gchar* class_name) { \
+		gtk_style_context_add_class(*this, class_name); \
+	} \
+	void add_css_class(const std::string& class_name) { \
+		add_css_class(class_name.c_str()); \
+	} \
+	void remove_css_class(const gchar* class_name) { \
+		gtk_style_context_remove_class(*this, class_name); \
+	} \
+	void remove_css_class(const std::string& class_name) { \
+		remove_css_class(class_name.c_str()); \
+	} \
+	gboolean has_css_class(const gchar* class_name) { \
+		return gtk_style_context_has_class(*this, class_name); \
+	} \
+	gboolean has_css_class(const std::string& class_name) { \
+		return has_css_class(class_name.c_str()); \
+	}
+
 /**
  * @class Window
  * @brief sg::Windowを拡張し、機能を追加したクラス。
@@ -142,6 +162,7 @@ public:
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -170,6 +191,7 @@ public:
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -211,6 +233,7 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(box, pack_start, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -247,6 +270,7 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(stack, set_visible_child_name, void, (const char* name), name)
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -265,6 +289,7 @@ public:
 	using sg::Button::Button; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -285,6 +310,7 @@ public:
 	using sg::CheckButton::CheckButton; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -305,6 +331,7 @@ public:
 	using sg::RadioButton::RadioButton; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -328,6 +355,7 @@ public:
 
 	// メソッド
 	DEFINE_METHOD(widget, grab_focus, void)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -388,6 +416,7 @@ public:
 	// メソッド
 	DEFINE_METHOD(switch, get_active, bool)
 	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -408,6 +437,7 @@ public:
 	operator GtkComboBox*() const { return GTK_COMBO_BOX(this->object); }
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -431,6 +461,7 @@ public:
 	using sg::Label::Label; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -572,6 +603,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
 	DEFINE_METHOD(tree_view, get_grid_lines, GtkTreeViewGridLines)
 	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)

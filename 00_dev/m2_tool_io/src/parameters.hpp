@@ -14,6 +14,8 @@ constexpr int	DISPLAY_ROWS_PER_COLUMN = 11;	// 表1列あたりの表示行数
 constexpr int	NUM_OF_VIEW_COLUMNS = 6;		// メインテーブルの表示列数
 
 // 色定義
+constexpr const char* CSS_BGCOLOR_WARNING = "background-color_warning";
+
 constexpr GdkRGBA TABLE_BGCOLOR_NORMAL				= {0.97, 0.97, 1.00, 1.0};	// テーブルの通常背景色
 constexpr GdkRGBA TABLE_BGCOLOR_HIGHLIGHT			= {1.00, 0.56, 0.00, 1.0};	// テーブルの強調表示背景色
 constexpr GdkRGBA TABLE_BGCOLOR_FADED				= {0.69, 0.77, 0.87, 1.0};	// テーブルの薄く表示された背景色

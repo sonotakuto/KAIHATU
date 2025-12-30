@@ -85,6 +85,10 @@ rebuild:
 	$(MAKE) clean
 	$(MAKE) all
 
+# 'make exec' でビルド後に実行する
+exec: $(TARGET)
+	./$(TARGET)
+
 # 通常版の実行ファイルをリンクして生成するルール
 # $@: ターゲットファイル名（$(TARGET)）
 # $^: すべての依存ファイル名（$(OBJECTS)）
