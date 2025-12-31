@@ -445,7 +445,7 @@ MainWindow::MainWindow() :
 	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	passwordCancelButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
-	warningList.on_map([this]() { this->warningListCloseButton_on_map(); });
+	warningList.on_map([this]() { this->warningList_on_map(); });
 	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
 	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
 
@@ -2634,8 +2634,9 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 	}
 }
 
-bool MainWindow::confirm_if_reground(bool default_value) {
+bool MainWindow::confirm_if_reground(bool default_value, UiText message) {
 	// 1. ダイアログの初期状態を設定
+	update_widget_state(&confirmRegroundLabel, WidgetState{ .text = std::move(message) }, true);
 	{
 		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
 		notRegroundButton.set_active(!default_value);
@@ -2898,22 +2899,20 @@ void MainWindow::insertCountOkButton_on_clicked() {
 void MainWindow::notRegroundButton_on_toggled() {
 	if (m_is_programmatically_changing_toggle) { return; }	// プログラムによる変更は無視
 
-	if (notRegroundButton.get_active()) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
-		regroundButton.set_active(false); // 「はい」をオフにする
-	}
+	utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
+	notRegroundButton.set_active(true);		// 「いいえ」をオンにする
+	regroundButton.set_active(false);		// 「はい」をオフにする
 }
 
 void MainWindow::regroundButton_on_toggled() {
 	if (m_is_programmatically_changing_toggle) { return; }	// プログラムによる変更は無視
 
-	if (regroundButton.get_active()) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
-		notRegroundButton.set_active(false);	// 「いいえ」をオフにする
-	}
+	utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
+	regroundButton.set_active(true);		// 「はい」をオンにする
+	notRegroundButton.set_active(false);	// 「いいえ」をオフにする
 }
 
-void MainWindow::warningListCloseButton_on_map() {
+void MainWindow::warningList_on_map() {
 	auto* func = new std::function<void()>([this]() {
 		this->warningListstore.refresh(true);
 	});
@@ -3733,7 +3732,10 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 				bool set_found = (set_itr != m_reground_tools.end() && *set_itr == unique_info.id);
 
 				// 再度再研磨工具か確認
-				is_reground = confirm_if_reground(set_found);	// デフォルト値は前回の選択
+				is_reground = confirm_if_reground(set_found, UiText{	// デフォルト値は前回の選択
+					"再研磨された工具であるかの選択を変更します\n再研磨された工具ですか？",
+					"さいけんま された こうぐであるかの\nせんたくを へんこうします\n\nさいけんま された こうぐですか？"
+				});
 
 				// m_reground_tools を更新
 				if (is_reground) {
@@ -3775,7 +3777,7 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 		} else {	// 新規スキャン
 			// 再研磨工具か確認
 			if (!m_is_insert_operation && unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
-				is_reground = confirm_if_reground(true);
+				is_reground = confirm_if_reground();
 			}
 
 			liststore2columnsAll.append(MainTableData{
@@ -3806,6 +3808,10 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 					: (unique_info.case_pack_num)
 				)
 			});
+
+			if (is_reground) {
+				m_reground_tools.emplace(unique_info.id);
+			}
 			update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 		}
 		result = true;

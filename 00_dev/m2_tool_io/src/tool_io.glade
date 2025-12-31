@@ -2217,6 +2217,8 @@ message message message message message</property>
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
             <property name="orientation">vertical</property>
             <property name="spacing">50</property>
             <child>
@@ -2225,6 +2227,8 @@ message message message message message</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">center</property>
+                <property name="margin_left">50</property>
+                <property name="margin_right">50</property>
                 <property name="label" translatable="yes">使用するインサートの枚数を
 入力してください</property>
                 <property name="justify">center</property>
@@ -2474,14 +2478,19 @@ message message message message message</property>
             <property name="width_request">670</property>
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
             <property name="orientation">vertical</property>
             <property name="spacing">100</property>
             <child>
               <object class="GtkLabel" id="confirmRegroundLabel">
+                <property name="width_request">570</property>
                 <property name="height_request">90</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">center</property>
+                <property name="margin_left">50</property>
+                <property name="margin_right">50</property>
                 <property name="label" translatable="yes">一度取り出された工具を検出しました
 再研磨された工具ですか？</property>
                 <property name="justify">center</property>
@@ -2634,6 +2643,8 @@ message message message message message</property>
             <property name="can_focus">False</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
             <property name="orientation">vertical</property>
             <property name="spacing">100</property>
             <child>
@@ -2980,7 +2991,7 @@ warning warning warning</property>
     <property name="width_request">670</property>
     <property name="height_request">500</property>
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">パスワード入力</property>
+    <property name="title" translatable="yes">パスワードを入力</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
@@ -3016,6 +3027,8 @@ warning warning warning</property>
             <property name="can_focus">False</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
+            <property name="margin_top">50</property>
+            <property name="margin_bottom">50</property>
             <property name="orientation">vertical</property>
             <property name="spacing">100</property>
             <child>
@@ -3024,6 +3037,8 @@ warning warning warning</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">center</property>
+                <property name="margin_left">50</property>
+                <property name="margin_right">50</property>
                 <property name="label" translatable="yes">パスワードを
 入力してください</property>
                 <property name="justify">center</property>

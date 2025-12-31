@@ -1037,9 +1037,14 @@ private:
 	/**
 	 * @brief [補充用] 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
 	 * @param[in] default_value (オプション・デフォルト true) デフォルトで「はい」/「いいえ」のどちらを選択した状態にするかを指定。
+	 * @param[in] message (オプション・デフォルト "一度取り出された工具を検出しました\n再研磨された工具ですか？")
+	 * ダイアログに表示するメッセージを指定。
 	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
-	bool confirm_if_reground(bool default_value = true);
+	bool confirm_if_reground(bool default_value = true, UiText message = UiText{
+		"一度取り出された工具を検出しました\n再研磨された工具ですか？",
+		"いちど とりだされた こうぐを けんしゅつしました\nさいけんま された こうぐですか？"
+	});
 
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
@@ -1176,7 +1181,7 @@ private:
 	 * @brief warningList の "map" シグナルに対応するハンドラ。
 	 * @details 表を再描画する。
 	 */
-	void warningListCloseButton_on_map();
+	void warningList_on_map();
 
 	/**
 	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。

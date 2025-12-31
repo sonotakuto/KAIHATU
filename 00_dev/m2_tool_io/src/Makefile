@@ -135,4 +135,4 @@ clean:
 
 # 偽物のターゲット（Phony Target）を宣言
 # これにより、同名のファイルが存在してもコマンドが正しく実行される
-.PHONY: all main rebuild clean debug check
+.PHONY: all main rebuild exec debug check clean
