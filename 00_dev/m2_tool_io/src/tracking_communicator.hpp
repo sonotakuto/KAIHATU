@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <SimpleGtk>
 
@@ -15,12 +16,6 @@ namespace tracker {
 
 class ToolTrackerClient;
 class RecorderClient;
-
-// --- 工具追跡クライアント 定数 ---
-constexpr const char* TRACKER_IP	= "10.19.133.122";	// D201
-//constexpr const char* TRACKER_IP	= "10.19.106.160";	// C103
-constexpr int TRACKER_PORT			= 5000;
-constexpr size_t TRACKER_MSG_LENGTH	= 24;	// メッセージ長
 
 // 固定長メッセージを生成するヘルパー関数
 template<std::size_t length>
@@ -43,84 +38,15 @@ constexpr std::array<char, length> make_fixed_message(const char* msg) {
 
 	return arr;
 }
-
-// --- プロトコルメッセージ定数 (パディングなし) ---
-// 送信メッセージ
-constexpr const char* TRACKER_MSG_CONNECT					= "Connect";					// 接続要求
-constexpr const char* TRACKER_MSG_DISCONNECT				= "Disconnect";					// 切断要求
-constexpr const char* TRACKER_MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
-// 受信メッセージ
-constexpr const char* TRACKER_MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
-constexpr const char* TRACKER_MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
-constexpr const char* TRACKER_MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
-constexpr const char* TRACKER_MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
-constexpr const char* TRACKER_MSG_SCANNED_IN_CONTAINER		= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
-constexpr const char* TRACKER_MSG_SCANNED_OUT_CONTAINER		= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
-constexpr const char* TRACKER_MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
-constexpr const char* TRACKER_MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
-constexpr const char* TRACKER_MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
-constexpr const char* TRACKER_MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
-constexpr const char* TRACKER_MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
-
-// --- プロトコルメッセージ定数 (パディングあり) ---
-// 送信メッセージ
-constexpr auto TRACKER_PADDED_MSG_CONNECT					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_CONNECT);					// 接続要求
-constexpr auto TRACKER_PADDED_MSG_DISCONNECT				= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_DISCONNECT);				// 切断要求
-constexpr auto TRACKER_PADDED_MSG_QR_SCAN					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_QR_SCAN);					// QRコードスキャン通知
-// 受信メッセージ
-constexpr auto TRACKER_PADDED_MSG_CONNECT_ACK				= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_CONNECT_ACK);				// 接続完了応答
-constexpr auto TRACKER_PADDED_MSG_DISCONNECT_ACK			= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_DISCONNECT_ACK);			// 切断完了応答
-constexpr auto TRACKER_PADDED_MSG_SCAN_S					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCAN_S);					// スキャン成功通知
-constexpr auto TRACKER_PADDED_MSG_SCAN_F					= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCAN_F);					// スキャン失敗通知
-constexpr auto TRACKER_PADDED_MSG_SCANNED_IN_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCANNED_IN_CONTAINER);		// スキャン済工具がコンテナ内に入った通知
-constexpr auto TRACKER_PADDED_MSG_SCANNED_OUT_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_SCANNED_OUT_CONTAINER);	// スキャン済工具がコンテナ外に出た通知
-constexpr auto TRACKER_PADDED_MSG_OTHER_IN_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_OTHER_IN_CONTAINER);		// その他工具がコンテナ内に入った通知
-constexpr auto TRACKER_PADDED_MSG_OTHER_OUT_CONTAINER		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_OTHER_OUT_CONTAINER);		// その他工具がコンテナ外に出た通知
-constexpr auto TRACKER_PADDED_MSG_UNSCANNED_IN_CONTAINER	= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_UNSCANNED_IN_CONTAINER);	// 未スキャン工具がコンテナ内に入った通知
-constexpr auto TRACKER_PADDED_MSG_UNSCANNED_OUT_CONTAINER	= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_UNSCANNED_OUT_CONTAINER);	// 未スキャン工具がコンテナ外に出た通知
-constexpr auto TRACKER_PADDED_MSG_UNSCANNED_OUT_FRAME		= make_fixed_message<TRACKER_MSG_LENGTH>(TRACKER_MSG_UNSCANNED_OUT_FRAME);		// 未スキャン工具がフレーム外に出た通知
-
-/**
- * @brief 工具追跡サーバーからのメッセージ種別
- */
-enum class NotificationType {
-	CONNECT_ACK,				// 接続完了
-	DISCONNECT_ACK,				// 切断完了
-	SCAN_SUCCESS,				// スキャン成功
-	SCAN_FAILURE,				// スキャン失敗
-	SCANNED_IN_CONTAINER,		// スキャン済工具がコンテナ内に入った
-	SCANNED_OUT_CONTAINER,		// スキャン済工具がコンテナ外に出た
-	OTHER_IN_CONTAINER,			// その他工具がコンテナ内に入った
-	OTHER_OUT_CONTAINER,		// その他工具がコンテナ外に出た
-	UNSCANNED_IN_CONTAINER,		// 未スキャン工具がコンテナ内に入った
-	UNSCANNED_OUT_CONTAINER,	// 未スキャン工具がコンテナ外に出た
-	UNSCANNED_OUT_FRAME,		// 未スキャン工具がフレーム外に出た
-	UNKNOWN,					// 不明なメッセージ
-	CONNECTION_LOST,			// 接続切れ
-	ERROR						// 受信エラー
-};
-
-/**
- * @struct Notification
- * @brief 工具追跡サーバーからの通知内容
- */
-struct Notification {
-	NotificationType type = NotificationType::UNKNOWN;
-	std::array<char, TRACKER_MSG_LENGTH> raw_message{};
-	std::string trimmed_message{};
-	std::string error_details{};
-};
-
-// --- 録画用クライアント 定数 ---
-constexpr const char* RECORDER_BASE_URL		= "http://10.19.106.160:8080";
-constexpr const char* RECORDER_CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
-constexpr const char* RECORDER_USERNAME		= "yourUsername";
-constexpr const char* RECORDER_PASSWORD		= "yourPassword";
+// --- 共通定数 ---
+//constexpr int COMMON_TIMEOUT_SECONDS = 5;
+constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
 
 // --- インサート個数取得クライアント 定数 ---
-constexpr const char* COUNTER_IP	= "10.19.133.3";
-constexpr int COUNTER_PORT			= 12345;
-constexpr int COUNTER_TIMEOUT_MS	= 5000;
+//constexpr const char*	COUNTER_HOST			= "10.19.133.3";
+constexpr const char*	COUNTER_HOST			= "localhost";	// dummy
+constexpr int			COUNTER_PORT			= 12345;
+constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
 
 inline std::unique_ptr<tracker::ToolTrackerClient> g_tool_tracker;	// 工具追跡クライアントのグローバルインスタンス
 inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画クライアントのグローバルインスタンス
@@ -131,11 +57,86 @@ inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画ク�
  */
 class ToolTrackerClient {
 public:
+	// --- 定数 ---
+	//static constexpr const char*	HOST			= "10.19.133.122";	// D201
+	//static constexpr const char*	HOST			= "10.19.106.160";	// C103
+	static constexpr const char*	HOST			= "localhost";	// dummy
+	static constexpr int			PORT			= 5000;
+	static constexpr size_t			MSG_LENGTH		= 24;	// メッセージ長
+	static constexpr std::uint32_t	TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
+
+	// --- プロトコルメッセージ定数 (パディングなし) ---
+	// 送信メッセージ
+	static constexpr const char*	MSG_CONNECT					= "Connect";					// 接続要求
+	static constexpr const char*	MSG_DISCONNECT				= "Disconnect";					// 切断要求
+	static constexpr const char*	MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
+	// 受信メッセージ
+	static constexpr const char*	MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
+	static constexpr const char*	MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
+	static constexpr const char*	MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
+	static constexpr const char*	MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
+	static constexpr const char*	MSG_SCANNED_IN_CONTAINER	= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
+	static constexpr const char*	MSG_SCANNED_OUT_CONTAINER	= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
+	static constexpr const char*	MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
+	static constexpr const char*	MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
+	static constexpr const char*	MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
+	static constexpr const char*	MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
+	static constexpr const char*	MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
+
+	// --- プロトコルメッセージ定数 (パディングあり) ---
+	// 送信メッセージ
+	static constexpr auto	PADDED_MSG_CONNECT					= make_fixed_message<MSG_LENGTH>(MSG_CONNECT);					// 接続要求
+	static constexpr auto	PADDED_MSG_DISCONNECT				= make_fixed_message<MSG_LENGTH>(MSG_DISCONNECT);				// 切断要求
+	static constexpr auto	PADDED_MSG_QR_SCAN					= make_fixed_message<MSG_LENGTH>(MSG_QR_SCAN);					// QRコードスキャン通知
+	// 受信メッセージ
+	static constexpr auto	PADDED_MSG_CONNECT_ACK				= make_fixed_message<MSG_LENGTH>(MSG_CONNECT_ACK);				// 接続完了応答
+	static constexpr auto	PADDED_MSG_DISCONNECT_ACK			= make_fixed_message<MSG_LENGTH>(MSG_DISCONNECT_ACK);			// 切断完了応答
+	static constexpr auto	PADDED_MSG_SCAN_S					= make_fixed_message<MSG_LENGTH>(MSG_SCAN_S);					// スキャン成功通知
+	static constexpr auto	PADDED_MSG_SCAN_F					= make_fixed_message<MSG_LENGTH>(MSG_SCAN_F);					// スキャン失敗通知
+	static constexpr auto	PADDED_MSG_SCANNED_IN_CONTAINER		= make_fixed_message<MSG_LENGTH>(MSG_SCANNED_IN_CONTAINER);		// スキャン済工具がコンテナ内に入った通知
+	static constexpr auto	PADDED_MSG_SCANNED_OUT_CONTAINER	= make_fixed_message<MSG_LENGTH>(MSG_SCANNED_OUT_CONTAINER);	// スキャン済工具がコンテナ外に出た通知
+	static constexpr auto	PADDED_MSG_OTHER_IN_CONTAINER		= make_fixed_message<MSG_LENGTH>(MSG_OTHER_IN_CONTAINER);		// その他工具がコンテナ内に入った通知
+	static constexpr auto	PADDED_MSG_OTHER_OUT_CONTAINER		= make_fixed_message<MSG_LENGTH>(MSG_OTHER_OUT_CONTAINER);		// その他工具がコンテナ外に出た通知
+	static constexpr auto	PADDED_MSG_UNSCANNED_IN_CONTAINER	= make_fixed_message<MSG_LENGTH>(MSG_UNSCANNED_IN_CONTAINER);	// 未スキャン工具がコンテナ内に入った通知
+	static constexpr auto	PADDED_MSG_UNSCANNED_OUT_CONTAINER	= make_fixed_message<MSG_LENGTH>(MSG_UNSCANNED_OUT_CONTAINER);	// 未スキャン工具がコンテナ外に出た通知
+	static constexpr auto	PADDED_MSG_UNSCANNED_OUT_FRAME		= make_fixed_message<MSG_LENGTH>(MSG_UNSCANNED_OUT_FRAME);		// 未スキャン工具がフレーム外に出た通知
+
+	/**
+	 * @brief 工具追跡サーバーからのメッセージ種別
+	 */
+	enum class NotificationType {
+		CONNECT_ACK,				// 接続完了
+		DISCONNECT_ACK,				// 切断完了
+		SCAN_SUCCESS,				// スキャン成功
+		SCAN_FAILURE,				// スキャン失敗
+		SCANNED_IN_CONTAINER,		// スキャン済工具がコンテナ内に入った
+		SCANNED_OUT_CONTAINER,		// スキャン済工具がコンテナ外に出た
+		OTHER_IN_CONTAINER,			// その他工具がコンテナ内に入った
+		OTHER_OUT_CONTAINER,		// その他工具がコンテナ外に出た
+		UNSCANNED_IN_CONTAINER,		// 未スキャン工具がコンテナ内に入った
+		UNSCANNED_OUT_CONTAINER,	// 未スキャン工具がコンテナ外に出た
+		UNSCANNED_OUT_FRAME,		// 未スキャン工具がフレーム外に出た
+		UNKNOWN,					// 不明なメッセージ
+		CONNECTION_LOST,			// 接続切れ
+		ERROR						// 受信エラー
+	};
+
+	/**
+	 * @struct Notification
+	 * @brief 工具追跡サーバーからの通知内容
+	 */
+	struct Notification {
+		NotificationType type = NotificationType::UNKNOWN;
+		std::array<char, MSG_LENGTH> raw_message{};
+		std::string trimmed_message{};
+		std::string error_details{};
+	};
+
 	/**
 	 * @brief コンストラクタ。
 	 * @param[in] callback イベント受信時に呼び出されるコールバック関数。
 	 */
-	explicit ToolTrackerClient(std::function<void(const Notification&)> callback); // IPとPortを削除
+	explicit ToolTrackerClient(std::function<void(const Notification&)> callback);
 	~ToolTrackerClient();
 
 	// コピー・ムーブを完全に禁止 (this キャプチャが存在するため)
@@ -176,7 +177,7 @@ private:
 	sg::Socket socket;
 	std::thread listener_thread;
 	std::atomic<bool> keep_listening;
-	std::function<void(const Notification&)> notification_callback;
+	std::function<void(const tracker::ToolTrackerClient::Notification&)> notification_callback;
 };
 
 /**
@@ -185,6 +186,13 @@ private:
  */
 class RecorderClient {
 public:
+	// --- 定数 ---
+	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";
+	static constexpr const char*	CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
+	static constexpr const char*	USERNAME		= "yourUsername";
+	static constexpr const char*	PASSWORD		= "yourPassword";
+	static constexpr long			TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
+
 	/**
 	 * @brief コンストラクタ。
 	 * @details 定義された定数を使用して初期化します。
@@ -239,15 +247,15 @@ private:
 
 /**
  * @brief インサート個数取得サーバーに接続し、個数を取得して切断します。
- * @param[in] ip (オプション・デフォルト COUNTER_IP) サーバーIPアドレス。デフォルトは COUNTER_IP 定数。
- * @param[in] port (オプション・デフォルト COUNTER_PORT) サーバーポート番号。デフォルトは COUNTER_PORT 定数。
- * @param[in] timeout_ms (オプション・デフォルト COUNTER_TIMEOUT_MS) 受信タイムアウト(ミリ秒)。デフォルトは COUNTER_TIMEOUT_MS 定数。
+ * @param[in] host (オプション・デフォルト COUNTER_HOST) サーバーホスト名 (またはIPアドレス)。
+ * @param[in] port (オプション・デフォルト COUNTER_PORT) サーバーポート番号。
+ * @param[in] timeout_sec (オプション・デフォルト COUNTER_TIMEOUT_SECONDS) 受信タイムアウト(秒)。
  * @return 取得した個数。失敗した場合は std::nullopt。
  */
 std::optional<int> get_insert_count(
-	const char* ip = COUNTER_IP,
+	const char* host = COUNTER_HOST,
 	int port = COUNTER_PORT,
-	int timeout_ms = COUNTER_TIMEOUT_MS
+	std::uint32_t timeout_sec = COUNTER_TIMEOUT_SECONDS
 );
 
 } // namespace tracker

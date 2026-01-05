@@ -143,7 +143,7 @@ public:
 	 */
 	enum class WarningType {
 		NONE,					// 警告なし
-		NOT_FOUND,				// 未登録工具
+		TOOL_NOT_FOUND,			// 未登録工具
 		DIFFERENT_TOOL,			// 別の工具
 		NOT_YET_STORED,			// 未だ補充前
 		ALREADY_RETRIEVED,		// 既に取り出されていた
@@ -406,7 +406,7 @@ public:
 		/// @brief PLCモニタースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
 		std::function<void(MainWindow*, const plc::Notification&)> on_plc_notified = nullptr;
 		/// @brief 工具追跡システムのリスナースレッドから通知を受け取ったときのアクション (nullptrなら何もしない)
-		std::function<void(MainWindow*, const tracker::Notification&)> on_tracker_notified = nullptr;
+		std::function<void(MainWindow*, const tracker::ToolTrackerClient::Notification&)> on_tracker_notified = nullptr;
 	};
 
 	//=========================================================================
@@ -444,7 +444,7 @@ public:
 	 * @brief 工具追跡システムのリスナースレッドから通知を受け取り、GUIスレッドで実行されるコールバック。
 	 * @param[in] notification 工具追跡システムのリスナースレッドからの通知。
 	 */
-	void tracker_on_notified(const tracker::Notification& notification);
+	void tracker_on_notified(const tracker::ToolTrackerClient::Notification& notification);
 
 	//=========================================================================
 	// 公開メンバ変数 (UIウィジェット)
@@ -999,7 +999,7 @@ private:
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
 	void clear_scan_warnings(bool update_ui = true) {
-		remove_warning(WarningType::NOT_FOUND, true, false);
+		remove_warning(WarningType::TOOL_NOT_FOUND, true, false);
 		remove_warning(WarningType::DIFFERENT_TOOL, true, false);
 		remove_warning(WarningType::NOT_YET_STORED, true, false);
 		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);
@@ -1041,9 +1041,14 @@ private:
 	/**
 	 * @brief [補充用] 再研磨された工具かを確認するダイアログを表示し、結果を取得します。
 	 * @param[in] default_value (オプション・デフォルト true) デフォルトで「はい」/「いいえ」のどちらを選択した状態にするかを指定。
+	 * @param[in] message (オプション・デフォルト "一度取り出された工具を検出しました\n再研磨された工具ですか？")
+	 * ダイアログに表示するメッセージを指定。
 	 * @return 再研磨された場合はtrue、されていない場合はfalseを返します。
 	 */
-	bool confirm_if_reground(bool default_value = true);
+	bool confirm_if_reground(bool default_value = true, UiText message = UiText{
+		"一度取り出された工具を検出しました\n再研磨された工具ですか？",
+		"いちど とりだされた こうぐを けんしゅつしました\nさいけんま された こうぐですか？"
+	});
 
 	//=========================================================================
 	// プライベートメンバ関数 (イベントハンドラ)
@@ -1175,6 +1180,12 @@ private:
 	 * @details 「はい」が選択された状態への切り替えを試みる。
 	 */
 	void regroundButton_on_toggled();
+
+	/**
+	 * @brief warningList の "map" シグナルに対応するハンドラ。
+	 * @details 表を再描画する。
+	 */
+	void warningList_on_map();
 
 	/**
 	 * @brief warningListCloseButton の "clicked" シグナルに対応するハンドラ。
@@ -1364,7 +1375,7 @@ private:
 	 * @details 追跡システムからの通知を受け取り、通知内容に応じてGUIを操作する。
 	 * @param[in] notification 追跡システムのリスナースレッドからの通知。
 	 */
-	void on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification);
+	void on_tracker_retrieve_ready_for_reading(const tracker::ToolTrackerClient::Notification& notification);
 
 	// --- 補充モードの状態遷移関数 ---
 	/**
@@ -1532,7 +1543,7 @@ private:
 	 */
 	bool m_is_programmatically_changing_toggle;
 
-	// --- 状態遷移管理用 ---
+	// --- 状態管理用 ---
 
 	/// @brief パスワード認証が成功したかどうかのフラグ。
 	bool m_password_authenticated;

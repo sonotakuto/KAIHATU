@@ -5,7 +5,7 @@
  */
 #pragma once
 #include <optional>
-#include <SimpleGtk> // インストール済みのSimpleGtkライブラリをインクルード
+#include <SimpleGtk>
 #include "./utility.hpp"
 
 /**
@@ -130,6 +130,26 @@ static return_type on_##c_signal_name##_static para_static { \
  */
 namespace sgex {
 
+#define DEFINE_CSS_CLASS_ACCESSORS() \
+	void add_css_class(const gchar* class_name) { \
+		gtk_style_context_add_class(*this, class_name); \
+	} \
+	void add_css_class(const std::string& class_name) { \
+		add_css_class(class_name.c_str()); \
+	} \
+	void remove_css_class(const gchar* class_name) { \
+		gtk_style_context_remove_class(*this, class_name); \
+	} \
+	void remove_css_class(const std::string& class_name) { \
+		remove_css_class(class_name.c_str()); \
+	} \
+	gboolean has_css_class(const gchar* class_name) { \
+		return gtk_style_context_has_class(*this, class_name); \
+	} \
+	gboolean has_css_class(const std::string& class_name) { \
+		return has_css_class(class_name.c_str()); \
+	}
+
 /**
  * @class Window
  * @brief sg::Windowを拡張し、機能を追加したクラス。
@@ -142,6 +162,7 @@ public:
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -151,7 +172,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWindow* self)
+	DEFINE_SIGNAL_HANDLER("map", map, Window, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
 };
 
 /**
@@ -169,6 +191,7 @@ public:
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -178,6 +201,7 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Dialog, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkDialog* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
 };
@@ -209,6 +233,7 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(box, pack_start, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -216,6 +241,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Box, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Box, GtkWidget* self)
 };
 
 /**
@@ -245,6 +272,7 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(stack, set_visible_child_name, void, (const char* name), name)
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -252,6 +280,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Stack, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Stack, GtkWidget* self)
 };
 
 /**
@@ -263,6 +293,7 @@ public:
 	using sg::Button::Button; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -270,6 +301,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Button, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Button, GtkWidget* self)
 };
 
 /**
@@ -281,6 +314,7 @@ public:
 	using sg::CheckButton::CheckButton; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -288,6 +322,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, CheckButton, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, CheckButton, GtkWidget* self)
 };
 
 /**
@@ -299,6 +335,7 @@ public:
 	using sg::RadioButton::RadioButton; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -307,6 +344,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, RadioButton, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, RadioButton, GtkWidget* self)
 };
 
 /**
@@ -320,6 +359,7 @@ public:
 
 	// メソッド
 	DEFINE_METHOD(widget, grab_focus, void)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -328,6 +368,8 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(editable)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Entry, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Entry, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
 };
 
@@ -378,11 +420,14 @@ public:
 	// メソッド
 	DEFINE_METHOD(switch, get_active, bool)
 	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Switch, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Switch, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
 };
 
@@ -396,6 +441,7 @@ public:
 	operator GtkComboBox*() const { return GTK_COMBO_BOX(this->object); }
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -405,6 +451,8 @@ public:
 	DEFINE_PROPERTY_ACCESSORS(ComboBox, model, GtkTreeModel*)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, ComboBox, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, ComboBox, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
 };
 
@@ -417,12 +465,15 @@ public:
 	using sg::Label::Label; // 基底クラスのコンストラクタを継承
 
 	// メソッド
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER("map", map, Label, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, Label, GtkWidget* self)
 };
 
 /**
@@ -556,6 +607,7 @@ public:
 	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
 	DEFINE_METHOD(tree_view, get_grid_lines, GtkTreeViewGridLines)
 	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
+	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
@@ -566,6 +618,8 @@ public:
 	// シグナル
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
 	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
+	DEFINE_SIGNAL_HANDLER("map", map, TreeView, GtkWidget* self)
+	DEFINE_SIGNAL_HANDLER("show", show, TreeView, GtkWidget* self)
 };
 
 /**
@@ -888,12 +942,21 @@ public:
 
 	/**
 	 * @brief Gtk側（GtkListStore）の内容を強制的に更新します。
-	 * @details 保持しているデータモデル(m_data_model)の値を使って、全ての行に対してセッター関数(m_row_setter)を再実行します。
-	 * セッター内で外部フラグ（言語設定など）を参照している場合に、表示を切り替えるために使用します。
+	 * @details 保持しているデータモデル(m_data_model)の値を使って、ビューを同期させます。
+	 * @param[in] force_repopulate (オプション・デフォルト false)
+	 * trueの場合、GTKストアをクリアして全行を作り直します（行の増減や順序変更も反映されます）。
+	 * falseの場合、既存の行に対して値を再設定するだけです（高速ですが、行数の不整合は解消されません）。
 	 */
-	void refresh() {
+	void refresh(bool force_repopulate = false) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
+		// trueなら全作り直し
+		if (force_repopulate) {
+			repopulate_store();
+			return;
+		}
+
+		// falseなら既存の行の値更新のみ
 		GtkTreeIter iter;
 
 		// 最初の行を取得
@@ -2378,11 +2441,26 @@ public:
 
 	/**
 	 * @brief 現在表示中のページの表示を更新します。
-	 * @details セッターロジックが外部状態に依存している場合などに、表示を最新の状態にします。
-	 * 内部的に display_page を呼び出します。
+	 * @param[in] force_repopulate (オプション・デフォルト false)
+	 * trueの場合、ページを再構築します（マスターデータからデータを再取得し、リストを作り直します）。
+	 * falseの場合、各子モデルのrefresh(false)を呼び出し、再描画のみ行います（外部変数による表示切り替えなどに使用）。
 	 */
-	void refresh() {
-		display_page(m_current_page_index);
+	void refresh(bool force_repopulate = false) {
+		// trueなら構造再構築（Master Data -> Child Model -> View）
+		if (force_repopulate) {
+			display_page(m_current_page_index);
+			return;
+		}
+
+		// falseなら各子モデルの再描画（Child Model -> View）
+		// データそのものは変更せず、セッター関数を再実行して表示を更新します。
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+
+		for (auto* model : m_page_models) {
+			if (model) {
+				model->refresh(false);
+			}
+		}
 	}
 
 	/**

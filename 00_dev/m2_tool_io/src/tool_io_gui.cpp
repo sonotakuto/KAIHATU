@@ -29,37 +29,37 @@ const std::map<MainWindow::TableCellState, GdkRGBA> MainWindow::g_table_row_colo
 };
 
 const std::map<MainWindow::WarningType, MainWindow::UiText> MainWindow::g_warning_type_messages = {
-	{WarningType::NOT_FOUND, UiText{
-		"該当する工具データが見つかりません。\nもう一度QRコードを読み取って下さい。",
-		"がいとうする こうぐデータが みつかりません。\nもういちど QRコードを よみとってください。"
+	{WarningType::TOOL_NOT_FOUND, UiText{
+		"該当する工具データが見つかりません\nもう一度QRコードを読み取って下さい",
+		"がいとうする こうぐデータが みつかりません\nもういちど QRコードを よみとってください"
 	}},
 	{WarningType::DIFFERENT_TOOL, UiText{
-		"工具が違います。\n別の工具を読み取って下さい。",
-		"こうぐが ちがいます。\nべつのこうぐを よみとってください。"
+		"工具が違います\n別の工具を読み取って下さい",
+		"こうぐが ちがいます\nべつのこうぐを よみとってください"
 	}},
 	{WarningType::NOT_YET_STORED, UiText{
-		"この工具は『補充待ち』になっています。\n別の工具を読み取って下さい。",
-		"このこうぐは『ほじゅうまち』に なっています。\nべつのこうぐを よみとってください。"
+		"この工具は『補充待ち』になっています\n別の工具を読み取って下さい",
+		"このこうぐは『ほじゅうまち』に なっています\nべつのこうぐを よみとってください"
 	}},
 	{WarningType::ALREADY_RETRIEVED, UiText{
-		"この工具は既に『取り出し済み』になっています。\n別の工具を読み取って下さい。",
-		"このこうぐは すでに『とりだしずみ』に なっています。\nべつのこうぐを よみとってください。"
+		"この工具は既に『取り出し済み』になっています\n別の工具を読み取って下さい",
+		"このこうぐは すでに『とりだしずみ』に なっています\nべつのこうぐを よみとってください"
 	}},
 	{WarningType::SCAN_FAILURE, UiText{
-		"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい。",
-		"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください。"
+		"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい",
+		"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください"
 	}},
 	{WarningType::UNSCANNED_OUT_FRAME, UiText{
-		"QRコードリーダーで読み取らずに工具を取り出そうとしています。\nQRコードリーダーで読み取ってから、工具を取り出して下さい。",
-		"QRコードリーダーで よみとらずに こうぐを とりだそうと しています。\nQRコードリーダーで よみとってから、こうぐを とりだしてください。"
+		"QRコードリーダーで読み取らずに工具を取り出そうとしています\nQRコードリーダーで読み取ってから、工具を取り出して下さい",
+		"QRコードリーダーで よみとらずに こうぐを とりだそうと しています\nQRコードリーダーで よみとってから、こうぐを とりだしてください"
 	}},
 	{WarningType::SCANNED_IN_CONTAINER, UiText{
-		"スキャン済みの工具を\nコンテナに戻さないで下さい。",
-		"スキャンずみの こうぐを\nコンテナに もどさないでください。"
+		"スキャン済みの工具を\nコンテナに戻さないで下さい",
+		"スキャンずみの こうぐを\nコンテナに もどさないでください"
 	}},
 	{WarningType::OTHER_IN_CONTAINER, UiText{
-		"コンテナの外にあった工具を\nコンテナに入れないで下さい。",
-		"コンテナのそとに あった こうぐを\nコンテナに いれないでください。"
+		"コンテナの外にあった工具を\nコンテナに入れないで下さい",
+		"コンテナのそとに あった こうぐを\nコンテナに いれないでください"
 	}}
 };
 
@@ -272,10 +272,11 @@ MainWindow::MainWindow() :
 		{ G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
 		[this](sgex::ListStore* store, GtkTreeIter* iter, const WarningListData& row) {
 			try {
+				GdkRGBA bgcolor = utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL);
 				store->set(iter,
 					0, this->get_display_text(this->g_warning_type_messages.at(row.type)).c_str(),
 					1, std::to_string(row.count).c_str(),
-					2, utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL)
+					2, &bgcolor
 				);
 			} catch (const std::out_of_range& e) {
 				DEV_PRINT("Error: WarningType enum value out of range: {}\n", static_cast<int>(row.type));
@@ -463,14 +464,15 @@ MainWindow::MainWindow() :
 	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
-	confirmRegroundOkButton.on_clicked([this]() { confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	confirmationNoButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_NO); });
 	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
 	overrideConfirmOverrideButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
 	overrideConfirmCancelButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
-	passwordEntry.on_activate([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
-	passwordCancelButton.on_clicked([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
-	passwordEnterButton.on_clicked([this]() { passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
+	passwordCancelButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
+	passwordEnterButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	warningList.on_map([this]() { this->warningList_on_map(); });
 	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
 	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
 	// --- 棚卸し絞り込みダイアログ関係 ---
@@ -968,7 +970,7 @@ MainWindow::MainWindow() :
 	// --- 再研磨確認ダイアログ ---
 	m_widget_states.try_emplace(&confirmRegroundLabel, WidgetStateUpdater{
 		{
-			.text = UiText{"一度取り出された工具を検出しました。\n再研磨された工具ですか？", "いちど とりだされた こうぐを けんしゅつしました。\nさいけんま された こうぐですか？"},
+			.text = UiText{"一度取り出された工具を検出しました\n再研磨された工具ですか？", "いちど とりだされた こうぐを けんしゅつしました\nさいけんま された こうぐですか？"},
 			.is_visible		= true
 		},
 		[this](const WidgetState& state){
@@ -1523,7 +1525,7 @@ MainWindow::MainWindow() :
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_ready_for_reading(); },
 		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_retrieve_ready_for_reading(); },
 		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_ready_for_reading(notification); },
-		.on_tracker_notified		= [](MainWindow* thiz, const tracker::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
+		.on_tracker_notified		= [](MainWindow* thiz, const tracker::ToolTrackerClient::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
 	});
 
 	// --- 状態：取り出し - 実際に補充を行う - 工具読み取り後 ---
@@ -1544,7 +1546,7 @@ MainWindow::MainWindow() :
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_retrieve_ready_for_reading(); },
 		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_retrieve_ready_for_reading(); },
 		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_retrieve_ready_for_reading(notification); },
-		.on_tracker_notified		= [](MainWindow* thiz, const tracker::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
+		.on_tracker_notified		= [](MainWindow* thiz, const tracker::ToolTrackerClient::Notification& notification){ thiz->on_tracker_retrieve_ready_for_reading(notification); }
 	});
 
 	// --- 状態：補充 - 移行 ---
@@ -1815,8 +1817,8 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 				// TODO: メンテナンスモードに関する処理を追加
 				if (notification.monitor_result.value().status) {
 					update_widget_state(&warningLabel, WidgetState{.text = UiText{
-						"ステータスモニタでの操作により、画面がロックされました。\n詳細はステータスモニタをご覧ください。",
-						"ステータスモニタでの そうさにより、がめんが ロックされました。\nしょうさいは ステータスモニタを ごらんください。"
+						"ステータスモニタでの操作により、画面がロックされました\n詳細はステータスモニタをご覧ください",
+						"ステータスモニタでの そうさにより、がめんが ロックされました\nしょうさいは ステータスモニタを ごらんください"
 					}}, true);
 					warningDialog.show_all();
 				} else {
@@ -1848,7 +1850,7 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 	}
 }
 
-void MainWindow::tracker_on_notified(const tracker::Notification& notification) {
+void MainWindow::tracker_on_notified(const tracker::ToolTrackerClient::Notification& notification) {
 	try {
 		auto state_config = g_app_state_configs.at(m_app_state);
 		if (state_config.on_tracker_notified) {
@@ -2063,6 +2065,10 @@ void MainWindow::refresh_ui(bool force_redraw_all) {
 		m_table_states.for_each(apply_table_update, true);
 	} else {
 		m_table_states.for_each_updated(apply_table_update, true);
+	}
+
+	if (force_redraw_all) {
+		warningListstore.refresh(false);
 	}
 }
 
@@ -2423,8 +2429,7 @@ bool MainWindow::update_warning_display() {
 		warningListDialog.hide();
 
 		// メッセージラベルに警告用のスタイルを適用してエラー内容を表示
-		GtkStyleContext* context = gtk_widget_get_style_context(messageLabel);
-		gtk_style_context_add_class(context, "background-color_warning");	// スタイルを適用
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);
 
 		update_widget_state(&messageLabel, WidgetState{
 			.text = g_warning_type_messages.at(scan_error_type)	// 内容を表示
@@ -2435,8 +2440,7 @@ bool MainWindow::update_warning_display() {
 		warningListDialog.hide();
 
 		// エラー表示用スタイルを外す
-		GtkStyleContext* context = gtk_widget_get_style_context(messageLabel);
-		gtk_style_context_remove_class(context, "background-color_warning");
+		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 
 		// ここで本来の案内メッセージに戻すが、
 		// スキャン成功時には自動的に現在の画面に再遷移するため、ここでの書き換えは不要
@@ -2585,8 +2589,6 @@ bool MainWindow::authenticate_with_password() {
 			// run()でダイアログをモーダル表示し、ユーザーの応答を待つ
 			response = passwordEntryDialog.run(this);
 			if (response == GtkResponseType::GTK_RESPONSE_OK) {
-				// TODO: ここで実際のパスワード検証ロジックを実装します
-				// 今回はダミーとして "1234" を正しいパスワードとします
 				DEV_PRINT("認証開始\n");
 				if (db::authenticate_with_password(std::string(passwordEntry.get_text()))) {
 					DEV_PRINT("認証成功\n");
@@ -2673,8 +2675,9 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 	}
 }
 
-bool MainWindow::confirm_if_reground(bool default_value) {
+bool MainWindow::confirm_if_reground(bool default_value, UiText message) {
 	// 1. ダイアログの初期状態を設定
+	update_widget_state(&confirmRegroundLabel, WidgetState{ .text = std::move(message) }, true);
 	{
 		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
 		notRegroundButton.set_active(!default_value);
@@ -2701,6 +2704,7 @@ void MainWindow::on_window_show() {
 		liststore2columnsAll.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);			// テーブルのグリッド線を表示
 		paginatedListstore2types1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
+		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
 
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
@@ -2779,6 +2783,7 @@ void MainWindow::userIdEntry_on_activate() {
 
 	if (db::user_authenticate(userIdEntry.get_text())) {
 		DEV_PRINT("ユーザー認証成功\n");
+		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベル背景の警告色を解除
 
 		// ユーザーIDエントリにログインユーザー名を表示して固定
 		update_widget_state(&userIdEntry, WidgetState{.can_focus = false, .is_editable = false}, false);
@@ -2803,6 +2808,7 @@ void MainWindow::userIdEntry_on_activate() {
 		}
 	} else {
 		DEV_PRINT("ユーザー認証失敗\n");
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
 		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
 			.text = UiText{"該当するユーザーが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする ユーザーが みつかりません\nもういちど QRコードを よみとってください"}
 		}, true);
@@ -2901,7 +2907,7 @@ void MainWindow::insertCountDecrementButton_on_clicked() {
 
 void MainWindow::insertCountDetectButton_on_clicked() {
 	update_widget_state(&messageDialogLabel, WidgetState{
-		.text = UiText{"検出中です\nしばらくお待ちください。", "けんしゅつちゅうです\nしばらく おまちください"}
+		.text = UiText{"検出中です\nしばらくお待ちください", "けんしゅつちゅうです\nしばらく おまちください"}
 	}, true);
 	messageDialog.set_transient_for(confirmInsertCountDialog);
 	messageDialog.show_all();
@@ -2934,19 +2940,24 @@ void MainWindow::insertCountOkButton_on_clicked() {
 void MainWindow::notRegroundButton_on_toggled() {
 	if (m_is_programmatically_changing_toggle) { return; }	// プログラムによる変更は無視
 
-	if (notRegroundButton.get_active()) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
-		regroundButton.set_active(false); // 「はい」をオフにする
-	}
+	utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
+	notRegroundButton.set_active(true);		// 「いいえ」をオンにする
+	regroundButton.set_active(false);		// 「はい」をオフにする
 }
 
 void MainWindow::regroundButton_on_toggled() {
 	if (m_is_programmatically_changing_toggle) { return; }	// プログラムによる変更は無視
 
-	if (regroundButton.get_active()) {
-		utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
-		notRegroundButton.set_active(false);	// 「いいえ」をオフにする
-	}
+	utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
+	regroundButton.set_active(true);		// 「はい」をオンにする
+	notRegroundButton.set_active(false);	// 「いいえ」をオフにする
+}
+
+void MainWindow::warningList_on_map() {
+	auto* func = new std::function<void()>([this]() {
+		this->warningListstore.refresh(true);
+	});
+	g_idle_add(MainWindow::dispatch_to_gui_thread, func);
 }
 
 void MainWindow::warningListCloseButton_on_clicked() {
@@ -3153,10 +3164,10 @@ void MainWindow::on_qrCodeEntry_retrieve_waiting_for_program_qr() {
 
 	// 取得成功時の処理(ToolingListInfoが存在する場合)
 	if (m_retrieving_list.has_value()) {
-		// 1. m_retrieving_list.value()：オプションから実際のToolingListInfoを取得
+		// m_retrieving_list.value()：オプションから実際のToolingListInfoを取得
 		ToolingListInfo& tooling_list = m_retrieving_list.value();
 
-		// 2. ライン名とプログラム番号を表示
+		// ライン名とプログラム番号を表示
 		lineEntry.set_text(tooling_list.line.name.c_str());
 		programEntry.set_text(tooling_list.program.name.c_str());
 
@@ -3174,15 +3185,20 @@ for (int i = 0; i < 120; i++) {
 	});
 }
 //*/
-		// 5. 次の状態へ遷移
+
+		// メッセージラベル背景の警告色を解除
+		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
+
+		// 次の状態へ遷移
 		set_app_state(AppState::RETRIEVE_SELECTING_TOOLS);
 
 	// 取得失敗時の処理
 	} else {
 		// 取得失敗時の処理 (エラーメッセージ表示など)
 		DEV_PRINT("ツーリングリストの取得に失敗しました。\n");
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
 		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"有効なプログラム割当一覧表QRコードではありません。", "ゆうこうな プログラムわりあていちらんひょう QRコードではありません。"}
+			.text = UiText{"該当するプログラムが見つかりません\nもう一度QRコードを読み取ってください", "がいとうする プログラムが みつかりません\nもういちど QRコードを よみとってください"}
 		}, true);
 	}
 }
@@ -3273,7 +3289,10 @@ void MainWindow::on_trueButton_retrieve_confirming_selection() {
 }
 
 void MainWindow::on_enter_retrieve_container_retrieving() {
+	// 操作対象を取得
 	const MstToolInfo& mst_tool_info = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// FIXME: nullopt対応
+
+	// コンテナ搬出
 	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
 	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address));	// FIXME: nullopt対応	// FIXME: 例外処理
 	plc::g_command_queue.push(plc::WatchCommand{
@@ -3284,6 +3303,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 		}
 	});
 
+	// 追跡システムの開始
 	// FIXME: エラー対応
 	tracker::g_tool_tracker->connect();
 	tracker::g_recorder_client->start_recording();
@@ -3291,6 +3311,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 	// インサートの操作か判定
 	m_is_insert_operation = (mst_tool_info.category == TOOL_CATEGORY_INSERT);
 
+	// 表を作る
 	std::vector<MainTableData> vec;
 	vec.reserve(m_retrieving_tools.size());
 	for (size_t i = 0; i < m_retrieving_tools.size(); i++) {
@@ -3409,7 +3430,7 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 		tracker::g_tool_tracker->notify_qr_scan();
 		m_pending_tool_info = std::move(unique_info);
 	} else {
-		add_warning(WarningType::NOT_FOUND, true);
+		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
 	qrCodeEntry.grab_focus();
 }
@@ -3418,8 +3439,8 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 	if (
 		m_unscanned_count > 0 &&
 		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります。\n\n取り出す工具は、全てQRコードを読み取って下さい。",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります。\n\nとりだすこうぐは、すべてQRコードを よみとってください。"
+			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
+			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
 		})
 	) {
 		return;
@@ -3446,8 +3467,8 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	if (
 		m_unscanned_count > 0 &&
 		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります。\n\n取り出す工具は、全てQRコードを読み取って下さい。",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります。\n\nとりだすこうぐは、すべてQRコードを よみとってください。"
+			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
+			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
 		})
 	) {
 		return;
@@ -3508,12 +3529,12 @@ void MainWindow::on_plc_retrieve_ready_for_reading(const plc::Notification& noti
 	}
 }
 
-void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notification& notification) {
+void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTrackerClient::Notification& notification) {
 	bool result = false;
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
 
 	switch (notification.type) {
-	case tracker::NotificationType::SCAN_SUCCESS: {
+	case tracker::ToolTrackerClient::NotificationType::SCAN_SUCCESS: {
 		if (m_pending_tool_info.has_value()) {
 			UniqueToolInfo unique_info = std::move(m_pending_tool_info).value();
 			m_pending_tool_info.reset();
@@ -3655,32 +3676,32 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		}
 		break;
 	}
-	case tracker::NotificationType::SCAN_FAILURE: {
+	case tracker::ToolTrackerClient::NotificationType::SCAN_FAILURE: {
 		add_warning(WarningType::SCAN_FAILURE, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::SCANNED_IN_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::SCANNED_IN_CONTAINER: {
 		add_warning(WarningType::SCANNED_IN_CONTAINER, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::SCANNED_OUT_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::SCANNED_OUT_CONTAINER: {
 		remove_warning(WarningType::SCANNED_IN_CONTAINER, false, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::OTHER_IN_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::OTHER_IN_CONTAINER: {
 		add_warning(WarningType::OTHER_IN_CONTAINER, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::OTHER_OUT_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::OTHER_OUT_CONTAINER: {
 		remove_warning(WarningType::OTHER_IN_CONTAINER, false, true);
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::UNSCANNED_IN_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::UNSCANNED_IN_CONTAINER: {
 		if (m_unscanned_count > 0) {
 			m_unscanned_count--;
 		}
@@ -3690,12 +3711,12 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::Notificati
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::UNSCANNED_OUT_CONTAINER: {
+	case tracker::ToolTrackerClient::NotificationType::UNSCANNED_OUT_CONTAINER: {
 		m_unscanned_count++;
 		result = false;
 		break;
 	}
-	case tracker::NotificationType::UNSCANNED_OUT_FRAME: {
+	case tracker::ToolTrackerClient::NotificationType::UNSCANNED_OUT_FRAME: {
 		add_warning(WarningType::UNSCANNED_OUT_FRAME, true);
 		result = false;
 		break;
@@ -3765,7 +3786,7 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 		set_app_state(AppState::STORE_CONFIRMING_SELECTION);
 	} else {
 		// TODO: 該当データが無い場合の処理
-		add_warning(WarningType::NOT_FOUND, true);
+		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
 }
 
@@ -3901,7 +3922,10 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 				bool set_found = (set_itr != m_reground_tools.end() && *set_itr == unique_info.id);
 
 				// 再度再研磨工具か確認
-				is_reground = confirm_if_reground(set_found);	// デフォルト値は前回の選択
+				is_reground = confirm_if_reground(set_found, UiText{	// デフォルト値は前回の選択
+					"再研磨された工具であるかの選択を変更します\n再研磨された工具ですか？",
+					"さいけんま された こうぐであるかの\nせんたくを へんこうします\n\nさいけんま された こうぐですか？"
+				});
 
 				// m_reground_tools を更新
 				if (is_reground) {
@@ -3943,7 +3967,7 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 		} else {	// 新規スキャン
 			// 再研磨工具か確認
 			if (!m_is_insert_operation && unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
-				is_reground = confirm_if_reground(true);
+				is_reground = confirm_if_reground();
 			}
 
 			liststore2columnsAll.append(MainTableData{
@@ -3969,13 +3993,20 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 				.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
 				.unique_tool_id		= unique_info.id,
 				.video_path			= tracker::g_recorder_client->get_current_filename(),
-				.tool_num			= unique_info.case_pack_num
+				.tool_num			= ((unique_info.case_pack_num == 0)
+					? (1)
+					: (unique_info.case_pack_num)
+				)
 			});
+
+			if (is_reground) {
+				m_reground_tools.emplace(unique_info.id);
+			}
 			update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 		}
 		result = true;
 	} else {
-		add_warning(WarningType::NOT_FOUND, true);
+		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
 	qrCodeEntry.grab_focus();
 

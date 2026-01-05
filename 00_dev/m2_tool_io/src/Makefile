@@ -85,6 +85,10 @@ rebuild:
 	$(MAKE) clean
 	$(MAKE) all
 
+# 'make exec' でビルド後に実行する
+exec: $(TARGET)
+	./$(TARGET)
+
 # 通常版の実行ファイルをリンクして生成するルール
 # $@: ターゲットファイル名（$(TARGET)）
 # $^: すべての依存ファイル名（$(OBJECTS)）
@@ -131,4 +135,4 @@ clean:
 
 # 偽物のターゲット（Phony Target）を宣言
 # これにより、同名のファイルが存在してもコマンドが正しく実行される
-.PHONY: all main rebuild clean debug check
+.PHONY: all main rebuild exec debug check clean
