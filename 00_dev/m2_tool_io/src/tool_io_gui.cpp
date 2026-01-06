@@ -2545,8 +2545,8 @@ bool MainWindow::authenticate_with_password() {
 			.text = UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"}
 		}, true);
 		do {
-			// run()でダイアログをモーダル表示し、ユーザーの応答を待つ
-			response = passwordEntryDialog.run(this);
+			passwordEntry.set_text("");					// ダイアログ表示前にパスワード欄をクリア
+			response = passwordEntryDialog.run(this);	// run()でダイアログをモーダル表示し、ユーザーの応答を待つ
 			if (response == GtkResponseType::GTK_RESPONSE_OK) {
 				DEV_PRINT("認証開始\n");
 				if (db::authenticate_with_password(std::string(passwordEntry.get_text()))) {
