@@ -36,7 +36,7 @@ CHECKFLAGS = -fsyntax-only
 
 # コンパイル対象のソースファイル（.cpp）をスペース区切りで列挙
 # 例: SOURCES = main.cpp utils.cpp
-SOURCES = db_client.cpp odbc.cpp plc_communicator.cpp tool_io_gui.cpp tool_io_main.cpp tracking_communicator.cpp url_transfer.cpp
+SOURCES = db_client.cpp keyboard_utils.cpp odbc.cpp plc_communicator.cpp tool_io_gui.cpp tool_io_main.cpp tracking_communicator.cpp url_transfer.cpp
 
 # 「このヘッダを変更したら、全てのファイルを再コンパイルしたい」というヘッダ（.h, .hpp）をスペース区切りで列挙
 # これを指定すると、ヘッダーファイルの変更時にもソースが再コンパイルされる

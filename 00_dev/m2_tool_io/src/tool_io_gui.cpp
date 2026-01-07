@@ -8,6 +8,7 @@
 #include "./SimpleGtk_extension.hpp"
 #include "./includes.hpp"
 #include "./db_client.hpp"
+#include "./keyboard_utils.hpp"
 #include "./tracking_communicator.hpp"
 #include "./tool_io_gui.hpp"
 
@@ -442,6 +443,9 @@ MainWindow::MainWindow() :
 	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
 	overrideConfirmOverrideButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
 	overrideConfirmCancelButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
+	passwordEntry.on_button_press_event([this](GdkEventButton* event) { if (event->button == GDK_BUTTON_PRIMARY) { onboard::show(); } return false; });
+	passwordEntry.on_focus_in_event([this](GdkEventFocus* event) { onboard::show(); return false; });
+//	passwordEntry.on_focus_out_event([this](GdkEventFocus* event) { onboard::hide(); return false; });
 	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	passwordCancelButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });

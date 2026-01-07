@@ -364,6 +364,10 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(editable)
 
 	// シグナル
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::Entry* thiz), std::function<bool(GdkEventButton* event)>, event)
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::Entry* thiz), std::function<bool(GdkEventButton* event)>, event)
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-in-event", focus_in_event, gboolean, (GtkWidget* self, GdkEventFocus* event, sgex::Entry* thiz), std::function<bool(GdkEventFocus* event)>, event)
+	DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-out-event", focus_out_event, gboolean, (GtkWidget* self, GdkEventFocus* event, sgex::Entry* thiz), std::function<bool(GdkEventFocus* event)>, event)
 	DEFINE_SIGNAL_HANDLER("map", map, Entry, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("show", show, Entry, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)

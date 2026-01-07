@@ -3,6 +3,7 @@
  * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
  */
 #include "./includes.hpp"
+#include "./keyboard_utils.hpp"
 #include "./plc_communicator.hpp"
 #include "./tracking_communicator.hpp"
 #include "./tool_io_gui.hpp"
@@ -11,6 +12,8 @@ int main(int argc, char *argv[])
 {
 	// アプリケーションオブジェクトの生成
 	Application app;
+
+	onboard::ensure_running(); // onboardキーボードが起動していなければ起動する
 
 	// activateハンドラ: アプリケーション起動時に一度だけ呼ばれる
 	app.on_activate([&app]{
