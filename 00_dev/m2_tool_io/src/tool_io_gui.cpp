@@ -2874,6 +2874,7 @@ void MainWindow::confirmInsertCountDialog_on_show() {
 void MainWindow::passwordEntryDialog_on_show() {
 	// Gtkウィジェットにキーボードフォーカスを強制的に設定する
 	passwordEntry.grab_focus();
+	passwordEntryDialog.move_by(0, -180);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
 }
 
 void MainWindow::warningListDialog_on_response(gint response_id) {

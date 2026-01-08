@@ -124,12 +124,6 @@ static return_type on_##c_signal_name##_static para_static { \
 		g_object_set(G_OBJECT(this->object), gtk_property_name, (gboolean)value, NULL); \
 	}
 
-/**
- * @namespace sgex
- * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
- */
-namespace sgex {
-
 #define DEFINE_CSS_CLASS_ACCESSORS() \
 	void add_css_class(const gchar* class_name) { \
 		gtk_style_context_add_class(*this, class_name); \
@@ -151,6 +145,21 @@ namespace sgex {
 	}
 
 /**
+ * @namespace sgex
+ * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
+ */
+namespace sgex {
+
+/**
+ * @struct Position
+ * @brief 2次元座標を表す構造体。
+ */
+struct Position {
+	gint x;
+	gint y;
+};
+
+/**
  * @class Window
  * @brief sg::Windowを拡張し、機能を追加したクラス。
  */
@@ -162,7 +171,46 @@ public:
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
+	DEFINE_METHOD_WITH_ARGS(window, move, void, (gint x, gint y), x, y)
+	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_CSS_CLASS_ACCESSORS()
+
+	/**
+	 * @brief ウィンドウを指定した位置に移動します。
+	 * @param[in] pos 移動先の位置を表す Position 構造体。
+	 */
+	void move(const Position& pos) {
+		this->move(pos.x, pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
+	 * @param[in] pos 移動量を表す Position 構造体。
+	 */
+	void move_by(const Position& pos) {
+		Position current_pos = this->get_position();
+		this->move(current_pos.x + pos.x, current_pos.y + pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
+	 * @param[in] x 移動量のX成分。
+	 * @param[in] y 移動量のY成分。
+	 */
+	void move_by(gint x, gint y) {
+		Position current_pos = this->get_position();
+		this->move(current_pos.x + x, current_pos.y + y);
+	}
+
+	/**
+	 * @brief ウィンドウの現在の位置を取得します。
+	 * @return ウィンドウの位置を表す Position 構造体。
+	 */
+	Position get_position() {
+		Position pos;
+		this->get_position(&pos.x, &pos.y);
+		return pos;
+	}
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
@@ -190,8 +238,47 @@ public:
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
+	DEFINE_METHOD_WITH_ARGS(window, move, void, (gint x, gint y), x, y)
+	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 	DEFINE_CSS_CLASS_ACCESSORS()
+
+	/**
+	 * @brief ウィンドウを指定した位置に移動します。
+	 * @param[in] pos 移動先の位置を表す Position 構造体。
+	 */
+	void move(const Position& pos) {
+		this->move(pos.x, pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
+	 * @param[in] pos 移動量を表す Position 構造体。
+	 */
+	void move_by(const Position& pos) {
+		Position current_pos = this->get_position();
+		this->move(current_pos.x + pos.x, current_pos.y + pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
+	 * @param[in] x 移動量のX成分。
+	 * @param[in] y 移動量のY成分。
+	 */
+	void move_by(gint x, gint y) {
+		Position current_pos = this->get_position();
+		this->move(current_pos.x + x, current_pos.y + y);
+	}
+
+	/**
+	 * @brief ウィンドウの現在の位置を取得します。
+	 * @return ウィンドウの位置を表す Position 構造体。
+	 */
+	Position get_position() {
+		Position pos;
+		this->get_position(&pos.x, &pos.y);
+		return pos;
+	}
 
 	// プロパティ
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
