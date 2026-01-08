@@ -45,7 +45,7 @@ inline constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
 
 // --- インサート個数取得クライアント 定数 ---
 //inline constexpr const char*	COUNTER_HOST			= "10.19.133.3";
-inline constexpr const char*	COUNTER_HOST			= "localhost";	// dummy
+inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// dummy
 inline constexpr int			COUNTER_PORT			= 12345;
 inline constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
 
@@ -61,7 +61,7 @@ public:
 	// --- 定数 ---
 	//static constexpr const char*	HOST			= "10.19.133.122";	// D201
 	//static constexpr const char*	HOST			= "10.19.106.160";	// C103
-	static constexpr const char*	HOST			= "localhost";	// dummy
+	static constexpr const char*	HOST			= "10.19.133.117";	// dummy
 	static constexpr int			PORT			= 5000;
 	static constexpr size_t			MSG_LENGTH		= 24;	// メッセージ長
 	static constexpr std::uint32_t	TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
@@ -188,7 +188,8 @@ private:
 class RecorderClient {
 public:
 	// --- 定数 ---
-	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";
+//	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
+	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
 	static constexpr const char*	CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
 	static constexpr const char*	USERNAME		= "yourUsername";
 	static constexpr const char*	PASSWORD		= "yourPassword";
