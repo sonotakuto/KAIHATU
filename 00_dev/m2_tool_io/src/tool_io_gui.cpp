@@ -2125,6 +2125,7 @@ void MainWindow::set_mode(GuiMode mode) {
 	// 2. モードが変化する場合、モードに応じて現在の状態を切り替え
 	if (m_gui_mode != mode) {
 		reset_header_buttons(false);
+		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 
 		switch (mode) {
 		case GuiMode::NONE:
