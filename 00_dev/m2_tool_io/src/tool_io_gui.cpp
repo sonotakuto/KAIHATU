@@ -15,6 +15,23 @@
 namespace gui {
 
 //=============================================================================
+// このファイルのみで使うヘルパー関数群
+//=============================================================================
+
+/**
+ * @brief 現在のDISPLAY環境変数がローカルディスプレイを指しているかどうかを判定する。
+ * @return ローカルディスプレイを指している場合にtrue、そうでない場合にfalseを返す。
+ */
+bool is_local_display() {
+	const char* display_env = std::getenv("DISPLAY");
+	if (!display_env) return false; // DISPLAYがない場合はGUIなしとみなす
+
+	// X11の仕様上、先頭が ':' ならローカルソケット（例: ":0.0"）
+	// ホスト名やIPがある場合は外部（例: "192.168.x.x:0.0", "host.docker.internal:0.0"）
+	return display_env[0] == ':';
+}
+
+//=============================================================================
 // 静的メンバ変数の定義
 //=============================================================================
 
@@ -445,13 +462,22 @@ MainWindow::MainWindow() :
 	overrideConfirmCancelButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEntry.on_button_press_event([this](GdkEventButton* event) { if (event->button == GDK_BUTTON_PRIMARY) { onboard::show(); } return false; });
 	passwordEntry.on_focus_in_event([this](GdkEventFocus* event) { onboard::show(); return false; });
-//	passwordEntry.on_focus_out_event([this](GdkEventFocus* event) { onboard::hide(); return false; });
 	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	passwordCancelButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	warningList.on_map([this]() { this->warningList_on_map(); });
 	warningListCloseButton.on_clicked([this]() { this->warningListCloseButton_on_clicked(); });
 	warningListSuppressButton.on_clicked([this]() { this->warningListSuppressButton_on_clicked(); });
+
+	// 実行時に環境をチェックして、ローカルの場合のみ登録するイベントハンドラ
+	if (is_local_display()) {
+		passwordEntry.on_focus_out_event([this](GdkEventFocus* event) { onboard::hide(); return false; });
+	} else {
+		// 外部ディスプレイ時はログを出す
+		DEV_PRINT("[Info] External DISPLAY detected ({}) . Onboard auto-hide disabled.\n",
+			(std::getenv("DISPLAY") ? std::getenv("DISPLAY") : "null")
+		);
+	}
 
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
