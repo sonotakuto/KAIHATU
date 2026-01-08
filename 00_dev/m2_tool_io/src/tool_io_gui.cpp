@@ -2,6 +2,7 @@
  * @file tool_io_gui.cpp
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
+#include <stdlib.h>
 #include "./opt_extension.hpp"
 #include "./utility.hpp"
 #include "./container_utils.hpp"
