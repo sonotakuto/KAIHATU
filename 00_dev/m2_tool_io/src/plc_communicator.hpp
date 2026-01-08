@@ -91,20 +91,20 @@ struct Notification {
 
 // --- 定数定義 ---
 
-constexpr const char*	HOST	= "10.19.106.181";	// PLCのホスト名
-constexpr int			PORT	= 10000;			// PLCのポート番号
+inline constexpr const char*	HOST	= "10.19.106.181";	// PLCのホスト名
+inline constexpr int			PORT	= 10000;			// PLCのポート番号
 
-constexpr std::chrono::milliseconds	POLLING_INTERVAL_MS(100);	// PLCのポーリング間隔 (ミリ秒)
+inline constexpr std::chrono::milliseconds	POLLING_INTERVAL_MS(100);	// PLCのポーリング間隔 (ミリ秒)
 
 // Mデバイスのアドレス定義
-constexpr std::uint16_t M_DEVICE_RETRIEVE_COMPLETED	= 80;	// 搬出完了信号
-constexpr std::uint16_t M_DEVICE_STORE_COMPLETED	= 81;	// 搬入完了信号
-constexpr std::uint16_t M_DEVICE_SESSION_START		= 82;	// GUIセッション開始信号
-constexpr std::uint16_t M_DEVICE_SESSION_END		= 83;	// GUIセッション終了信号
-constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始トリガ
-constexpr std::uint16_t M_DEVICE_STORE_START		= 92;	// 搬入開始トリガ
-constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
-constexpr std::uint16_t M_DEVICE_READY_TO_STORE		= 94;	// 搬入準備完了信号
+inline constexpr std::uint16_t M_DEVICE_RETRIEVE_COMPLETED	= 80;	// 搬出完了信号
+inline constexpr std::uint16_t M_DEVICE_STORE_COMPLETED		= 81;	// 搬入完了信号
+inline constexpr std::uint16_t M_DEVICE_SESSION_START		= 82;	// GUIセッション開始信号
+inline constexpr std::uint16_t M_DEVICE_SESSION_END			= 83;	// GUIセッション終了信号
+inline constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始トリガ
+inline constexpr std::uint16_t M_DEVICE_STORE_START			= 92;	// 搬入開始トリガ
+inline constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
+inline constexpr std::uint16_t M_DEVICE_READY_TO_STORE		= 94;	// 搬入準備完了信号
 
 // --- PLC通信機能の使用に必要なグローバル変数を定義 ---
 

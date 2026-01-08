@@ -8,7 +8,10 @@
 
 namespace onboard {
 
-// ヘルパー: コマンドを非同期で実行する（結果を待たない）
+/**
+ * @brief コマンドを非同期で実行するヘルパー関数。
+ * @param cmd 実行するコマンド文字列。
+ */
 static void run_cmd(const char* cmd) {
 	GError* error = nullptr;
 	// g_spawn_command_line_async はコマンドを実行してすぐに戻ってくるため、GUIがフリーズしません

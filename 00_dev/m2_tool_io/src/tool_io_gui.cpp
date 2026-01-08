@@ -431,7 +431,7 @@ MainWindow::MainWindow() :
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
 	confirmInsertCountDialog.on_show([this]() { this->confirmInsertCountDialog_on_show(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
-	warningListDialog.on_response([this](gint response_id) { this->warningDialog.hide(); });
+	warningListDialog.on_response([this](gint response_id) { this->clear_warnings(); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
 	insertCountDetectButton.on_clicked([this]() { this->insertCountDetectButton_on_clicked(); });
@@ -2375,7 +2375,7 @@ bool MainWindow::update_warning_display() {
 			has_state_warning = true;
 		} else {
 			// スキャンエラーのタイプを保持しておく（最新1件を表示するため）
-			// リストの末尾にあるものが最新と仮定
+			// スキャンエラーは常に1つのみのはずなので、上書きで問題ない
 			scan_error_type = item.type;
 		}
 	}

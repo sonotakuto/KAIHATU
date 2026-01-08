@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <SimpleGtk>
 
 #include "./url_transfer.hpp"
@@ -19,15 +20,14 @@ class RecorderClient;
 
 // 固定長メッセージを生成するヘルパー関数
 template<std::size_t length>
-constexpr std::array<char, length> make_fixed_message(const char* msg) {
+constexpr std::array<char, length> make_fixed_message(std::string_view sv) {
 	std::array<char, length> arr{}; // ゼロ初期化
-	std::string_view sv(msg);
-	// コピーする文字数 = msgの長さ と バッファサイズ-1 (ヌル終端用) の小さい方
+	// コピーする文字数 = svの長さ と バッファサイズ-1 (ヌル終端用) の小さい方
 	size_t len_to_copy = std::min(sv.length(), length - 1);
 
 	// 文字列をコピー
 	for (size_t i = 0; i < len_to_copy; i++) {
-		arr[i] = msg[i];
+		arr[i] = sv[i];
 	}
 
 	// 残りをスペースでパディング (ヌル終端の1つ手前まで)
@@ -38,15 +38,16 @@ constexpr std::array<char, length> make_fixed_message(const char* msg) {
 
 	return arr;
 }
+
 // --- 共通定数 ---
-//constexpr int COMMON_TIMEOUT_SECONDS = 5;
-constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
+//inline constexpr int COMMON_TIMEOUT_SECONDS = 5;
+inline constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
 
 // --- インサート個数取得クライアント 定数 ---
-//constexpr const char*	COUNTER_HOST			= "10.19.133.3";
-constexpr const char*	COUNTER_HOST			= "localhost";	// dummy
-constexpr int			COUNTER_PORT			= 12345;
-constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
+//inline constexpr const char*	COUNTER_HOST			= "10.19.133.3";
+inline constexpr const char*	COUNTER_HOST			= "localhost";	// dummy
+inline constexpr int			COUNTER_PORT			= 12345;
+inline constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
 
 inline std::unique_ptr<tracker::ToolTrackerClient> g_tool_tracker;	// 工具追跡クライアントのグローバルインスタンス
 inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画クライアントのグローバルインスタンス
@@ -67,21 +68,21 @@ public:
 
 	// --- プロトコルメッセージ定数 (パディングなし) ---
 	// 送信メッセージ
-	static constexpr const char*	MSG_CONNECT					= "Connect";					// 接続要求
-	static constexpr const char*	MSG_DISCONNECT				= "Disconnect";					// 切断要求
-	static constexpr const char*	MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
+	static constexpr std::string_view	MSG_CONNECT					= "Connect";					// 接続要求
+	static constexpr std::string_view	MSG_DISCONNECT				= "Disconnect";					// 切断要求
+	static constexpr std::string_view	MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
 	// 受信メッセージ
-	static constexpr const char*	MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
-	static constexpr const char*	MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
-	static constexpr const char*	MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
-	static constexpr const char*	MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
-	static constexpr const char*	MSG_SCANNED_IN_CONTAINER	= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
-	static constexpr const char*	MSG_SCANNED_OUT_CONTAINER	= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
-	static constexpr const char*	MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
-	static constexpr const char*	MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
-	static constexpr const char*	MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
-	static constexpr const char*	MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
-	static constexpr const char*	MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
+	static constexpr std::string_view	MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
+	static constexpr std::string_view	MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
+	static constexpr std::string_view	MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
+	static constexpr std::string_view	MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
+	static constexpr std::string_view	MSG_SCANNED_IN_CONTAINER	= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
+	static constexpr std::string_view	MSG_SCANNED_OUT_CONTAINER	= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
+	static constexpr std::string_view	MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
+	static constexpr std::string_view	MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
+	static constexpr std::string_view	MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
+	static constexpr std::string_view	MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
+	static constexpr std::string_view	MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
 
 	// --- プロトコルメッセージ定数 (パディングあり) ---
 	// 送信メッセージ
