@@ -1644,6 +1644,9 @@ private:
 	
 	/// @brief 「棚卸し未処理のみ」で絞り込むかどうか
 	bool m_reconcile_filter_unreconciled_only = false;
+
+	/// @brief [棚卸し用] 選択され、現在搬出処理を行っているコンテナの行データ
+	std::optional<MainTableData> m_processing_reconcile_container_row;
 };
 
 
