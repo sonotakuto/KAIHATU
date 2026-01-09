@@ -105,6 +105,7 @@ inline constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始ト
 inline constexpr std::uint16_t M_DEVICE_STORE_START			= 92;	// 搬入開始トリガ
 inline constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
 inline constexpr std::uint16_t M_DEVICE_READY_TO_STORE		= 94;	// 搬入準備完了信号
+inline constexpr std::uint16_t D_DEVICE_CONTAINER_ADDRESS	= 2000;	// コンテナアドレス書き込みレジスタ
 
 // --- PLC通信機能の使用に必要なグローバル変数を定義 ---
 

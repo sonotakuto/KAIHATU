@@ -70,6 +70,36 @@ static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 }
 
 /**
+ * @brief Dレジスタ（ワード）書き込みコマンド（1点）を生成します。
+ * @param[in] addr 書き込み対象のDレジスタアドレス。
+ * @param[in] data 書き込む値 (16bit整数)。
+ * @return 書き込みコマンドのバイト列。
+ */
+static std::vector<std::uint8_t> make_write_D_command(std::uint16_t addr, std::uint16_t data) {
+	return {
+		0x03, 0xFF, 0x00, 0x00, // サブヘッダ (D書込み要求)
+		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
+		0x20, 0x44, // デバイスコード (D)
+		0x01, 0x00, // 点数 (1点)
+		(std::uint8_t)(data & 0xFF), (std::uint8_t)((data >> 8) & 0xFF) // データ (リトルエンディアン)
+	};
+}
+
+/**
+ * @brief Dレジスタ（ワード）読み出しコマンド（1点）を生成します。
+ * @param[in] addr 読み出し対象のDレジスタアドレス。
+ * @return 読み出しコマンドのバイト列。
+ */
+static std::vector<std::uint8_t> make_read_D_command(std::uint16_t addr) {
+	return {
+		0x01, 0xFF, 0x00, 0x00, // サブヘッダ (D読出し要求)
+		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
+		0x20, 0x44, // デバイスコード (D)
+		0x01, 0x00	// 点数 (1点)
+	};
+}
+
+/**
  * @brief コマンドを送信し、PLCからの正常応答（エラーコード0x0000）を待ちます。
  * @param[in] cmd 送信するコマンドのバイト列。
  * @return 応答が正常終了した場合はtrue、エラーが発生した場合はfalse。
@@ -107,6 +137,18 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 }
 
 /**
+ * @brief Mデバイスに値を書き込みます。
+ * @details 内部で `send_and_receive_ack` を使用するため、成功時はエラーコード0x0000を確認済みです。
+ * @param[in] addr 書き込み対象のMデバイスアドレス。
+ * @param[in] on 書き込む値 (true=ON, false=OFF)。
+ * @return 書き込みが成功した場合はtrue、失敗した場合はfalse。
+ */
+static bool write_M_status(std::uint16_t addr, bool on) {
+	// send_and_receive_ack は内部で mutex ロックを行うため、ここでのロックは不要
+	return send_and_receive_ack(make_write_M_command(addr, on));
+}
+
+/**
  * @brief Mデバイスの状態を読み出し、その結果を返します。
  * @param[in] addr 読み出し対象のMデバイスアドレス。
  * @param[out] is_on 読み出されたMデバイスの状態を格納する参照。
@@ -137,6 +179,57 @@ static bool read_M_status(std::uint16_t addr, bool& is_on) {
 		return false;
 	}
 	is_on = (resp[2] == 0x10);
+	return true;
+}
+
+/**
+ * @brief Dレジスタ（ワード）に値を書き込みます。
+ * @details 内部で `send_and_receive_ack` を使用するため、成功時はエラーコード0x0000を確認済みです。
+ * @param[in] addr 書き込み対象のDレジスタアドレス。
+ * @param[in] data 書き込む値。
+ * @return 書き込みが成功した場合はtrue、失敗した場合はfalse。
+ */
+static bool write_D_word(std::uint16_t addr, std::uint16_t data) {
+	// send_and_receive_ack は内部で mutex ロックを行うため、ここでのロックは不要
+	// また、D書き込みの正常応答(0x83 0x00)も既存の send_and_receive_ack で判定可能
+	return send_and_receive_ack(make_write_D_command(addr, data));
+}
+
+/**
+ * @brief Dレジスタ（ワード）の値を読み出します。
+ * @param[in] addr 読み出し対象のDレジスタアドレス。
+ * @param[out] out_data 読み出された値を格納する参照。
+ * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
+ */
+static bool read_D_word(std::uint16_t addr, std::uint16_t& out_data) {
+	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
+	std::vector<std::uint8_t> cmd = make_read_D_command(addr);
+
+	if (socket.send(cmd.data(), cmd.size()) < 0) {
+		DEV_PRINT(stderr, "PLCへのD読み出しコマンド送信エラー\n");
+		return false;
+	}
+
+	std::uint8_t resp[1024];
+	int n = socket.receive(resp, sizeof(resp));
+	if (n <= 0) {
+		DEV_PRINT(stderr, "PLCからのD読み出し応答受信エラー\n");
+		return false;
+	}
+
+	if (resp[0] != 0x81 || resp[1] != 0x00 || n < 4) {
+		std::uint16_t error_code = resp[0] | (resp[1] << 8);
+		auto it = mc_error_map.find(error_code);
+		if (it != mc_error_map.end()) {
+			DEV_PRINT(stderr, "PLCエラー(D読出) 0x{:04X}: {}\n", error_code, it->second);
+		} else {
+			DEV_PRINT(stderr, "PLCから未知のエラーコードを受信(D読出): 0x{:04X}\n", error_code);
+		}
+		return false;
+	}
+
+	// データ部 (リトルエンディアン) の復元
+	out_data = resp[2] | (resp[3] << 8);
 	return true;
 }
 
@@ -401,7 +494,7 @@ bool start_session() {
 	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	std::uint16_t device_addr = M_DEVICE_SESSION_START;
 	DEV_PRINT("PLC: セッション開始通知を行います。\n");
-	if (!send_and_receive_ack(make_write_M_command(device_addr, true))) {
+	if (!write_M_status(device_addr, true)) {
 		DEV_PRINT(stderr, "	 エラー: M{} (セッション開始トリガ)のONに失敗しました。\n", device_addr);
 		return false;
 	}
@@ -413,7 +506,7 @@ bool end_session() {
 	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	std::uint16_t device_addr = M_DEVICE_SESSION_END;
 	DEV_PRINT("PLC: セッション終了通知を行います。\n");
-	if (!send_and_receive_ack(make_write_M_command(device_addr, true))) {
+	if (!write_M_status(device_addr, true)) {
 		DEV_PRINT(stderr, "	 エラー: M{} (セッション終了トリガ)のONに失敗しました。\n", device_addr);
 		return false;
 	}
@@ -423,20 +516,18 @@ bool end_session() {
 
 bool retrieve_container(std::uint16_t container_number) {
 	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
-	std::uint16_t device_addr = container_number;
-	DEV_PRINT("PLC: コンテナ({})の搬出要求を開始します。\n", device_addr);
-	if (!send_and_receive_ack(make_write_M_command(device_addr, true))) {
-		DEV_PRINT(stderr, "	 エラー: M{}のONに失敗しました。\n", device_addr);
+	DEV_PRINT("PLC: コンテナ({})の搬出要求を開始します。\n", container_number);
+	if (!write_D_word(D_DEVICE_CONTAINER_ADDRESS, container_number)) {
+		DEV_PRINT(stderr, "	 エラー: D{} コンテナアドレス{}の書き込みに失敗しました。\n", D_DEVICE_CONTAINER_ADDRESS, container_number);
 		return false;
 	}
-	DEV_PRINT("	 - M{} ON 成功\n", device_addr);
+	DEV_PRINT("	 - D{} アドレス{} 書き込み成功\n", D_DEVICE_CONTAINER_ADDRESS, container_number);
 
-	device_addr = M_DEVICE_RETRIEVE_START;
-	if (!send_and_receive_ack(make_write_M_command(device_addr, true))) {
-		DEV_PRINT(stderr, "	 エラー: M{} (搬出開始トリガ)のONに失敗しました。\n", device_addr);
+	if (!write_M_status(M_DEVICE_RETRIEVE_START, true)) {
+		DEV_PRINT(stderr, "	 エラー: M{} (搬出開始トリガ)のONに失敗しました。\n", M_DEVICE_RETRIEVE_START);
 		return false;
 	}
-	DEV_PRINT("	 - M{} ON 成功\n", device_addr);
+	DEV_PRINT("	 - M{} ON 成功\n", M_DEVICE_RETRIEVE_START);
 	return true;
 }
 
@@ -444,7 +535,7 @@ bool store_container() {
 	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	std::uint16_t device_addr = M_DEVICE_STORE_START;
 	DEV_PRINT("PLC: コンテナの搬入要求を開始します。\n");
-	if (!send_and_receive_ack(make_write_M_command(device_addr, true))) {
+	if (!write_M_status(device_addr, true)) {
 		DEV_PRINT(stderr, "	 エラー: M{} (搬入開始トリガ)のONに失敗しました。\n", device_addr);
 		return false;
 	}

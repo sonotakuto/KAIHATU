@@ -7,6 +7,7 @@
 #include <optional>
 #include <SimpleGtk>
 #include "./utility.hpp"
+#include "./layout.hpp"
 
 /**
  * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
@@ -211,144 +212,6 @@ inline Size get_screen_size(GdkScreen* screen = nullptr) {
 }
 
 /**
- * @brief 指定したGdkScreenの左上隅の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの左上隅の位置を表す Position 構造体。
- */
-inline Position get_screen_north_west_position(GdkScreen* screen = nullptr) {
-	return Position{0, 0};
-}
-
-/**
- * @brief 指定したGdkScreenの上端中央の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの上端中央の位置を表す Position 構造体。
- */
-inline Position get_screen_north_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		(get_screen_width(screen) - 1) / 2,
-		0
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの右上隅の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの右上隅の位置を表す Position 構造体。
- */
-inline Position get_screen_north_east_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		get_screen_width(screen) - 1,
-		0
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの左端中央の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの左端中央の位置を表す Position 構造体。
- */
-inline Position get_screen_west_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		0,
-		(get_screen_height(screen) - 1) / 2
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの中央の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの中央の位置を表す Position 構造体。
- */
-inline Position get_screen_center_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		(get_screen_width(screen) - 1) / 2,
-		(get_screen_height(screen) - 1) / 2
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの右端中央の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの右端中央の位置を表す Position 構造体。
- */
-inline Position get_screen_east_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		get_screen_width(screen) - 1,
-		(get_screen_height(screen) - 1) / 2
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの左下隅の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの左下隅の位置を表す Position 構造体。
- */
-inline Position get_screen_south_west_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		0,
-		get_screen_height(screen) - 1
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの下端中央の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの下端中央の位置を表す Position 構造体。
- */
-inline Position get_screen_south_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		(get_screen_width(screen) - 1) / 2,
-		get_screen_height(screen) - 1
-	};
-}
-
-/**
- * @brief 指定したGdkScreenの右下隅の位置を取得します。
- * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
- * nullptrの場合、デフォルトスクリーンが使用されます。
- * @return スクリーンの右下隅の位置を表す Position 構造体。
- */
-inline Position get_screen_south_east_position(GdkScreen* screen = nullptr) {
-	if (screen == nullptr) {
-		screen = gdk_screen_get_default();
-	}
-	return Position{
-		get_screen_width(screen) - 1,
-		get_screen_height(screen) - 1
-	};
-}
-
-/**
  * @class Window
  * @brief sg::Windowを拡張し、機能を追加したクラス。
  */
@@ -363,6 +226,18 @@ public:
 	DEFINE_METHOD_WITH_ARGS(window, move, void, (gint x, gint y), x, y)
 	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_CSS_CLASS_ACCESSORS()
+
+	void set_gravity(layout::Gravity gravity) {
+		this->gravity = gravity;
+		if (!this->init_gdk_gravity) {
+			gtk_window_set_gravity(*this, GdkGravity::GDK_GRAVITY_NORTH_WEST);
+			this->init_gdk_gravity = true;
+		}
+	}
+
+	layout::Gravity get_gravity() const {
+		return this->gravity;
+	}
 
 	/**
 	 * @brief ウィンドウを指定した位置に移動します。
@@ -405,13 +280,16 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_PROPERTY_ACCESSORS(Window, gravity, GdkGravity)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("map", map, Window, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
+
+private:
+	bool init_gdk_gravity = false;
+	layout::Gravity gravity = layout::Gravity::NorthWest;
 };
 
 /**
