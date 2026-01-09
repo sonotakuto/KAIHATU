@@ -984,4 +984,87 @@ std::vector<UniqueToolInfo> get_tools_in_container(int storage_area_id) {
 	return result;
 }
 
+std::vector<UniqueToolInfo> get_tools_in_storage_area(int storage_area_id) {
+	std::vector<UniqueToolInfo> results;
+	
+	// unique_tool と mst_tool を結合して情報を取得
+	// ※ executeQuery ではなく fetchAll でマップを取得するため、
+	//    カラム名は DB定義通り (unique_tool_id, basic_tool_id...) になります
+	std::string sql = R"(
+		SELECT 
+			ut.unique_tool_id, 
+			ut.unique_num, 
+			ut.case_pack_num, 
+			ut.regrind_count, 
+			ut.storage_condition,
+			mt.basic_tool_id, 
+			mt.tool_name, 
+			mt.maker, 
+			mt.tool_category, 
+			mt.tool_material, 
+			mt.stc, 
+			mt.is_frozen
+		FROM unique_tool ut
+		JOIN mst_tool mt ON ut.basic_tool_id = mt.basic_tool_id
+		WHERE ut.storage_area_id = ?
+	)";
+
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt) {
+		DEV_PRINT("Error: Failed to create statement in get_tools_in_storage_area\n");
+		return results;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		stmt.prepare(sql);
+		stmt.bind(1, storage_area_id);
+		
+		// ■ 修正: executeQuery() ではなく executePrepared() + fetchAll() を使用
+		stmt.executePrepared();
+		auto rows = stmt.fetchAll();
+		
+		for (const auto& row : rows) {
+			UniqueToolInfo info;
+			
+			// 1. UniqueToolInfo 直下のメンバ
+			info.id = std::any_cast<std::int64_t>(row.at("unique_tool_id"));
+			info.unique_num = std::any_cast<std::int32_t>(row.at("unique_num"));
+			info.case_pack_num = std::any_cast<std::int32_t>(row.at("case_pack_num"));
+			
+			// storage_condition (文字列 -> enum変換)
+			std::string cond_str = std::any_cast<std::string>(row.at("storage_condition"));
+			auto cond_opt = from_db_string<StorageCondition>(cond_str);
+			info.storage_condition = cond_opt.value_or(StorageCondition::NOT_STORED); 
+
+			// regrind_count (optional)
+			info.regrind_count = stdex::any_cast_optional<std::int32_t>(row.at("regrind_count"));
+
+			// 2. MstToolInfo (ネスト)
+			info.mst_tool_info.id = std::any_cast<std::int32_t>(row.at("basic_tool_id"));
+			info.mst_tool_info.name = std::any_cast<std::string>(row.at("tool_name"));
+			info.mst_tool_info.maker = std::any_cast<std::string>(row.at("maker"));
+			info.mst_tool_info.category = std::any_cast<std::string>(row.at("tool_category"));
+			info.mst_tool_info.material = std::any_cast<std::string>(row.at("tool_material"));
+			info.mst_tool_info.stc = stdex::any_cast_optional<std::int32_t>(row.at("stc"));
+			info.mst_tool_info.is_frozen = static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")));
+
+			// 3. StrageAreaInfo (ネスト・Optional)
+			// Optionalの中身にアクセスするには、一度オブジェクトを作るか -> を使う必要があります
+			// ここでは簡易的にIDだけセットしたオブジェクトを作成します
+			StrageAreaInfo sa;
+			sa.id = storage_area_id;
+			info.storage_area_info = sa;
+
+			results.push_back(info);
+		}
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_tools_in_storage_area: {}\n", e.what());
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_tools_in_storage_area: {}\n", e.what());
+	}
+	
+	return results;
+}
+
 } // namespace db

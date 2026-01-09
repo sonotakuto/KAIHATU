@@ -180,4 +180,11 @@ bool update_insert_count(std::int64_t unique_tool_id, int new_count);
  */
 bool update_last_reconciliation_time(int storage_area_id);
 
+/**
+* @brief 指定された保管場所にある全ての工具を取得する。
+* @param storage_area_id 保管場所ID (コンテナID)
+* @return ユニーク工具情報のリスト
+*/
+std::vector<UniqueToolInfo> get_tools_in_storage_area(int storage_area_id);
+
 } // namespace db

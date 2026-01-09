@@ -1729,9 +1729,9 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}} }
 		},
-		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
+		// ■■■ 修正: 搬出「開始」関数ではなく、搬出「完了」用の関数を呼ぶ ■■■
+		.on_enter_state     = [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieved(); },
+		.on_plc_notified    = [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieved(notification); }
 	});
 
 	// --- 状態：棚卸し - スキャン待ち ---
@@ -4232,8 +4232,6 @@ void MainWindow::on_enter_reconcile_container_retrieving() {
 	// tracker::g_recorder_client->start_recording();
 }
 
-
-
 void MainWindow::on_plc_reconcile_container_retrieving(const plc::Notification& notification) {
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
 		const plc::MonitorResult& result = notification.monitor_result.value();
@@ -4246,43 +4244,177 @@ void MainWindow::on_plc_reconcile_container_retrieving(const plc::Notification& 
 	}
 }
 
+// --- 状態: コンテナ搬出完了 (扉オープン待ち) ---
+void MainWindow::on_enter_reconcile_container_retrieved() {
+	// 1. 表を消去する（要件通り）
+	liststore2columnsAll.clear();
+
+	// 2. 扉オープン信号の監視を開始
+	// ※ M_DEVICE_DOOR_OPEND (扉が開いた) を監視します。
+	//   定数が未定義の場合は plc_communicator.hpp に追加するか、適切なアドレスを使用してください。
+	plc::g_command_queue.push(plc::WatchCommand{
+		// 仮のアドレス定数を使用しています。実際の定数名に合わせてください。
+		// .addr = plc::M_DEVICE_DOOR_OPEND, 
+		.addr = 95, // 仮: 扉オープン信号のアドレス
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true
+		}
+	});
+
+	DEV_PRINT("棚卸し: コンテナ到着。扉オープンを待機します。\n");
+	
+	// デバッグ用: 実機がない場合、即座に次へ進めるならコメントアウトを外す
+	// set_app_state(AppState::RECONCILE_READY_FOR_READING);
+}
+
 void MainWindow::on_plc_reconcile_container_retrieved(const plc::Notification& notification) {
-	// 扉オープン信号の立ち上がりを検知
 	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {
-		auto result = notification.monitor_result.value();
+		const plc::MonitorResult& result = notification.monitor_result.value();
 		
-		// ※ 取り出し機能で使用している「扉オープン検知用アドレス」に合わせてください
-		// ここでは仮に M_DEVICE_RETRIEVE_COMPLETED の立ち下がりや、特定のセンサ信号などを想定
-		// もし「取り出し」で別のシグナルを使っているなら、そちらに合わせて書き換えてください。
-		
-		/* 例: 扉オープン信号待ち
-		if (result.addr == plc::M_DEVICE_DOOR_OPEND && result.status) {
+		// 扉オープン信号検知 (アドレスは仮)
+		if (result.addr == 95 /* plc::M_DEVICE_DOOR_OPEND */ && result.status) {
+			DEV_PRINT("棚卸し: 扉オープン検知。スキャン待ちへ遷移します。\n");
 			set_app_state(AppState::RECONCILE_READY_FOR_READING);
 		}
-		*/
-
-		// 【仮処置】
-		// もし現時点で「扉オープン信号」が実装されていない、またはダミーでスキップしたい場合は
-		// 取り出し機能と同様のロジック（例えばボタンで進む、あるいはタイマーで進むなど）をここに記述します。
-		// ここでは一旦コメントアウトしておきます。
 	}
 }
 
 void MainWindow::on_enter_reconcile_ready_for_reading() {
-	// TODO: DBからこのコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
+	// 1. コンテナIDのチェック
+	if (!m_processing_reconcile_container_row.has_value()) {
+		DEV_PRINT(stderr, "Error: No container info available.\n");
+		set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION);
+		return;
+	}
+	
+	// MainTableDataのidカラムに入っている storage_area_id を取得
+	int storage_area_id = static_cast<int>(m_processing_reconcile_container_row.value().id);
 
+	// 2. DBからこのコンテナの在庫リストを取得
+	std::vector<UniqueToolInfo> expected_tools = db::get_tools_in_storage_area(storage_area_id);
 
+	// 3. インサート操作かどうかの自動判定
+	if (!expected_tools.empty()) {
+		m_is_insert_operation = (expected_tools.front().mst_tool_info.category == TOOL_CATEGORY_INSERT);
+	} else {
+		m_is_insert_operation = false; 
+	}
+
+	// 4. テーブル表示用データの作成
+	std::vector<MainTableData> vec;
+	vec.reserve(expected_tools.size());
+
+	for (const auto& tool : expected_tools) {
+		vec.push_back(MainTableData{
+			.id = tool.id,
+			.data_columns = {
+				std::to_string(tool.id),
+				tool.mst_tool_info.category,
+				tool.mst_tool_info.maker,
+				tool.mst_tool_info.name,
+				tool.mst_tool_info.material,
+				// ■ 修正: std::optional対応 (value_orを使用)
+				(m_is_insert_operation)
+					? std::to_string(tool.case_pack_num)
+					: std::to_string(tool.regrind_count.value_or(0)) 
+			},
+			.cell_state_0to4 = TableCellState::FADED, // 初期状態は「未読(灰色)」
+			.raw_data = tool
+		});
+	}
+
+	// 5. リストストアにセットして更新
+	liststore2columnsAll.set_master_data(std::move(vec));
+	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+
+	// 6. 入力欄の初期化
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::on_qrCodeEntry_reconcile_ready_for_reading() {
-	// TODO: スキャンされたQRを処理するロジック
-	// 1. QRから工具ID取得
-	// 2. テーブル内の該当工具を検索
-	// 3. 見つかれば「一致」状態に更新
-	// 4. 見つからなければ「不一致」として新規行を追加
-	// x. このとき、インサートの場合は個数確認ダイアログを表示
+	std::string qr_text = qrCodeEntry.get_text();
+	if (qr_text.empty()) return;
+
+	// 1. QRコード解析
+	auto qr_data_opt = db::parse_qr(qr_text);
+	
+	if (!qr_data_opt.has_value() || qr_data_opt.value().type != db::QrCodeType::Tool) {
+		DEV_PRINT("棚卸し: 無効なQRコードです\n");
+		messageLabel.set_text("無効なQRコードです。工具のQRコードを読み取ってください。");
+		qrCodeEntry.set_text("");
+		return;
+	}
+
+	std::int64_t scanned_id = qr_data_opt.value().id;
+	bool found = false;
+	bool needs_insert_dialog = false;
+
+	// 2. テーブル内の該当工具を検索して更新
+	liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data) {
+		for (auto& row : data) {
+			if (row.id == scanned_id) {
+				found = true;
+				row.cell_state_0to4 = TableCellState::RECONCILE_MATCH;
+				
+				try {
+					m_pending_tool_info = std::any_cast<UniqueToolInfo>(row.raw_data);
+				} catch (const std::bad_any_cast& e) {
+					DEV_PRINT("Error: bad_any_cast: %s\n", e.what());
+				}
+
+				if (m_is_insert_operation) {
+					needs_insert_dialog = true;
+				}
+				
+				DEV_PRINT("棚卸し: 工具ID {} 一致\n", scanned_id);
+				break;
+			}
+		}
+
+		if (!found) {
+			auto tool_info_opt = db::get_UniqueToolInfo(qr_text);
+			if (tool_info_opt.has_value()) {
+				auto tool = tool_info_opt.value();
+				data.push_back(MainTableData{
+					.id = tool.id,
+					.data_columns = {
+						std::to_string(tool.id),
+						tool.mst_tool_info.category,
+						tool.mst_tool_info.maker,
+						tool.mst_tool_info.name,
+						tool.mst_tool_info.material,
+						// ■ 修正: std::optional対応
+						(m_is_insert_operation) 
+							? std::to_string(tool.case_pack_num) 
+							: std::to_string(tool.regrind_count.value_or(0))
+					},
+					.cell_state_0to4 = TableCellState::RECONCILE_MISMATCH,
+					.raw_data = tool
+				});
+				
+				m_pending_tool_info = tool;
+				if (m_is_insert_operation) {
+					needs_insert_dialog = true;
+				}
+				DEV_PRINT("棚卸し: 工具ID {} 追加\n", scanned_id);
+			}
+		}
+	}, true);
+
+	qrCodeEntry.set_text("");
+	qrCodeEntry.grab_focus();
+
+	// x. インサートの場合は個数確認ダイアログを表示
+	if (needs_insert_dialog && m_pending_tool_info.has_value()) {
+		m_insertCountEntry_current_count = m_pending_tool_info.value().case_pack_num;
+		// ■ 修正: .c_str() を使用
+		insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count).c_str());
+		
+		// ■ 修正: .show() -> .set_visible(true)
+		confirmInsertCountDialog.set_visible(true);
+	}
 }
 
 void MainWindow::on_enter_reconcile_read_completed() {
