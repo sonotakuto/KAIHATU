@@ -2874,6 +2874,7 @@ void MainWindow::confirmInsertCountDialog_on_show() {
 void MainWindow::passwordEntryDialog_on_show() {
 	// Gtkウィジェットにキーボードフォーカスを強制的に設定する
 	passwordEntry.grab_focus();
+/*
 	passwordEntryDialog.set_gravity(GdkGravity::GDK_GRAVITY_CENTER);
 	auto* func = new std::function<void()>([this]() {
 		sgex::Position pos = sgex::get_screen_center_position();
@@ -2881,6 +2882,7 @@ void MainWindow::passwordEntryDialog_on_show() {
 		passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
 	});
 	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+*/
 }
 
 void MainWindow::warningListDialog_on_response(gint response_id) {
