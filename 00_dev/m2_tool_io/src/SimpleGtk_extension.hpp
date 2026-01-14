@@ -150,19 +150,19 @@ static return_type on_##c_signal_name##_static para_static { \
  * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
  */
 namespace sgex {
-/*
+
 struct Rectangle : public layout::Rectangle {
 	using layout::Rectangle::Rectangle; // 基底クラスのコンストラクタを継承
 
 	constexpr Rectangle(const GdkRectangle& r) noexcept
-		: layout::Rectangle(r.width, r.height, r.x, r.y)
+		: layout::Rectangle(layout::Position(r.x, r.y), layout::Size(r.width, r.height))
 	{}
 
 	/**
 	 * @brief GdkRectangle への変換演算子。
 	 * @return GdkRectangle 構造体。
 	 */
-/*	operator GdkRectangle() const {
+	operator GdkRectangle() const {
 		return GdkRectangle{
 			pos.x,
 			pos.y,
@@ -171,7 +171,7 @@ struct Rectangle : public layout::Rectangle {
 		};
 	}
 };
-*/
+
 /**
  * @brief 指定したGdkScreenの幅を取得します。
  * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。

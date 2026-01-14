@@ -1804,7 +1804,11 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 		if (notification.monitor_result.has_value()) {
 			switch (notification.monitor_result.value().addr) {
 			case plc::M_DEVICE_MAINTENANCE_MODE :
+			case plc::M_DEVICE_ERROR :
 				m_plc_maintaining = notification.monitor_result.value().status;
+				if (!m_plc_maintaining) {
+					set_mode(GuiMode::NONE);
+				}
 				break;
 			default :	// 全画面共通の処理を行わないモニター通知は、状態毎の処理に投げる
 				try {

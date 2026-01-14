@@ -664,6 +664,10 @@ void initialize() {
 		.flags = WatchFlags{ true, true, false, false},
 		.is_first = true
 	}));
+	g_watchlist.insert(std::make_pair(M_DEVICE_ERROR, WatchData{
+		.flags = WatchFlags{ true, true, false, false},
+		.is_first = true
+	}));
 
 	// 単一の統合スレッドを起動
 	std::thread(run_communicator).detach();
