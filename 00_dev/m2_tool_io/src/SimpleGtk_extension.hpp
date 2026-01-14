@@ -150,25 +150,28 @@ static return_type on_##c_signal_name##_static para_static { \
  * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
  */
 namespace sgex {
+/*
+struct Rectangle : public layout::Rectangle {
+	using layout::Rectangle::Rectangle; // 基底クラスのコンストラクタを継承
 
-/**
- * @struct Position
- * @brief 2次元座標を表す構造体。
- */
-struct Position {
-	gint x;
-	gint y;
+	constexpr Rectangle(const GdkRectangle& r) noexcept
+		: layout::Rectangle(r.width, r.height, r.x, r.y)
+	{}
+
+	/**
+	 * @brief GdkRectangle への変換演算子。
+	 * @return GdkRectangle 構造体。
+	 */
+/*	operator GdkRectangle() const {
+		return GdkRectangle{
+			pos.x,
+			pos.y,
+			size.width,
+			size.height
+		};
+	}
 };
-
-/**
- * @struct Size
- * @brief 2次元サイズを表す構造体。
- */
-struct Size {
-	gint width;
-	gint height;
-};
-
+*/
 /**
  * @brief 指定したGdkScreenの幅を取得します。
  * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
@@ -201,14 +204,42 @@ inline gint get_screen_height(GdkScreen* screen = nullptr) {
  * nullptrの場合、デフォルトスクリーンが使用されます。
  * @return スクリーンのサイズを表す Size 構造体。
  */
-inline Size get_screen_size(GdkScreen* screen = nullptr) {
+inline layout::Size get_screen_size(GdkScreen* screen = nullptr) {
 	if (screen == nullptr) {
 		screen = gdk_screen_get_default();
 	}
-	return Size{
+	return layout::Size{
 		gdk_screen_get_width(screen),
 		gdk_screen_get_height(screen)
 	};
+}
+
+/**
+ * @brief 指定したGdkMonitorの矩形領域を取得します。
+ * @param[in] monitor (オプション・デフォルト nullptr) 対象のGdkMonitorポインタ。
+ * nullptrの場合、デフォルト(プライマリ)モニターが使用されます。
+ * @return モニターの矩形領域を表す Rectangle 構造体の optional。
+ * 取得に失敗した場合、std::nullopt を返します。
+ */
+inline std::optional<GdkRectangle> get_monitor_rectangle(GdkMonitor* monitor = nullptr) {
+	// 1. モニターが指定されていない場合、デフォルトを取得
+	if (monitor == nullptr) {
+		GdkDisplay* display = gdk_display_get_default();
+		if (display != nullptr) {
+			monitor = gdk_display_get_primary_monitor(display);
+		}
+	}
+
+	// 2. それでもモニターが取得できない場合のガード
+	if (monitor == nullptr) {
+		return std::nullopt; // エラー値として0などを返す
+	}
+
+	// 3. ピクセル単位の幅を取得 (単位の不一致を修正)
+	GdkRectangle geometry;
+	gdk_monitor_get_geometry(monitor, &geometry);
+
+	return std::make_optional(geometry);
 }
 
 /**
@@ -243,7 +274,7 @@ public:
 	 * @brief ウィンドウを指定した位置に移動します。
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
-	void move(const Position& pos) {
+	void move(const layout::Position& pos) {
 		this->move(pos.x, pos.y);
 	}
 
@@ -251,8 +282,8 @@ public:
 	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
-	void move_by(const Position& pos) {
-		Position current_pos = this->get_position();
+	void move_by(const layout::Position& pos) {
+		layout::Position current_pos = this->get_position();
 		this->move(current_pos.x + pos.x, current_pos.y + pos.y);
 	}
 
@@ -262,7 +293,7 @@ public:
 	 * @param[in] y 移動量のY成分。
 	 */
 	void move_by(gint x, gint y) {
-		Position current_pos = this->get_position();
+		layout::Position current_pos = this->get_position();
 		this->move(current_pos.x + x, current_pos.y + y);
 	}
 
@@ -270,8 +301,8 @@ public:
 	 * @brief ウィンドウの現在の位置を取得します。
 	 * @return ウィンドウの位置を表す Position 構造体。
 	 */
-	Position get_position() {
-		Position pos;
+	layout::Position get_position() {
+		layout::Position pos;
 		this->get_position(&pos.x, &pos.y);
 		return pos;
 	}
@@ -315,7 +346,7 @@ public:
 	 * @brief ウィンドウを指定した位置に移動します。
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
-	void move(const Position& pos) {
+	void move(const layout::Position& pos) {
 		this->move(pos.x, pos.y);
 	}
 
@@ -323,8 +354,8 @@ public:
 	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
-	void move_by(const Position& pos) {
-		Position current_pos = this->get_position();
+	void move_by(const layout::Position& pos) {
+		layout::Position current_pos = this->get_position();
 		this->move(current_pos.x + pos.x, current_pos.y + pos.y);
 	}
 
@@ -334,7 +365,7 @@ public:
 	 * @param[in] y 移動量のY成分。
 	 */
 	void move_by(gint x, gint y) {
-		Position current_pos = this->get_position();
+		layout::Position current_pos = this->get_position();
 		this->move(current_pos.x + x, current_pos.y + y);
 	}
 
@@ -342,8 +373,8 @@ public:
 	 * @brief ウィンドウの現在の位置を取得します。
 	 * @return ウィンドウの位置を表す Position 構造体。
 	 */
-	Position get_position() {
-		Position pos;
+	layout::Position get_position() {
+		layout::Position pos;
 		this->get_position(&pos.x, &pos.y);
 		return pos;
 	}

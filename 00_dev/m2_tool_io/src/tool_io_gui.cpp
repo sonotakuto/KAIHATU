@@ -1794,30 +1794,18 @@ gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
 void MainWindow::plc_on_notified(const plc::Notification& notification) {
 	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", (int)notification.type);
 	switch (notification.type) {
-	case plc::NotificationType::CONNECTION_ESTABLISHED :
-		// TODO: CONNECTION_ESTABLISHED 通知を受け取ったときの処理
-		break;
 	case plc::NotificationType::CONNECTION_LOST :
-		// TODO: CONNECTION_LOST 通知を受け取ったときの処理
+		m_plc_connected = false;
+		break;
+	case plc::NotificationType::CONNECTION_ESTABLISHED :
+		m_plc_connected = true;
 		break;
 	case plc::NotificationType::MONITOR :
 		if (notification.monitor_result.has_value()) {
 			switch (notification.monitor_result.value().addr) {
 			case plc::M_DEVICE_MAINTENANCE_MODE :
-				// TODO: メンテナンスモードに関する処理を追加
-				if (notification.monitor_result.value().status) {
-					update_widget_state(&warningLabel, WidgetState{.text = UiText{
-						"ステータスモニタでの操作により、画面がロックされました\n詳細はステータスモニタをご覧ください",
-						"ステータスモニタでの そうさにより、がめんが ロックされました\nしょうさいは ステータスモニタを ごらんください"
-					}}, true);
-					warningDialog.show_all();
-				} else {
-					warningDialog.hide();
-				}
+				m_plc_maintaining = notification.monitor_result.value().status;
 				break;
-
-			// TODO: 他にも全画面共通の処理があれば追加
-
 			default :	// 全画面共通の処理を行わないモニター通知は、状態毎の処理に投げる
 				try {
 					auto state_config = g_app_state_configs.at(m_app_state);
@@ -1837,6 +1825,21 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 		break;
 	default :
 		DEV_PRINT(stderr, "Error: 未知のPLC通知を受け取りました\n");
+	}
+	if (!m_plc_connected) {
+		update_widget_state(&warningLabel, WidgetState{.text = UiText{
+			"搬送ユニットとの接続が失われました\n再接続が確立されるまでお待ち下さい",
+			"はんそうユニットとの せつぞくが うしなわれました\nさいせつぞくが かくりつされるまで おまちください"
+		}}, true);
+		warningDialog.show_all();
+	} else if (m_plc_maintaining) {
+		update_widget_state(&warningLabel, WidgetState{.text = UiText{
+			"ステータスモニタでの操作により、\n画面がロックされました\n\n詳細はステータスモニタをご覧ください",
+			"ステータスモニタでの そうさにより、\nがめんが ロックされました\n\nしょうさいは ステータスモニタを ごらんください"
+		}}, true);
+		warningDialog.show_all();
+	} else {
+		warningDialog.hide();
 	}
 }
 
@@ -1858,6 +1861,7 @@ void MainWindow::tracker_on_notified(const tracker::ToolTrackerClient::Notificat
 
 void MainWindow::reset_variables() {
 	// --- グローバルな要素 ---
+	plc::end_session();
 	db::disconnect();
 	g_logged_in_user_info = nullopt;
 
@@ -2696,7 +2700,11 @@ void MainWindow::on_window_show() {
 		paginatedListstore2types1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
+/*
+		auto* func = new std::function<void()>([]() {
 
+		});
+*/
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 		refresh_ui(true);
@@ -2774,6 +2782,9 @@ void MainWindow::userIdEntry_on_activate() {
 
 	if (db::user_authenticate(userIdEntry.get_text())) {
 		DEV_PRINT("ユーザー認証成功\n");
+
+		plc::start_session();	// PLCセッションを開始
+
 		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベル背景の警告色を解除
 
 		// ユーザーIDエントリにログインユーザー名を表示して固定
@@ -3145,14 +3156,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 
 	// コンテナ搬出
 	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
-	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address));	// FIXME: nullopt対応	// FIXME: 例外処理
-	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
-		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
-		}
-	});
+	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 
 	// 追跡システムの開始
 	// FIXME: エラー対応
@@ -3643,16 +3647,7 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 
 void MainWindow::on_enter_store_container_retrieving() {
 	m_operating_area = db::get_StrageAreaInfo_with_min_cases(m_operating_tool.value().id);	// FIXME: nullopt対応
-	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address));	// FIXME: nullopt対応	// FIXME: 例外処理
-	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
-		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
-		}
-	});
-
-	// FIXME: エラー対応
+	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 	tracker::g_recorder_client->start_recording();
 }
 

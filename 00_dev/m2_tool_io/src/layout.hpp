@@ -161,7 +161,7 @@ enum class Gravity : int {
 	TopRight	= 2,	NorthEast	= 2,	// 右上
 
 	Left		= 4,	West		= 4,	// 左中央
-	Center		= 5,	Center		= 5,	// 中央
+	Center		= 5,						// 中央
 	Right		= 6,	East		= 6,	// 右中央
 
 	BottomLeft	= 8,	SouthWest	= 8,	// 左下
@@ -170,35 +170,51 @@ enum class Gravity : int {
 };
 
 /**
- * @class ScreenArea
- * @brief 画面やモニタの領域情報を保持し、各種基準点を計算するクラス。
+ * @class Rectangle
+ * @brief 四角形の領域情報を保持し、各種基準点を計算するクラス。
  */
-struct ScreenArea {
-	Position offset = Position{0, 0};	///< 領域の左上の座標 (Global)
+struct Rectangle {
+	Position pos = Position{0, 0};	///< 領域の左上の座標 (Global)
 	Size size = Size{0, 0};				///< 領域のサイズ (幅, 高さ)
 
 	// デフォルトコンストラクタ
-	constexpr ScreenArea() = default;
+	constexpr Rectangle() = default;
 
 	/**
 	 * @brief コンストラクタ。
-	 * @param[in] size 画面やモニタのサイズ (幅, 高さ)。
-	 * @param[in] offset 画面やモニタの左上座標 (グローバル座標)。デフォルトは(0,0)。
+	 * @param[in] pos 四角形の左上座標。
 	 */
-	constexpr ScreenArea(const Size& size, const Position& offset = Position{0, 0}) noexcept :
-		offset(offset),
+	constexpr Rectangle(const Position& pos) noexcept :
+		pos(pos)
+	{}
+
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] size 四角形のサイズ (幅, 高さ)。
+	 */
+	constexpr Rectangle(const Size& size) noexcept :
 		size(size)
 	{}
 
 	/**
 	 * @brief コンストラクタ。
-	 * @param[in] w 画面やモニタの幅 (ピクセル単位)。
-	 * @param[in] h 画面やモニタの高さ (ピクセル単位)。
-	 * @param[in] offset_x 画面やモニタの左上X座標 (グローバル座標)。デフォルトは0。
-	 * @param[in] offset_y 画面やモニタの左上Y座標 (グローバル座標)。デフォルトは0。
+	 * @param[in] pos 四角形の左上座標。
+	 * @param[in] size 四角形のサイズ (幅, 高さ)。
 	 */
-	constexpr ScreenArea(int w, int h, int offset_x = 0, int offset_y = 0) noexcept :
-		offset(offset_x, offset_y),
+	constexpr Rectangle(const Position& pos, const Size& size) noexcept :
+		pos(pos),
+		size(size)
+	{}
+
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] pos_x 四角形の左上X座標。
+	 * @param[in] pos_y 四角形の左上Y座標。
+	 * @param[in] w 四角形の幅 (ピクセル単位)。
+	 * @param[in] h 四角形の高さ (ピクセル単位)。
+	 */
+	constexpr Rectangle(int pos_x, int pos_y, int w, int h) noexcept :
+		pos(pos_x, pos_y),
 		size(w, h)
 	{}
 
@@ -206,97 +222,97 @@ struct ScreenArea {
 
 	/**
 	 * @brief 左上隅の位置を取得します。
-	 * @return スクリーンの左上隅の位置を表す Position 構造体。
+	 * @return 四角形の左上隅の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position top_left() const noexcept {
-		return offset;
+		return pos;
 	}
 
 	/**
 	 * @brief 上中央の位置を取得します。
-	 * @return スクリーンの上中央の位置を表す Position 構造体。
+	 * @return 四角形の上中央の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position top_center() const noexcept {
 		return Position(
-			offset.x + (size.width - 1) / 2,
-			offset.y
+			pos.x + (size.width - 1) / 2,
+			pos.y
 		);
 	}
 
 	/**
 	 * @brief 右上隅の位置を取得します。
-	 * @return スクリーンの右上隅の位置を表す Position 構造体。
+	 * @return 四角形の右上隅の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position top_right() const noexcept {
 		return Position(
-			offset.x + size.width - 1,
-			offset.y
+			pos.x + size.width - 1,
+			pos.y
 		);
 	}
 
 	/**
 	 * @brief 左中央の位置を取得します。
-	 * @return スクリーンの左中央の位置を表す Position 構造体。
+	 * @return 四角形の左中央の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position center_left() const noexcept {
 		return Position(
-			offset.x,
-			offset.y + (size.height - 1) / 2
+			pos.x,
+			pos.y + (size.height - 1) / 2
 		);
 	}
 
 	/**
 	 * @brief 中央の位置を取得します。
-	 * @return スクリーンの中央の位置を表す Position 構造体。
+	 * @return 四角形の中央の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position center() const noexcept {
 		return Position(
-			offset.x + (size.width - 1) / 2,
-			offset.y + (size.height - 1) / 2
+			pos.x + (size.width - 1) / 2,
+			pos.y + (size.height - 1) / 2
 		);
 	}
 
 	/**
 	 * @brief 右中央の位置を取得します。
-	 * @return スクリーンの右中央の位置を表す Position 構造体。
+	 * @return 四角形の右中央の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position center_right() const noexcept {
 		return Position(
-			offset.x + size.width - 1,
-			offset.y + (size.height - 1) / 2
+			pos.x + size.width - 1,
+			pos.y + (size.height - 1) / 2
 		);
 	}
 
 	/**
 	 * @brief 左下隅の位置を取得します。
-	 * @return スクリーンの左下隅の位置を表す Position 構造体。
+	 * @return 四角形の左下隅の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position bottom_left() const noexcept {
 		return Position(
-			offset.x,
-			offset.y + size.height - 1
+			pos.x,
+			pos.y + size.height - 1
 		);
 	}
 
 	/**
 	 * @brief 下中央の位置を取得します。
-	 * @return スクリーンの下中央の位置を表す Position 構造体。
+	 * @return 四角形の下中央の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position bottom_center() const noexcept {
 		return Position(
-			offset.x + (size.width - 1) / 2,
-			offset.y + size.height - 1
+			pos.x + (size.width - 1) / 2,
+			pos.y + size.height - 1
 		);
 	}
 
 	/**
 	 * @brief 右下隅の位置を取得します。
-	 * @return スクリーンの右下隅の位置を表す Position 構造体。
+	 * @return 四角形の右下隅の位置を表す Position 構造体。
 	 */
 	[[nodiscard]] constexpr Position bottom_right() const noexcept {
 		return Position(
-			offset.x + size.width - 1,
-			offset.y + size.height - 1
+			pos.x + size.width - 1,
+			pos.y + size.height - 1
 		);
 	}
 };

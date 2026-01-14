@@ -22,6 +22,9 @@ namespace gui {
 
 struct MainWindow;
 
+/// @brief グローバルな画面領域情報。
+//inline sgex::Rectangle g_monitor_area;
+
 /// @brief アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
 inline std::unique_ptr<gui::MainWindow> mainWindow;
 
@@ -1482,7 +1485,10 @@ private:
 	bool m_is_programmatically_changing_toggle;
 
 	// --- 状態管理用 ---
-
+	/// @brief PLCに接続されているかどうかのフラグ。
+	bool m_plc_connected;
+	/// @brief PLCメンテナンスモード中かどうかのフラグ。
+	bool m_plc_maintaining;
 	/// @brief パスワード認証が成功したかどうかのフラグ。
 	bool m_password_authenticated;
 	/// @brief 現在のGUI操作モードを保持するメンバ変数。

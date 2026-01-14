@@ -29,6 +29,9 @@ NOTIFICATIONS = {
 clients = []
 clients_lock = threading.Lock()
 
+# 自動応答の設定（初期値はOFF）
+auto_scan_s = True
+
 def pad_message(msg):
     """メッセージを24バイトにスペースでパディングする"""
     return msg.ljust(MSG_LENGTH).encode('utf-8')
@@ -60,7 +63,10 @@ def handle_tracker_client(conn, addr):
                 break # 切断処理へ
             elif msg == "QR_scan":
                 print("[Tracker] QRコードスキャン通知を受信しました。")
-                # 必要であればここで自動的に Scan_S などを返しても良い
+                # 自動応答がONの場合、即座にScan_Sを返す
+                if auto_scan_s:
+                    print("[Tracker] >> Scan_S (自動応答) を送信")
+                    conn.sendall(pad_message("Scan_S"))
             else:
                 print(f"[Tracker] 未知のコマンド: {msg}")
 
@@ -126,8 +132,11 @@ def counter_server_thread():
 
 def input_loop():
     """ユーザー入力を受け付けてイベントを送信するループ"""
+    global auto_scan_s  # グローバル変数を変更するために宣言
+
     time.sleep(1)
     print("\n=== 操作メニュー ===")
+    print(" 0: 'Scan_S' 自動応答 ON/OFF (現在: ON)")
     for key, val in NOTIFICATIONS.items():
         print(f" {key}: {val} を送信")
     print(" q: 終了")
@@ -138,6 +147,13 @@ def input_loop():
         if cmd == 'q':
             print("終了します...")
             break
+
+        # 自動応答切り替え
+        if cmd == '0':
+            auto_scan_s = not auto_scan_s
+            status = "ON" if auto_scan_s else "OFF"
+            print(f"ℹ️  Scan_S 自動応答を [{status}] に設定しました")
+            continue
 
         if cmd in NOTIFICATIONS:
             msg_str = NOTIFICATIONS[cmd]

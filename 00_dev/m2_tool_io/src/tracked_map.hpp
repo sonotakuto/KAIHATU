@@ -30,30 +30,30 @@ namespace utils {
  * 要素の読み取りは at() (コピーを返す), const_iterator、
  * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() などをそれぞれ使用してください。
  *
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  */
-template <typename _Key, typename _Tp, typename _Compare = std::less<_Key>,
-		typename _Alloc = std::allocator<std::pair<const _Key, _Tp>>>
+template <typename Key, typename Tp, typename Compare = std::less<Key>,
+		typename Alloc = std::allocator<std::pair<const Key, Tp>>>
 class TrackedMap {
 public:
 	// --- 型定義 ---
-	typedef std::map<_Key, _Tp, _Compare, _Alloc>		map_type;
-	typedef typename map_type::key_type					key_type;
-	typedef typename map_type::mapped_type				mapped_type;
-	typedef typename map_type::value_type				value_type;
-	typedef typename map_type::key_compare				key_compare;
-	typedef typename map_type::allocator_type			allocator_type;
-	typedef typename map_type::size_type				size_type;
-	typedef typename map_type::iterator					iterator;
-	typedef typename map_type::const_iterator			const_iterator;
-	typedef typename map_type::reverse_iterator			reverse_iterator;
-	typedef typename map_type::const_reverse_iterator	const_reverse_iterator;
+	using map_type					= std::map<Key, Tp, Compare, Alloc>;
+	using key_type					= typename map_type::key_type;
+	using mapped_type				= typename map_type::mapped_type;
+	using value_type				= typename map_type::value_type;
+	using key_compare				= typename map_type::key_compare;
+	using allocator_type			= typename map_type::allocator_type;
+	using size_type					= typename map_type::size_type;
+	using iterator					= typename map_type::iterator;
+	using const_iterator			= typename map_type::const_iterator;
+	using reverse_iterator			= typename map_type::reverse_iterator;
+	using const_reverse_iterator	= typename map_type::const_reverse_iterator;
 
-	typedef std::set<key_type, _Compare, typename std::allocator_traits<_Alloc>::template rebind_alloc<key_type>>	set_type;
-	typedef typename set_type::key_type					set_key_type;
+	using set_type					= std::set<key_type, key_compare, typename std::allocator_traits<Alloc>::template rebind_alloc<key_type>>;
+	using set_key_type				= typename set_type::key_type;
 
 private:
 	// --- メンバ変数 ---
@@ -763,16 +763,16 @@ public:
 // --- (グローバル) swap ---
 /**
  * @brief 2つのTrackedMapの内容を交換する。
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  * @param[in, out] lhs 交換対象の左側のマップ
  * @param[in, out] rhs 交換対象の右側のマップ
  */
-template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
-void swap(TrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
-		TrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+template <typename Key, typename Tp, typename Compare, typename Alloc>
+void swap(TrackedMap<Key, Tp, Compare, Alloc>& lhs,
+		TrackedMap<Key, Tp, Compare, Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
 	lhs.swap(rhs);
 }
 
@@ -790,28 +790,30 @@ void swap(TrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
  * 要素の読み取りは at() (コピーを返す)、
  * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() を使用してください。
  *
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  */
-template <typename _Key, typename _Tp, typename _Compare = std::less<_Key>,
-	typename _Alloc = std::allocator<std::pair<const _Key, _Tp> > >
+template <typename Key, typename Tp, typename Compare = std::less<Key>,
+	typename Alloc = std::allocator<std::pair<const Key, Tp> > >
 class SafeTrackedMap {
 public:
 	// --- 型定義 ---
-	typedef std::map<_Key, _Tp, _Compare, _Alloc>	map_type;
-	typedef typename map_type::key_type				key_type;
-	typedef typename map_type::mapped_type			mapped_type;
-	typedef typename map_type::value_type			value_type;
-	typedef typename map_type::key_compare			key_compare;
-	typedef typename map_type::allocator_type		allocator_type;
-	typedef typename map_type::size_type			size_type;
-	// iterator 型は、内部でのみ使用 (e.g., insert結果のfirst)
-	typedef typename map_type::iterator				iterator;
+	using map_type					= std::map<Key, Tp, Compare, Alloc>;
+	using key_type					= typename map_type::key_type;
+	using mapped_type				= typename map_type::mapped_type;
+	using value_type				= typename map_type::value_type;
+	using key_compare				= typename map_type::key_compare;
+	using allocator_type			= typename map_type::allocator_type;
+	using size_type					= typename map_type::size_type;
+	using iterator					= typename map_type::iterator;
+	using const_iterator			= typename map_type::const_iterator;
+	using reverse_iterator			= typename map_type::reverse_iterator;
+	using const_reverse_iterator	= typename map_type::const_reverse_iterator;
 
-	typedef std::set<key_type, key_compare, typename std::allocator_traits<allocator_type>::template rebind_alloc<key_type>>	set_type;
-	typedef typename set_type::key_type				set_key_type;
+	using set_type					= std::set<key_type, key_compare, typename std::allocator_traits<Alloc>::template rebind_alloc<key_type>>;
+	using set_key_type				= typename set_type::key_type;
 
 private:
 	// --- メンバ変数 ---
@@ -923,7 +925,7 @@ private:
 	 * @brief マップに要素を挿入する。
 	 * @details
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加します。
-	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
+	 * @tparam P 挿入する値の型 (例: std::pair<const Key, Tp>)
 	 * @param[in] x 挿入する値。左辺値ならコピー、右辺値ならムーブされます。
 	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
@@ -1559,7 +1561,7 @@ public:
 	 * @brief マップに要素を挿入する。
 	 * @details
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加し、待機中のスレッドに通知します。
-	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
+	 * @tparam P 挿入する値の型 (例: std::pair<const Key, Tp>)
 	 * @param[in] x 挿入する値。左辺値ならコピー、右辺値ならムーブされます。
 	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
@@ -1775,16 +1777,16 @@ public:
 // --- (グローバル) swap ---
 /**
  * @brief 2つのSafeTrackedMapの内容を交換する。
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  * @param[in, out] lhs 交換対象の左側のマップ
  * @param[in, out] rhs 交換対象の右側のマップ
  */
-template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
-void swap(SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
-		SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+template <typename Key, typename Tp, typename Compare, typename Alloc>
+void swap(SafeTrackedMap<Key, Tp, Compare, Alloc>& lhs,
+		SafeTrackedMap<Key, Tp, Compare, Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
 	lhs.swap(rhs);
 }
 

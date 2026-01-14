@@ -185,7 +185,7 @@ INSERT INTO `mst_tool_assignment` (`program_id`, `tool_num`, `basic_tool_id`) VA
 -- ※ トリガーで toolcase_stc_num が増減するため、初期値は 0 に設定します。
 -- --------------------------------------------------------
 INSERT INTO `storage_area` (`storage_area_id`, `basic_tool_id`, `toolcase_stc_num`, `display_address`, `last_reconciliation_time`) VALUES
-(1, 20001, 0, 'C11', NULL), -- パターンA, E用（ドリル置き場）
+(1, 20001, 0, 'B39', NULL), -- パターンA, E用（ドリル置き場）
 (2, 10001, 0, 'B14', NULL), -- パターンB用（インサート置き場）
 (3, 30001, 0, 'A13', NULL), -- パターンD用（タップ置き場）
 (4, 40001, 0, 'B11', NULL); -- パターンC用（エンドミル置き場）

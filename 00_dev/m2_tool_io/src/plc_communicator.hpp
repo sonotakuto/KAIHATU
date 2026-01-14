@@ -11,7 +11,7 @@
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
-//#define STUB_PLC	// TODO: リリース時はコメントアウト
+#define STUB_PLC	// TODO: リリース時はコメントアウト
 #endif
 
 /**
@@ -21,6 +21,17 @@
 namespace plc {
 
 // --- 型定義 ---
+
+/**
+ * @struct Task
+ * @brief 書き込み処理と、その後の完了待ち条件を定義する構造体
+ */
+struct Task {
+	std::function<bool()> action;	// 実行する書き込み処理（成功したら true を返す関数オブジェクト）
+	std::optional<std::uint16_t> wait_completion_addr{};	// 書き込み後に待機する完了信号のMアドレス (std::nulloptの場合は待機なし)
+	bool wait_target_state = true;	// 待機する状態 (true=ONになるのを待つ, false=OFFになるのを待つ)
+	bool notify_completion = false;	// 完了時に通知を送るか (デフォルトfalse)
+};
 
 /**
  * @struct WatchFlags
@@ -123,30 +134,28 @@ void initialize();
 /**
  * @brief PLCにセッションの開始を通知します。
  * @details セッション開始を意味するM82をONにします。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
  */
-bool start_session();
+void start_session();
 
 /**
  * @brief PLCにセッションの終了を通知します。
  * @details セッション終了を意味するM83をONにします。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
  */
-bool end_session();
+void end_session();
 
 /**
  * @brief PLCにコンテナの搬出を要求します。
  * @details 指定されたコンテナ番号に対応するMデバイスと、搬出開始を指示するM91をONにします。
  * @param[in] container_number 搬出するコンテナ番号。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
+ * @param[in] notify_completion 完了時にGUIに通知するか。
  */
-bool retrieve_container(std::uint16_t container_number);
+void retrieve_container(std::uint16_t container_number, bool notify_completion = true);
 
 /**
  * @brief PLCにコンテナの搬入を要求します。
  * @details 搬入開始を指示するM92をONにします。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
+ * @param[in] notify_completion 完了時にGUIに通知するか。
  */
-bool store_container();
+void store_container(bool notify_completion = true);
 
 } // namespace plc

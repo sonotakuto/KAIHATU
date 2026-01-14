@@ -3,8 +3,9 @@
  * @brief plc_communicator.hpp で宣言されたPLC通信機能の実装ファイル。
  */
 #include "./opt_extension.hpp"
-#include "./includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
 #include "./periodic_timer.hpp"
+#include "./signal.hpp"
+#include "./includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
 #include "./tool_io_gui.hpp"
 #include "./plc_communicator.hpp"
 
@@ -19,10 +20,14 @@ static const std::map<std::uint16_t, std::string> mc_error_map = {
 
 /// @brief PLCとの通信に使用するソケットオブジェクト。
 static sg::Socket socket;
-/// @brief 複数のスレッドからソケットへ安全にアクセスするためのミューテックス
-static std::recursive_mutex socket_mutex;
 /// @brief PLCの状態監視リスト。キーは監視内容のユニークな名前。
 static std::map<std::uint16_t, WatchData> g_watchlist;
+/// @brief 書き込みタスクを管理するキュー
+static utils::SafeQueue<Task> g_task_queue;
+/// @brief スレッド統合待機用のシグナル
+static utils::Signal g_signal;
+/// @brief 現在のセッション世代を管理するアトミック変数
+static std::atomic<std::uint32_t> g_session_generation{0};
 
 // --- このファイル内部でのみ使用するヘルパー関数 ---
 
@@ -109,7 +114,6 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 	DEV_PRINT("PLCにコマンドを送信します。(STUBモード)\n");
 	return true;
 #else
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	if (socket.send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへのコマンド送信エラー\n");
 		return false;
@@ -155,7 +159,6 @@ static bool write_M_status(std::uint16_t addr, bool on) {
  * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
  */
 static bool read_M_status(std::uint16_t addr, bool& is_on) {
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	std::vector<std::uint8_t> cmd = make_read_M_command(addr);
 	if (socket.send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへの読み出しコマンド送信エラー\n");
@@ -202,7 +205,6 @@ static bool write_D_word(std::uint16_t addr, std::uint16_t data) {
  * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
  */
 static bool read_D_word(std::uint16_t addr, std::uint16_t& out_data) {
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
 	std::vector<std::uint8_t> cmd = make_read_D_command(addr);
 
 	if (socket.send(cmd.data(), cmd.size()) < 0) {
@@ -240,8 +242,7 @@ static bool connect_to_plc() {
 	const char* host = HOST;
 	int port = PORT;
 
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
-	if (socket.is_connected()) return true;
+	if (socket.is_connected()) { return true; }
 
 	DEV_PRINT("PLCへの接続を試みています... ({}:{})\n", host, port);
 	if (socket.connect(host, port)) {
@@ -258,6 +259,7 @@ static bool connect_to_plc() {
  * @param[in] address 監視対象のMデバイスのアドレス。
  * @return 待機が成功（ONを検出）した場合はtrue、通信エラー等で失敗した場合はfalse。
  */
+/* --- 使わなくなったのでコメントアウト ---
 static bool waiting_for_completion(std::uint16_t address) {
 	DEV_PRINT("PLC: M{} (完了信号) の監視を開始します...\n", address);
 	while (true) {
@@ -274,15 +276,16 @@ static bool waiting_for_completion(std::uint16_t address) {
 	}
 	return true;
 }
+*/
 
 /**
- * @brief PLCモニタースレッドのメインループ。
- * @details この関数は無限ループで動作し、g_watchlistの項目を監視する。
- * 項目の増減要求は g_command_queue で指令を受け取って処理します。
+ * @brief PLC通信スレッドのメインループ。
+ * @details この関数は無限ループで動作し、PLCとの通信を管理します。
+ * 通信要求は、キューから受け取り、PLCの状態監視も行います。
  * STUB_PLCが定義されている場合、PLCに接続せず、ワンショット通知を時間経過でシミュレートします。
  * 定義されていない場合、実際のPLCに接続してポーリングを行います。
  */
-static void run_status_monitor() {
+static void run_communicator() {
 #ifdef STUB_PLC
 	// =========================================================================
 	// スタブ実装 (PLC不要のテスト用)
@@ -290,62 +293,120 @@ static void run_status_monitor() {
 	DEV_PRINT("PLCリスナースレッドを開始します。(STUBモード)\n");
 	utils::PeriodicTimer timer;
 
-	// ワンショット要求の受付時刻を記録するためのマップ
+	// ワンショット監視要求(Watch)の受付時刻を記録するためのマップ
 	std::map<std::uint16_t, std::chrono::steady_clock::time_point> one_shot_timers;
 
+	// タスク管理用変数
+	std::optional<Task> current_task;
+	std::optional<Task> pending_task;
+	// タスクの完了待ち開始時刻（完了信号がONになるまでの遅延シミュレーション用）
+	std::chrono::steady_clock::time_point task_wait_start_time;
+
+	notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
+	notify_gui_thread({.type = NotificationType::CONNECTION_ESTABLISHED});
+
 	while (true) {
-		// --- 1. 指令処理 (監視対象の有無でpop/try_popを切り替え) ---
-		std::optional<WatchCommand> command_opt;
-		if (g_watchlist.empty()) {
-			// 監視対象が無い場合、指令が来るまで待機する
-			command_opt = g_command_queue.pop();
-		} else {
-			// 監視対象がある場合、指令があれば処理するが無ければスルーする
-			command_opt = g_command_queue.try_pop();
+		const auto now = std::chrono::steady_clock::now();
+
+		// =========================================================
+		// 1. 入力処理フェーズ (タスク & 監視指令)
+		// =========================================================
+
+		// --- A. タスクの取り出しと実行 ---
+		if (!current_task.has_value()) {
+			if (!pending_task.has_value()) {
+				pending_task = g_task_queue.try_pop();
+			}
+
+			// ペンディング中のタスクがあれば実行試行
+			while (pending_task.has_value()) {
+				DEV_PRINT("PLC(STUB): 新しいタスクを開始します。\n");
+
+				// アクション実行 (STUBモードなので send_and_receive_ack は常に成功する)
+				if (pending_task->action()) {
+					DEV_PRINT("PLC(STUB): タスクのアクションを実行しました。\n");
+
+					if (pending_task->wait_completion_addr.has_value()) {
+						// 完了待ちが必要な場合、Currentに昇格させて待機時間を記録
+						current_task = pending_task;
+						task_wait_start_time = now;
+						DEV_PRINT("PLC(STUB): 完了信号 M{} の待機シミュレーションに入ります(2秒後に完了)。\n", pending_task->wait_completion_addr.value());
+					} else {
+						DEV_PRINT("PLC(STUB): タスク完了(待機なし)\n");
+					}
+					pending_task.reset();
+				} else {
+					// STUBでここに来ることは稀だが、失敗時は破棄して次へ
+					DEV_PRINT(stderr, "PLC(STUB): タスクのアクションに失敗しました。\n");
+					pending_task.reset();
+					// 次のタスクがあれば即取得
+					pending_task = g_task_queue.try_pop();
+				}
+			}
 		}
 
-		// コマンドが空になるまで、まとめて受け取る
-		while (command_opt.has_value()) {
-			WatchCommand& command = command_opt.value();
+		// --- B. 監視指令の取り出し ---
+		auto command_queue_local = g_command_queue.try_pop_all();
+		while (!command_queue_local.empty()) {
+			WatchCommand& command = command_queue_local.front();
 			bool is_one_shot = command.flags.rise_is_one_shot.value_or(false) || command.flags.fall_is_one_shot.value_or(false);
 
 			if (g_watchlist.count(command.addr)) {
 				if (command.flags.is_active()) {
-					// 既存の監視項目を更新
 					auto& item = g_watchlist.at(command.addr);
 					item.flags.merge(command.flags);
 					item.is_first = true;
-					DEV_PRINT("PLC監視項目 '{}' を更新しました。\n", command.addr);
+					DEV_PRINT("PLC(STUB): 監視項目 '{}' を更新しました。\n", command.addr);
 				} else {
-					// 監視項目を削除
 					g_watchlist.erase(command.addr);
-					DEV_PRINT("PLC監視項目 '{}' を削除しました。\n", command.addr);
+					DEV_PRINT("PLC(STUB): 監視項目 '{}' を削除しました。\n", command.addr);
 				}
 			} else {
 				if (command.flags.is_active()) {
-					// 新しい監視項目を追加
 					g_watchlist.try_emplace(command.addr, plc::WatchData{.flags = command.flags, .is_first = true});
-					DEV_PRINT("PLC監視項目 '{}' を追加しました。\n", command.addr);
+					DEV_PRINT("PLC(STUB): 監視項目 '{}' を追加しました。\n", command.addr);
 				}
 			}
 
-			// もし、この指令がワンショット通知の要求なら、現在時刻を記録
+			// ワンショット監視ならタイマーセット(3秒後に発火シミュレーション)
 			if (is_one_shot) {
-				one_shot_timers[command.addr] = std::chrono::steady_clock::now();
-				DEV_PRINT("PLC(STUB): M{} の one-shot 監視要求を受付。\n", command.addr);
+				one_shot_timers[command.addr] = now;
+				DEV_PRINT("PLC(STUB): M{} の one-shot 監視シミュレーション開始。\n", command.addr);
 			}
-			command_opt = g_command_queue.try_pop();
+			command_queue_local.pop();
 		}
 
-		// --- 2. ワンショットイベントを時間経過でシミュレート ---
-		const auto now = std::chrono::steady_clock::now();
+		// =========================================================
+		// 2. シミュレーション処理フェーズ
+		// =========================================================
+
+		// --- A. タスクの完了待ちシミュレーション ---
+		if (current_task.has_value()) {
+			// 4秒経過したら完了とみなす
+			if (now - task_wait_start_time > std::chrono::seconds(4)) {
+				DEV_PRINT("PLC(STUB): 完了信号 M{} を検出(Simulated)。タスク完了。\n", current_task->wait_completion_addr.value());
+
+				if (current_task->notify_completion) {
+					notify_gui_thread({
+						.type = NotificationType::MONITOR,
+						.monitor_result = MonitorResult{
+							.addr = current_task->wait_completion_addr.value(),
+							.status = current_task->wait_target_state
+						}
+					});
+				}
+				current_task.reset();
+			}
+		}
+
+		// --- B. 監視(Watchlist)のシミュレーション ---
 		for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ループ内でインクリメント */) {
 			auto& [addr, item] = *it;
 
 			// ワンショットタイマーがセットされているか確認
 			if (one_shot_timers.count(addr)) {
-				// 3秒経過したら通知をシミュレート
-				if (now - one_shot_timers.at(addr) > std::chrono::seconds(3)) {
+				// 1秒経過したら通知
+				if (now - one_shot_timers.at(addr) > std::chrono::seconds(1)) {
 					// 立ち上がり(rise)通知のシミュレート
 					if (item.flags.rise_is_one_shot.value_or(false) && item.flags.enable_rise_notification.value_or(false)) {
 						DEV_PRINT("PLC(STUB): M{} の one-shot (rise) を通知します。\n", addr);
@@ -371,11 +432,27 @@ static void run_status_monitor() {
 			}
 		}
 
-		// --- 3. 次のポーリング周期まで待機 ---
-		timer.wait_for_next(POLLING_INTERVAL_MS, true);
+		// =========================================================
+		// 3. 待機フェーズ (Signalによる統合待機)
+		// =========================================================
+
+		// 何か処理中(タスク実行中、ペンディングあり、監視中)ならポーリング待機、そうでなければ無限待機
+		bool is_active = !g_watchlist.empty() || current_task.has_value() || pending_task.has_value();
+
+		if (is_active) {
+			// ポーリング周期待機 (タスク追加などでシグナルが来たら即起きる)
+			if (g_signal.wait_until(timer.update_target_time(POLLING_INTERVAL_MS, true))) {
+				timer.reset();
+			}
+		} else {
+			// アイドル待機
+			g_signal.wait();
+			timer.reset();
+		}
 	}
 
 #else
+
 	// =========================================================================
 	// 本来の実装 (PLCとの通信)
 	// =========================================================================
@@ -383,6 +460,12 @@ static void run_status_monitor() {
 
 	// ポーリングの周期制御用タイマ
 	utils::PeriodicTimer timer;
+	// 現在実行中のタスクを保持する変数
+	std::optional<Task> current_task;
+	// 保留中のタスクを保持する変数
+	std::optional<Task> pending_task;
+
+	notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
 
 	while (true) {
 		try {
@@ -395,19 +478,54 @@ static void run_status_monitor() {
 				timer.reset();	// 接続が確立したタイミングで、タイマーの基準時刻を「今」にリセットする
 			}
 
-			// --- 1. 指令処理 (監視対象の有無でpop/try_popを切り替え) ---
-			std::optional<WatchCommand> command_opt;
-			if (g_watchlist.empty()) {
-				// 監視対象が無い場合、指令が来るまで待機する
-				command_opt = g_command_queue.pop();
-			} else {
-				// 監視対象がある場合、指令があれば処理するが無ければスルーする
-				command_opt = g_command_queue.try_pop();
+			// =========================================================
+			// 1. 入力処理フェーズ (キューからの取り出し)
+			//    待機はせず、あるもの全てを処理する (Non-blocking)
+			// =========================================================
+
+			// --- A. 新しいタスクの取り出し ---
+			// タスク実行中でなければ、新しいタスクをキューから取得
+			if (!current_task.has_value() && socket.is_connected()) {
+				if (!pending_task.has_value()) {
+					pending_task = g_task_queue.try_pop();
+				}
+				while (pending_task.has_value() && socket.is_connected()) {
+					DEV_PRINT("PLC: 新しいタスクを開始します。\n");
+					// 書き込みアクションを実行
+					if (pending_task->action()) {
+						DEV_PRINT("PLC: タスクの書き込み処理が成功しました。\n");
+						// 書き込み成功
+						if (pending_task->wait_completion_addr.has_value()) {
+							// 完了待ちが必要なら current_task に設定してループ継続
+							current_task = pending_task;
+							DEV_PRINT("PLC: 完了信号 M{} の監視に入ります。\n", pending_task->wait_completion_addr.value());
+						} else {
+							// 完了待ち不要なら即終了
+							DEV_PRINT("PLC: タスク完了(待機なし)\n");
+						}
+						pending_task.reset();
+					} else {
+						DEV_PRINT(stderr, "PLC: タスクの書き込み処理に失敗しました。\n");
+						// 通信エラー等
+						socket.close();
+						notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
+						// pending_task にタスクを残しておくことで、再接続後にリトライする
+					}
+					if (!current_task.has_value() && !pending_task.has_value() && socket.is_connected()) {
+						// 完了待ちタスクがセットされなかった場合、次のタスクを試行的に取得
+						pending_task = g_task_queue.try_pop();
+					}
+				}
 			}
 
-			// コマンドが空になるまで、まとめて受け取る
-			while (command_opt.has_value()) {
-				WatchCommand& command = command_opt.value();
+			// --- B. 監視指令の取り出し ---
+			// try_pop_all を使って、現在溜まっている指令を「一括」で取り出します。
+			// これにより、ロックの取得回数が1回で済み、他のスレッド（GUIなど）の書き込みを阻害しません。
+			auto command_queue_local = g_command_queue.try_pop_all();
+
+			while (!command_queue_local.empty()) {
+				// 先頭の要素を参照
+				WatchCommand& command = command_queue_local.front();
 				if (g_watchlist.count(command.addr)) {
 					if (command.flags.is_active()) {
 						// 既存の監視項目を更新
@@ -427,11 +545,50 @@ static void run_status_monitor() {
 						DEV_PRINT("PLC監視項目 '{}' を追加しました。\n", command.addr);
 					}
 				}
-				command_opt = g_command_queue.try_pop();
+				// 処理が終わったらローカルキューから削除
+				command_queue_local.pop();
 			}
 
-			// --- 2. 監視処理 (g_watchlist 内のアクティブな項目全ての値を順番にPLCに問い合わせる) ---
-			for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ここではインクリメントしない */) {
+			// =========================================================
+			// 2. PLC 読み取りフェーズ
+			// =========================================================
+
+			// --- A. タスクの完了待ちチェック ---
+			if (current_task.has_value() && socket.is_connected()) {
+				if (current_task->wait_completion_addr.has_value()) {
+					bool state = false;
+					// 完了信号の状態を読み出し
+					if (read_M_status(current_task->wait_completion_addr.value(), state)) {
+						// 条件一致（例：完了信号がONになった）
+						if (state == current_task->wait_target_state) {
+							DEV_PRINT("PLC: 完了信号 M{} を検出しました。タスク完了。\n", current_task->wait_completion_addr.value());
+							if (current_task->notify_completion) {
+								notify_gui_thread({
+									.type = NotificationType::MONITOR,
+									.monitor_result = MonitorResult{
+										.addr = current_task->wait_completion_addr.value(),
+										.status = state
+									}
+								});
+							}
+							current_task.reset(); // タスククリア -> 次のタスクへ
+						}
+					} else {
+						// 通信エラー等
+						socket.close();
+						notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
+						// 通信切断時は、再接続後にリトライする
+					}
+				} else{
+					// 安全策: 完了待ちアドレスが無い場合は即座にタスク完了とする
+					DEV_PRINT("PLC: タスクの完了待ちアドレスが不明なため、タスクを完了します。\n");
+					current_task.reset();
+					continue;
+				}
+			}
+
+			// --- B. 監視処理 (g_watchlist 内のアクティブな項目全ての値を順番にPLCに問い合わせる) ---
+			for (auto it = g_watchlist.begin(); (it != g_watchlist.end() && socket.is_connected()); /* ここではインクリメントしない */) {
 				auto& [addr, item] = *it;
 
 				bool current_state = false;
@@ -462,13 +619,30 @@ static void run_status_monitor() {
 				} else {
 					socket.close(); // 読み出し失敗＝切断とみなす
 					notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
-					break;
 				}
 			}
 
-			// ポーリング間隔で待機 (監視対象がない場合はpopで待機しているので、この行は実行されない)
-			timer.wait_for_next(POLLING_INTERVAL_MS, true);
+			// =========================================================
+			// 3. 待機フェーズ (Signalによる統合待機)
+			// =========================================================
 
+			// 現在「やるべきこと(ポーリング)」があるか判定
+			bool is_active = !g_watchlist.empty() || current_task.has_value() || pending_task.has_value();
+
+			if (is_active) {
+				// 【稼働中】
+				// 基本はポーリング間隔(100ms)待つ。
+				// ただし、待機中に新しいタスクや指令が来たら即座に起きる。
+				if (g_signal.wait_until(timer.update_target_time(POLLING_INTERVAL_MS, true))) {
+					// シグナルで起床
+					timer.reset();	// タイマーの基準時刻を現在にリセット
+				}
+			} else {
+				// 【アイドル中】
+				// 監視対象もなくタスクもない。
+				// 次に何か指令が来るまで、CPUを使わず無限に眠る。
+				g_signal.wait();
+			}
 		} catch (const std::exception& e) {
 			DEV_PRINT(stderr, "PLCリスナースレッドで例外が発生: {}\n", e.what());
 		}
@@ -480,6 +654,11 @@ static void run_status_monitor() {
 // --- 公開関数 ---
 
 void initialize() {
+	// どちらのキューに追加があっても、同じシグナルに通知を送る
+	auto notifier = []() { g_signal.notify_one(); };
+	g_command_queue.set_notifier(notifier);
+	g_task_queue.set_notifier(notifier);
+
 	// 監視リストを初期化
 	g_watchlist.insert(std::make_pair(M_DEVICE_MAINTENANCE_MODE, WatchData{
 		.flags = WatchFlags{ true, true, false, false},
@@ -487,60 +666,72 @@ void initialize() {
 	}));
 
 	// 単一の統合スレッドを起動
-	std::thread(run_status_monitor).detach();
+	std::thread(run_communicator).detach();
 }
 
-bool start_session() {
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
-	std::uint16_t device_addr = M_DEVICE_SESSION_START;
-	DEV_PRINT("PLC: セッション開始通知を行います。\n");
-	if (!write_M_status(device_addr, true)) {
-		DEV_PRINT(stderr, "	 エラー: M{} (セッション開始トリガ)のONに失敗しました。\n", device_addr);
-		return false;
-	}
-	DEV_PRINT("	 - M{} ON 成功\n", device_addr);
-	return true;
+void start_session() {
+	// 1. 新しいセッションを開始するので、世代を進める
+	// これにより、過去に積まれた end_session タスクは「世代不一致」で無効化される
+	g_session_generation++;
+
+	g_task_queue.push(Task{
+		.action = [](){
+			DEV_PRINT("PLC: セッション開始通知を行います。\n");
+			return write_M_status(M_DEVICE_SESSION_START, true);
+		}
+	});
 }
 
-bool end_session() {
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
-	std::uint16_t device_addr = M_DEVICE_SESSION_END;
-	DEV_PRINT("PLC: セッション終了通知を行います。\n");
-	if (!write_M_status(device_addr, true)) {
-		DEV_PRINT(stderr, "	 エラー: M{} (セッション終了トリガ)のONに失敗しました。\n", device_addr);
-		return false;
-	}
-	DEV_PRINT("	 - M{} ON 成功\n", device_addr);
-	return true;
+void end_session() {
+	// この終了要求が発行された時点の世代を記録する
+	std::uint32_t target_gen = g_session_generation.load();
+
+	g_task_queue.push(Task{
+		.action = [target_gen](){
+			// 【重要】実行直前に有効性をチェック
+			// もし start_session が後から呼ばれていれば、g_session_generation は増えているはず
+			if (target_gen != g_session_generation.load()) {
+				DEV_PRINT("PLC: キャンセルされたセッション終了要求を破棄します (ReqGen:{} != CurrGen:{})\n", target_gen, g_session_generation.load());
+				return true; // 処理済みとしてtrueを返し、何も書き込まない
+			}
+			DEV_PRINT("PLC: セッション終了実行 (Gen:{})\n", target_gen);
+			return write_M_status(M_DEVICE_SESSION_END, true);
+		}
+	});
 }
 
-bool retrieve_container(std::uint16_t container_number) {
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
-	DEV_PRINT("PLC: コンテナ({})の搬出要求を開始します。\n", container_number);
-	if (!write_D_word(D_DEVICE_CONTAINER_ADDRESS, container_number)) {
-		DEV_PRINT(stderr, "	 エラー: D{} コンテナアドレス{}の書き込みに失敗しました。\n", D_DEVICE_CONTAINER_ADDRESS, container_number);
-		return false;
-	}
-	DEV_PRINT("	 - D{} アドレス{} 書き込み成功\n", D_DEVICE_CONTAINER_ADDRESS, container_number);
-
-	if (!write_M_status(M_DEVICE_RETRIEVE_START, true)) {
-		DEV_PRINT(stderr, "	 エラー: M{} (搬出開始トリガ)のONに失敗しました。\n", M_DEVICE_RETRIEVE_START);
-		return false;
-	}
-	DEV_PRINT("	 - M{} ON 成功\n", M_DEVICE_RETRIEVE_START);
-	return true;
+void retrieve_container(std::uint16_t container_number, bool notify_completion) {
+	g_task_queue.push(Task{
+		.action = [container_number](){
+			DEV_PRINT("PLC: コンテナ({})の搬出要求を開始します。\n", container_number);
+			if (!write_D_word(D_DEVICE_CONTAINER_ADDRESS, container_number)) {
+				DEV_PRINT(stderr, "	 エラー: D{} コンテナアドレス{}の書き込みに失敗しました。\n", D_DEVICE_CONTAINER_ADDRESS, container_number);
+				return false;
+			}
+			DEV_PRINT("	 - D{} アドレス{} 書き込み成功\n", D_DEVICE_CONTAINER_ADDRESS, container_number);
+			if (!write_M_status(M_DEVICE_RETRIEVE_START, true)) {
+				DEV_PRINT(stderr, "	 エラー: M{} (搬出開始トリガ)のONに失敗しました。\n", M_DEVICE_RETRIEVE_START);
+				return false;
+			}
+			DEV_PRINT("	 - M{} ON 成功\n", M_DEVICE_RETRIEVE_START);
+			return true;
+		},
+		.wait_completion_addr = M_DEVICE_RETRIEVE_COMPLETED,
+		.wait_target_state = true,
+		.notify_completion = notify_completion
+	});
 }
 
-bool store_container() {
-	std::lock_guard<std::recursive_mutex> lock(socket_mutex);
-	std::uint16_t device_addr = M_DEVICE_STORE_START;
-	DEV_PRINT("PLC: コンテナの搬入要求を開始します。\n");
-	if (!write_M_status(device_addr, true)) {
-		DEV_PRINT(stderr, "	 エラー: M{} (搬入開始トリガ)のONに失敗しました。\n", device_addr);
-		return false;
-	}
-	DEV_PRINT("	 - M{} ON 成功\n", device_addr);
-	return true;
+void store_container(bool notify_completion) {
+	g_task_queue.push(Task{
+		.action = [](){
+			DEV_PRINT("PLC: コンテナの搬入要求を開始します。\n");
+			return write_M_status(M_DEVICE_STORE_START, true);
+		},
+		.wait_completion_addr = M_DEVICE_STORE_COMPLETED,
+		.wait_target_state = true,
+		.notify_completion = notify_completion
+	});
 }
 
 } // namespace plc
