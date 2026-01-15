@@ -83,7 +83,8 @@ enum class NotificationType {
 	NONE,
 	CONNECTION_LOST,		// PLCとの接続が切れた
 	CONNECTION_ESTABLISHED,	// PLCとの接続が確立した
-	MONITOR					// 監視項目で通知が発生した
+	MONITOR,				// 監視項目で通知が発生した
+	TASK_CLEARED			// タスクキューがクリアされた
 };
 
 struct MonitorResult {
@@ -158,5 +159,11 @@ void retrieve_container(std::uint16_t container_number, bool notify_completion =
  * @param[in] notify_completion 完了時にGUIに通知するか。
  */
 void store_container(bool notify_completion = true);
+
+/**
+ * @brief PLC通信タスクキューをクリアします。
+ * @details 保留中の全てのタスクを破棄します。
+ */
+void clear_task_queue();
 
 } // namespace plc

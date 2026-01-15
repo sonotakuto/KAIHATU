@@ -1806,12 +1806,14 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 			case plc::M_DEVICE_MAINTENANCE_MODE :
 				m_plc_maintaining = notification.monitor_result.value().status;
 				if (!m_plc_maintaining) {
+					plc::clear_task_queue();
 					set_mode(GuiMode::NONE);
 				}
 				break;
 			case plc::M_DEVICE_ERROR :
 				m_plc_has_error = notification.monitor_result.value().status;
 				if (!m_plc_has_error) {
+					plc::clear_task_queue();
 					set_mode(GuiMode::NONE);
 				}
 				break;
@@ -2895,7 +2897,7 @@ void MainWindow::confirmInsertCountDialog_on_show() {
 void MainWindow::passwordEntryDialog_on_show() {
 	// Gtkウィジェットにキーボードフォーカスを強制的に設定する
 	passwordEntry.grab_focus();
-//*
+/*
 	layout::Position pos = g_monitor_area.get_center();
 	pos.y -= 180;
 	passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする

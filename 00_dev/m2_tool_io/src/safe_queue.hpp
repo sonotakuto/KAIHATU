@@ -223,6 +223,15 @@ public:
 		}
 	}
 
+	/**
+	 * @brief キューをクリアする。
+	 * @details キュー内の全ての要素を破棄します。
+	 */
+	void clear() {
+		std::lock_guard<std::mutex> lock(mtx);
+		que = {};
+	}
+
 	// --- 追加 (Producers) ---
 	/**
 	 * @brief キューに要素をコピーして追加（プッシュ）し、待機中のスレッドに通知する。

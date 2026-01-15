@@ -28,6 +28,8 @@ static utils::SafeQueue<Task> g_task_queue;
 static utils::Signal g_signal;
 /// @brief 現在のセッション世代を管理するアトミック変数
 static std::atomic<std::uint32_t> g_session_generation{0};
+/// @brief 緊急停止時などに、現在実行中のタスクと待機列をすべて破棄するためのフラグ
+static std::atomic<bool> g_cancel_requested{false};
 
 // --- このファイル内部でのみ使用するヘルパー関数 ---
 
@@ -288,172 +290,7 @@ static bool waiting_for_completion(std::uint16_t address) {
  * 定義されていない場合、実際のPLCに接続してポーリングを行います。
  */
 static void run_communicator() {
-#ifdef STUB_PLC
-	// =========================================================================
-	// スタブ実装 (PLC不要のテスト用)
-	// =========================================================================
-	DEV_PRINT("PLCリスナースレッドを開始します。(STUBモード)\n");
-	utils::PeriodicTimer timer;
-
-	// ワンショット監視要求(Watch)の受付時刻を記録するためのマップ
-	std::map<std::uint16_t, std::chrono::steady_clock::time_point> one_shot_timers;
-
-	// タスク管理用変数
-	std::optional<Task> current_task;
-	std::optional<Task> pending_task;
-	// タスクの完了待ち開始時刻（完了信号がONになるまでの遅延シミュレーション用）
-	std::chrono::steady_clock::time_point task_wait_start_time;
-
-	notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
-	notify_gui_thread({.type = NotificationType::CONNECTION_ESTABLISHED});
-
-	while (true) {
-		const auto now = std::chrono::steady_clock::now();
-
-		// =========================================================
-		// 1. 入力処理フェーズ (タスク & 監視指令)
-		// =========================================================
-
-		// --- A. タスクの取り出しと実行 ---
-		if (!current_task.has_value()) {
-			if (!pending_task.has_value()) {
-				pending_task = g_task_queue.try_pop();
-			}
-
-			// ペンディング中のタスクがあれば実行試行
-			while (pending_task.has_value()) {
-				DEV_PRINT("PLC(STUB): 新しいタスクを開始します。\n");
-
-				// アクション実行 (STUBモードなので send_and_receive_ack は常に成功する)
-				if (pending_task->action()) {
-					DEV_PRINT("PLC(STUB): タスクのアクションを実行しました。\n");
-
-					if (pending_task->wait_completion_addr.has_value()) {
-						// 完了待ちが必要な場合、Currentに昇格させて待機時間を記録
-						current_task = pending_task;
-						task_wait_start_time = now;
-						DEV_PRINT("PLC(STUB): 完了信号 M{} の待機シミュレーションに入ります(2秒後に完了)。\n", pending_task->wait_completion_addr.value());
-					} else {
-						DEV_PRINT("PLC(STUB): タスク完了(待機なし)\n");
-					}
-					pending_task.reset();
-				} else {
-					// STUBでここに来ることは稀だが、失敗時は破棄して次へ
-					DEV_PRINT(stderr, "PLC(STUB): タスクのアクションに失敗しました。\n");
-					pending_task.reset();
-					// 次のタスクがあれば即取得
-					pending_task = g_task_queue.try_pop();
-				}
-			}
-		}
-
-		// --- B. 監視指令の取り出し ---
-		auto command_queue_local = g_command_queue.try_pop_all();
-		while (!command_queue_local.empty()) {
-			WatchCommand& command = command_queue_local.front();
-			bool is_one_shot = command.flags.rise_is_one_shot.value_or(false) || command.flags.fall_is_one_shot.value_or(false);
-
-			if (g_watchlist.count(command.addr)) {
-				if (command.flags.is_active()) {
-					auto& item = g_watchlist.at(command.addr);
-					item.flags.merge(command.flags);
-					item.is_first = true;
-					DEV_PRINT("PLC(STUB): 監視項目 '{}' を更新しました。\n", command.addr);
-				} else {
-					g_watchlist.erase(command.addr);
-					DEV_PRINT("PLC(STUB): 監視項目 '{}' を削除しました。\n", command.addr);
-				}
-			} else {
-				if (command.flags.is_active()) {
-					g_watchlist.try_emplace(command.addr, plc::WatchData{.flags = command.flags, .is_first = true});
-					DEV_PRINT("PLC(STUB): 監視項目 '{}' を追加しました。\n", command.addr);
-				}
-			}
-
-			// ワンショット監視ならタイマーセット(3秒後に発火シミュレーション)
-			if (is_one_shot) {
-				one_shot_timers[command.addr] = now;
-				DEV_PRINT("PLC(STUB): M{} の one-shot 監視シミュレーション開始。\n", command.addr);
-			}
-			command_queue_local.pop();
-		}
-
-		// =========================================================
-		// 2. シミュレーション処理フェーズ
-		// =========================================================
-
-		// --- A. タスクの完了待ちシミュレーション ---
-		if (current_task.has_value()) {
-			// 4秒経過したら完了とみなす
-			if (now - task_wait_start_time > std::chrono::seconds(4)) {
-				DEV_PRINT("PLC(STUB): 完了信号 M{} を検出(Simulated)。タスク完了。\n", current_task->wait_completion_addr.value());
-
-				if (current_task->notify_completion) {
-					notify_gui_thread({
-						.type = NotificationType::MONITOR,
-						.monitor_result = MonitorResult{
-							.addr = current_task->wait_completion_addr.value(),
-							.status = current_task->wait_target_state
-						}
-					});
-				}
-				current_task.reset();
-			}
-		}
-
-		// --- B. 監視(Watchlist)のシミュレーション ---
-		for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ループ内でインクリメント */) {
-			auto& [addr, item] = *it;
-
-			// ワンショットタイマーがセットされているか確認
-			if (one_shot_timers.count(addr)) {
-				// 1秒経過したら通知
-				if (now - one_shot_timers.at(addr) > std::chrono::seconds(1)) {
-					// 立ち上がり(rise)通知のシミュレート
-					if (item.flags.rise_is_one_shot.value_or(false) && item.flags.enable_rise_notification.value_or(false)) {
-						DEV_PRINT("PLC(STUB): M{} の one-shot (rise) を通知します。\n", addr);
-						notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, true } });
-						item.flags.enable_rise_notification = false; // 一度通知したら無効化
-					}
-					// 立ち下がり(fall)通知のシミュレート
-					if (item.flags.fall_is_one_shot.value_or(false) && item.flags.enable_fall_notification.value_or(false)) {
-						DEV_PRINT("PLC(STUB): M{} の one-shot (fall) を通知します。\n", addr);
-						notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, false } });
-						item.flags.enable_fall_notification = false; // 一度通知したら無効化
-					}
-					// シミュレートが完了したのでタイマーから削除
-					one_shot_timers.erase(addr);
-				}
-			}
-
-			// 監視フラグが全て無効になった項目はリストから削除
-			if (!item.flags.is_active()) {
-				it = g_watchlist.erase(it);
-			} else {
-				++it;
-			}
-		}
-
-		// =========================================================
-		// 3. 待機フェーズ (Signalによる統合待機)
-		// =========================================================
-
-		// 何か処理中(タスク実行中、ペンディングあり、監視中)ならポーリング待機、そうでなければ無限待機
-		bool is_active = !g_watchlist.empty() || current_task.has_value() || pending_task.has_value();
-
-		if (is_active) {
-			// ポーリング周期待機 (タスク追加などでシグナルが来たら即起きる)
-			if (g_signal.wait_until(timer.update_target_time(POLLING_INTERVAL_MS, true))) {
-				timer.reset();
-			}
-		} else {
-			// アイドル待機
-			g_signal.wait();
-			timer.reset();
-		}
-	}
-
-#else
+#ifndef STUB_PLC
 
 	// =========================================================================
 	// 本来の実装 (PLCとの通信)
@@ -484,6 +321,16 @@ static void run_communicator() {
 			// 1. 入力処理フェーズ (キューからの取り出し)
 			//    待機はせず、あるもの全てを処理する (Non-blocking)
 			// =========================================================
+
+			// キャンセルリクエストの処理
+			// フラグが立っていたら、実行中・保留中・待機列のすべてを破棄する
+			if (g_cancel_requested.exchange(false)) { // 読み取ると同時に false に戻す
+				DEV_PRINT("PLC: キャンセル要求を受信しました。全タスクを破棄します。\n");
+				current_task.reset();	// 完了待ちの破棄 (これで無限待ちから脱出)
+				pending_task.reset();	// 書き込み直前のタスクを破棄
+				g_task_queue.clear();	// 待機列をすべて空にする
+				notify_gui_thread({.type = NotificationType::TASK_CLEARED});
+			}
 
 			// --- A. 新しいタスクの取り出し ---
 			// タスク実行中でなければ、新しいタスクをキューから取得
@@ -650,6 +497,183 @@ static void run_communicator() {
 		}
 	}
 	DEV_PRINT("PLC統合リスナースレッドを終了します。\n");
+
+#else
+
+	// =========================================================================
+	// スタブ実装 (PLC不要のテスト用)
+	// =========================================================================
+	DEV_PRINT("PLCリスナースレッドを開始します。(STUBモード)\n");
+	utils::PeriodicTimer timer;
+
+	// ワンショット監視要求(Watch)の受付時刻を記録するためのマップ
+	std::map<std::uint16_t, std::chrono::steady_clock::time_point> one_shot_timers;
+
+	// タスク管理用変数
+	std::optional<Task> current_task;
+	std::optional<Task> pending_task;
+	// タスクの完了待ち開始時刻（完了信号がONになるまでの遅延シミュレーション用）
+	std::chrono::steady_clock::time_point task_wait_start_time;
+
+	notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
+	notify_gui_thread({.type = NotificationType::CONNECTION_ESTABLISHED});
+
+	while (true) {
+		const auto now = std::chrono::steady_clock::now();
+
+		// =========================================================
+		// 1. 入力処理フェーズ (タスク & 監視指令)
+		// =========================================================
+
+		// キャンセルリクエストの処理
+		// フラグが立っていたら、実行中・保留中・待機列のすべてを破棄する
+		if (g_cancel_requested.exchange(false)) { // 読み取ると同時に false に戻す
+			DEV_PRINT("PLC: キャンセル要求を受信しました。全タスクを破棄します。\n");
+			current_task.reset();	// 完了待ちの破棄 (これで無限待ちから脱出)
+			pending_task.reset();	// 書き込み直前のタスクを破棄
+			g_task_queue.clear();	// 待機列をすべて空にする
+			notify_gui_thread({.type = NotificationType::TASK_CLEARED});
+		}
+
+		// --- A. タスクの取り出しと実行 ---
+		if (!current_task.has_value()) {
+			if (!pending_task.has_value()) {
+				pending_task = g_task_queue.try_pop();
+			}
+
+			// ペンディング中のタスクがあれば実行試行
+			while (pending_task.has_value()) {
+				DEV_PRINT("PLC(STUB): 新しいタスクを開始します。\n");
+
+				// アクション実行 (STUBモードなので send_and_receive_ack は常に成功する)
+				if (pending_task->action()) {
+					DEV_PRINT("PLC(STUB): タスクのアクションを実行しました。\n");
+
+					if (pending_task->wait_completion_addr.has_value()) {
+						// 完了待ちが必要な場合、Currentに昇格させて待機時間を記録
+						current_task = pending_task;
+						task_wait_start_time = now;
+						DEV_PRINT("PLC(STUB): 完了信号 M{} の待機シミュレーションに入ります(2秒後に完了)。\n", pending_task->wait_completion_addr.value());
+					} else {
+						DEV_PRINT("PLC(STUB): タスク完了(待機なし)\n");
+					}
+					pending_task.reset();
+				} else {
+					// STUBでここに来ることは稀だが、失敗時は破棄して次へ
+					DEV_PRINT(stderr, "PLC(STUB): タスクのアクションに失敗しました。\n");
+					pending_task.reset();
+					// 次のタスクがあれば即取得
+					pending_task = g_task_queue.try_pop();
+				}
+			}
+		}
+
+		// --- B. 監視指令の取り出し ---
+		auto command_queue_local = g_command_queue.try_pop_all();
+		while (!command_queue_local.empty()) {
+			WatchCommand& command = command_queue_local.front();
+			bool is_one_shot = command.flags.rise_is_one_shot.value_or(false) || command.flags.fall_is_one_shot.value_or(false);
+
+			if (g_watchlist.count(command.addr)) {
+				if (command.flags.is_active()) {
+					auto& item = g_watchlist.at(command.addr);
+					item.flags.merge(command.flags);
+					item.is_first = true;
+					DEV_PRINT("PLC(STUB): 監視項目 '{}' を更新しました。\n", command.addr);
+				} else {
+					g_watchlist.erase(command.addr);
+					DEV_PRINT("PLC(STUB): 監視項目 '{}' を削除しました。\n", command.addr);
+				}
+			} else {
+				if (command.flags.is_active()) {
+					g_watchlist.try_emplace(command.addr, plc::WatchData{.flags = command.flags, .is_first = true});
+					DEV_PRINT("PLC(STUB): 監視項目 '{}' を追加しました。\n", command.addr);
+				}
+			}
+
+			// ワンショット監視ならタイマーセット(3秒後に発火シミュレーション)
+			if (is_one_shot) {
+				one_shot_timers[command.addr] = now;
+				DEV_PRINT("PLC(STUB): M{} の one-shot 監視シミュレーション開始。\n", command.addr);
+			}
+			command_queue_local.pop();
+		}
+
+		// =========================================================
+		// 2. シミュレーション処理フェーズ
+		// =========================================================
+
+		// --- A. タスクの完了待ちシミュレーション ---
+		if (current_task.has_value()) {
+			// 4秒経過したら完了とみなす
+			if (now - task_wait_start_time > std::chrono::seconds(4)) {
+				DEV_PRINT("PLC(STUB): 完了信号 M{} を検出(Simulated)。タスク完了。\n", current_task->wait_completion_addr.value());
+
+				if (current_task->notify_completion) {
+					notify_gui_thread({
+						.type = NotificationType::MONITOR,
+						.monitor_result = MonitorResult{
+							.addr = current_task->wait_completion_addr.value(),
+							.status = current_task->wait_target_state
+						}
+					});
+				}
+				current_task.reset();
+			}
+		}
+
+		// --- B. 監視(Watchlist)のシミュレーション ---
+		for (auto it = g_watchlist.begin(); it != g_watchlist.end(); /* ループ内でインクリメント */) {
+			auto& [addr, item] = *it;
+
+			// ワンショットタイマーがセットされているか確認
+			if (one_shot_timers.count(addr)) {
+				// 1秒経過したら通知
+				if (now - one_shot_timers.at(addr) > std::chrono::seconds(1)) {
+					// 立ち上がり(rise)通知のシミュレート
+					if (item.flags.rise_is_one_shot.value_or(false) && item.flags.enable_rise_notification.value_or(false)) {
+						DEV_PRINT("PLC(STUB): M{} の one-shot (rise) を通知します。\n", addr);
+						notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, true } });
+						item.flags.enable_rise_notification = false; // 一度通知したら無効化
+					}
+					// 立ち下がり(fall)通知のシミュレート
+					if (item.flags.fall_is_one_shot.value_or(false) && item.flags.enable_fall_notification.value_or(false)) {
+						DEV_PRINT("PLC(STUB): M{} の one-shot (fall) を通知します。\n", addr);
+						notify_gui_thread(Notification{ NotificationType::MONITOR, MonitorResult{ addr, false } });
+						item.flags.enable_fall_notification = false; // 一度通知したら無効化
+					}
+					// シミュレートが完了したのでタイマーから削除
+					one_shot_timers.erase(addr);
+				}
+			}
+
+			// 監視フラグが全て無効になった項目はリストから削除
+			if (!item.flags.is_active()) {
+				it = g_watchlist.erase(it);
+			} else {
+				++it;
+			}
+		}
+
+		// =========================================================
+		// 3. 待機フェーズ (Signalによる統合待機)
+		// =========================================================
+
+		// 何か処理中(タスク実行中、ペンディングあり、監視中)ならポーリング待機、そうでなければ無限待機
+		bool is_active = !g_watchlist.empty() || current_task.has_value() || pending_task.has_value();
+
+		if (is_active) {
+			// ポーリング周期待機 (タスク追加などでシグナルが来たら即起きる)
+			if (g_signal.wait_until(timer.update_target_time(POLLING_INTERVAL_MS, true))) {
+				timer.reset();
+			}
+		} else {
+			// アイドル待機
+			g_signal.wait();
+			timer.reset();
+		}
+	}
+
 #endif
 }
 
@@ -739,5 +763,17 @@ void store_container(bool notify_completion) {
 		.notify_completion = notify_completion
 	});
 }
+
+void clear_task_queue() {
+	// 1. 待機列を即座にクリア (スレッドが起きるのを待たずに消す)
+	g_task_queue.clear();
+
+	// 2. スレッドに対して「現在持っているタスクも捨てろ」と指示
+	g_cancel_requested = true;
+
+	// 3. スレッドが寝ている(wait中)場合に備えて叩き起こす
+	g_signal.notify_all();
+
+	DEV_PRINT("PLC: 全タスクの中止を要求しました。\n");}
 
 } // namespace plc
