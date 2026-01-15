@@ -175,7 +175,7 @@ enum class Gravity : int {
  */
 struct Rectangle {
 	Position pos = Position{0, 0};	///< 領域の左上の座標 (Global)
-	Size size = Size{0, 0};				///< 領域のサイズ (幅, 高さ)
+	Size size = Size{0, 0};			///< 領域のサイズ (幅, 高さ)
 
 	// デフォルトコンストラクタ
 	constexpr Rectangle() = default;
@@ -224,7 +224,7 @@ struct Rectangle {
 	 * @brief 左上隅の位置を取得します。
 	 * @return 四角形の左上隅の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position top_left() const noexcept {
+	[[nodiscard]] constexpr Position get_top_left() const noexcept {
 		return pos;
 	}
 
@@ -232,7 +232,7 @@ struct Rectangle {
 	 * @brief 上中央の位置を取得します。
 	 * @return 四角形の上中央の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position top_center() const noexcept {
+	[[nodiscard]] constexpr Position get_top_center() const noexcept {
 		return Position(
 			pos.x + (size.width - 1) / 2,
 			pos.y
@@ -243,7 +243,7 @@ struct Rectangle {
 	 * @brief 右上隅の位置を取得します。
 	 * @return 四角形の右上隅の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position top_right() const noexcept {
+	[[nodiscard]] constexpr Position get_top_right() const noexcept {
 		return Position(
 			pos.x + size.width - 1,
 			pos.y
@@ -254,7 +254,7 @@ struct Rectangle {
 	 * @brief 左中央の位置を取得します。
 	 * @return 四角形の左中央の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position center_left() const noexcept {
+	[[nodiscard]] constexpr Position get_center_left() const noexcept {
 		return Position(
 			pos.x,
 			pos.y + (size.height - 1) / 2
@@ -265,7 +265,7 @@ struct Rectangle {
 	 * @brief 中央の位置を取得します。
 	 * @return 四角形の中央の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position center() const noexcept {
+	[[nodiscard]] constexpr Position get_center() const noexcept {
 		return Position(
 			pos.x + (size.width - 1) / 2,
 			pos.y + (size.height - 1) / 2
@@ -276,7 +276,7 @@ struct Rectangle {
 	 * @brief 右中央の位置を取得します。
 	 * @return 四角形の右中央の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position center_right() const noexcept {
+	[[nodiscard]] constexpr Position get_center_right() const noexcept {
 		return Position(
 			pos.x + size.width - 1,
 			pos.y + (size.height - 1) / 2
@@ -287,7 +287,7 @@ struct Rectangle {
 	 * @brief 左下隅の位置を取得します。
 	 * @return 四角形の左下隅の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position bottom_left() const noexcept {
+	[[nodiscard]] constexpr Position get_bottom_left() const noexcept {
 		return Position(
 			pos.x,
 			pos.y + size.height - 1
@@ -298,7 +298,7 @@ struct Rectangle {
 	 * @brief 下中央の位置を取得します。
 	 * @return 四角形の下中央の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position bottom_center() const noexcept {
+	[[nodiscard]] constexpr Position get_bottom_center() const noexcept {
 		return Position(
 			pos.x + (size.width - 1) / 2,
 			pos.y + size.height - 1
@@ -309,7 +309,7 @@ struct Rectangle {
 	 * @brief 右下隅の位置を取得します。
 	 * @return 四角形の右下隅の位置を表す Position 構造体。
 	 */
-	[[nodiscard]] constexpr Position bottom_right() const noexcept {
+	[[nodiscard]] constexpr Position get_bottom_right() const noexcept {
 		return Position(
 			pos.x + size.width - 1,
 			pos.y + size.height - 1

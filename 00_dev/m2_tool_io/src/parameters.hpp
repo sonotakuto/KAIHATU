@@ -8,6 +8,9 @@
 
 //inline constexpr int	SAMPLE	= 0;	// 説明
 
+inline constexpr int	MONITOR_WIDTH = 1920;	// モニターの幅（ピクセル）
+inline constexpr int	MONITOR_HEIGHT = 1080;	// モニターの高さ（ピクセル）
+
 inline constexpr const char* TOOL_CATEGORY_INSERT = "インサート";	// インサート専用の処理を行う必要がある、データベース上の工具種別名
 
 inline constexpr int	DISPLAY_ROWS_PER_COLUMN = 11;	// 表1列あたりの表示行数

@@ -11,7 +11,7 @@
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
-//#define STUB_PLC	// TODO: リリース時はコメントアウト
+#define STUB_PLC	// TODO: リリース時はコメントアウト
 #endif
 
 /**

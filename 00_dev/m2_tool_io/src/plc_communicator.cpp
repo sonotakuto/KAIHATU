@@ -126,6 +126,7 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 	}
 
 	if ((resp[0] == 0x82 || resp[0] == 0x83 || resp[0] == 0x80 || resp[0] == 0x81) && resp[1] == 0x00) {
+		DEV_PRINT("PLCから正常応答を受信しました。\n");
 		return true;
 	}
 
@@ -149,6 +150,7 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
  */
 static bool write_M_status(std::uint16_t addr, bool on) {
 	// send_and_receive_ack は内部で mutex ロックを行うため、ここでのロックは不要
+	DEV_PRINT("PLCにM{}を書き込みます: {}\n", addr, on ? "ON" : "OFF");
 	return send_and_receive_ack(make_write_M_command(addr, on));
 }
 

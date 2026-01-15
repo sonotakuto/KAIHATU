@@ -250,7 +250,7 @@ MainWindow::MainWindow() :
 	confirmationDialog(glade, "confirmationDialog"),
 	messageDialog(glade, "messageDialog"),
 	overrideConfirmDialog(glade, "overrideConfirmDialog"),
-	passwordEntryDialog(glade, "passwordEntryDialog"),
+	passwordEntryDialog(glade, "passwordEntryDialog", true),
 	warningDialog(glade, "warningDialog"),
 	warningListDialog(glade, "warningListDialog"),
 	// インサート枚数確認ダイアログ内
@@ -1804,9 +1804,14 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 		if (notification.monitor_result.has_value()) {
 			switch (notification.monitor_result.value().addr) {
 			case plc::M_DEVICE_MAINTENANCE_MODE :
-			case plc::M_DEVICE_ERROR :
 				m_plc_maintaining = notification.monitor_result.value().status;
 				if (!m_plc_maintaining) {
+					set_mode(GuiMode::NONE);
+				}
+				break;
+			case plc::M_DEVICE_ERROR :
+				m_plc_has_error = notification.monitor_result.value().status;
+				if (!m_plc_has_error) {
 					set_mode(GuiMode::NONE);
 				}
 				break;
@@ -1836,7 +1841,7 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 			"はんそうユニットとの せつぞくが うしなわれました\nさいせつぞくが かくりつされるまで おまちください"
 		}}, true);
 		warningDialog.show_all();
-	} else if (m_plc_maintaining) {
+	} else if (m_plc_maintaining || m_plc_has_error) {
 		update_widget_state(&warningLabel, WidgetState{.text = UiText{
 			"ステータスモニタでの操作により、\n画面がロックされました\n\n詳細はステータスモニタをご覧ください",
 			"ステータスモニタでの そうさにより、\nがめんが ロックされました\n\nしょうさいは ステータスモニタを ごらんください"
@@ -2704,11 +2709,12 @@ void MainWindow::on_window_show() {
 		paginatedListstore2types1st.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
-/*
-		auto* func = new std::function<void()>([]() {
 
+		auto* func = new std::function<void()>([this]() {
+			g_monitor_area = sgex::get_monitor_rectangle_at_window(*this).value_or(sgex::Rectangle{0, 0, MONITOR_WIDTH, MONITOR_HEIGHT});
 		});
-*/
+		g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 		refresh_ui(true);
@@ -2889,15 +2895,18 @@ void MainWindow::confirmInsertCountDialog_on_show() {
 void MainWindow::passwordEntryDialog_on_show() {
 	// Gtkウィジェットにキーボードフォーカスを強制的に設定する
 	passwordEntry.grab_focus();
-/*
-	passwordEntryDialog.set_gravity(GdkGravity::GDK_GRAVITY_CENTER);
+//*
+	layout::Position pos = g_monitor_area.get_center();
+	pos.y -= 180;
+	passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
+/*/
 	auto* func = new std::function<void()>([this]() {
-		sgex::Position pos = sgex::get_screen_center_position();
+		layout::Position pos = g_monitor_area.get_center();
 		pos.y -= 180;
 		passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
 	});
 	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
-*/
+//*/
 }
 
 void MainWindow::warningListDialog_on_response(gint response_id) {

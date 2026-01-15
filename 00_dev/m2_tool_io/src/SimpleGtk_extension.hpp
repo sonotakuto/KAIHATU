@@ -35,6 +35,32 @@ static return_type on_##c_signal_name##_static para_static { \
 }
 
 /**
+ * @brief メソッドを定義するマクロ（メソッド名を任意に指定可能版）。
+ * @param[in] class_name GTKクラス名。
+ * @param[in] method_name GTKメソッド名。
+ * @param[in] c_method_name C++の関数名として使用する名前。
+ * @param[in] return_type メソッドの戻り値の型。
+ */
+#define DEFINE_METHOD_WITH_NAME(class_name, method_name, c_method_name, return_type) \
+	return_type c_method_name() { \
+		return gtk_##class_name##_##method_name(*this); \
+	}
+
+/**
+ * @brief メソッドを定義するマクロ（メソッド名を任意に指定可能版、引数付き）。
+ * @param[in] class_name GTKクラス名。
+ * @param[in] method_name GTKメソッド名。
+ * @param[in] c_method_name C++の関数名として使用する名前。
+ * @param[in] return_type メソッドの戻り値の型。
+ * @param[in] arg_types メソッドの引数リスト。
+ * @param[in] ... メソッドの引数。
+ */
+#define DEFINE_METHOD_WITH_NAME_AND_ARGS(class_name, method_name, c_method_name, return_type, arg_types, ...) \
+	return_type c_method_name arg_types { \
+		return gtk_##class_name##_##method_name(*this, ##__VA_ARGS__); \
+	}
+
+/**
  * @brief GTKプロパティ名にハイフンが含まれる場合に対応した、プロパティのゲッターとセッターを定義するマクロ。
  * @details
  * g_object_get/set関数はプロパティ名を文字列で受け取るためハイフンがあっても動作しますが、
@@ -151,6 +177,70 @@ static return_type on_##c_signal_name##_static para_static { \
  */
 namespace sgex {
 
+/**
+ * @brief layout::Gravity と GdkGravity 間の変換を行います。
+ * @param[in] gravity layout::Gravity 列挙型の値。
+ * @return 対応する GdkGravity 列挙型の値。
+ */
+inline GdkGravity to_gdk_gravity(layout::Gravity gravity) {
+	switch (gravity) {
+		case layout::Gravity::NorthWest:
+			return GDK_GRAVITY_NORTH_WEST;
+		case layout::Gravity::North:
+			return GDK_GRAVITY_NORTH;
+		case layout::Gravity::NorthEast:
+			return GDK_GRAVITY_NORTH_EAST;
+		case layout::Gravity::West:
+			return GDK_GRAVITY_WEST;
+		case layout::Gravity::Center:
+			return GDK_GRAVITY_CENTER;
+		case layout::Gravity::East:
+			return GDK_GRAVITY_EAST;
+		case layout::Gravity::SouthWest:
+			return GDK_GRAVITY_SOUTH_WEST;
+		case layout::Gravity::South:
+			return GDK_GRAVITY_SOUTH;
+		case layout::Gravity::SouthEast:
+			return GDK_GRAVITY_SOUTH_EAST;
+		default:
+			return GDK_GRAVITY_NORTH_WEST;
+	}
+}
+
+/**
+ * @brief GdkGravity と layout::Gravity 間の変換を行います。
+ * @param[in] gravity GdkGravity 列挙型の値。
+ * @return 対応する layout::Gravity 列挙型の値。
+ */
+inline layout::Gravity to_layout_gravity(GdkGravity gravity) {
+	switch (gravity) {
+		case GDK_GRAVITY_NORTH_WEST:
+			return layout::Gravity::NorthWest;
+		case GDK_GRAVITY_NORTH:
+			return layout::Gravity::North;
+		case GDK_GRAVITY_NORTH_EAST:
+			return layout::Gravity::NorthEast;
+		case GDK_GRAVITY_WEST:
+			return layout::Gravity::West;
+		case GDK_GRAVITY_CENTER:
+			return layout::Gravity::Center;
+		case GDK_GRAVITY_EAST:
+			return layout::Gravity::East;
+		case GDK_GRAVITY_SOUTH_WEST:
+			return layout::Gravity::SouthWest;
+		case GDK_GRAVITY_SOUTH:
+			return layout::Gravity::South;
+		case GDK_GRAVITY_SOUTH_EAST:
+			return layout::Gravity::SouthEast;
+		default:
+			return layout::Gravity::NorthWest;
+	}
+}
+
+/**
+ * @class Rectangle
+ * @brief layout::Rectangle を拡張し、GdkRectangle との相互変換を可能にしたクラス。
+ */
 struct Rectangle : public layout::Rectangle {
 	using layout::Rectangle::Rectangle; // 基底クラスのコンストラクタを継承
 
@@ -172,6 +262,8 @@ struct Rectangle : public layout::Rectangle {
 	}
 };
 
+// 以下は未使用の関数群。必要に応じて有効化すること。
+#if 0
 /**
  * @brief 指定したGdkScreenの幅を取得します。
  * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
@@ -213,6 +305,7 @@ inline layout::Size get_screen_size(GdkScreen* screen = nullptr) {
 		gdk_screen_get_height(screen)
 	};
 }
+#endif
 
 /**
  * @brief 指定したGdkMonitorの矩形領域を取得します。
@@ -221,7 +314,7 @@ inline layout::Size get_screen_size(GdkScreen* screen = nullptr) {
  * @return モニターの矩形領域を表す Rectangle 構造体の optional。
  * 取得に失敗した場合、std::nullopt を返します。
  */
-inline std::optional<GdkRectangle> get_monitor_rectangle(GdkMonitor* monitor = nullptr) {
+inline std::optional<Rectangle> get_monitor_rectangle(GdkMonitor* monitor = nullptr) {
 	// 1. モニターが指定されていない場合、デフォルトを取得
 	if (monitor == nullptr) {
 		GdkDisplay* display = gdk_display_get_default();
@@ -239,7 +332,31 @@ inline std::optional<GdkRectangle> get_monitor_rectangle(GdkMonitor* monitor = n
 	GdkRectangle geometry;
 	gdk_monitor_get_geometry(monitor, &geometry);
 
-	return std::make_optional(geometry);
+	return std::make_optional(Rectangle(geometry));
+}
+
+inline std::optional<Rectangle> get_monitor_rectangle_at_window(GtkWindow* window) {
+	// 1. GdkWindow（ウィンドウシステム上のウィンドウ）を取得
+	// 注意: ウィンドウが表示(realize)される前だとNULLになる可能性があります
+	GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
+	if (gdk_window == nullptr) {
+		return std::nullopt;
+	}
+
+	// 2. ディスプレイ（接続）を取得
+	GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(window));
+	if (display == nullptr) {
+		return std::nullopt;
+	}
+
+	// 3. ウィンドウが存在するモニターを取得
+	// ウィンドウが複数のモニターにまたがっている場合、最も面積が大きいモニターが返されます
+	GdkMonitor *monitor = gdk_display_get_monitor_at_window(display, gdk_window);
+	if (monitor == nullptr) {
+		return std::nullopt;
+	}
+
+	return get_monitor_rectangle(monitor);
 }
 
 /**
@@ -248,34 +365,79 @@ inline std::optional<GdkRectangle> get_monitor_rectangle(GdkMonitor* monitor = n
  */
 class Window : public sg::Window {
 public:
-	using sg::Window::Window; // 基底クラスのコンストラクタを継承
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	Window(bool use_size = false) : sg::Window() {
+		set_use_size(use_size);
+	}
+
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] glade Gladeオブジェクトの参照。
+	 * @param[in] id ウィンドウのID文字列。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	Window(Glade& glade, const char* id, bool use_size = false) : sg::Window(glade, id) {
+		set_use_size(use_size);
+	}
+
+	// コピー禁止。
+	Window(const Window&) = delete;
+	Window& operator=(const Window&) = delete;
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	Window(Window&&) = delete;
+	Window& operator=(Window&&) = delete;
 
 	// メソッド
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
-	DEFINE_METHOD_WITH_ARGS(window, move, void, (gint x, gint y), x, y)
 	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_CSS_CLASS_ACCESSORS()
 
 	void set_gravity(layout::Gravity gravity) {
-		this->gravity = gravity;
-		if (!this->init_gdk_gravity) {
-			gtk_window_set_gravity(*this, GdkGravity::GDK_GRAVITY_NORTH_WEST);
-			this->init_gdk_gravity = true;
+		if (use_size) {
+			this->gravity = gravity;
+			if (!init_gdk_gravity) {
+				gtk_window_set_gravity(*this, GdkGravity::GDK_GRAVITY_NORTH_WEST);
+				init_gdk_gravity = true;
+			}
+		} else {
+			gtk_window_set_gravity(*this, to_gdk_gravity(gravity));
 		}
 	}
 
-	layout::Gravity get_gravity() const {
-		return this->gravity;
+	const layout::Gravity& get_gravity() const {
+		return gravity;
+	}
+
+	const std::optional<layout::Size>& get_size() const {
+		return size;
 	}
 
 	/**
 	 * @brief ウィンドウを指定した位置に移動します。
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
-	void move(const layout::Position& pos) {
-		this->move(pos.x, pos.y);
+	void move(layout::Position pos) {
+		if (size.has_value()) {
+			pos = layout::calculate_top_left(pos, size.value(), gravity);
+		}
+		_move(pos.x, pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを指定した位置に移動します。
+	 * @param[in] pos 移動先の位置を表す Position 構造体。
+	 */
+	void move(gint x, gint y) {
+		move(layout::Position(x, y));
 	}
 
 	/**
@@ -283,8 +445,8 @@ public:
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
 	void move_by(const layout::Position& pos) {
-		layout::Position current_pos = this->get_position();
-		this->move(current_pos.x + pos.x, current_pos.y + pos.y);
+		layout::Position current_pos = get_position();
+		_move(current_pos.x + pos.x, current_pos.y + pos.y);
 	}
 
 	/**
@@ -293,8 +455,8 @@ public:
 	 * @param[in] y 移動量のY成分。
 	 */
 	void move_by(gint x, gint y) {
-		layout::Position current_pos = this->get_position();
-		this->move(current_pos.x + x, current_pos.y + y);
+		layout::Position current_pos = get_position();
+		_move(current_pos.x + x, current_pos.y + y);
 	}
 
 	/**
@@ -303,7 +465,7 @@ public:
 	 */
 	layout::Position get_position() {
 		layout::Position pos;
-		this->get_position(&pos.x, &pos.y);
+		get_position(&pos.x, &pos.y);
 		return pos;
 	}
 
@@ -318,9 +480,44 @@ public:
 	DEFINE_SIGNAL_HANDLER("map", map, Window, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
 
+public:
+	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
+		on_size_allocate_handler = handler;
+		if (on_size_allocate_handler != nullptr) {
+			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+		}
+	}
+
 private:
-	bool init_gdk_gravity = false;
-	layout::Gravity gravity = layout::Gravity::NorthWest;
+	// メンバ変数
+	bool use_size{false};
+	bool init_gdk_gravity{false};
+	std::optional<layout::Size> size{};
+	layout::Gravity gravity{layout::Gravity::NorthWest};
+
+	// メソッド
+	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
+	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, move, _move, void, (gint x, gint y), x, y)
+
+	std::function<void(GtkAllocation*)> on_size_allocate_handler = nullptr;
+
+	void set_use_size(bool use_size) {
+		this->use_size = use_size;
+		if (use_size) {
+			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+		}
+	}
+
+	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, Window* thiz) {
+		if (thiz->use_size) {
+			layout::Size new_size;
+			thiz->_get_size(&new_size.width, &new_size.height);
+			thiz->size = new_size;
+		}
+		if (thiz->on_size_allocate_handler != nullptr) {
+			thiz->on_size_allocate_handler(allocation);
+		}
+	}
 };
 
 /**
@@ -330,24 +527,80 @@ private:
  */
 class Dialog : public sg::Dialog {
 public:
-	// 基底クラスのコンストラクタを継承
-	using sg::Dialog::Dialog;
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	Dialog(bool use_size = false) : sg::Dialog() {
+		set_use_size(use_size);
+	}
+
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] glade Gladeオブジェクトの参照。
+	 * @param[in] id ウィンドウのID文字列。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	Dialog(Glade& glade, const char* id, bool use_size = false) : sg::Dialog(glade, id) {
+		set_use_size(use_size);
+	}
+
+	// コピー禁止。
+	Dialog(const Dialog&) = delete;
+	Dialog& operator=(const Dialog&) = delete;
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	Dialog(Dialog&&) = delete;
+	Dialog& operator=(Dialog&&) = delete;
 
 	// メソッド
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
-	DEFINE_METHOD_WITH_ARGS(window, move, void, (gint x, gint y), x, y)
 	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 	DEFINE_CSS_CLASS_ACCESSORS()
+
+	void set_gravity(layout::Gravity gravity) {
+		if (use_size) {
+			this->gravity = gravity;
+			if (!init_gdk_gravity) {
+				gtk_window_set_gravity(*this, GdkGravity::GDK_GRAVITY_NORTH_WEST);
+				init_gdk_gravity = true;
+			}
+		} else {
+			gtk_window_set_gravity(*this, to_gdk_gravity(gravity));
+		}
+	}
+
+	const layout::Gravity& get_gravity() const {
+		return gravity;
+	}
+
+	const std::optional<layout::Size>& get_size() const {
+		return size;
+	}
 
 	/**
 	 * @brief ウィンドウを指定した位置に移動します。
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
-	void move(const layout::Position& pos) {
-		this->move(pos.x, pos.y);
+	void move(layout::Position pos) {
+		if (size.has_value()) {
+			pos = layout::calculate_top_left(pos, size.value(), gravity);
+		}
+		_move(pos.x, pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを指定した位置に移動します。
+	 * @param[in] pos 移動先の位置を表す Position 構造体。
+	 */
+	void move(gint x, gint y) {
+		move(layout::Position(x, y));
 	}
 
 	/**
@@ -355,8 +608,8 @@ public:
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
 	void move_by(const layout::Position& pos) {
-		layout::Position current_pos = this->get_position();
-		this->move(current_pos.x + pos.x, current_pos.y + pos.y);
+		layout::Position current_pos = get_position();
+		_move(current_pos.x + pos.x, current_pos.y + pos.y);
 	}
 
 	/**
@@ -365,8 +618,8 @@ public:
 	 * @param[in] y 移動量のY成分。
 	 */
 	void move_by(gint x, gint y) {
-		layout::Position current_pos = this->get_position();
-		this->move(current_pos.x + x, current_pos.y + y);
+		layout::Position current_pos = get_position();
+		_move(current_pos.x + x, current_pos.y + y);
 	}
 
 	/**
@@ -375,7 +628,7 @@ public:
 	 */
 	layout::Position get_position() {
 		layout::Position pos;
-		this->get_position(&pos.x, &pos.y);
+		get_position(&pos.x, &pos.y);
 		return pos;
 	}
 
@@ -383,14 +636,52 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_PROPERTY_ACCESSORS(Window, gravity, GdkGravity)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
 
 	// シグナル
 	DEFINE_SIGNAL_HANDLER("map", map, Dialog, GtkWidget* self)
 	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkDialog* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
+	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
+
+public:
+	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
+		on_size_allocate_handler = handler;
+		if (on_size_allocate_handler != nullptr) {
+			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+		}
+	}
+
+private:
+	// メンバ変数
+	bool use_size{false};
+	bool init_gdk_gravity{false};
+	std::optional<layout::Size> size{};
+	layout::Gravity gravity{layout::Gravity::NorthWest};
+
+	// メソッド
+	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
+	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, move, _move, void, (gint x, gint y), x, y)
+
+	std::function<void(GtkAllocation*)> on_size_allocate_handler = nullptr;
+
+	void set_use_size(bool use_size) {
+		this->use_size = use_size;
+		if (use_size) {
+			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+		}
+	}
+
+	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, Dialog* thiz) {
+		if (thiz->use_size) {
+			layout::Size new_size;
+			thiz->_get_size(&new_size.width, &new_size.height);
+			thiz->size = new_size;
+		}
+		if (thiz->on_size_allocate_handler != nullptr) {
+			thiz->on_size_allocate_handler(allocation);
+		}
+	}
 };
 
 /**
@@ -404,15 +695,13 @@ public:
 	Box(Glade& glade, const char* id) : Container(glade, id) {}
 	virtual ~Box() = default;
 
-	// コピーは禁止
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
 	Box(const Box&) = delete;
 	Box& operator=(const Box&) = delete;
-	// ムーブは許可
-	Box(Box&& other) noexcept : Container(std::move(other)) {}
-	Box& operator=(Box&& other) noexcept {
-		Container::operator=(std::move(other));
-		return *this;
-	}
+	Box(Box&&) = delete;
+	Box& operator=(Box&&) = delete;
 
 	// GtkBox*へのキャスト演算子
 	operator GtkBox*() const { return GTK_BOX(this->object); }
@@ -441,15 +730,13 @@ public:
 	Stack(Glade& glade, const char* id) : Container(glade, id) {}
 	virtual ~Stack() = default;
 
-	// コピーは禁止
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
 	Stack(const Stack&) = delete;
 	Stack& operator=(const Stack&) = delete;
-	// ムーブは許可
-	Stack(Stack&& other) noexcept : Container(std::move(other)) {}
-	Stack& operator=(Stack&& other) noexcept {
-		Container::operator=(std::move(other));
-		return *this;
-	}
+	Stack(Stack&&) = delete;
+	Stack& operator=(Stack&&) = delete;
 
 	// GtkStack*へのキャスト演算子
 	operator GtkStack*() const { return GTK_STACK(this->object); }
@@ -475,6 +762,11 @@ class Button : public sg::Button {
 public:
 	using sg::Button::Button; // 基底クラスのコンストラクタを継承
 
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	Button(Button&&) = delete;
+	Button& operator=(Button&&) = delete;
+
 	// メソッド
 	DEFINE_CSS_CLASS_ACCESSORS()
 
@@ -496,6 +788,11 @@ class CheckButton : public sg::CheckButton {
 public:
 	using sg::CheckButton::CheckButton; // 基底クラスのコンストラクタを継承
 
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	CheckButton(CheckButton&&) = delete;
+	CheckButton& operator=(CheckButton&&) = delete;
+
 	// メソッド
 	DEFINE_CSS_CLASS_ACCESSORS()
 
@@ -516,6 +813,11 @@ public:
 class RadioButton : public sg::RadioButton {
 public:
 	using sg::RadioButton::RadioButton; // 基底クラスのコンストラクタを継承
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	RadioButton(RadioButton&&) = delete;
+	RadioButton& operator=(RadioButton&&) = delete;
 
 	// メソッド
 	DEFINE_CSS_CLASS_ACCESSORS()
@@ -539,6 +841,11 @@ class Entry : public sg::Entry {
 public:
 	// 基底クラスのコンストラクタを継承
 	using sg::Entry::Entry;
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	Entry(Entry&&) = delete;
+	Entry& operator=(Entry&&) = delete;
 
 	// メソッド
 	DEFINE_METHOD(widget, grab_focus, void)
@@ -571,15 +878,13 @@ public:
 	ToggleButton(Glade& glade, const char* id) : Button(glade, id) {}
 	virtual ~ToggleButton() = default;
 
-	// コピーは禁止
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
 	ToggleButton(const ToggleButton&) = delete;
 	ToggleButton& operator=(const ToggleButton&) = delete;
-	// ムーブは許可
-	ToggleButton(ToggleButton&& other) noexcept : Button(std::move(other)) {}
-	ToggleButton& operator=(ToggleButton&& other) noexcept {
-		Button::operator=(std::move(other));
-		return *this;
-	}
+	ToggleButton(ToggleButton&&) = delete;
+	ToggleButton& operator=(ToggleButton&&) = delete;
 
 	// GtkToggleButton*へのキャスト演算子
 	operator GtkToggleButton*() const { return GTK_TOGGLE_BUTTON(this->object); }
@@ -602,6 +907,15 @@ public:
 class Switch : public sg::Widget {
 public:
 	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
+
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	Switch(const Switch&) = delete;
+	Switch& operator=(const Switch&) = delete;
+	Switch(Switch&&) = delete;
+	Switch& operator=(Switch&&) = delete;
+
 	operator GtkSwitch*() const { return GTK_SWITCH(this->object); }
 
 	// メソッド
@@ -625,6 +939,15 @@ public:
 class ComboBox : public sg::Widget {
 public:
 	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
+
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	ComboBox(const ComboBox&) = delete;
+	ComboBox& operator=(const ComboBox&) = delete;
+	ComboBox(ComboBox&&) = delete;
+	ComboBox& operator=(ComboBox&&) = delete;
+
 	operator GtkComboBox*() const { return GTK_COMBO_BOX(this->object); }
 
 	// メソッド
@@ -651,6 +974,11 @@ class Label : public sg::Label {
 public:
 	using sg::Label::Label; // 基底クラスのコンストラクタを継承
 
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	Label(Label&&) = delete;
+	Label& operator=(Label&&) = delete;
+
 	// メソッド
 	DEFINE_CSS_CLASS_ACCESSORS()
 
@@ -670,6 +998,11 @@ public:
 class ListStore : public sg::ListStore {
 public:
 	using sg::ListStore::ListStore; // 基底クラスのコンストラクタを継承
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	ListStore(ListStore&&) = delete;
+	ListStore& operator=(ListStore&&) = delete;
 
 	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
 
@@ -769,6 +1102,11 @@ class TreeSelection : public sg::TreeSelection {
 public:
 	using sg::TreeSelection::TreeSelection; // 基底クラスのコンストラクタを継承
 
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	TreeSelection(TreeSelection&&) = delete;
+	TreeSelection& operator=(TreeSelection&&) = delete;
+
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_selection, get_selected, gboolean, (GtkTreeModel **model, GtkTreeIter *iter), model, iter)
 	DEFINE_METHOD(tree_selection, unselect_all, void)
@@ -786,6 +1124,11 @@ public:
 class TreeView : public sg::TreeView {
 public:
 	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	TreeView(TreeView&&) = delete;
+	TreeView& operator=(TreeView&&) = delete;
 
 	// メソッド
 //	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
@@ -821,16 +1164,13 @@ public:
 	TreeViewColumn(GtkTreeViewColumn* column) = delete;
 	virtual ~TreeViewColumn() = default;
 
-	// コピーは禁止
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
 	TreeViewColumn(const TreeViewColumn&) = delete;
 	TreeViewColumn& operator=(const TreeViewColumn&) = delete;
-
-	// ムーブは許可
-	TreeViewColumn(TreeViewColumn&& other) noexcept : sg::Object(std::move(other)) {}
-	TreeViewColumn& operator=(TreeViewColumn&& other) noexcept {
-		sg::Object::operator=(std::move(other));
-		return *this;
-	}
+	TreeViewColumn(TreeViewColumn&&) = delete;
+	TreeViewColumn& operator=(TreeViewColumn&&) = delete;
 
 	// GtkTreeViewColumn*へのキャスト演算子
 	operator GtkTreeViewColumn*() const {
