@@ -291,7 +291,7 @@ struct RecOperationTable {
 	/// @brief 個別工具ID (工具識別用連番)
 	std::optional<std::int64_t> unique_tool_id{};
 	/// @brief 動画パス (動画の保存先リンク)
-	std::optional<std::string> video_path{};
+	std::string video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
 	std::optional<std::int32_t> tool_num{};
 	/// @brief ラインID (ライン識別用連番)

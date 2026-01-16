@@ -500,7 +500,7 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		std::vector<std::chrono::system_clock::time_point> proc_times;
 		std::vector<std::int32_t> storage_area_ids;
 		std::vector<std::optional<std::int64_t>> unique_tool_ids;
-		std::vector<std::optional<std::string>> video_paths;
+		std::vector<std::string> video_paths;
 		std::vector<std::optional<std::int32_t>> tool_nums;
 		std::vector<std::optional<std::int32_t>> line_ids;
 		std::vector<std::optional<std::string>> track_result_strs;

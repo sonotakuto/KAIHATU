@@ -3517,7 +3517,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 						.proc_time			= sg::now(),
 						.storage_area_id	= unique_info.storage_area_info.value().id,
 						.unique_tool_id		= unique_info.id,
-						.video_path			= tracker::g_recorder_client->get_current_filename(),
+						.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
 						.tool_num			= -((m_is_insert_operation)
 							? (m_insertCountEntry_current_count)
 							: (1)
@@ -3853,7 +3853,7 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 				.proc_time			= sg::now(),
 				.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
 				.unique_tool_id		= unique_info.id,
-				.video_path			= tracker::g_recorder_client->get_current_filename(),
+				.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
 				.tool_num			= ((unique_info.case_pack_num == 0)
 					? (1)
 					: (unique_info.case_pack_num)

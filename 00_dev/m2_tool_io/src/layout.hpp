@@ -3,6 +3,10 @@
 
 namespace layout {
 
+// ==========================================
+// 基本型定義
+// ==========================================
+
 /**
  * @struct Position
  * @brief 2次元座標を表す構造体。
@@ -29,7 +33,23 @@ struct Position {
 		return std::make_pair(x, y);
 	}
 
-	// --- 加減算オペレータの追加 ---
+	// --- 比較オペレータの定義 ---
+
+	/**
+	 * @brief 等価比較演算子 (==)
+	 */
+	friend constexpr bool operator==(const Position& lhs, const Position& rhs) {
+		return lhs.x == rhs.x && lhs.y == rhs.y;
+	}
+
+	/**
+	 * @brief 非等価比較演算子 (!=)
+	 */
+	friend constexpr bool operator!=(const Position& lhs, const Position& rhs) {
+		return !(lhs == rhs);
+	}
+
+	// --- 加減算オペレータの定義 ---
 
 	/**
 	 * @brief += オペレータ
@@ -101,7 +121,23 @@ struct Size {
 		return std::make_pair(width, height);
 	}
 
-	// --- 加減算オペレータの追加 ---
+	// --- 比較オペレータの定義 ---
+
+	/**
+	 * @brief 等価比較演算子 (==)
+	 */
+	friend constexpr bool operator==(const Size& lhs, const Size& rhs) {
+		return lhs.width == rhs.width && lhs.height == rhs.height;
+	}
+
+	/**
+	 * @brief 非等価比較演算子 (!=)
+	 */
+	friend constexpr bool operator!=(const Size& lhs, const Size& rhs) {
+		return !(lhs == rhs);
+	}
+
+	// --- 加減算オペレータの定義 ---
 
 	/**
 	 * @brief += オペレータ
@@ -169,22 +205,29 @@ enum class Gravity : int {
 	BottomRight	= 10,	SouthEast	= 10	// 右下
 };
 
+// ==========================================
+// 応用型定義
+// ==========================================
+
 /**
- * @class Rectangle
- * @brief 四角形の領域情報を保持し、各種基準点を計算するクラス。
+ * @class BasicRectangle
+ * @brief 任意の Position 型と Size 型を使用できる汎用四角形クラス。
+ * @tparam PosType 座標を表す型 (例: layout::Position, sgex::Position)
+ * @tparam SizeType サイズを表す型 (例: layout::Size, sgex::Size)
  */
-struct Rectangle {
-	Position pos = Position{0, 0};	///< 領域の左上の座標 (Global)
-	Size size = Size{0, 0};			///< 領域のサイズ (幅, 高さ)
+template <typename PosType = Position, typename SizeType = Size>
+struct BasicRectangle {
+	PosType pos{};		///< 領域の左上の座標 (Global)
+	SizeType size{};	///< 領域のサイズ (幅, 高さ)
 
 	// デフォルトコンストラクタ
-	constexpr Rectangle() = default;
+	constexpr BasicRectangle() = default;
 
 	/**
 	 * @brief コンストラクタ。
 	 * @param[in] pos 四角形の左上座標。
 	 */
-	constexpr Rectangle(const Position& pos) noexcept :
+	constexpr BasicRectangle(const PosType& pos) noexcept :
 		pos(pos)
 	{}
 
@@ -192,7 +235,7 @@ struct Rectangle {
 	 * @brief コンストラクタ。
 	 * @param[in] size 四角形のサイズ (幅, 高さ)。
 	 */
-	constexpr Rectangle(const Size& size) noexcept :
+	constexpr BasicRectangle(const Size& size) noexcept :
 		size(size)
 	{}
 
@@ -201,7 +244,7 @@ struct Rectangle {
 	 * @param[in] pos 四角形の左上座標。
 	 * @param[in] size 四角形のサイズ (幅, 高さ)。
 	 */
-	constexpr Rectangle(const Position& pos, const Size& size) noexcept :
+	constexpr BasicRectangle(const PosType& pos, const Size& size) noexcept :
 		pos(pos),
 		size(size)
 	{}
@@ -213,27 +256,70 @@ struct Rectangle {
 	 * @param[in] w 四角形の幅 (ピクセル単位)。
 	 * @param[in] h 四角形の高さ (ピクセル単位)。
 	 */
-	constexpr Rectangle(int pos_x, int pos_y, int w, int h) noexcept :
+	constexpr BasicRectangle(int pos_x, int pos_y, int w, int h) noexcept :
 		pos(pos_x, pos_y),
 		size(w, h)
 	{}
+
+	/**
+	 * @brief 異なる型の BasicRectangle からの変換コンストラクタ。
+	 * @tparam OtherP 変換元の座標型。
+	 * @tparam OtherS 変換元のサイズ型。
+	 * @param[in] other 変換元の BasicRectangle オブジェクト。
+	 */
+	template <typename OtherP, typename OtherS>
+	constexpr BasicRectangle(const BasicRectangle<OtherP, OtherS>& other) noexcept :
+		pos(static_cast<PosType>(other.pos)),	// PosTypeへの暗黙/明示変換を利用
+		size(static_cast<SizeType>(other.size))	// SizeTypeへの暗黙/明示変換を利用
+	{}
+
+	/**
+	 * @brief 異なる型の BasicRectangle からの代入演算子。
+	 * @tparam OtherP 変換元の座標型。
+	 * @tparam OtherS 変換元のサイズ型。
+	 * @param[in] other 変換元の BasicRectangle オブジェクト。
+	 * @return 自身の参照。
+	 */
+	template <typename OtherP, typename OtherS>
+	constexpr BasicRectangle& operator=(const BasicRectangle<OtherP, OtherS>& other) {
+		pos = static_cast<PosType>(other.pos);
+		size = static_cast<SizeType>(other.size);
+		return *this;
+	}
+
+	// --- 比較オペレータの定義 ---
+
+	/**
+	 * @brief 等価比較演算子 (==)
+	 * @details pos と size の両方が等しい場合に true を返します。
+	 */
+	friend constexpr bool operator==(const BasicRectangle& lhs, const BasicRectangle& rhs) {
+		return lhs.pos == rhs.pos && lhs.size == rhs.size;
+	}
+
+	/**
+	 * @brief 非等価比較演算子 (!=)
+	 */
+	friend constexpr bool operator!=(const BasicRectangle& lhs, const BasicRectangle& rhs) {
+		return !(lhs == rhs);
+	}
 
 	// --- 座標計算ロジック (内部データを使用) ---
 
 	/**
 	 * @brief 左上隅の位置を取得します。
-	 * @return 四角形の左上隅の位置を表す Position 構造体。
+	 * @return 四角形の左上隅の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_top_left() const noexcept {
+	[[nodiscard]] constexpr PosType get_top_left() const noexcept {
 		return pos;
 	}
 
 	/**
 	 * @brief 上中央の位置を取得します。
-	 * @return 四角形の上中央の位置を表す Position 構造体。
+	 * @return 四角形の上中央の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_top_center() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_top_center() const noexcept {
+		return PosType(
 			pos.x + (size.width - 1) / 2,
 			pos.y
 		);
@@ -241,10 +327,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 右上隅の位置を取得します。
-	 * @return 四角形の右上隅の位置を表す Position 構造体。
+	 * @return 四角形の右上隅の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_top_right() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_top_right() const noexcept {
+		return PosType(
 			pos.x + size.width - 1,
 			pos.y
 		);
@@ -252,10 +338,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 左中央の位置を取得します。
-	 * @return 四角形の左中央の位置を表す Position 構造体。
+	 * @return 四角形の左中央の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_center_left() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_center_left() const noexcept {
+		return PosType(
 			pos.x,
 			pos.y + (size.height - 1) / 2
 		);
@@ -263,10 +349,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 中央の位置を取得します。
-	 * @return 四角形の中央の位置を表す Position 構造体。
+	 * @return 四角形の中央の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_center() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_center() const noexcept {
+		return PosType(
 			pos.x + (size.width - 1) / 2,
 			pos.y + (size.height - 1) / 2
 		);
@@ -274,10 +360,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 右中央の位置を取得します。
-	 * @return 四角形の右中央の位置を表す Position 構造体。
+	 * @return 四角形の右中央の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_center_right() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_center_right() const noexcept {
+		return PosType(
 			pos.x + size.width - 1,
 			pos.y + (size.height - 1) / 2
 		);
@@ -285,10 +371,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 左下隅の位置を取得します。
-	 * @return 四角形の左下隅の位置を表す Position 構造体。
+	 * @return 四角形の左下隅の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_bottom_left() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_bottom_left() const noexcept {
+		return PosType(
 			pos.x,
 			pos.y + size.height - 1
 		);
@@ -296,10 +382,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 下中央の位置を取得します。
-	 * @return 四角形の下中央の位置を表す Position 構造体。
+	 * @return 四角形の下中央の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_bottom_center() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_bottom_center() const noexcept {
+		return PosType(
 			pos.x + (size.width - 1) / 2,
 			pos.y + size.height - 1
 		);
@@ -307,10 +393,10 @@ struct Rectangle {
 
 	/**
 	 * @brief 右下隅の位置を取得します。
-	 * @return 四角形の右下隅の位置を表す Position 構造体。
+	 * @return 四角形の右下隅の位置を表す PosType 構造体。
 	 */
-	[[nodiscard]] constexpr Position get_bottom_right() const noexcept {
-		return Position(
+	[[nodiscard]] constexpr PosType get_bottom_right() const noexcept {
+		return PosType(
 			pos.x + size.width - 1,
 			pos.y + size.height - 1
 		);
@@ -318,13 +404,26 @@ struct Rectangle {
 };
 
 /**
+ * @class Rectangle
+ * @brief 四角形の領域情報を保持し、各種基準点を計算するクラス。
+ */
+using Rectangle = BasicRectangle<Position, Size>;
+
+// ==========================================
+// ヘルパー関数
+// ==========================================
+
+/**
  * @brief 任意のGravity座標を左上(TL)座標へ変換するヘルパー関数
+ * @tparam PosType 座標型 (Position互換)
+ * @tparam SizeType サイズ型 (Size互換)
  * @param[in] pos 基準位置の座標
  * @param[in] size サイズ情報
  * @param[in] grav 基準位置のGravity
  * @return 左上(TL)座標
  */
-[[nodiscard]] constexpr Position calculate_top_left(Position pos, const Size& size, Gravity grav) {
+template <typename PosType, typename SizeType>
+[[nodiscard]] constexpr PosType calculate_top_left(PosType pos, const SizeType& size, Gravity grav) {
 	int val = static_cast<int>(grav);
 
 	// --- X軸の補正 (Mask: 0x03) ---

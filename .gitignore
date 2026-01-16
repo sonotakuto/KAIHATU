@@ -1,3 +1,4 @@
+00_dev/m2_tool_io/**/bin/
 00_dev/m2_tool_io/**/objects/
 00_dev/m2_tool_io/**/*_exe
 00_dev/m2_tool_io/**/*_debug

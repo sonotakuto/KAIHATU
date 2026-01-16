@@ -12,8 +12,10 @@ PACKAGES = libcurl SimpleGtk
 # コンパイル時の共通オプション
 # -std=c++17	: C++17規格を使用
 # -Wall			: 主要な警告をすべて有効にする
+# OPFLAGS		: コマンドラインから任意のオプションを追加可能
+#	例: make OPFLAGS="-O3 -DTEST_MODE"
 # `pkg-config --cflags $(PACKAGES)` : 各パッケージに必要なコンパイルフラグを取得
-CXXFLAGS = -std=c++17 -Wall -MMD -MP `pkg-config --cflags $(PACKAGES)`
+CXXFLAGS = -std=c++17 -Wall -MMD -MP `pkg-config --cflags $(PACKAGES)` $(OPFLAGS)
 
 # リンク時のオプション
 # `pkg-config --libs $(PACKAGES)` : 各パッケージに必要なライブラリフラグを取得
@@ -46,87 +48,118 @@ SOURCES = db_client.cpp keyboard_utils.cpp odbc.cpp plc_communicator.cpp signal.
 HEADERS =
 
 # 中間生成物（オブジェクトファイル）を格納するディレクトリ名
+# 例: OBJECTS_DIR = objects
 OBJECTS_DIR = objects
+
+# 実行ファイルを格納するディレクトリ名
+# 例: BIN_DIR = bin
+BIN_DIR = bin
 
 # 生成する実行ファイル名（通常版）
 # 例: TARGET = my_app
 TARGET = tool_io_exe
 
-# 生成する実行ファイル名（デバッグ版）
-# 例: DEBUG_TARGET = my_app_debug
-DEBUG_TARGET = tool_io_debug
+# 生成するデバッグ版実行ファイル名（TARGETに連動）
+# 例: my_app -> my_app_debug
+DEBUG_TARGET = $(TARGET)_debug
 
 # ==============================================================================
 # ビルドルール（通常は編集不要）
 # ==============================================================================
 
+# 実行ファイルのパス (例: bin/my_app)
+TARGET_PATH = $(BIN_DIR)/$(TARGET)
+
+# デバッグ版実行ファイル名のパス (例: bin/my_app_debug)
+DEBUG_TARGET_PATH = $(BIN_DIR)/$(DEBUG_TARGET)
+
+# フラグ管理ファイル
+FLAGS_FILE = $(OBJECTS_DIR_INTERNAL)/.build_flags
+
+# オブジェクトファイルの格納場所をターゲットごとに分ける
+# 例: TARGET=my_app なら objects/my_app/ に保存される
+OBJECTS_DIR_INTERNAL = $(OBJECTS_DIR)/$(TARGET)
+
 # ソースファイル名からオブジェクトファイル名（.o）のリストを自動生成
-OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=.o))
+OBJECTS = $(addprefix $(OBJECTS_DIR_INTERNAL)/, $(SOURCES:.cpp=.o))
 
 # ソースファイル名からデバッグ用オブジェクトファイル名（_debug.o）のリストを自動生成
-DEBUG_OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=_debug.o))
+DEBUG_OBJECTS = $(addprefix $(OBJECTS_DIR_INTERNAL)/, $(SOURCES:.cpp=_debug.o))
 
 # 各オブジェクトファイルの依存関係ファイルのリスト
 DEPS = $(OBJECTS:.o=.d)
 DEBUG_DEPS = $(DEBUG_OBJECTS:.o=.d)
 
-
 # --- メインターゲット ---
 
-# 'make' または 'make all' で実行されるデフォルトのターゲット
+# 'make' または 'make all' で、実行されるデフォルトのターゲット
 # 通常版の実行ファイルをビルドする
-all: $(TARGET)
+all: $(TARGET_PATH)
 
 # 'make main' でもビルドできるようにするためのエイリアス
-main: $(TARGET)
+main: $(TARGET_PATH)
 
-# 'make rebuild' でクリーンしてから再ビルドする
+# 'make rebuild' で、クリーンしてから再ビルドする
 rebuild:
 	$(MAKE) clean
 	$(MAKE) all
 
-# 'make exec' でビルド後に実行する
-exec: $(TARGET)
-	./$(TARGET)
+# 'make exec' で、ビルド後に実行する
+exec: $(TARGET_PATH)
+	./$(TARGET_PATH)
+
+# 'make debug' で、デバッグ版をビルドする
+debug: $(DEBUG_TARGET_PATH)
+	@echo [F5]でデバッグを開始します。
+
+# 'make check' で、ソースコードの構文チェックを行う
+check: $(SOURCES)
+	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
+
+# 'make clean' で、現在のターゲットのファイルのみ削除
+clean:
+	rm -rf $(OBJECTS_DIR_INTERNAL) $(TARGET_PATH) $(DEBUG_TARGET_PATH)
+
+# 'make clean_all' で、全てのオブジェクトファイルと、bin内の全実行ファイルを削除
+clean_all:
+	rm -rf $(OBJECTS_DIR) $(BIN_DIR)
+
+# --- リンクルール ---
 
 # 通常版の実行ファイルをリンクして生成するルール
 # $@: ターゲットファイル名（$(TARGET)）
 # $^: すべての依存ファイル名（$(OBJECTS)）
-$(TARGET): $(OBJECTS)
+$(TARGET_PATH): $(OBJECTS)
+	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 # デバッグ版の実行ファイルをリンクして生成するルール
-$(DEBUG_TARGET): $(DEBUG_OBJECTS)
+$(DEBUG_TARGET_PATH): $(DEBUG_OBJECTS)
+	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o $@ $^ $(LDFLAGS)
+
+# --- フラグ変更検知 ---
+
+$(FLAGS_FILE): FORCE
+	@mkdir -p $(OBJECTS_DIR_INTERNAL)
+	@echo "$(CXXFLAGS)" | cmp -s - $@ || echo "$(CXXFLAGS)" > $@
+
+FORCE:
 
 # --- オブジェクトファイル生成ルール ---
 
 # 通常版のオブジェクトファイル（.o）を生成するルール
 # $<: 最初の依存ファイル名（.cppファイル）
 # オブジェクトディレクトリが無い場合は作成する
-$(OBJECTS_DIR)/%.o: %.cpp $(HEADERS) $(MAKEFILE_LIST)
-	@mkdir -p $(OBJECTS_DIR)
+$(OBJECTS_DIR_INTERNAL)/%.o: %.cpp $(HEADERS) $(MAKEFILE_LIST) $(FLAGS_FILE)
+	@mkdir -p $(OBJECTS_DIR_INTERNAL)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # デバッグ版のオブジェクトファイル（_debug.o）を生成するルール
 # オブジェクトディレクトリが無い場合は作成する
-$(OBJECTS_DIR)/%_debug.o: %.cpp $(HEADERS) $(MAKEFILE_LIST)
-	@mkdir -p $(OBJECTS_DIR)
+$(OBJECTS_DIR_INTERNAL)/%_debug.o: %.cpp $(HEADERS) $(MAKEFILE_LIST) $(FLAGS_FILE)
+	@mkdir -p $(OBJECTS_DIR_INTERNAL)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -c $< -o $@
-
-# --- その他のコマンド ---
-
-# 'make debug' でデバッグ版をビルドする
-debug: $(DEBUG_TARGET)
-	@echo [F5]でデバッグを開始します。
-
-# 'make check' でソースコードの構文チェックを行う
-check: $(SOURCES)
-	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
-
-# 'make clean' で生成物を削除する
-clean:
-	rm -rf $(OBJECTS_DIR) $(TARGET) $(DEBUG_TARGET)
 
 # 生成された依存関係ファイルを読み込む
 # （ファイルが存在しなくてもエラーにしないために -include を使う）

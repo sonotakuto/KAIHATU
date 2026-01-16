@@ -4,6 +4,7 @@
  * @details ToggleButton, Stack, Boxの3クラスを提供します。
  */
 #pragma once
+#include <algorithm>
 #include <optional>
 #include <SimpleGtk>
 #include "./utility.hpp"
@@ -182,7 +183,7 @@ namespace sgex {
  * @param[in] gravity layout::Gravity 列挙型の値。
  * @return 対応する GdkGravity 列挙型の値。
  */
-inline GdkGravity to_gdk_gravity(layout::Gravity gravity) {
+constexpr GdkGravity to_gdk_gravity(layout::Gravity gravity) {
 	switch (gravity) {
 		case layout::Gravity::NorthWest:
 			return GDK_GRAVITY_NORTH_WEST;
@@ -212,7 +213,7 @@ inline GdkGravity to_gdk_gravity(layout::Gravity gravity) {
  * @param[in] gravity GdkGravity 列挙型の値。
  * @return 対応する layout::Gravity 列挙型の値。
  */
-inline layout::Gravity to_layout_gravity(GdkGravity gravity) {
+constexpr layout::Gravity to_layout_gravity(GdkGravity gravity) {
 	switch (gravity) {
 		case GDK_GRAVITY_NORTH_WEST:
 			return layout::Gravity::NorthWest;
@@ -237,28 +238,113 @@ inline layout::Gravity to_layout_gravity(GdkGravity gravity) {
 	}
 }
 
+struct Position : public layout::Position {
+	using layout::Position::Position;	// 基底クラスのコンストラクタを継承
+
+	/**
+	 * @brief layout::Position から sgex::Position への変換コンストラクタ。
+	 * @param[in] pos layout::Position 構造体。
+	 */
+	constexpr Position(const layout::Position& pos) :
+		layout::Position(pos)
+	{}
+
+	/**
+	 * @brief GdkPoint から Position への変換コンストラクタ。
+	 * @param[in] point GdkPoint 構造体。
+	 */
+	constexpr Position(const GdkPoint& point) noexcept :
+		layout::Position(point.x, point.y)
+	{}
+
+	/**
+	 * @brief GdkPoint への変換演算子。
+	 * @return GdkPoint 構造体。
+	 */
+	constexpr operator GdkPoint() const noexcept {
+		return GdkPoint{x, y};
+	}
+};
+
+/**
+ * @class Size
+ * @brief layout::Size を拡張し、GtkRequisition との相互変換を可能にしたクラス。
+ */
+struct Size : public layout::Size {
+	using layout::Size::Size;	// 基底クラスのコンストラクタを継承
+
+	/**
+	 * @brief layout::Size から sgex::Size への変換コンストラクタ。
+	 * @param[in] size layout::Size 構造体。
+	 */
+	constexpr Size(const layout::Size& size) noexcept
+		: layout::Size(size)
+	{}
+
+	/**
+	 * @brief GtkRequisition から Size への変換コンストラクタ。
+	 * @param[in] req GtkRequisition 構造体。
+	 */
+	constexpr Size(const GtkRequisition& req) noexcept
+		: layout::Size(req.width, req.height)
+	{}
+
+	/**
+	 * @brief GtkRequisition への変換演算子。
+	 * @return GtkRequisition 構造体。
+	 */
+	constexpr operator GtkRequisition() const {
+		return GtkRequisition{width, height};
+	}
+};
+
 /**
  * @class Rectangle
- * @brief layout::Rectangle を拡張し、GdkRectangle との相互変換を可能にしたクラス。
+ * @brief layout::BasicRectangle を拡張し、GdkRectangle との相互変換を可能にしたクラス。
  */
-struct Rectangle : public layout::Rectangle {
-	using layout::Rectangle::Rectangle; // 基底クラスのコンストラクタを継承
+struct Rectangle : public layout::BasicRectangle<sgex::Position, sgex::Size> {
+	using layout::BasicRectangle<sgex::Position, sgex::Size>::BasicRectangle;	// 基底クラスのコンストラクタを継承
 
-	constexpr Rectangle(const GdkRectangle& r) noexcept
-		: layout::Rectangle(layout::Position(r.x, r.y), layout::Size(r.width, r.height))
+	/**
+	 * @brief GdkRectangle から Rectangle への変換コンストラクタ。
+	 * @param[in] req GdkRectangle 構造体。
+	 */
+	constexpr Rectangle(const GdkRectangle& rec) noexcept :
+		layout::BasicRectangle<sgex::Position, sgex::Size>(rec.x, rec.y, rec.width, rec.height)
 	{}
 
 	/**
 	 * @brief GdkRectangle への変換演算子。
 	 * @return GdkRectangle 構造体。
 	 */
-	operator GdkRectangle() const {
-		return GdkRectangle{
-			pos.x,
-			pos.y,
-			size.width,
-			size.height
-		};
+	constexpr operator GdkRectangle() const {
+		return GdkRectangle{ pos.x, pos.y, size.width, size.height };
+	}
+};
+
+/**
+ * @struct Size
+ * @brief 2次元サイズを表す構造体。
+ */
+struct PreferredSize {
+	Size minimum_size{};
+	Size natural_size{};
+
+	constexpr PreferredSize() = default;
+	constexpr PreferredSize(Size _minimum_size, Size _natural_size) : minimum_size(_minimum_size), natural_size(_natural_size) {}
+
+	/**
+	 * @brief std::pair から Size への変換コンストラクタ。
+	 * @param[in] p std::pair<Size, Size> 型のサイズペア。
+	 */
+	explicit constexpr PreferredSize(const std::pair<Size, Size>& p) : minimum_size(p.first), natural_size(p.second) {}
+
+	/**
+	 * @brief PreferredSize から std::pair への変換演算子。
+	 * @return std::pair<Size, Size> 型のサイズペア。
+	 */
+	explicit constexpr operator std::pair<Size, Size>() const {
+		return std::make_pair(minimum_size, natural_size);
 	}
 };
 
@@ -296,11 +382,11 @@ inline gint get_screen_height(GdkScreen* screen = nullptr) {
  * nullptrの場合、デフォルトスクリーンが使用されます。
  * @return スクリーンのサイズを表す Size 構造体。
  */
-inline layout::Size get_screen_size(GdkScreen* screen = nullptr) {
+inline Size get_screen_size(GdkScreen* screen = nullptr) {
 	if (screen == nullptr) {
 		screen = gdk_screen_get_default();
 	}
-	return layout::Size{
+	return Size{
 		gdk_screen_get_width(screen),
 		gdk_screen_get_height(screen)
 	};
@@ -395,37 +481,83 @@ public:
 	Window& operator=(Window&&) = delete;
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(widget, get_preferred_size, void, (GtkRequisition *minimum_size, GtkRequisition *natural_size), minimum_size, natural_size)
+	DEFINE_METHOD_WITH_ARGS(widget, set_mapped, void, (gboolean mapped), mapped)
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
+	using sg::Window::set_default_size;
+	DEFINE_METHOD_WITH_ARGS(window, get_default_size, void, (gint* width, gint* height), width, height)
 	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_CSS_CLASS_ACCESSORS()
 
+	/**
+	 * @brief ウィンドウの推奨サイズを取得します。
+	 * @return ウィンドウの推奨サイズを表す PreferredSize 構造体。
+	 */
+	PreferredSize get_preferred_size() {
+		GtkRequisition minimum_size;
+		GtkRequisition natural_size;
+		get_preferred_size(&minimum_size, &natural_size);
+		return PreferredSize(Size(minimum_size), Size(natural_size));
+	}
+
+	/**
+	 * @brief ウィンドウの配置基準を設定します。
+	 * @param[in] gravity layout::Gravity 列挙型の値。
+	 */
 	void set_gravity(layout::Gravity gravity) {
 		if (use_size) {
 			this->gravity = gravity;
 			if (!init_gdk_gravity) {
-				gtk_window_set_gravity(*this, GdkGravity::GDK_GRAVITY_NORTH_WEST);
+				set_gdk_gravity(GdkGravity::GDK_GRAVITY_NORTH_WEST);
 				init_gdk_gravity = true;
 			}
 		} else {
-			gtk_window_set_gravity(*this, to_gdk_gravity(gravity));
+			set_gdk_gravity(to_gdk_gravity(gravity));
 		}
 	}
 
+	/**
+	 * @brief ウィンドウの配置基準を取得します。
+	 * @return ウィンドウの配置基準を表す layout::Gravity 列挙型の値。
+	 */
 	const layout::Gravity& get_gravity() const {
 		return gravity;
 	}
 
-	const std::optional<layout::Size>& get_size() const {
-		return size;
+	/**
+	 * @brief ウィンドウのデフォルトサイズを設定します。
+	 * @param[in] size ウィンドウのデフォルトサイズを表す Size 構造体。
+	 */
+	void set_default_size(Size size) {
+		set_default_size(size.width, size.height);
+	}
+
+	/**
+	 * @brief ウィンドウのデフォルトサイズを取得します。
+	 * @return ウィンドウのデフォルトサイズを表す Size 構造体。
+	 */
+	Size get_default_size() {
+		Size default_size;
+		get_default_size(&default_size.width, &default_size.height);
+		return default_size;
+	}
+
+	/**
+	 * @brief ウィンドウのサイズを取得します。
+	 * @return ウィンドウのサイズを表す Size 構造体と、実体サイズ(true)か推定サイズ(false)かどうかを示すbool値のペア。
+	 */
+	const std::pair<Size, bool>& get_size() {
+		bool is_estimated_size = !size.has_value();
+		return std::make_pair(((size.has_value()) ? (size.value()) : (get_estimated_size())), is_estimated_size);
 	}
 
 	/**
 	 * @brief ウィンドウを指定した位置に移動します。
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
-	void move(layout::Position pos) {
+	void move(Position pos) {
 		if (size.has_value()) {
 			pos = layout::calculate_top_left(pos, size.value(), gravity);
 		}
@@ -437,15 +569,15 @@ public:
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
 	void move(gint x, gint y) {
-		move(layout::Position(x, y));
+		move(Position(x, y));
 	}
 
 	/**
 	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
-	void move_by(const layout::Position& pos) {
-		layout::Position current_pos = get_position();
+	void move_by(const Position& pos) {
+		Position current_pos = get_position();
 		_move(current_pos.x + pos.x, current_pos.y + pos.y);
 	}
 
@@ -455,7 +587,7 @@ public:
 	 * @param[in] y 移動量のY成分。
 	 */
 	void move_by(gint x, gint y) {
-		layout::Position current_pos = get_position();
+		Position current_pos = get_position();
 		_move(current_pos.x + x, current_pos.y + y);
 	}
 
@@ -463,10 +595,23 @@ public:
 	 * @brief ウィンドウの現在の位置を取得します。
 	 * @return ウィンドウの位置を表す Position 構造体。
 	 */
-	layout::Position get_position() {
-		layout::Position pos;
+	Position get_position() {
+		Position pos;
 		get_position(&pos.x, &pos.y);
 		return pos;
+	}
+
+	/**
+	 * @brief ウィンドウの推定サイズを取得します。
+	 * @return ウィンドウの推定サイズを表す Size 構造体。
+	 * ウィンドウのデフォルトサイズと推奨サイズのうち大きい方が返されます。
+	 */
+	Size get_estimated_size() {
+		Size default_size;
+		Size preferred_size;
+		default_size = get_default_size();
+		preferred_size = get_preferred_size().natural_size;
+		return Size(std::max(default_size.width, preferred_size.width), std::max(default_size.height, preferred_size.height));
 	}
 
 	// プロパティ
@@ -481,6 +626,11 @@ public:
 	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
 
 public:
+	/**
+	 * @brief "size-allocate"シグナルのハンドラを設定します。
+	 * @param[in] handler サイズ割り当て時に呼び出されるコールバック関数。
+	 * コールバック関数は GtkAllocation* 型の引数を受け取ります。
+	 */
 	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
 		on_size_allocate_handler = handler;
 		if (on_size_allocate_handler != nullptr) {
@@ -492,15 +642,34 @@ private:
 	// メンバ変数
 	bool use_size{false};
 	bool init_gdk_gravity{false};
-	std::optional<layout::Size> size{};
+	std::optional<Size> size{};
 	layout::Gravity gravity{layout::Gravity::NorthWest};
 
 	// メソッド
 	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
-	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, move, _move, void, (gint x, gint y), x, y)
+	void _move(gint x, gint y) { sg::Window::move; }
+
+	/**
+	 * @brief ウィンドウの現在のサイズを取得します。
+	 * @return ウィンドウのサイズを表す Size 構造体
+	 */
+	Size _get_size() {
+		Size crnt_size;
+		_get_size(&crnt_size.width, &crnt_size.height);
+		return crnt_size;
+	}
+
+	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("gravity", gdk_gravity, GdkGravity)
+
+	// シグナル
 
 	std::function<void(GtkAllocation*)> on_size_allocate_handler = nullptr;
 
+	/**
+	 * @brief ウィンドウのサイズ追跡を有効または無効にします。
+	 * @param[in] use_size ウィンドウのサイズ追跡を有効にする場合はtrue、無効にする場合はfalse。
+	 */
 	void set_use_size(bool use_size) {
 		this->use_size = use_size;
 		if (use_size) {
@@ -508,11 +677,19 @@ private:
 		}
 	}
 
+	/**
+	 * @brief "size-allocate"シグナルの静的コールバック関数。
+	 * @param[in] self ウィジェットポインタ。
+	 * @param[in] allocation 割り当てられたサイズ情報へのポインタ。
+	 * @param[in] thiz Windowクラスのインスタンスへのポインタ。
+	 */
 	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, Window* thiz) {
 		if (thiz->use_size) {
-			layout::Size new_size;
-			thiz->_get_size(&new_size.width, &new_size.height);
-			thiz->size = new_size;
+			Size new_size;
+			new_size = thiz->_get_size();
+			if (new_size.width > 0 && new_size.height > 0) {
+				thiz->size = new_size;
+			}
 		}
 		if (thiz->on_size_allocate_handler != nullptr) {
 			thiz->on_size_allocate_handler(allocation);
@@ -557,40 +734,86 @@ public:
 	Dialog& operator=(Dialog&&) = delete;
 
 	// メソッド
+	DEFINE_METHOD_WITH_ARGS(widget, get_preferred_size, void, (GtkRequisition *minimum_size, GtkRequisition *natural_size), minimum_size, natural_size)
+	DEFINE_METHOD_WITH_ARGS(widget, set_mapped, void, (gboolean mapped), mapped)
 	DEFINE_METHOD(widget, get_mapped, gboolean)
 	DEFINE_METHOD(window, fullscreen, void)
 	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
+	using sg::Window::set_default_size;
+	DEFINE_METHOD_WITH_ARGS(window, get_default_size, void, (gint* width, gint* height), width, height)
 	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
 	DEFINE_CSS_CLASS_ACCESSORS()
 
+	/**
+	 * @brief ウィンドウの推奨サイズを取得します。
+	 * @return ウィンドウの推奨サイズを表す PreferredSize 構造体。
+	 */
+	PreferredSize get_preferred_size() {
+		GtkRequisition minimum_size;
+		GtkRequisition natural_size;
+		get_preferred_size(&minimum_size, &natural_size);
+		return PreferredSize(Size(minimum_size), Size(natural_size));
+	}
+
+	/**
+	 * @brief ウィンドウの配置基準を設定します。
+	 * @param[in] gravity layout::Gravity 列挙型の値。
+	 */
 	void set_gravity(layout::Gravity gravity) {
 		if (use_size) {
 			this->gravity = gravity;
 			if (!init_gdk_gravity) {
-				gtk_window_set_gravity(*this, GdkGravity::GDK_GRAVITY_NORTH_WEST);
+				set_gdk_gravity(GdkGravity::GDK_GRAVITY_NORTH_WEST);
 				init_gdk_gravity = true;
 			}
 		} else {
-			gtk_window_set_gravity(*this, to_gdk_gravity(gravity));
+			set_gdk_gravity(to_gdk_gravity(gravity));
 		}
 	}
 
+	/**
+	 * @brief ウィンドウの配置基準を取得します。
+	 * @return ウィンドウの配置基準を表す layout::Gravity 列挙型の値。
+	 */
 	const layout::Gravity& get_gravity() const {
 		return gravity;
 	}
 
-	const std::optional<layout::Size>& get_size() const {
-		return size;
+	/**
+	 * @brief ウィンドウのデフォルトサイズを設定します。
+	 * @param[in] size ウィンドウのデフォルトサイズを表す Size 構造体。
+	 */
+	void set_default_size(Size size) {
+		set_default_size(size.width, size.height);
+	}
+
+	/**
+	 * @brief ウィンドウのデフォルトサイズを取得します。
+	 * @return ウィンドウのデフォルトサイズを表す Size 構造体。
+	 */
+	Size get_default_size() {
+		Size default_size;
+		get_default_size(&default_size.width, &default_size.height);
+		return default_size;
+	}
+
+	/**
+	 * @brief ウィンドウのサイズを取得します。
+	 * @return ウィンドウのサイズを表す Size 構造体と、実体サイズ(true)か推定サイズ(false)かどうかを示すbool値のペア。
+	 */
+	const std::pair<Size, bool>& get_size() {
+		bool is_estimated_size = !size.has_value();
+		return std::make_pair(((size.has_value()) ? (size.value()) : (get_estimated_size())), is_estimated_size);
 	}
 
 	/**
 	 * @brief ウィンドウを指定した位置に移動します。
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
-	void move(layout::Position pos) {
+	void move(Position pos) {
 		if (size.has_value()) {
-			pos = layout::calculate_top_left(pos, size.value(), gravity);
+			pos = layout::calculate_top_left(pos, get_size(), gravity);
 		}
 		_move(pos.x, pos.y);
 	}
@@ -600,15 +823,15 @@ public:
 	 * @param[in] pos 移動先の位置を表す Position 構造体。
 	 */
 	void move(gint x, gint y) {
-		move(layout::Position(x, y));
+		move(Position(x, y));
 	}
 
 	/**
 	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
-	void move_by(const layout::Position& pos) {
-		layout::Position current_pos = get_position();
+	void move_by(const Position& pos) {
+		Position current_pos = get_position();
 		_move(current_pos.x + pos.x, current_pos.y + pos.y);
 	}
 
@@ -618,7 +841,7 @@ public:
 	 * @param[in] y 移動量のY成分。
 	 */
 	void move_by(gint x, gint y) {
-		layout::Position current_pos = get_position();
+		Position current_pos = get_position();
 		_move(current_pos.x + x, current_pos.y + y);
 	}
 
@@ -626,10 +849,23 @@ public:
 	 * @brief ウィンドウの現在の位置を取得します。
 	 * @return ウィンドウの位置を表す Position 構造体。
 	 */
-	layout::Position get_position() {
-		layout::Position pos;
+	Position get_position() {
+		Position pos;
 		get_position(&pos.x, &pos.y);
 		return pos;
+	}
+
+	/**
+	 * @brief ウィンドウの推定サイズを取得します。
+	 * @return ウィンドウの推定サイズを表す Size 構造体。
+	 * ウィンドウのデフォルトサイズと推奨サイズのうち大きい方が返されます。
+	 */
+	Size get_estimated_size() {
+		Size default_size;
+		Size preferred_size;
+		default_size = get_default_size();
+		preferred_size = get_preferred_size().natural_size;
+		return Size(std::max(default_size.width, preferred_size.width), std::max(default_size.height, preferred_size.height));
 	}
 
 	// プロパティ
@@ -645,6 +881,11 @@ public:
 	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
 
 public:
+	/**
+	 * @brief "size-allocate"シグナルのハンドラを設定します。
+	 * @param[in] handler サイズ割り当て時に呼び出されるコールバック関数。
+	 * コールバック関数は GtkAllocation* 型の引数を受け取ります。
+	 */
 	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
 		on_size_allocate_handler = handler;
 		if (on_size_allocate_handler != nullptr) {
@@ -656,15 +897,34 @@ private:
 	// メンバ変数
 	bool use_size{false};
 	bool init_gdk_gravity{false};
-	std::optional<layout::Size> size{};
+	std::optional<Size> size{};
 	layout::Gravity gravity{layout::Gravity::NorthWest};
 
 	// メソッド
 	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
-	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, move, _move, void, (gint x, gint y), x, y)
+	void _move(gint x, gint y) { sg::Dialog::move(x, y); }
+
+	/**
+	 * @brief ウィンドウの現在のサイズを取得します。
+	 * @return ウィンドウのサイズを表す Size 構造体
+	 */
+	Size _get_size() {
+		Size crnt_size;
+		_get_size(&crnt_size.width, &crnt_size.height);
+		return crnt_size;
+	}
+
+	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("gravity", gdk_gravity, GdkGravity)
+
+	// シグナル
 
 	std::function<void(GtkAllocation*)> on_size_allocate_handler = nullptr;
 
+	/**
+	 * @brief ウィンドウのサイズ追跡を有効または無効にします。
+	 * @param[in] use_size ウィンドウのサイズ追跡を有効にする場合はtrue、無効にする場合はfalse。
+	 */
 	void set_use_size(bool use_size) {
 		this->use_size = use_size;
 		if (use_size) {
@@ -674,9 +934,11 @@ private:
 
 	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, Dialog* thiz) {
 		if (thiz->use_size) {
-			layout::Size new_size;
-			thiz->_get_size(&new_size.width, &new_size.height);
-			thiz->size = new_size;
+			Size new_size;
+			new_size = thiz->_get_size();
+			if (new_size.width > 0 && new_size.height > 0) {
+				thiz->size = new_size;
+			}
 		}
 		if (thiz->on_size_allocate_handler != nullptr) {
 			thiz->on_size_allocate_handler(allocation);
