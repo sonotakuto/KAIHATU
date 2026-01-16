@@ -1,8 +1,18 @@
+/**
+ * @file process_runner.hpp
+ * @brief ProcessRunnerクラスの宣言。
+ */
 #pragma once
 
 #include <glib.h>
 #include <string>
 #include <functional>
+
+/**
+ * @namespace gutils
+ * @brief GLib関連のユーティリティをまとめた名前空間。
+ */
+namespace gutils {
 
 /**
  * @brief 外部プロセスの非同期実行とライフサイクル管理を行うRAIIラッパークラス。
@@ -28,26 +38,10 @@ public:
 	 */
 	~ProcessRunner();
 
-	/**
-	 * @brief コピーコンストラクタ（削除）。
-	 * GLibのコールバックにthisポインタを渡すため、アドレスの移動を伴うコピーは禁止されています。
-	 */
+	// コピー/ムーブは禁止
 	ProcessRunner(const ProcessRunner&) = delete;
-
-	/**
-	 * @brief コピー代入演算子（削除）。
-	 */
 	ProcessRunner& operator=(const ProcessRunner&) = delete;
-
-	/**
-	 * @brief ムーブコンストラクタ（削除）。
-	 * アドレスの移動を防ぐため、ムーブも禁止されています。
-	 */
 	ProcessRunner(ProcessRunner&&) = delete;
-
-	/**
-	 * @brief ムーブ代入演算子（削除）。
-	 */
 	ProcessRunner& operator=(ProcessRunner&&) = delete;
 
 	/**
@@ -73,9 +67,9 @@ public:
 	bool is_running() const;
 
 private:
-	GPid pid_ = 0;              ///< 実行中のプロセスのPID。実行していない場合は0。
-	guint watch_id_ = 0;        ///< g_child_watch_addの戻り値（イベントソースID）。
-	ExitCallback on_exit_;      ///< ユーザー指定の終了時コールバック。
+	GPid pid_ = 0;			///< 実行中のプロセスのPID。実行していない場合は0。
+	guint watch_id_ = 0;	///< g_child_watch_addの戻り値（イベントソースID）。
+	ExitCallback on_exit_;	///< ユーザー指定の終了時コールバック。
 
 	/**
 	 * @brief GLib用のスタティックな終了検知コールバック。
@@ -91,3 +85,5 @@ private:
 	 */
 	void handle_child_exited(gint status);
 };
+
+} // namespace gutils
