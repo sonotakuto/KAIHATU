@@ -3,8 +3,8 @@
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
 #include <stdlib.h>
-#include "utils/utility.hpp"
-#include "utils/container_utils.hpp"
+#include "utility.hpp"
+#include "container_utils.hpp"
 #include "includes.hpp"
 #include "db_client.hpp"
 #include "keyboard_utils.hpp"
@@ -3172,6 +3172,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 
 	// 追跡システムの開始
 	// FIXME: エラー対応
+	start_MediaServer();
 	tracker::g_tool_tracker->connect();
 	tracker::g_recorder_client->start_recording();
 
@@ -3321,10 +3322,30 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 	) {
 		return;
 	}
+	bool plc_status = false;
+	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
+		// BUG: エラー対応
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
+		}, true);
+		return;
+	}
+	if (!plc_status) {
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
+		}, true);
+		return;
+	}
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 	// BUG: エラー対応
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
+	stop_MediaServer();
 	tracker::g_tool_tracker->disconnect();
 	tracker::g_recorder_client->stop_recording();
 	set_mode(GuiMode::NONE);
@@ -3349,10 +3370,30 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	) {
 		return;
 	}
+	bool plc_status = false;
+	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
+		// BUG: エラー対応
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
+		}, true);
+		return;
+	}
+	if (!plc_status) {
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
+		}, true);
+		return;
+	}
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 	// BUG: エラー対応
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
+	stop_MediaServer();
 	tracker::g_tool_tracker->disconnect();
 	tracker::g_recorder_client->stop_recording();
 	m_is_insert_operation = false;
@@ -3660,6 +3701,8 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 void MainWindow::on_enter_store_container_retrieving() {
 	m_operating_area = db::get_StrageAreaInfo_with_min_cases(m_operating_tool.value().id);	// FIXME: nullopt対応
 	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
+	// FIXME: エラー対応
+	start_MediaServer();
 	tracker::g_recorder_client->start_recording();
 }
 
@@ -3883,11 +3926,31 @@ void MainWindow::on_falseButton_store_ready_for_reading() {
 	) {
 		return;
 	}
+	bool plc_status = false;
+	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
+		// BUG: エラー対応
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
+		}, true);
+		return;
+	}
+	if (!plc_status) {
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
+		}, true);
+		return;
+	}
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 	// BUG: エラー対応
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
+	stop_MediaServer();
 	tracker::g_recorder_client->stop_recording();
 	set_mode(GuiMode::NONE);
 }
@@ -3902,11 +3965,31 @@ void MainWindow::on_trueButton_store_ready_for_reading() {
 	) {
 		return;
 	}
+	bool plc_status = false;
+	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
+		// BUG: エラー対応
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
+		}, true);
+		return;
+	}
+	if (!plc_status) {
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
+		}, true);
+		return;
+	}
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 	// BUG: エラー対応
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
+	stop_MediaServer();
 	tracker::g_recorder_client->stop_recording();
 	set_app_state(AppState::STORE);
 }

@@ -9,7 +9,7 @@
 #include <string_view>
 #include <SimpleGtk>
 
-#include "url_transfer/url_transfer.hpp"
+#include "url_transfer.hpp"
 
 namespace tracker {
 

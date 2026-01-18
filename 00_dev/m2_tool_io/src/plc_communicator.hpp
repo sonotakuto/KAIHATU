@@ -6,8 +6,8 @@
 #include <any>
 #include <cstdint>
 #include <SimpleGtk>
-#include "stdex/opt_extension.hpp"
-#include "utils/safe_queue.hpp"
+#include "opt_extension.hpp"
+#include "safe_queue.hpp"
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
@@ -132,6 +132,22 @@ inline utils::SafeQueue<WatchCommand> g_command_queue;
  * @details アプリケーション起動時に一度だけ呼び出す。
  */
 void initialize();
+
+/**
+ * @brief Mデバイスの状態を読み出し、その結果を返します。
+ * @param[in] addr 読み出し対象のMデバイスアドレス。
+ * @param[out] is_on 読み出されたMデバイスの状態を格納する参照。
+ * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
+ */
+bool read_M_status(std::uint16_t addr, bool& is_on);
+
+/**
+ * @brief Dレジスタ（ワード）の値を読み出します。
+ * @param[in] addr 読み出し対象のDレジスタアドレス。
+ * @param[out] out_data 読み出された値を格納する参照。
+ * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
+ */
+bool read_D_word(std::uint16_t addr, std::uint16_t& out_data);
 
 /**
  * @brief PLCにセッションの開始を通知します。

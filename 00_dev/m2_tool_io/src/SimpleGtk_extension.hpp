@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <optional>
 #include <SimpleGtk>
-#include "utils/utility.hpp"
-#include "layout/layout.hpp"
+#include "utility.hpp"
+#include "layout.hpp"
 
 /**
  * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。

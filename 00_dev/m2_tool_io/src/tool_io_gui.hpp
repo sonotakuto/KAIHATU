@@ -6,8 +6,9 @@
 #include <cstdint>
 #include <set>
 #include <SimpleGtk>
-#include "stdex/opt_extension.hpp"
-#include "utils/tracked_map.hpp"
+#include "opt_extension.hpp"
+#include "tracked_map.hpp"
+#include "process_runner.hpp"
 #include "SimpleGtk_extension.hpp"
 #include "typedef.hpp"
 #include "parameters.hpp"
@@ -1019,6 +1020,23 @@ private:
 	 */
 	bool authenticate_with_password();
 
+	// --- 外部連携用のヘルパー関数 ---
+
+	/**
+	 * @brief MediaServerを起動します。
+	 * @return 起動に成功した場合はtrue、失敗した場合はfalseを返します。
+	 */
+	bool start_MediaServer() {
+		return runner.start("live555MediaServer");
+	}
+
+	/**
+	 * @brief MediaServerを停止します。
+	 */
+	void stop_MediaServer() {
+		runner.stop();
+	}
+
 	// --- 取り出しモード用のヘルパー関数 ---
 
 	/**
@@ -1473,6 +1491,16 @@ private:
 	// プライベートメンバ変数 (状態管理用)
 	//=========================================================================
 
+	// --- 外部連携用 ---
+	/// @brief PLCに接続されているかどうかのフラグ。
+	bool m_plc_connected;
+	/// @brief PLCメンテナンスモード中かどうかのフラグ。
+	bool m_plc_maintaining;
+	/// @brief PLCでエラー発生中かどうかのフラグ。
+	bool m_plc_has_error;
+	/// @brief 追跡システムのカメラサーバ起動に使う、バックグラウンドプロセス管理者
+	gutils::ProcessRunner runner;
+
 	// --- 二重処理防止用 ---
 
 	/// @brief ウィンドウが初回表示かどうかを判定するフラグ
@@ -1485,12 +1513,6 @@ private:
 	bool m_is_programmatically_changing_toggle;
 
 	// --- 状態管理用 ---
-	/// @brief PLCに接続されているかどうかのフラグ。
-	bool m_plc_connected;
-	/// @brief PLCメンテナンスモード中かどうかのフラグ。
-	bool m_plc_maintaining;
-	/// @brief PLCでエラー発生中かどうかのフラグ。
-	bool m_plc_has_error;
 	/// @brief パスワード認証が成功したかどうかのフラグ。
 	bool m_password_authenticated;
 	/// @brief 現在のGUI操作モードを保持するメンバ変数。

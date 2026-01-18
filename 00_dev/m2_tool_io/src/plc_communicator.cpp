@@ -2,8 +2,8 @@
  * @file plc_communicator.cpp
  * @brief plc_communicator.hpp で宣言されたPLC通信機能の実装ファイル。
  */
-#include "utils/periodic_timer.hpp"
-#include "utils/signal.hpp"
+#include "periodic_timer.hpp"
+#include "signal.hpp"
 #include "includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
 #include "tool_io_gui.hpp"
 #include "plc_communicator.hpp"
@@ -19,6 +19,8 @@ static const std::map<std::uint16_t, std::string> mc_error_map = {
 
 /// @brief PLCとの通信に使用するソケットオブジェクト。
 static sg::Socket socket;
+/// @brief 複数のスレッドからソケットへ安全にアクセスするためのミューテックス
+static std::mutex socket_mutex;
 /// @brief PLCの状態監視リスト。キーは監視内容のユニークな名前。
 static std::map<std::uint16_t, WatchData> g_watchlist;
 /// @brief 書き込みタスクを管理するキュー
@@ -115,6 +117,7 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 	DEV_PRINT("PLCにコマンドを送信します。(STUBモード)\n");
 	return true;
 #else
+	std::lock_guard<std::mutex> lock(socket_mutex);
 	if (socket.send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへのコマンド送信エラー\n");
 		return false;
@@ -156,39 +159,6 @@ static bool write_M_status(std::uint16_t addr, bool on) {
 }
 
 /**
- * @brief Mデバイスの状態を読み出し、その結果を返します。
- * @param[in] addr 読み出し対象のMデバイスアドレス。
- * @param[out] is_on 読み出されたMデバイスの状態を格納する参照。
- * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
- */
-static bool read_M_status(std::uint16_t addr, bool& is_on) {
-	std::vector<std::uint8_t> cmd = make_read_M_command(addr);
-	if (socket.send(cmd.data(), cmd.size()) < 0) {
-		DEV_PRINT(stderr, "PLCへの読み出しコマンド送信エラー\n");
-		return false;
-	}
-	std::uint8_t resp[1024];
-	int n = socket.receive(resp, sizeof(resp));
-	if (n <= 0) {
-		DEV_PRINT(stderr, "PLCからの読み出し応答受信エラー\n");
-		return false;
-	}
-
-	if (resp[0] != 0x80 || resp[1] != 0x00 || n < 3) {
-		std::uint16_t error_code = resp[0] | (resp[1] << 8);
-		auto it = mc_error_map.find(error_code);
-		if (it != mc_error_map.end()) {
-			DEV_PRINT(stderr, "PLCエラー 0x{:04X}: {}\n", error_code, it->second);
-		} else {
-			DEV_PRINT(stderr, "PLCから未知のエラーコードを受信: 0x{:04X}\n", error_code);
-		}
-		return false;
-	}
-	is_on = (resp[2] == 0x10);
-	return true;
-}
-
-/**
  * @brief Dレジスタ（ワード）に値を書き込みます。
  * @details 内部で `send_and_receive_ack` を使用するため、成功時はエラーコード0x0000を確認済みです。
  * @param[in] addr 書き込み対象のDレジスタアドレス。
@@ -202,49 +172,13 @@ static bool write_D_word(std::uint16_t addr, std::uint16_t data) {
 }
 
 /**
- * @brief Dレジスタ（ワード）の値を読み出します。
- * @param[in] addr 読み出し対象のDレジスタアドレス。
- * @param[out] out_data 読み出された値を格納する参照。
- * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
- */
-static bool read_D_word(std::uint16_t addr, std::uint16_t& out_data) {
-	std::vector<std::uint8_t> cmd = make_read_D_command(addr);
-
-	if (socket.send(cmd.data(), cmd.size()) < 0) {
-		DEV_PRINT(stderr, "PLCへのD読み出しコマンド送信エラー\n");
-		return false;
-	}
-
-	std::uint8_t resp[1024];
-	int n = socket.receive(resp, sizeof(resp));
-	if (n <= 0) {
-		DEV_PRINT(stderr, "PLCからのD読み出し応答受信エラー\n");
-		return false;
-	}
-
-	if (resp[0] != 0x81 || resp[1] != 0x00 || n < 4) {
-		std::uint16_t error_code = resp[0] | (resp[1] << 8);
-		auto it = mc_error_map.find(error_code);
-		if (it != mc_error_map.end()) {
-			DEV_PRINT(stderr, "PLCエラー(D読出) 0x{:04X}: {}\n", error_code, it->second);
-		} else {
-			DEV_PRINT(stderr, "PLCから未知のエラーコードを受信(D読出): 0x{:04X}\n", error_code);
-		}
-		return false;
-	}
-
-	// データ部 (リトルエンディアン) の復元
-	out_data = resp[2] | (resp[3] << 8);
-	return true;
-}
-
-/**
  * @brief PLCへの接続を試みる内部関数。
  */
 static bool connect_to_plc() {
 	const char* host = HOST;
 	int port = PORT;
 
+	std::lock_guard<std::mutex> lock(socket_mutex);
 	if (socket.is_connected()) { return true; }
 
 	DEV_PRINT("PLCへの接続を試みています... ({}:{})\n", host, port);
@@ -696,6 +630,66 @@ void initialize() {
 
 	// 単一の統合スレッドを起動
 	std::thread(run_communicator).detach();
+}
+
+bool read_M_status(std::uint16_t addr, bool& is_on) {
+	std::lock_guard<std::mutex> lock(socket_mutex);
+	std::vector<std::uint8_t> cmd = make_read_M_command(addr);
+	if (socket.send(cmd.data(), cmd.size()) < 0) {
+		DEV_PRINT(stderr, "PLCへの読み出しコマンド送信エラー\n");
+		return false;
+	}
+	std::uint8_t resp[1024];
+	int n = socket.receive(resp, sizeof(resp));
+	if (n <= 0) {
+		DEV_PRINT(stderr, "PLCからの読み出し応答受信エラー\n");
+		return false;
+	}
+
+	if (resp[0] != 0x80 || resp[1] != 0x00 || n < 3) {
+		std::uint16_t error_code = resp[0] | (resp[1] << 8);
+		auto it = mc_error_map.find(error_code);
+		if (it != mc_error_map.end()) {
+			DEV_PRINT(stderr, "PLCエラー 0x{:04X}: {}\n", error_code, it->second);
+		} else {
+			DEV_PRINT(stderr, "PLCから未知のエラーコードを受信: 0x{:04X}\n", error_code);
+		}
+		return false;
+	}
+	is_on = (resp[2] == 0x10);
+	return true;
+}
+
+bool read_D_word(std::uint16_t addr, std::uint16_t& out_data) {
+	std::lock_guard<std::mutex> lock(socket_mutex);
+	std::vector<std::uint8_t> cmd = make_read_D_command(addr);
+
+	if (socket.send(cmd.data(), cmd.size()) < 0) {
+		DEV_PRINT(stderr, "PLCへのD読み出しコマンド送信エラー\n");
+		return false;
+	}
+
+	std::uint8_t resp[1024];
+	int n = socket.receive(resp, sizeof(resp));
+	if (n <= 0) {
+		DEV_PRINT(stderr, "PLCからのD読み出し応答受信エラー\n");
+		return false;
+	}
+
+	if (resp[0] != 0x81 || resp[1] != 0x00 || n < 4) {
+		std::uint16_t error_code = resp[0] | (resp[1] << 8);
+		auto it = mc_error_map.find(error_code);
+		if (it != mc_error_map.end()) {
+			DEV_PRINT(stderr, "PLCエラー(D読出) 0x{:04X}: {}\n", error_code, it->second);
+		} else {
+			DEV_PRINT(stderr, "PLCから未知のエラーコードを受信(D読出): 0x{:04X}\n", error_code);
+		}
+		return false;
+	}
+
+	// データ部 (リトルエンディアン) の復元
+	out_data = resp[2] | (resp[3] << 8);
+	return true;
 }
 
 void start_session() {

@@ -3,7 +3,7 @@
  * @brief ProcessRunnerクラスの実装。
  */
 #include "process_runner.hpp"
-#include "utils/string_utils.hpp"
+#include "string_utils.hpp"
 #include <sys/types.h>
 #include <signal.h>
 
@@ -43,7 +43,7 @@ bool ProcessRunner::start(const std::string& command, ExitCallback on_exit) {
 	// 例: "ls -l" -> {"ls", "-l", NULL}
 	// 注意: シェルのパイプやリダイレクトはここでは解釈されません。
 	if (!g_shell_parse_argv(command.c_str(), nullptr, &argv, &error)) {
-		utils::assign_concat(error_message_, "[ProcessRunner] Parse error: ", ((error->message) ? (error->message) : ("Unknown parse error")));
+		utils::assign_concat(error_message_, "[ProcessRunner] Parse error: ", ((error && error->message) ? (error->message) : ("Unknown parse error")));
 		g_error_free(error);
 		return false;
 	}
@@ -69,7 +69,7 @@ bool ProcessRunner::start(const std::string& command, ExitCallback on_exit) {
 	g_strfreev(argv);
 
 	if (!success) {
-		utils::assign_concat(error_message_, "[ProcessRunner] Spawn error: ", ((error->message) ? (error->message) : ("Unknown spawn error")));
+		utils::assign_concat(error_message_, "[ProcessRunner] Spawn error: ", ((error && error->message) ? (error->message) : ("Unknown spawn error")));
 		g_error_free(error);
 		return false;
 	}
