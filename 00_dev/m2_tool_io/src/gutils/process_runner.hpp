@@ -66,10 +66,17 @@ public:
 	 */
 	bool is_running() const;
 
+	/**
+	 * @brief start() が失敗した際のエラーメッセージを取得します。
+	 * 成功している場合は空文字列を返します。
+	 */
+	std::string get_error_message() const;
+
 private:
 	GPid pid_ = 0;			///< 実行中のプロセスのPID。実行していない場合は0。
 	guint watch_id_ = 0;	///< g_child_watch_addの戻り値（イベントソースID）。
 	ExitCallback on_exit_;	///< ユーザー指定の終了時コールバック。
+	std::string error_message_;	///< エラーメッセージ保持用。
 
 	/**
 	 * @brief GLib用のスタティックな終了検知コールバック。

@@ -130,18 +130,18 @@ clean_all:
 # $@: ターゲットファイル名（$(TARGET)）
 # $^: すべての依存ファイル名（$(OBJECTS)）
 $(TARGET_PATH): $(OBJECTS)
-	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 # デバッグ版の実行ファイルをリンクして生成するルール
 $(DEBUG_TARGET_PATH): $(DEBUG_OBJECTS)
-	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o $@ $^ $(LDFLAGS)
 
 # --- フラグ変更検知 ---
 
 $(FLAGS_FILE): FORCE
-	@mkdir -p $(OBJECTS_DIR_INTERNAL)
+	@mkdir -p $(dir $@)
 	@echo "$(CXXFLAGS)" | cmp -s - $@ || echo "$(CXXFLAGS)" > $@
 
 FORCE:
@@ -152,13 +152,13 @@ FORCE:
 # $<: 最初の依存ファイル名（.cppファイル）
 # オブジェクトディレクトリが無い場合は作成する
 $(OBJECTS_DIR_INTERNAL)/%.o: %.cpp $(HEADERS) $(MAKEFILE_LIST) $(FLAGS_FILE)
-	@mkdir -p $(OBJECTS_DIR_INTERNAL)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # デバッグ版のオブジェクトファイル（_debug.o）を生成するルール
 # オブジェクトディレクトリが無い場合は作成する
 $(OBJECTS_DIR_INTERNAL)/%_debug.o: %.cpp $(HEADERS) $(MAKEFILE_LIST) $(FLAGS_FILE)
-	@mkdir -p $(OBJECTS_DIR_INTERNAL)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -c $< -o $@
 
 # 生成された依存関係ファイルを読み込む

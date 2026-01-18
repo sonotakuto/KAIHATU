@@ -6,8 +6,8 @@
 #include <any>
 #include <cstdint>
 #include <SimpleGtk>
-#include "./opt_extension.hpp"
-#include "./safe_queue.hpp"
+#include "stdex/opt_extension.hpp"
+#include "utils/safe_queue.hpp"
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC

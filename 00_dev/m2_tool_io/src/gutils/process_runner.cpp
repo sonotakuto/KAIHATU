@@ -2,11 +2,10 @@
  * @file process_runner.cpp
  * @brief ProcessRunnerクラスの実装。
  */
-#include "./process_runner.hpp"
-
+#include "process_runner.hpp"
+#include "utils/string_utils.hpp"
 #include <sys/types.h>
 #include <signal.h>
-#include <iostream>
 
 /**
  * @namespace gutils
@@ -31,7 +30,7 @@ ProcessRunner::~ProcessRunner() {
 bool ProcessRunner::start(const std::string& command, ExitCallback on_exit) {
 	// 二重起動防止
 	if (pid_ != 0) {
-		std::cerr << "[ProcessRunner] Process is already running." << std::endl;
+		error_message_ = "[ProcessRunner] Process is already running.";
 		return false;
 	}
 
@@ -44,7 +43,7 @@ bool ProcessRunner::start(const std::string& command, ExitCallback on_exit) {
 	// 例: "ls -l" -> {"ls", "-l", NULL}
 	// 注意: シェルのパイプやリダイレクトはここでは解釈されません。
 	if (!g_shell_parse_argv(command.c_str(), nullptr, &argv, &error)) {
-		std::cerr << "[ProcessRunner] Parse error: " << error->message << std::endl;
+		utils::assign_concat(error_message_, "[ProcessRunner] Parse error: ", ((error->message) ? (error->message) : ("Unknown parse error")));
 		g_error_free(error);
 		return false;
 	}
@@ -70,7 +69,7 @@ bool ProcessRunner::start(const std::string& command, ExitCallback on_exit) {
 	g_strfreev(argv);
 
 	if (!success) {
-		std::cerr << "[ProcessRunner] Spawn error: " << error->message << std::endl;
+		utils::assign_concat(error_message_, "[ProcessRunner] Spawn error: ", ((error->message) ? (error->message) : ("Unknown spawn error")));
 		g_error_free(error);
 		return false;
 	}
@@ -106,7 +105,10 @@ bool ProcessRunner::is_running() const {
 	return pid_ != 0;
 }
 
-// static
+std::string ProcessRunner::get_error_message() const {
+	return error_message_;
+}
+
 void ProcessRunner::on_child_exited_static(GPid pid, gint status, gpointer user_data) {
 	// user_data をクラスのインスタンスに戻してメンバ関数を呼びます
 	auto* self = static_cast<ProcessRunner*>(user_data);

@@ -3,15 +3,12 @@
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
 #include <stdlib.h>
-#include "./opt_extension.hpp"
-#include "./utility.hpp"
-#include "./container_utils.hpp"
-#include "./SimpleGtk_extension.hpp"
-#include "./includes.hpp"
-#include "./db_client.hpp"
-#include "./keyboard_utils.hpp"
-#include "./tracking_communicator.hpp"
-#include "./tool_io_gui.hpp"
+#include "utils/utility.hpp"
+#include "utils/container_utils.hpp"
+#include "includes.hpp"
+#include "db_client.hpp"
+#include "keyboard_utils.hpp"
+#include "tool_io_gui.hpp"
 
 namespace gui {
 

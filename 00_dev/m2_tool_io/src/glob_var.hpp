@@ -3,7 +3,7 @@
  * @brief 複数ファイルで共通して使用するグローバル変数を定義するヘッダファイル。
  */
 #pragma once
-#include "./includes.hpp"
+#include "includes.hpp"
 
 // 定義方法のサンプル
 // inline int sample_variable = 100;

@@ -2,12 +2,11 @@
  * @file plc_communicator.cpp
  * @brief plc_communicator.hpp で宣言されたPLC通信機能の実装ファイル。
  */
-#include "./opt_extension.hpp"
-#include "./periodic_timer.hpp"
-#include "./signal.hpp"
-#include "./includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
-#include "./tool_io_gui.hpp"
-#include "./plc_communicator.hpp"
+#include "utils/periodic_timer.hpp"
+#include "utils/signal.hpp"
+#include "includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
+#include "tool_io_gui.hpp"
+#include "plc_communicator.hpp"
 
 namespace plc {
 

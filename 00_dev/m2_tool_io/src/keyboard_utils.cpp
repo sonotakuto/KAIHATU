@@ -3,8 +3,8 @@
  * @brief onboardキーボードの起動・表示・非表示を制御するユーティリティ関数群の実装。
  */
 #include <cstdlib>
-#include "./includes.hpp"
-#include "./keyboard_utils.hpp"
+#include "includes.hpp"
+#include "keyboard_utils.hpp"
 
 namespace onboard {
 

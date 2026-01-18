@@ -2,11 +2,11 @@
  * @file tool_io_main.cpp
  * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
  */
-#include "./includes.hpp"
-#include "./keyboard_utils.hpp"
-#include "./plc_communicator.hpp"
-#include "./tracking_communicator.hpp"
-#include "./tool_io_gui.hpp"
+#include "includes.hpp"
+#include "keyboard_utils.hpp"
+#include "plc_communicator.hpp"
+#include "tracking_communicator.hpp"
+#include "tool_io_gui.hpp"
 
 int main(int argc, char *argv[])
 {

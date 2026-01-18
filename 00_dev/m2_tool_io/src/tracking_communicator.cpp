@@ -2,10 +2,9 @@
  * @file tracking_communicator.cpp
  * @brief 工具追跡システムおよび録画サーバーと通信するためのクライアントクラス群の実装。
  */
-#include "./string_utils.hpp"
-#include "./includes.hpp"
-#include "./url_transfer.hpp"
-#include "./tracking_communicator.hpp"
+#include "utils/string_utils.hpp"
+#include "includes.hpp"
+#include "tracking_communicator.hpp"
 
 namespace tracker {
 
@@ -45,7 +44,7 @@ bool ToolTrackerClient::connect() {
 		socket.set_timeout(0); // ブロッキングモードに戻す
 		std::string_view raw_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
-		if (bytes_read == MSG_LENGTH && str_util::rstrip(raw_view) == MSG_CONNECT_ACK) {
+		if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
 			keep_listening = true;
 			listener_thread = std::thread(&ToolTrackerClient::listener_thread_func, this);
 			return true;
@@ -80,7 +79,7 @@ void ToolTrackerClient::disconnect() {
 				socket.set_timeout(0); // ブロッキングモードに戻す
 				std::string_view raw_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
-				if (bytes_read == MSG_LENGTH && str_util::rstrip(raw_view) == MSG_CONNECT_ACK) {
+				if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
 					DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
 							((bytes_read > 0) ? (raw_view) : ("(No data or error)")));
 				}
@@ -135,7 +134,7 @@ void ToolTrackerClient::listener_thread_func() {
 
 			if (bytes_read == MSG_LENGTH) {
 				Notification notification;
-				std::string_view trimmed_view = str_util::rstrip(raw_view);
+				std::string_view trimmed_view = utils::rstrip(raw_view);
 
 				// 固定長メッセージの比較を行い、通知タイプを判別、設定
 				if		(trimmed_view == MSG_SCAN_S					) { notification.type = NotificationType::SCAN_SUCCESS;				}

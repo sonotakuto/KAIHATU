@@ -5,8 +5,8 @@
 #pragma once
 #include <cstdint>
 #include <SimpleGtk>
-#include "./typedef.hpp"
-#include "./parameters.hpp"
+#include "typedef.hpp"
+#include "parameters.hpp"
 
 /**
  * @namespace db

@@ -3,6 +3,10 @@
 #include <condition_variable>
 #include <chrono>
 
+/**
+ * @namespace utils
+ * @brief ユーティリティ関数やクラスをまとめた名前空間
+ */
 namespace utils {
 
 class Signal {

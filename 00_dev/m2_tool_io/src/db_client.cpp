@@ -8,11 +8,11 @@
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
-#include "./any_extension.hpp"
-#include "./string_utils.hpp"
-#include "./odbc.hpp"
-#include "./includes.hpp"
-#include "./db_client.hpp"
+#include "stdex/any_extension.hpp"
+#include "utils/string_utils.hpp"
+#include "odbc/odbc.hpp"
+#include "includes.hpp"
+#include "db_client.hpp"
 
 using namespace odbc;
 
@@ -246,7 +246,7 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 // --- 公開関数 ---
 
 std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
-	std::string_view sv = str_util::rstrip(qr_string);
+	std::string_view sv = utils::rstrip(qr_string);
 
 	if (sv.empty()) {
 		DEV_PRINT("QR解析失敗: 空文字列\n");

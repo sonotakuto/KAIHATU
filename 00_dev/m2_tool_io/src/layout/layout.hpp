@@ -1,3 +1,7 @@
+/**
+ * @file layout.hpp
+ * @brief ウィンドウやUI要素の配置・サイズを管理するための基本型とヘルパー関数を定義するヘッダファイル。
+ */
 #pragma once
 #include <utility>
 

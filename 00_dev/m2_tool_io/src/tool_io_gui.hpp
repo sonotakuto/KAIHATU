@@ -6,13 +6,13 @@
 #include <cstdint>
 #include <set>
 #include <SimpleGtk>
-#include "./opt_extension.hpp"
-#include "./SimpleGtk_extension.hpp"
-#include "./typedef.hpp"
-#include "./parameters.hpp"
-#include "./tracked_map.hpp"
-#include "./plc_communicator.hpp"
-#include "./tracking_communicator.hpp"
+#include "stdex/opt_extension.hpp"
+#include "utils/tracked_map.hpp"
+#include "SimpleGtk_extension.hpp"
+#include "typedef.hpp"
+#include "parameters.hpp"
+#include "plc_communicator.hpp"
+#include "tracking_communicator.hpp"
 
 /**
  * @namespace gui
