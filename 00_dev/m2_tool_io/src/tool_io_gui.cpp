@@ -3323,6 +3323,7 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 		return;
 	}
 	bool plc_status = false;
+#ifndef STUB_PLC
 	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
 		// BUG: エラー対応
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
@@ -3332,6 +3333,9 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 		}, true);
 		return;
 	}
+#else
+	plc_status = true;
+#endif
 	if (!plc_status) {
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
 		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
@@ -3371,6 +3375,7 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 		return;
 	}
 	bool plc_status = false;
+#ifndef STUB_PLC
 	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
 		// BUG: エラー対応
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
@@ -3380,6 +3385,9 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 		}, true);
 		return;
 	}
+#else
+	plc_status = true;
+#endif
 	if (!plc_status) {
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
 		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
@@ -3927,6 +3935,7 @@ void MainWindow::on_falseButton_store_ready_for_reading() {
 		return;
 	}
 	bool plc_status = false;
+#ifndef STUB_PLC
 	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
 		// BUG: エラー対応
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
@@ -3936,6 +3945,9 @@ void MainWindow::on_falseButton_store_ready_for_reading() {
 		}, true);
 		return;
 	}
+#else
+	plc_status = true;
+#endif
 	if (!plc_status) {
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
 		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
@@ -3966,6 +3978,7 @@ void MainWindow::on_trueButton_store_ready_for_reading() {
 		return;
 	}
 	bool plc_status = false;
+#ifndef STUB_PLC
 	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
 		// BUG: エラー対応
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
@@ -3975,6 +3988,9 @@ void MainWindow::on_trueButton_store_ready_for_reading() {
 		}, true);
 		return;
 	}
+#else
+	plc_status = true;
+#endif
 	if (!plc_status) {
 		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
 		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
