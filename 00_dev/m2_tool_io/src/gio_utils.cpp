@@ -140,8 +140,8 @@ bool spawn_async(const std::vector<std::string>& argv, std::string* error_messag
 	return spawn_async_impl(argv_exec.data(), error_message);
 }
 
-bool spawn_async(std::vector<char*> argv, std::string* error_message) {
-	if (argv.empty()) {
+bool spawn_async(std::initializer_list<const char*> argv, std::string* error_message) {
+	if (argv.size() == 0) {
 		return false;
 	}
 
