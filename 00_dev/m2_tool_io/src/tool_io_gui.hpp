@@ -1027,14 +1027,18 @@ private:
 	 * @return 起動に成功した場合はtrue、失敗した場合はfalseを返します。
 	 */
 	bool start_MediaServer() {
-		return runner.start("live555MediaServer");
+#ifdef PRODUCTION
+//		return runner.start("live555MediaServer");
+#endif
 	}
 
 	/**
 	 * @brief MediaServerを停止します。
 	 */
 	void stop_MediaServer() {
-		runner.stop();
+#ifdef PRODUCTION
+//		runner.stop();
+#endif
 	}
 
 	// --- 取り出しモード用のヘルパー関数 ---

@@ -44,8 +44,12 @@ constexpr std::array<char, length> make_fixed_message(std::string_view sv) {
 inline constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
 
 // --- インサート個数取得クライアント 定数 ---
+#ifdef PRODUCTION
 //inline constexpr const char*	COUNTER_HOST			= "10.19.133.3";
 inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// dummy
+#else
+inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// 開発環境なら、デフォルトでダミーサーバに接続
+#endif
 inline constexpr int			COUNTER_PORT			= 12345;
 inline constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
 
@@ -59,9 +63,13 @@ inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画ク�
 class ToolTrackerClient {
 public:
 	// --- 定数 ---
+#ifdef PRODUCTION
 	//static constexpr const char*	HOST			= "10.19.133.122";	// D201
 	//static constexpr const char*	HOST			= "10.19.106.160";	// C103
 	static constexpr const char*	HOST			= "10.19.133.117";	// dummy
+#else
+	static constexpr const char*	HOST			= "10.19.133.117";	// 開発環境なら、デフォルトでダミーサーバに接続
+#endif
 	static constexpr int			PORT			= 5000;
 	static constexpr size_t			MSG_LENGTH		= 24;	// メッセージ長
 	static constexpr std::uint32_t	TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
@@ -188,8 +196,12 @@ private:
 class RecorderClient {
 public:
 	// --- 定数 ---
+#ifdef PRODUCTION
 //	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
 	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
+#else
+	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// 開発環境なら、デフォルトでダミーサーバに接続
+#endif
 	static constexpr const char*	CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
 	static constexpr const char*	USERNAME		= "yourUsername";
 	static constexpr const char*	PASSWORD		= "yourPassword";

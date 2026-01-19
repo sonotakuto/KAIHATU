@@ -9,9 +9,13 @@
 #include "opt_extension.hpp"
 #include "safe_queue.hpp"
 
+#if !defined(PRODUCTION) && !defined(STUB_PLC)
+#define STUB_PLC	// 開発環境の場合はデフォルトでPLCスタブを有効化
+#endif
+
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
-#define STUB_PLC	// TODO: リリース時はコメントアウト
+//#define STUB_PLC	// TODO: リリース時はコメントアウト
 #endif
 
 /**

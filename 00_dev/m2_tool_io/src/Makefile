@@ -33,6 +33,26 @@ DEBUGFLAGS = -g -O0 -DDEBUG -DDEBUG_LEVEL=3
 CHECKFLAGS = -fsyntax-only
 
 # ==============================================================================
+# ▼▼▼ 環境切り替え設定 (追加部分) ▼▼▼
+# ==============================================================================
+
+# 環境変数 BUILD_ENV で切り替え (デフォルト: dev)
+# 実行方法:
+#   開発: make
+#   本番: make BUILD_ENV=prod
+BUILD_ENV ?= dev
+
+ifeq ($(BUILD_ENV), prod)
+	# 本番環境用マクロ
+	CXXFLAGS += -DPRODUCTION
+	ENV_MSG = "PRODUCTION (本番環境)"
+else
+	# 開発環境用マクロ
+	CXXFLAGS += -DDEVELOPMENT -DDEV -DSTUB_PLC
+	ENV_MSG = "DEVELOPMENT (開発環境)"
+endif
+
+# ==============================================================================
 # プロジェクトのファイル設定【ここを編集してください】
 # ==============================================================================
 
@@ -94,10 +114,16 @@ DEBUG_DEPS = $(DEBUG_OBJECTS:.o=.d)
 
 # 'make' または 'make all' で、実行されるデフォルトのターゲット
 # 通常版の実行ファイルをビルドする
-all: $(TARGET_PATH)
+all: print_env $(TARGET_PATH)
 
 # 'make main' でもビルドできるようにするためのエイリアス
-main: $(TARGET_PATH)
+main: all
+
+# 環境表示用ターゲット (Phony)
+print_env:
+	@echo "=========================================="
+	@echo " Build Environment: $(ENV_MSG)"
+	@echo "=========================================="
 
 # 'make rebuild' で、クリーンしてから再ビルドする
 rebuild:
@@ -114,7 +140,9 @@ debug: $(DEBUG_TARGET_PATH)
 
 # 'make check' で、ソースコードの構文チェックを行う
 check: $(SOURCES)
-	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
+	@echo "Checking source files in $(ENV_MSG) mode..."
+	@$(foreach src, $(SOURCES), echo "Checking $(src)"; \
+	$(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
 
 # 'make clean' で、現在のターゲットのファイルのみ削除
 clean:
@@ -140,6 +168,7 @@ $(DEBUG_TARGET_PATH): $(DEBUG_OBJECTS)
 
 # --- フラグ変更検知 ---
 
+# CXXFLAGSの内容が変わったら再ビルドをトリガーする
 $(FLAGS_FILE): FORCE
 	@mkdir -p $(dir $@)
 	@echo "$(CXXFLAGS)" | cmp -s - $@ || echo "$(CXXFLAGS)" > $@
@@ -168,4 +197,4 @@ $(OBJECTS_DIR_INTERNAL)/%_debug.o: %.cpp $(HEADERS) $(MAKEFILE_LIST) $(FLAGS_FIL
 
 # 偽物のターゲット（Phony Target）を宣言
 # これにより、同名のファイルが存在してもコマンドが正しく実行される
-.PHONY: all main rebuild exec debug check clean
+.PHONY: all main rebuild exec debug check clean clean_all print_env FORCE
