@@ -1029,6 +1029,8 @@ private:
 	bool start_MediaServer() {
 #ifdef PRODUCTION
 //		return runner.start("live555MediaServer");
+#else
+		return true;
 #endif
 	}
 

@@ -548,7 +548,7 @@ public:
 	 * @brief ウィンドウのサイズを取得します。
 	 * @return ウィンドウのサイズを表す Size 構造体と、実体サイズ(true)か推定サイズ(false)かどうかを示すbool値のペア。
 	 */
-	const std::pair<Size, bool>& get_size() {
+	std::pair<Size, bool> get_size() {
 		bool is_estimated_size = !size.has_value();
 		return std::make_pair(((size.has_value()) ? (size.value()) : (get_estimated_size())), is_estimated_size);
 	}
@@ -559,7 +559,7 @@ public:
 	 */
 	void move(Position pos) {
 		if (size.has_value()) {
-			pos = layout::calculate_top_left(pos, size.value(), gravity);
+			pos = layout::calculate_top_left(pos, get_size().first, gravity);
 		}
 		_move(pos.x, pos.y);
 	}
@@ -647,7 +647,7 @@ private:
 
 	// メソッド
 	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
-	void _move(gint x, gint y) { sg::Window::move; }
+	void _move(gint x, gint y) { sg::Window::move(x, y); }
 
 	/**
 	 * @brief ウィンドウの現在のサイズを取得します。
@@ -802,7 +802,7 @@ public:
 	 * @brief ウィンドウのサイズを取得します。
 	 * @return ウィンドウのサイズを表す Size 構造体と、実体サイズ(true)か推定サイズ(false)かどうかを示すbool値のペア。
 	 */
-	const std::pair<Size, bool>& get_size() {
+	std::pair<Size, bool> get_size() {
 		bool is_estimated_size = !size.has_value();
 		return std::make_pair(((size.has_value()) ? (size.value()) : (get_estimated_size())), is_estimated_size);
 	}
@@ -813,7 +813,7 @@ public:
 	 */
 	void move(Position pos) {
 		if (size.has_value()) {
-			pos = layout::calculate_top_left(pos, get_size(), gravity);
+			pos = layout::calculate_top_left(pos, get_size().first, gravity);
 		}
 		_move(pos.x, pos.y);
 	}

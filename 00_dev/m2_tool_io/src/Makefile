@@ -45,11 +45,11 @@ BUILD_ENV ?= dev
 ifeq ($(BUILD_ENV), prod)
 	# 本番環境用マクロ
 	CXXFLAGS += -DPRODUCTION
-	ENV_MSG = "PRODUCTION (本番環境)"
+	ENV_MSG = PRODUCTION (本番環境)
 else
 	# 開発環境用マクロ
 	CXXFLAGS += -DDEVELOPMENT -DDEV -DSTUB_PLC
-	ENV_MSG = "DEVELOPMENT (開発環境)"
+	ENV_MSG = DEVELOPMENT (開発環境)
 endif
 
 # ==============================================================================
@@ -141,8 +141,7 @@ debug: $(DEBUG_TARGET_PATH)
 # 'make check' で、ソースコードの構文チェックを行う
 check: $(SOURCES)
 	@echo "Checking source files in $(ENV_MSG) mode..."
-	@$(foreach src, $(SOURCES), echo "Checking $(src)"; \
-	$(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
+	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
 
 # 'make clean' で、現在のターゲットのファイルのみ削除
 clean:
