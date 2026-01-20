@@ -6,34 +6,10 @@
 #pragma once
 #include <algorithm>
 #include <optional>
+#include <glib-2.0/glib-unix.h>
 #include <SimpleGtk>
 #include "utility.hpp"
 #include "layout.hpp"
-
-/**
- * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
- * @param[in] signal_name GTKシグナル名 (文字列)。
- * @param[in] c_signal_name C++の関数名として使用する名前。
- * @param[in] return_type ハンドラの戻り値の型 (例: gboolean)。
- * @param[in] para_static 静的コールバック関数の引数リスト。
- * @param[in] function std::function の型。
- * @param[in] ... std::function に渡す引数。
- */
-#define DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, function, ...) \
-public: \
-void on_##c_signal_name(function handler) { \
-	on_##c_signal_name##_handler = handler; \
-	if (on_##c_signal_name##_handler != nullptr) \
-		set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
-} \
-private: \
-function on_##c_signal_name##_handler = nullptr; \
-static return_type on_##c_signal_name##_static para_static { \
-	if (thiz->on_##c_signal_name##_handler != nullptr) { \
-		return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
-	} \
-	return FALSE; \
-}
 
 /**
  * @brief メソッドを定義するマクロ（メソッド名を任意に指定可能版）。
@@ -152,6 +128,78 @@ static return_type on_##c_signal_name##_static para_static { \
 		g_object_set(G_OBJECT(this->object), gtk_property_name, (gboolean)value, NULL); \
 	}
 
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数なし）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] instance_type シグナルハンドラの所属クラス名。
+ * @param[in] ... 静的コールバック関数の引数リスト。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER(signal_name, c_signal_name, instance_type, ...) \
+	public:\
+	void on_##c_signal_name(std::function<void()> handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+	private:\
+	std::function<void()> on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static(__VA_ARGS__, instance_type* thiz) { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) \
+			thiz->on_##c_signal_name##_handler(); \
+	}
+
+// シグナルのハンドラーを定義するマクロ
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数あり）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS(signal_name, c_signal_name, para_static, function, ...) \
+	public:\
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+	private:\
+	function on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static para_static { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) \
+			thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+	}
+
+/**
+ * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] return_type ハンドラの戻り値の型 (例: gboolean)。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, function, ...) \
+public: \
+void on_##c_signal_name(function handler) { \
+	on_##c_signal_name##_handler = handler; \
+	if (on_##c_signal_name##_handler != nullptr) \
+		this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+} \
+private: \
+function on_##c_signal_name##_handler = nullptr; \
+static return_type on_##c_signal_name##_static para_static { \
+	if (thiz->on_##c_signal_name##_handler != nullptr) { \
+		return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+	} \
+	return FALSE; \
+}
+
+/**
+ * @brief CSSクラス操作用のメソッドを定義するマクロ。
+ */
 #define DEFINE_CSS_CLASS_ACCESSORS() \
 	void add_css_class(const gchar* class_name) { \
 		gtk_style_context_add_class(*this, class_name); \
@@ -446,49 +494,91 @@ inline std::optional<Rectangle> get_monitor_rectangle_at_window(GtkWindow* windo
 }
 
 /**
- * @class Window
- * @brief sg::Windowを拡張し、機能を追加したクラス。
+ * @class UnixSignal
+ * @brief Unixシグナル (SIGINT, SIGTERM等) を捕捉し、std::functionを実行するRAIIラッパークラス。
+ * @details オブジェクトが生存している間のみシグナルを監視します。破棄されると自動的に監視を解除します。
  */
-class Window : public sg::Window {
+class UnixSignal {
+public:
+	// ハンドラの型: trueを返すと監視継続(G_SOURCE_CONTINUE), falseを返すと解除(G_SOURCE_REMOVE)
+	using Handler = std::function<bool()>;
+
+private:
+	guint m_source_id = 0;	// GLibのソースID
+	Handler m_handler;		// シグナルハンドラ
+
+	// GLib用の静的トランポリン関数
+	static gboolean on_signal_static(gpointer user_data) {
+		auto* self = static_cast<UnixSignal*>(user_data);
+		if (self && self->m_handler) {
+			// C++のboolをgbooleanに変換
+			return self->m_handler() ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
+		}
+		return G_SOURCE_REMOVE;
+	}
+
 public:
 	/**
-	 * @brief コンストラクタ。
-	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
-	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 * @brief コンストラクタ。シグナル監視を開始します。
+	 * @param[in] signum 監視するシグナル番号 (例: SIGINT, SIGTERM)
+	 * @param[in] handler シグナル発生時に実行する関数
 	 */
-	Window(bool use_size = false) : sg::Window() {
-		set_use_size(use_size);
+	UnixSignal(int signum, Handler handler) : m_handler(handler) {
+		if (m_handler) {
+			// G_PRIORITY_DEFAULT でシグナルを監視
+			m_source_id = g_unix_signal_add(signum, on_signal_static, this);
+		}
 	}
+
+	// デストラクタ: 自動的に監視を解除
+	~UnixSignal() {
+		release();
+	}
+
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	UnixSignal(const UnixSignal&) = delete;
+	UnixSignal& operator=(const UnixSignal&) = delete;
+	UnixSignal(UnixSignal&&) = delete;
+	UnixSignal& operator=(UnixSignal&&) = delete;
 
 	/**
-	 * @brief コンストラクタ。
-	 * @param[in] glade Gladeオブジェクトの参照。
-	 * @param[in] id ウィンドウのID文字列。
-	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
-	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 * @brief シグナル監視を解除します。
 	 */
-	Window(Glade& glade, const char* id, bool use_size = false) : sg::Window(glade, id) {
-		set_use_size(use_size);
+	void release() {
+		if (m_source_id > 0) {
+			g_source_remove(m_source_id);
+			m_source_id = 0;
+		}
 	}
+};
 
-	// コピー禁止。
-	Window(const Window&) = delete;
-	Window& operator=(const Window&) = delete;
+/**
+ * @class WidgetExtension
+ * @brief GtkWidget に帰属する機能（表示、感度、シグナル等）を提供するMixinクラス
+ * @tparam Base 継承元のクラス (例: sg::Container, sg::Button, sg::Window)
+ */
+template <typename Base>
+class WidgetExtension : public Base {
+public:
+	// コンストラクタとデストラクタ
+	using Base::Base;	// コンストラクタ継承
+	virtual ~WidgetExtension() = default;
 
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Window(Window&&) = delete;
-	Window& operator=(Window&&) = delete;
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	WidgetExtension(const WidgetExtension&) = delete;
+	WidgetExtension& operator=(const WidgetExtension&) = delete;
+	WidgetExtension(WidgetExtension&&) = delete;
+	WidgetExtension& operator=(WidgetExtension&&) = delete;
 
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(widget, get_preferred_size, void, (GtkRequisition *minimum_size, GtkRequisition *natural_size), minimum_size, natural_size)
+	DEFINE_METHOD(widget, grab_focus, void)
 	DEFINE_METHOD_WITH_ARGS(widget, set_mapped, void, (gboolean mapped), mapped)
 	DEFINE_METHOD(widget, get_mapped, gboolean)
-	DEFINE_METHOD(window, fullscreen, void)
-	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
-	using sg::Window::set_default_size;
-	DEFINE_METHOD_WITH_ARGS(window, get_default_size, void, (gint* width, gint* height), width, height)
-	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_CSS_CLASS_ACCESSORS()
 
 	/**
@@ -501,6 +591,67 @@ public:
 		get_preferred_size(&minimum_size, &natural_size);
 		return PreferredSize(Size(minimum_size), Size(natural_size));
 	}
+
+	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+
+	// シグナル
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), std::function<bool(GdkEventButton* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), std::function<bool(GdkEventButton* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-in-event", focus_in_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), std::function<bool(GdkEventFocus* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-out-event", focus_out_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), std::function<bool(GdkEventFocus* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER("map", map, WidgetExtension, GtkWidget* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("show", show, WidgetExtension, GtkWidget* self)
+};
+
+/**
+ * @class WindowExtension
+ * @brief GtkWindow に帰属する機能（表示、感度、シグナル等）を提供するMixinクラス
+ * @tparam Base 継承元のクラス (例: sg::Window, sg::Dialog)
+ */
+template <typename Base>
+class WindowExtension : public WidgetExtension<Base> {
+public:
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	WindowExtension(bool use_size = false) : WidgetExtension<Base>() {
+		set_use_size(use_size);
+	}
+
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] glade Gladeオブジェクトの参照。
+	 * @param[in] id ウィンドウのID文字列。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	WindowExtension(Glade& glade, const char* id, bool use_size = false) : WidgetExtension<Base>(glade, id) {
+		set_use_size(use_size);
+	}
+
+	// デストラクタ
+	virtual ~WindowExtension() = default;
+
+	// コピーとムーブは禁止。
+	// Gtkシグナルにthisポインタを登録しているため、ムーブも禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	WindowExtension(const WindowExtension&) = delete;
+	WindowExtension& operator=(const WindowExtension&) = delete;
+	WindowExtension(WindowExtension&&) = delete;
+	WindowExtension& operator=(WindowExtension&&) = delete;
+
+	// メソッド
+	DEFINE_METHOD(window, fullscreen, void)
+	DEFINE_METHOD(window, close, void)
+	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (bool setting), setting)
+	using WidgetExtension<Base>::set_default_size;
+	DEFINE_METHOD_WITH_ARGS(window, get_default_size, void, (gint* width, gint* height), width, height)
+	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 
 	/**
 	 * @brief ウィンドウの配置基準を設定します。
@@ -577,8 +728,7 @@ public:
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
 	void move_by(const Position& pos) {
-		Position current_pos = get_position();
-		_move(current_pos.x + pos.x, current_pos.y + pos.y);
+		_move(get_position() + pos);
 	}
 
 	/**
@@ -610,21 +760,17 @@ public:
 		Size default_size;
 		Size preferred_size;
 		default_size = get_default_size();
-		preferred_size = get_preferred_size().natural_size;
+		preferred_size = this->get_preferred_size().natural_size;
 		return Size(std::max(default_size.width, preferred_size.width), std::max(default_size.height, preferred_size.height));
 	}
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
 	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Window, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
-
 public:
 	/**
 	 * @brief "size-allocate"シグナルのハンドラを設定します。
@@ -634,7 +780,7 @@ public:
 	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
 		on_size_allocate_handler = handler;
 		if (on_size_allocate_handler != nullptr) {
-			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+			this->set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
 		}
 	}
 
@@ -647,7 +793,7 @@ private:
 
 	// メソッド
 	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
-	void _move(gint x, gint y) { sg::Window::move(x, y); }
+	void _move(gint x, gint y) { WidgetExtension<Base>::move(x, y); }
 
 	/**
 	 * @brief ウィンドウの現在のサイズを取得します。
@@ -673,7 +819,7 @@ private:
 	void set_use_size(bool use_size) {
 		this->use_size = use_size;
 		if (use_size) {
-			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+			this->set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
 		}
 	}
 
@@ -683,7 +829,7 @@ private:
 	 * @param[in] allocation 割り当てられたサイズ情報へのポインタ。
 	 * @param[in] thiz Windowクラスのインスタンスへのポインタ。
 	 */
-	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, Window* thiz) {
+	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, WindowExtension* thiz) {
 		if (thiz->use_size) {
 			Size new_size;
 			new_size = thiz->_get_size();
@@ -695,6 +841,23 @@ private:
 			thiz->on_size_allocate_handler(allocation);
 		}
 	}
+};
+
+/**
+ * @class Window
+ * @brief sg::Windowを拡張し、機能を追加したクラス。
+ */
+class Window : public WindowExtension<sg::Window> {
+public:
+	// コンストラクタとデストラクタ
+	using WindowExtension<sg::Window>::WindowExtension;
+	virtual ~Window() = default;
+
+	// メソッド
+
+	// プロパティ
+
+	// シグナル
 };
 
 /**
@@ -702,248 +865,19 @@ private:
  * @brief sg::Dialogを拡張し、機能を追加したクラス。
  * @details "show"シグナルは、ダイアログが表示された直後に発生します。
  */
-class Dialog : public sg::Dialog {
+class Dialog : public WindowExtension<sg::Dialog> {
 public:
-	/**
-	 * @brief コンストラクタ。
-	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
-	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
-	 */
-	Dialog(bool use_size = false) : sg::Dialog() {
-		set_use_size(use_size);
-	}
-
-	/**
-	 * @brief コンストラクタ。
-	 * @param[in] glade Gladeオブジェクトの参照。
-	 * @param[in] id ウィンドウのID文字列。
-	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
-	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
-	 */
-	Dialog(Glade& glade, const char* id, bool use_size = false) : sg::Dialog(glade, id) {
-		set_use_size(use_size);
-	}
-
-	// コピー禁止。
-	Dialog(const Dialog&) = delete;
-	Dialog& operator=(const Dialog&) = delete;
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Dialog(Dialog&&) = delete;
-	Dialog& operator=(Dialog&&) = delete;
+	// コンストラクタとデストラクタ
+	using WindowExtension<sg::Dialog>::WindowExtension;
+	virtual ~Dialog() = default;
 
 	// メソッド
-	DEFINE_METHOD_WITH_ARGS(widget, get_preferred_size, void, (GtkRequisition *minimum_size, GtkRequisition *natural_size), minimum_size, natural_size)
-	DEFINE_METHOD_WITH_ARGS(widget, set_mapped, void, (gboolean mapped), mapped)
-	DEFINE_METHOD(widget, get_mapped, gboolean)
-	DEFINE_METHOD(window, fullscreen, void)
-	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
-	using sg::Window::set_default_size;
-	DEFINE_METHOD_WITH_ARGS(window, get_default_size, void, (gint* width, gint* height), width, height)
-	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
-	DEFINE_CSS_CLASS_ACCESSORS()
-
-	/**
-	 * @brief ウィンドウの推奨サイズを取得します。
-	 * @return ウィンドウの推奨サイズを表す PreferredSize 構造体。
-	 */
-	PreferredSize get_preferred_size() {
-		GtkRequisition minimum_size;
-		GtkRequisition natural_size;
-		get_preferred_size(&minimum_size, &natural_size);
-		return PreferredSize(Size(minimum_size), Size(natural_size));
-	}
-
-	/**
-	 * @brief ウィンドウの配置基準を設定します。
-	 * @param[in] gravity layout::Gravity 列挙型の値。
-	 */
-	void set_gravity(layout::Gravity gravity) {
-		if (use_size) {
-			this->gravity = gravity;
-			if (!init_gdk_gravity) {
-				set_gdk_gravity(GdkGravity::GDK_GRAVITY_NORTH_WEST);
-				init_gdk_gravity = true;
-			}
-		} else {
-			set_gdk_gravity(to_gdk_gravity(gravity));
-		}
-	}
-
-	/**
-	 * @brief ウィンドウの配置基準を取得します。
-	 * @return ウィンドウの配置基準を表す layout::Gravity 列挙型の値。
-	 */
-	const layout::Gravity& get_gravity() const {
-		return gravity;
-	}
-
-	/**
-	 * @brief ウィンドウのデフォルトサイズを設定します。
-	 * @param[in] size ウィンドウのデフォルトサイズを表す Size 構造体。
-	 */
-	void set_default_size(Size size) {
-		set_default_size(size.width, size.height);
-	}
-
-	/**
-	 * @brief ウィンドウのデフォルトサイズを取得します。
-	 * @return ウィンドウのデフォルトサイズを表す Size 構造体。
-	 */
-	Size get_default_size() {
-		Size default_size;
-		get_default_size(&default_size.width, &default_size.height);
-		return default_size;
-	}
-
-	/**
-	 * @brief ウィンドウのサイズを取得します。
-	 * @return ウィンドウのサイズを表す Size 構造体と、実体サイズ(true)か推定サイズ(false)かどうかを示すbool値のペア。
-	 */
-	std::pair<Size, bool> get_size() {
-		bool is_estimated_size = !size.has_value();
-		return std::make_pair(((size.has_value()) ? (size.value()) : (get_estimated_size())), is_estimated_size);
-	}
-
-	/**
-	 * @brief ウィンドウを指定した位置に移動します。
-	 * @param[in] pos 移動先の位置を表す Position 構造体。
-	 */
-	void move(Position pos) {
-		if (size.has_value()) {
-			pos = layout::calculate_top_left(pos, get_size().first, gravity);
-		}
-		_move(pos.x, pos.y);
-	}
-
-	/**
-	 * @brief ウィンドウを指定した位置に移動します。
-	 * @param[in] pos 移動先の位置を表す Position 構造体。
-	 */
-	void move(gint x, gint y) {
-		move(Position(x, y));
-	}
-
-	/**
-	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
-	 * @param[in] pos 移動量を表す Position 構造体。
-	 */
-	void move_by(const Position& pos) {
-		Position current_pos = get_position();
-		_move(current_pos.x + pos.x, current_pos.y + pos.y);
-	}
-
-	/**
-	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
-	 * @param[in] x 移動量のX成分。
-	 * @param[in] y 移動量のY成分。
-	 */
-	void move_by(gint x, gint y) {
-		Position current_pos = get_position();
-		_move(current_pos.x + x, current_pos.y + y);
-	}
-
-	/**
-	 * @brief ウィンドウの現在の位置を取得します。
-	 * @return ウィンドウの位置を表す Position 構造体。
-	 */
-	Position get_position() {
-		Position pos;
-		get_position(&pos.x, &pos.y);
-		return pos;
-	}
-
-	/**
-	 * @brief ウィンドウの推定サイズを取得します。
-	 * @return ウィンドウの推定サイズを表す Size 構造体。
-	 * ウィンドウのデフォルトサイズと推奨サイズのうち大きい方が返されます。
-	 */
-	Size get_estimated_size() {
-		Size default_size;
-		Size preferred_size;
-		default_size = get_default_size();
-		preferred_size = get_preferred_size().natural_size;
-		return Size(std::max(default_size.width, preferred_size.width), std::max(default_size.height, preferred_size.height));
-	}
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Dialog, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
-
-public:
-	/**
-	 * @brief "size-allocate"シグナルのハンドラを設定します。
-	 * @param[in] handler サイズ割り当て時に呼び出されるコールバック関数。
-	 * コールバック関数は GtkAllocation* 型の引数を受け取ります。
-	 */
-	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
-		on_size_allocate_handler = handler;
-		if (on_size_allocate_handler != nullptr) {
-			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
-		}
-	}
-
-private:
-	// メンバ変数
-	bool use_size{false};
-	bool init_gdk_gravity{false};
-	std::optional<Size> size{};
-	layout::Gravity gravity{layout::Gravity::NorthWest};
-
-	// メソッド
-	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
-	void _move(gint x, gint y) { sg::Dialog::move(x, y); }
-
-	/**
-	 * @brief ウィンドウの現在のサイズを取得します。
-	 * @return ウィンドウのサイズを表す Size 構造体
-	 */
-	Size _get_size() {
-		Size crnt_size;
-		_get_size(&crnt_size.width, &crnt_size.height);
-		return crnt_size;
-	}
-
-	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("gravity", gdk_gravity, GdkGravity)
-
-	// シグナル
-
-	std::function<void(GtkAllocation*)> on_size_allocate_handler = nullptr;
-
-	/**
-	 * @brief ウィンドウのサイズ追跡を有効または無効にします。
-	 * @param[in] use_size ウィンドウのサイズ追跡を有効にする場合はtrue、無効にする場合はfalse。
-	 */
-	void set_use_size(bool use_size) {
-		this->use_size = use_size;
-		if (use_size) {
-			set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
-		}
-	}
-
-	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, Dialog* thiz) {
-		if (thiz->use_size) {
-			Size new_size;
-			new_size = thiz->_get_size();
-			if (new_size.width > 0 && new_size.height > 0) {
-				thiz->size = new_size;
-			}
-		}
-		if (thiz->on_size_allocate_handler != nullptr) {
-			thiz->on_size_allocate_handler(allocation);
-		}
-	}
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
 };
 
 /**
@@ -951,19 +885,11 @@ private:
  * @brief GtkBoxのラッパークラス。ウィジェットを水平または垂直に配置するためのコンテナです。
  * @details sg::Containerを継承し、ウィジェットのパッキング（追加）機能などを提供します。
  */
-class Box : public sg::Container {
+class Box : public WidgetExtension<sg::Container> {
 public:
-	// コンストラクタ
-	Box(Glade& glade, const char* id) : Container(glade, id) {}
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Container>::WidgetExtension;
 	virtual ~Box() = default;
-
-	// コピーとムーブ禁止
-	// (Gtkシグナルにthisポインタを登録しているため、
-	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Box(const Box&) = delete;
-	Box& operator=(const Box&) = delete;
-	Box(Box&&) = delete;
-	Box& operator=(Box&&) = delete;
 
 	// GtkBox*へのキャスト演算子
 	operator GtkBox*() const { return GTK_BOX(this->object); }
@@ -971,14 +897,10 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(box, pack_start, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Box, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Box, GtkWidget* self)
 };
 
 /**
@@ -986,19 +908,11 @@ public:
  * @brief GtkStackのラッパークラス。複数のページを重ねて管理し、一度に1つだけ表示します。
  * @details sg::Containerを継承し、表示するページを名前で切り替える機能などを提供します。
  */
-class Stack : public sg::Container {
+class Stack : public WidgetExtension<sg::Container> {
 public:
-	// コンストラクタ
-	Stack(Glade& glade, const char* id) : Container(glade, id) {}
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Container>::WidgetExtension;
 	virtual ~Stack() = default;
-
-	// コピーとムーブ禁止
-	// (Gtkシグナルにthisポインタを登録しているため、
-	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Stack(const Stack&) = delete;
-	Stack& operator=(const Stack&) = delete;
-	Stack(Stack&&) = delete;
-	Stack& operator=(Stack&&) = delete;
 
 	// GtkStack*へのキャスト演算子
 	operator GtkStack*() const { return GTK_STACK(this->object); }
@@ -1006,127 +920,81 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(stack, set_visible_child_name, void, (const char* name), name)
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Stack, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Stack, GtkWidget* self)
 };
 
 /**
  * @class Button
  * @brief sg::Buttonを拡張し、機能を追加したクラス。
  */
-class Button : public sg::Button {
+class Button : public WidgetExtension<sg::Button> {
 public:
-	using sg::Button::Button; // 基底クラスのコンストラクタを継承
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Button(Button&&) = delete;
-	Button& operator=(Button&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Button>::WidgetExtension;
+	virtual ~Button() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Button, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Button, GtkWidget* self)
 };
 
 /**
  * @class CheckButton
  * @brief sg::CheckButtonを拡張し、機能を追加したクラス。
  */
-class CheckButton : public sg::CheckButton {
+class CheckButton : public WidgetExtension<sg::CheckButton> {
 public:
-	using sg::CheckButton::CheckButton; // 基底クラスのコンストラクタを継承
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	CheckButton(CheckButton&&) = delete;
-	CheckButton& operator=(CheckButton&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::CheckButton>::WidgetExtension;
+	virtual ~CheckButton() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, CheckButton, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, CheckButton, GtkWidget* self)
 };
 
 /**
  * @class RadioButton
  * @brief sg::RadioButtonを拡張し、機能を追加したクラス。
  */
-class RadioButton : public sg::RadioButton {
+class RadioButton : public WidgetExtension<sg::RadioButton> {
 public:
-	using sg::RadioButton::RadioButton; // 基底クラスのコンストラクタを継承
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	RadioButton(RadioButton&&) = delete;
-	RadioButton& operator=(RadioButton&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::RadioButton>::WidgetExtension;
+	virtual ~RadioButton() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, RadioButton, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, RadioButton, GtkWidget* self)
 };
 
 /**
  * @class Entry
  * @brief sg::Entryを拡張し、機能を追加したクラス。
  */
-class Entry : public sg::Entry {
+class Entry : public WidgetExtension<sg::Entry> {
 public:
-	// 基底クラスのコンストラクタを継承
-	using sg::Entry::Entry;
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Entry(Entry&&) = delete;
-	Entry& operator=(Entry&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Entry>::WidgetExtension;
+	virtual ~Entry() = default;
 
 	// メソッド
-	DEFINE_METHOD(widget, grab_focus, void)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(editable)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::Entry* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::Entry* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-in-event", focus_in_event, gboolean, (GtkWidget* self, GdkEventFocus* event, sgex::Entry* thiz), std::function<bool(GdkEventFocus* event)>, event)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-out-event", focus_out_event, gboolean, (GtkWidget* self, GdkEventFocus* event, sgex::Entry* thiz), std::function<bool(GdkEventFocus* event)>, event)
-	DEFINE_SIGNAL_HANDLER("map", map, Entry, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Entry, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
 };
 
 /**
@@ -1136,121 +1004,80 @@ public:
  */
 class ToggleButton : public sgex::Button {
 public:
-	// コンストラクタ
-	ToggleButton(Glade& glade, const char* id) : Button(glade, id) {}
+	// コンストラクタとデストラクタ
+	using Button::Button;
 	virtual ~ToggleButton() = default;
-
-	// コピーとムーブ禁止
-	// (Gtkシグナルにthisポインタを登録しているため、
-	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	ToggleButton(const ToggleButton&) = delete;
-	ToggleButton& operator=(const ToggleButton&) = delete;
-	ToggleButton(ToggleButton&&) = delete;
-	ToggleButton& operator=(ToggleButton&&) = delete;
 
 	// GtkToggleButton*へのキャスト演算子
 	operator GtkToggleButton*() const { return GTK_TOGGLE_BUTTON(this->object); }
 
 	// メソッド
-	DEFINE_METHOD_WITH_ARGS(toggle_button, set_active, void, (bool is_active), is_active)
-	DEFINE_METHOD(toggle_button, get_active, bool)
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
 };
 
 /**
  * @class Switch
  * @brief GtkSwitchのラッパークラス。オン/オフを切り替えるスイッチを提供します。
  */
-class Switch : public sg::Widget {
+class Switch : public WidgetExtension<sg::Widget> {
 public:
-	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
-
-	// コピーとムーブ禁止
-	// (Gtkシグナルにthisポインタを登録しているため、
-	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Switch(const Switch&) = delete;
-	Switch& operator=(const Switch&) = delete;
-	Switch(Switch&&) = delete;
-	Switch& operator=(Switch&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Widget>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~Switch() = default;
 
 	operator GtkSwitch*() const { return GTK_SWITCH(this->object); }
 
 	// メソッド
-	DEFINE_METHOD(switch, get_active, bool)
-	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Switch, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Switch, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
 };
 
 /**
  * @class ComboBox
  * @brief GtkComboBoxのラッパークラス。ドロップダウンリストを提供します。
  */
-class ComboBox : public sg::Widget {
+class ComboBox : public WidgetExtension<sg::Widget> {
 public:
-	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
-
-	// コピーとムーブ禁止
-	// (Gtkシグナルにthisポインタを登録しているため、
-	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	ComboBox(const ComboBox&) = delete;
-	ComboBox& operator=(const ComboBox&) = delete;
-	ComboBox(ComboBox&&) = delete;
-	ComboBox& operator=(ComboBox&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Widget>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~ComboBox() = default;
 
 	operator GtkComboBox*() const { return GTK_COMBO_BOX(this->object); }
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS(ComboBox, active, gint)
 	DEFINE_PROPERTY_ACCESSORS(ComboBox, model, GtkTreeModel*)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, ComboBox, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, ComboBox, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
 };
 
 /**
  * @class Label
  * @brief sg::Labelを拡張し、機能を追加したクラス。
  */
-class Label : public sg::Label {
+class Label : public WidgetExtension<sg::Label> {
 public:
-	using sg::Label::Label; // 基底クラスのコンストラクタを継承
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	Label(Label&&) = delete;
-	Label& operator=(Label&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Label>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~Label() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Label, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Label, GtkWidget* self)
 };
 
 /**
@@ -1259,7 +1086,9 @@ public:
  */
 class ListStore : public sg::ListStore {
 public:
-	using sg::ListStore::ListStore; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using sg::ListStore::ListStore;	// 基底クラスのコンストラクタを継承
+	virtual ~ListStore() = default;
 
 	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
 	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
@@ -1362,7 +1191,9 @@ public:
  */
 class TreeSelection : public sg::TreeSelection {
 public:
-	using sg::TreeSelection::TreeSelection; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using sg::TreeSelection::TreeSelection;	// 基底クラスのコンストラクタを継承
+	virtual ~TreeSelection() = default;
 
 	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
 	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
@@ -1374,7 +1205,7 @@ public:
 	DEFINE_METHOD(tree_selection, unselect_all, void)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, mode, GtkSelectionMode)
+	DEFINE_PROPERTY_ACCESSORS(TreeSelection, mode, GtkSelectionMode)
 
 	// シグナル
 };
@@ -1383,14 +1214,11 @@ public:
  * @class TreeView
  * @brief sg::TreeViewを拡張し、機能を追加したクラス。
  */
-class TreeView : public sg::TreeView {
+class TreeView : public WidgetExtension<sg::TreeView> {
 public:
-	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
-
-	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
-	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
-	TreeView(TreeView&&) = delete;
-	TreeView& operator=(TreeView&&) = delete;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::TreeView>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~TreeView() = default;
 
 	// メソッド
 //	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
@@ -1399,19 +1227,11 @@ public:
 	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
 	DEFINE_METHOD(tree_view, get_grid_lines, GtkTreeViewGridLines)
 	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS(TreeView, model, GtkTreeModel*)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER("map", map, TreeView, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, TreeView, GtkWidget* self)
 };
 
 /**

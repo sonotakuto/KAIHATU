@@ -4,6 +4,7 @@
  */
 #include <stdlib.h>
 #include "utility.hpp"
+#include "filesystem_utils.hpp"
 #include "container_utils.hpp"
 #include "includes.hpp"
 #include "db_client.hpp"
@@ -129,7 +130,7 @@ bool operator!=(const MainWindow::TableState& lhs, const MainWindow::TableState&
 MainWindow::MainWindow() :
 	// --- メンバ初期化子リスト ---
 	// Gladeオブジェクトを初期化
-	glade("tool_io.glade"),
+	glade(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "tool_io.glade").lexically_normal().c_str()),
 	// ヘッダー部
 	dateTimeLabel(glade, "dateTimeLabel"),
 	retrieveToggleButton(glade, "retrieveToggleButton"),
@@ -2727,6 +2728,24 @@ bool MainWindow::on_timeout() {
 	string str = format("{:%Y / %m / %d   %H : %M}", t);
 	dateTimeLabel.set_text(str.c_str());
 	return true; // タイマーを継続
+}
+
+bool MainWindow::on_delete_event(GtkWidget* self, GdkEvent* event) {
+	// ウィンドウが閉じられようとしているときの処理
+	DEV_PRINT("ウィンドウが閉じられました\n");
+
+	// 追跡システムとの通信を終了
+	tracker::g_tool_tracker->disconnect();
+	tracker::g_recorder_client->stop_recording();
+
+	// バックグラウンドプロセスの終了
+	stop_MediaServer();
+
+	// DBとの通信を切断
+	db::disconnect();
+
+	// 基底クラスの同名メソッドを呼び出す
+	return sg::Window::on_delete_event(self, event);
 }
 
 void MainWindow::retrieveToggleButton_on_toggled() {

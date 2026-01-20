@@ -2,6 +2,7 @@
  * @file tool_io_main.cpp
  * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
  */
+#include "filesystem_utils.hpp"
 #include "includes.hpp"
 #include "keyboard_utils.hpp"
 #include "plc_communicator.hpp"
@@ -18,7 +19,7 @@ int main(int argc, char *argv[])
 	// activateハンドラ: アプリケーション起動時に一度だけ呼ばれる
 	app.on_activate([&app]{
 		// 1. CSSファイルを読み込む
-		load_css("tool_io.css");
+		load_css(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "tool_io.css").lexically_normal().c_str());
 
 		// 2. メインウィンドウを生成
 		// 設計図(m2-1-1)の「GUIとスレッドを起動する」に相当 [cite: 195]
@@ -59,6 +60,28 @@ int main(int argc, char *argv[])
 	tracker::g_recorder_client = std::make_unique<tracker::RecorderClient>();
 
 	plc::initialize();	// PLC連携用スレッドを起動
+
+	// --- シグナル対応 ---
+
+	// SIGPIPE は「無視」するように設定 (OSレベルでシグナルを無効化)
+	// これにより、通信切断時に send() がエラーを返すようになり、アプリが落ちなくなる
+	::signal(SIGPIPE, SIG_IGN);
+
+	// 終了要求系シグナルのハンドリング (RAII)
+	// 共通で使うラムダ式
+	auto safe_exit_handler = []() -> bool {
+		if (gui::mainWindow) {
+			gui::mainWindow->close();
+		} else {
+			gtk_main_quit();
+		}
+		return false; // ハンドラ削除
+	};
+
+	sgex::UnixSignal sig_int(SIGINT, safe_exit_handler);
+	sgex::UnixSignal sig_term(SIGTERM, safe_exit_handler);
+	sgex::UnixSignal sig_hup(SIGHUP, safe_exit_handler);
+	sgex::UnixSignal sig_quit(SIGQUIT, safe_exit_handler);
 
 	// メッセージループを開始
 	// この関数内でイベントの待受が行われ、終了するまで制御は戻らない

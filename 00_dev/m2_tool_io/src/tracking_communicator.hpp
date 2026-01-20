@@ -40,13 +40,16 @@ constexpr std::array<char, length> make_fixed_message(std::string_view sv) {
 }
 
 // --- 共通定数 ---
-//inline constexpr int COMMON_TIMEOUT_SECONDS = 5;
-inline constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
+#ifdef PRODUCTION
+inline constexpr int COMMON_TIMEOUT_SECONDS = 5;
+#else
+inline constexpr int COMMON_TIMEOUT_SECONDS = 1;
+#endif
 
 // --- インサート個数取得クライアント 定数 ---
 #ifdef PRODUCTION
-//inline constexpr const char*	COUNTER_HOST			= "10.19.133.3";
-inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// dummy
+inline constexpr const char*	COUNTER_HOST			= "localhost";
+//inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// dummy
 #else
 inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// 開発環境なら、デフォルトでダミーサーバに接続
 #endif
@@ -65,8 +68,8 @@ public:
 	// --- 定数 ---
 #ifdef PRODUCTION
 	//static constexpr const char*	HOST			= "10.19.133.122";	// D201
-	//static constexpr const char*	HOST			= "10.19.106.160";	// C103
-	static constexpr const char*	HOST			= "10.19.133.117";	// dummy
+	static constexpr const char*	HOST			= "10.19.106.160";	// C103
+	//static constexpr const char*	HOST			= "10.19.133.117";	// dummy
 #else
 	static constexpr const char*	HOST			= "10.19.133.117";	// 開発環境なら、デフォルトでダミーサーバに接続
 #endif
@@ -197,8 +200,8 @@ class RecorderClient {
 public:
 	// --- 定数 ---
 #ifdef PRODUCTION
-//	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
-	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
+	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
+//	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
 #else
 	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// 開発環境なら、デフォルトでダミーサーバに接続
 #endif

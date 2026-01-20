@@ -1091,6 +1091,13 @@ private:
 	bool on_timeout() override;
 
 	/**
+	 * @brief ウィンドウの閉じるボタンが押されたときに呼び出されるハンドラ。
+	 * 各種リソースの解放処理を行う。
+	 * @return trueを返すとウィンドウの閉鎖がキャンセルされ、falseを返すと閉鎖が続行される。
+	 */
+	bool on_delete_event(GtkWidget* self, GdkEvent* event) override;
+
+	/**
 	 * @brief retrieveToggleButton の "toggled" シグナルに対応するハンドラ。
 	 * @details 「取り出し」モードへの切り替えを試みる。
 	 */

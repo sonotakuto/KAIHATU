@@ -42,7 +42,7 @@ bool ToolTrackerClient::connect() {
 		std::array<char, MSG_LENGTH> buffer{};
 		ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
 		socket.set_timeout(0); // ブロッキングモードに戻す
-		std::string_view raw_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
+		std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
 		if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
 			keep_listening = true;
@@ -77,7 +77,7 @@ void ToolTrackerClient::disconnect() {
 				std::array<char, MSG_LENGTH> buffer{};
 				ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
 				socket.set_timeout(0); // ブロッキングモードに戻す
-				std::string_view raw_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
+				std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
 				if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
 					DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
@@ -128,7 +128,7 @@ void ToolTrackerClient::listener_thread_func() {
 			// 受信のためにバッファをクリア
 			buffer.fill('\0');
 			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
-			std::string_view raw_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
+			std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received {} bytes\n", bytes_read);
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", raw_view);
 

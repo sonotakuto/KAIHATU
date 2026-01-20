@@ -33,7 +33,7 @@ DEBUGFLAGS = -g -O0 -DDEBUG -DDEBUG_LEVEL=3
 CHECKFLAGS = -fsyntax-only
 
 # ==============================================================================
-# ▼▼▼ 環境切り替え設定 (追加部分) ▼▼▼
+# 環境切り替え設定
 # ==============================================================================
 
 # 環境変数 BUILD_ENV で切り替え (デフォルト: dev)
@@ -58,7 +58,7 @@ endif
 
 # コンパイル対象のソースファイル（.cpp）をスペース区切りで列挙
 # 例: SOURCES = main.cpp utils.cpp
-SOURCES = db_client.cpp gio_utils.cpp keyboard_utils.cpp odbc.cpp plc_communicator.cpp process_runner.cpp signal.cpp tool_io_gui.cpp tool_io_main.cpp tracking_communicator.cpp url_transfer.cpp
+SOURCES = db_client.cpp filesystem_utils.cpp gio_utils.cpp keyboard_utils.cpp odbc.cpp plc_communicator.cpp process_runner.cpp signal.cpp tool_io_gui.cpp tool_io_main.cpp tracking_communicator.cpp url_transfer.cpp
 
 # 「このヘッダを変更したら、全てのファイルを再コンパイルしたい」というヘッダ（.h, .hpp）をスペース区切りで列挙
 # これを指定すると、ヘッダーファイルの変更時にもソースが再コンパイルされる
@@ -131,11 +131,11 @@ rebuild:
 	$(MAKE) all
 
 # 'make exec' で、ビルド後に実行する
-exec: $(TARGET_PATH)
+exec: print_env $(TARGET_PATH)
 	./$(TARGET_PATH)
 
 # 'make debug' で、デバッグ版をビルドする
-debug: $(DEBUG_TARGET_PATH)
+debug: print_env $(DEBUG_TARGET_PATH)
 	@echo [F5]でデバッグを開始します。
 
 # 'make check' で、ソースコードの構文チェックを行う

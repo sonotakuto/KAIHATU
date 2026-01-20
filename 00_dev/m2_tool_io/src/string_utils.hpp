@@ -17,6 +17,20 @@ namespace utils {
 inline constexpr std::string_view WHITESPACE(" \t\n\r\f\v");
 
 /**
+ * @brief 指定されたバッファから、ヌル文字または最大長までの string_view を作成する
+ * (C標準の strnlen 相当のロジックで view を生成)
+ */
+constexpr std::string_view make_strn_view(const char* buffer, size_t max_len) {
+	size_t len = 0;
+	// C++17 constexpr対応のため、std::strnlenの代わりにループで書く例
+	// (C++20なら std::char_traits::length などを活用可)
+	while (len < max_len && buffer[len] != '\0') {
+		len++;
+	}
+	return std::string_view(buffer, len);
+}
+
+/**
  * @brief 左側の文字を除去
  * @param[in] sv 対象の文字列ビュー。
  * @param[in] chars 除去する文字の集合 (デフォルトは空白文字)。
@@ -126,6 +140,7 @@ std::string concat(Args const&... args) {
  * @tparam Args 文字列として扱える型（std::string, std::string_view, const char* 等）
  * @param[in,out] dest 追記先の文字列バッファ
  * @param[in] args 追記したい文字列要素（可変長引数）
+ * @return 追記後の dest への参照
  *
  * @warning **自己参照（Aliasing）の禁止**
  * 出力先の `dest` 自身、あるいは `dest` の内部バッファを参照するオブジェクト
@@ -139,7 +154,7 @@ std::string concat(Args const&... args) {
  * **対策:** `dest` の内容を含めて結合したい場合は、一度別の変数にコピーしてから渡してください。
  */
 template <typename... Args>
-void append_concat(std::string& dest, Args const&... args) {
+std::string& append_concat(std::string& dest, Args const&... args) {
 	// 1. 追加する合計サイズを計算
 	size_t added_len = (std::string_view(args).size() + ...);
 
@@ -149,6 +164,8 @@ void append_concat(std::string& dest, Args const&... args) {
 
 	// 3. 追記
 	(dest.append(args), ...);
+
+	return dest;
 }
 
 /**
@@ -159,8 +176,9 @@ void append_concat(std::string& dest, Args const&... args) {
  * dest の capacity が十分であれば、メモリ割り当ては一切発生しません。
  *
  * @tparam Args 文字列として扱える型（std::string, std::string_view, const char* 等）
- * @param[in,out] dest 追記先の文字列バッファ
+ * @param[in,out] dest 上書き先の文字列バッファ
  * @param[in] args 追記したい文字列要素（可変長引数）
+ * @return 上書き後の dest への参照
  *
  * @warning **自己参照（Aliasing）の禁止**
  * 出力先の `dest` 自身、あるいは `dest` の内部バッファを参照するオブジェクト
@@ -174,7 +192,7 @@ void append_concat(std::string& dest, Args const&... args) {
  * **対策:** `dest` の内容を含めて結合したい場合は、一度別の変数にコピーしてから渡してください。
  */
 template <typename... Args>
-void assign_concat(std::string& dest, Args const&... args) {
+std::string& assign_concat(std::string& dest, Args const&... args) {
 	// 1. 必要サイズを計算
 	size_t new_len = (std::string_view(args).size() + ...);
 
@@ -189,6 +207,8 @@ void assign_concat(std::string& dest, Args const&... args) {
 
 	// 4. 書き込み
 	(dest.append(args), ...);
+
+	return dest;
 }
 
 } // namespace utils
