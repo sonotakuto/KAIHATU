@@ -428,6 +428,11 @@ public:
 	//=========================================================================
 
 	/**
+	 * @brief ウィンドウを強制的に閉じる。
+	 */
+	void force_close();
+
+	/**
 	 * @brief ワーカースレッドからの実行依頼をGUIスレッドで実行するためのディスパッチャ。
 	 * @details
 	 * C言語形式のコールバックである g_idle_add と C++ のラムダ式やメンバー関数を繋ぐための汎用的な糊（グルー）コード。
@@ -1028,8 +1033,8 @@ private:
 	 */
 	bool start_MediaServer() {
 #ifdef PRODUCTION
-//		return runner.start("live555MediaServer");
-		return true;
+		return runner.start("live555MediaServer");
+//		return true;
 #else
 		return true;
 #endif
@@ -1039,9 +1044,7 @@ private:
 	 * @brief MediaServerを停止します。
 	 */
 	void stop_MediaServer() {
-#ifdef PRODUCTION
-//		runner.stop();
-#endif
+		runner.stop();
 	}
 
 	// --- 取り出しモード用のヘルパー関数 ---

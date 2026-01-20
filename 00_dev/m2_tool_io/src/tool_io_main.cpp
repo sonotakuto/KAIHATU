@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	// 共通で使うラムダ式
 	auto safe_exit_handler = []() -> bool {
 		if (gui::mainWindow) {
-			gui::mainWindow->close();
+			gui::mainWindow->force_close();
 		} else {
 			gtk_main_quit();
 		}

@@ -1778,6 +1778,24 @@ MainWindow::MainWindow() :
 // 公開メンバ関数実装
 //=============================================================================
 
+void MainWindow::force_close() {
+	GList *toplevels = gtk_window_list_toplevels();
+	GList *iter;
+
+	for (iter = toplevels; iter != NULL; iter = iter->next) {
+		GtkWidget *widget = GTK_WIDGET(iter->data);
+
+		// ウィジェットがダイアログかどうか判定
+		if (GTK_IS_DIALOG(widget)) {
+			// レスポンスを送って非表示にすることで全てのダイアログを閉じる
+			gtk_dialog_response(GTK_DIALOG(widget), GTK_RESPONSE_CANCEL);
+			gtk_widget_hide(widget);
+		}
+	}
+	// 最後に自身を閉じる
+	this->close();
+}
+
 gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
 	// 渡されたポインタを元の std::function オブジェクトにキャスト
 	auto* func = static_cast<std::function<void()>*>(user_data);
@@ -2735,8 +2753,8 @@ bool MainWindow::on_delete_event(GtkWidget* self, GdkEvent* event) {
 	DEV_PRINT("ウィンドウが閉じられました\n");
 
 	// 追跡システムとの通信を終了
-	tracker::g_tool_tracker->disconnect();
-	tracker::g_recorder_client->stop_recording();
+	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->disconnect(); }
+	if (tracker::g_recorder_client) { tracker::g_recorder_client->stop_recording(); }
 
 	// バックグラウンドプロセスの終了
 	stop_MediaServer();
