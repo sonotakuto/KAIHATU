@@ -200,8 +200,8 @@ class RecorderClient {
 public:
 	// --- 定数 ---
 #ifdef PRODUCTION
-	//static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
-	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
+	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
+	//static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
 #else
 	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// 開発環境なら、デフォルトでダミーサーバに接続
 #endif
