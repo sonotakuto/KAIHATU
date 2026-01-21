@@ -2,8 +2,8 @@
  * @file keyboard_utils.cpp
  * @brief onboardキーボードの起動・表示・非表示を制御するユーティリティ関数群の実装。
  */
-#include "./keyboard_utils.hpp"
-#include "./gio_utils.hpp" // 分離したヘッダをインクルード
+#include "gutils/gio_utils.hpp"
+#include "keyboard_utils.hpp"
 
 namespace onboard {
 

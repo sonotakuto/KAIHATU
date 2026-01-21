@@ -2,8 +2,8 @@
  * @file plc_communicator.cpp
  * @brief plc_communicator.hpp で宣言されたPLC通信機能の実装ファイル。
  */
-#include "periodic_timer.hpp"
-#include "signal.hpp"
+#include "utils/periodic_timer.hpp"
+#include "utils/signal.hpp"
 #include "includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
 #include "tool_io_gui.hpp"
 #include "plc_communicator.hpp"
@@ -437,7 +437,7 @@ static void run_communicator() {
 	// スタブ実装 (PLC不要のテスト用)
 	// =========================================================================
 	DEV_PRINT("PLCリスナースレッドを開始します。(STUBモード)\n");
-	utils::PeriodicTimer timer;
+	utils::chrono::PeriodicTimer timer;
 
 	// ワンショット監視要求(Watch)の受付時刻を記録するためのマップ
 	std::map<std::uint16_t, std::chrono::steady_clock::time_point> one_shot_timers;

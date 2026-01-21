@@ -2,7 +2,7 @@
  * @file tool_io_main.cpp
  * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
  */
-#include "filesystem_utils.hpp"
+#include "utils/filesystem_utils.hpp"
 #include "includes.hpp"
 #include "keyboard_utils.hpp"
 #include "plc_communicator.hpp"
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	// activateハンドラ: アプリケーション起動時に一度だけ呼ばれる
 	app.on_activate([&app]{
 		// 1. CSSファイルを読み込む
-		load_css(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "tool_io.css").lexically_normal().c_str());
+		load_css(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "gui", "tool_io.css").lexically_normal().c_str());
 
 		// 2. メインウィンドウを生成
 		// 設計図(m2-1-1)の「GUIとスレッドを起動する」に相当 [cite: 195]

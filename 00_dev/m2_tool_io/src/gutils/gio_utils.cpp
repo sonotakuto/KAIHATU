@@ -3,7 +3,7 @@
  * @brief GIO（D-Busやプロセス起動など）に関連するユーティリティ関数の実装
  */
 #include "gio_utils.hpp"
-#include "string_utils.hpp"
+#include "utils/string_utils.hpp"
 #include <gio/gio.h>
 #include <vector>
 #include <iostream> // またはプロジェクトのログ機能

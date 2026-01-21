@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <SimpleGtk>
-#include "math_utils.hpp"
+#include "utils/math_utils.hpp"
 #include "parameters.hpp"
 
 //typedef int sample;

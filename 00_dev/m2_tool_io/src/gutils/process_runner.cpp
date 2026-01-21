@@ -3,7 +3,7 @@
  * @brief ProcessRunnerクラスの実装。
  */
 #include "process_runner.hpp"
-#include "string_utils.hpp"
+#include "utils/string_utils.hpp"
 #include <sys/types.h>
 #include <signal.h>
 

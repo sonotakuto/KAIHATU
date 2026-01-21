@@ -13,6 +13,12 @@
 namespace utils {
 
 /**
+ * @namespace chrono
+ * @brief 時間関連のユーティリティをまとめた名前空間
+ */
+namespace chrono {
+
+/**
  * @brief 正確な周期実行をサポートするタイマークラス。
  */
 class PeriodicTimer {
@@ -103,4 +109,5 @@ private:
 	TimePoint next_time_;
 };
 
+} // namespace chrono
 } // namespace utils

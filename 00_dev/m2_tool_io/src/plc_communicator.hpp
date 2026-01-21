@@ -6,8 +6,8 @@
 #include <any>
 #include <cstdint>
 #include <SimpleGtk>
-#include "opt_extension.hpp"
-#include "safe_queue.hpp"
+#include "stdex/opt_extension.hpp"
+#include "utils/safe_queue.hpp"
 
 #if !defined(PRODUCTION) && !defined(STUB_PLC)
 #define STUB_PLC	// 開発環境の場合はデフォルトでPLCスタブを有効化

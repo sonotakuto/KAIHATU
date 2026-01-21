@@ -8,9 +8,9 @@
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
-#include "any_extension.hpp"
-#include "string_utils.hpp"
-#include "odbc.hpp"
+#include "stdex/any_extension.hpp"
+#include "utils/string_utils.hpp"
+#include "odbc/odbc.hpp"
 #include "includes.hpp"
 #include "db_client.hpp"
 

@@ -2146,6 +2146,7 @@ message message message message message</property>
                     <property name="can_focus">True</property>
                     <property name="valign">center</property>
                     <property name="shadow_type">etched-out</property>
+                    <property name="input_purpose">alpha</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -2315,6 +2316,7 @@ message message message message message</property>
                             <property name="text" translatable="yes">1</property>
                             <property name="xalign">0.5</property>
                             <property name="shadow_type">etched-out</property>
+                            <property name="input_purpose">digits</property>
                             <style>
                               <class name="font-size_30px"/>
                               <class name="entry"/>
@@ -3062,6 +3064,7 @@ warning warning warning</property>
                 <property name="halign">center</property>
                 <property name="visibility">False</property>
                 <property name="invisible_char">●</property>
+                <property name="input_purpose">password</property>
                 <style>
                   <class name="font-normal"/>
                   <class name="font-size_30px"/>
@@ -3417,6 +3420,7 @@ warning warning warning</property>
                                 <property name="text" translatable="yes">2024</property>
                                 <property name="xalign">0.5</property>
                                 <property name="shadow_type">etched-out</property>
+                                <property name="input_purpose">digits</property>
                                 <style>
                                   <class name="font-size_30px"/>
                                   <class name="entry"/>
@@ -3519,6 +3523,7 @@ warning warning warning</property>
                                 <property name="text" translatable="yes">4</property>
                                 <property name="xalign">0.5</property>
                                 <property name="shadow_type">etched-out</property>
+                                <property name="input_purpose">digits</property>
                                 <style>
                                   <class name="font-size_30px"/>
                                   <class name="entry"/>
@@ -3687,6 +3692,7 @@ warning warning warning</property>
                                 <property name="text" translatable="yes">2025</property>
                                 <property name="xalign">0.5</property>
                                 <property name="shadow_type">etched-out</property>
+                                <property name="input_purpose">digits</property>
                                 <style>
                                   <class name="font-size_30px"/>
                                   <class name="entry"/>
@@ -3789,6 +3795,7 @@ warning warning warning</property>
                                 <property name="text" translatable="yes">3</property>
                                 <property name="xalign">0.5</property>
                                 <property name="shadow_type">etched-out</property>
+                                <property name="input_purpose">digits</property>
                                 <style>
                                   <class name="font-size_30px"/>
                                   <class name="entry"/>
@@ -3977,6 +3984,8 @@ warning warning warning</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">center</property>
+                <property name="margin_left">50</property>
+                <property name="margin_right">50</property>
                 <property name="spacing">30</property>
                 <child>
                   <object class="GtkImage">

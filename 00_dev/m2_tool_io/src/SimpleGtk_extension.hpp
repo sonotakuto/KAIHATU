@@ -8,8 +8,8 @@
 #include <optional>
 #include <glib-2.0/glib-unix.h>
 #include <SimpleGtk>
-#include "utility.hpp"
-#include "layout.hpp"
+#include "utils/utility.hpp"
+#include "layout/layout.hpp"
 
 /**
  * @brief メソッドを定義するマクロ（メソッド名を任意に指定可能版）。

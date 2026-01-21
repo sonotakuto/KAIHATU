@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <set>
 #include <SimpleGtk>
-#include "opt_extension.hpp"
-#include "tracked_map.hpp"
-#include "process_runner.hpp"
+#include "stdex/opt_extension.hpp"
+#include "utils/tracked_map.hpp"
+#include "gutils/process_runner.hpp"
 #include "SimpleGtk_extension.hpp"
 #include "typedef.hpp"
 #include "parameters.hpp"

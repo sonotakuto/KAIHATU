@@ -2,7 +2,7 @@
  * @file tracking_communicator.cpp
  * @brief 工具追跡システムおよび録画サーバーと通信するためのクライアントクラス群の実装。
  */
-#include "string_utils.hpp"
+#include "utils/string_utils.hpp"
 #include "includes.hpp"
 #include "tracking_communicator.hpp"
 

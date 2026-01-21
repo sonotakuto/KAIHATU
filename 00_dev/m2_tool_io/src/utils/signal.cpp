@@ -1,3 +1,7 @@
+/**
+ * @file signal.hpp
+ * @brief シグナル通知クラスの実装
+ */
 #include "signal.hpp"
 
 namespace utils {

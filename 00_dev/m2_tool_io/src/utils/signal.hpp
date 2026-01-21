@@ -1,3 +1,7 @@
+/**
+ * @file signal.hpp
+ * @brief シグナル通知クラスの定義
+ */
 #pragma once
 #include <mutex>
 #include <condition_variable>

@@ -3,9 +3,9 @@
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
 #include <stdlib.h>
-#include "utility.hpp"
-#include "filesystem_utils.hpp"
-#include "container_utils.hpp"
+#include "utils/utility.hpp"
+#include "utils/container_utils.hpp"
+#include "utils/filesystem_utils.hpp"
 #include "includes.hpp"
 #include "db_client.hpp"
 #include "keyboard_utils.hpp"
@@ -130,7 +130,7 @@ bool operator!=(const MainWindow::TableState& lhs, const MainWindow::TableState&
 MainWindow::MainWindow() :
 	// --- メンバ初期化子リスト ---
 	// Gladeオブジェクトを初期化
-	glade(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "tool_io.glade").lexically_normal().c_str()),
+	glade(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "gui", "tool_io.glade").lexically_normal().c_str()),
 	// ヘッダー部
 	dateTimeLabel(glade, "dateTimeLabel"),
 	retrieveToggleButton(glade, "retrieveToggleButton"),
@@ -1887,9 +1887,10 @@ void MainWindow::tracker_on_notified(const tracker::ToolTrackerClient::Notificat
 //=============================================================================
 
 void MainWindow::reset_variables() {
-	// --- グローバルな要素 ---
+	// --- 外部連携 ---
 	plc::end_session();
 	db::disconnect();
+	stop_MediaServer();
 	g_logged_in_user_info = nullopt;
 
 	// --- 状態遷移管理用 ---
@@ -1918,7 +1919,6 @@ void MainWindow::reset_variables() {
 
 	// --- 操作中の状態保持用 (補充専用) ---
 	m_reground_tools.clear();
-
 
 	// --- 操作中の状態保持用 (棚卸し専用) ---
 
@@ -2831,6 +2831,8 @@ void MainWindow::userIdEntry_on_activate() {
 
 		plc::start_session();	// PLCセッションを開始
 
+		start_MediaServer();	// メディアサーバーを起動
+
 		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベル背景の警告色を解除
 
 		// ユーザーIDエントリにログインユーザー名を表示して固定
@@ -3209,7 +3211,6 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 
 	// 追跡システムの開始
 	// FIXME: エラー対応
-	start_MediaServer();
 	tracker::g_tool_tracker->connect();
 	tracker::g_recorder_client->start_recording();
 
@@ -3386,7 +3387,6 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
-	stop_MediaServer();
 	tracker::g_tool_tracker->disconnect();
 	tracker::g_recorder_client->stop_recording();
 	set_mode(GuiMode::NONE);
@@ -3438,8 +3438,6 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
-	stop_MediaServer();
-	tracker::g_tool_tracker->disconnect();
 	tracker::g_recorder_client->stop_recording();
 	m_is_insert_operation = false;
 	m_operating_area.reset();
@@ -3454,6 +3452,8 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 		set_app_state(AppState::RETRIEVE_CONTAINER_RETRIEVING);
 	} else {
 		// 選択された中で最後の工具の時
+		tracker::g_tool_tracker->disconnect();
+
 		m_retrieving_index.reset();
 
 		// m_retrieving_list に保存しておいた、現在取り出し中のツーリングリストを更新
@@ -3635,7 +3635,9 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 		break;
 	}
 	case tracker::ToolTrackerClient::NotificationType::SCANNED_IN_CONTAINER: {
-		add_warning(WarningType::SCANNED_IN_CONTAINER, true);
+		if (!m_is_insert_operation) {
+			add_warning(WarningType::SCANNED_IN_CONTAINER, true);
+		}
 		result = false;
 		break;
 	}
@@ -3747,7 +3749,6 @@ void MainWindow::on_enter_store_container_retrieving() {
 	m_operating_area = db::get_StrageAreaInfo_with_min_cases(m_operating_tool.value().id);	// FIXME: nullopt対応
 	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 	// FIXME: エラー対応
-	start_MediaServer();
 	tracker::g_recorder_client->start_recording();
 }
 
@@ -3999,7 +4000,6 @@ void MainWindow::on_falseButton_store_ready_for_reading() {
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
-	stop_MediaServer();
 	tracker::g_recorder_client->stop_recording();
 	set_mode(GuiMode::NONE);
 }
@@ -4042,7 +4042,6 @@ void MainWindow::on_trueButton_store_ready_for_reading() {
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
-	stop_MediaServer();
 	tracker::g_recorder_client->stop_recording();
 	set_app_state(AppState::STORE);
 }
