@@ -231,7 +231,7 @@ static void run_communicator() {
 	DEV_PRINT("PLCリスナースレッドを開始します。\n");
 
 	// ポーリングの周期制御用タイマ
-	utils::PeriodicTimer timer;
+	utils::chrono::PeriodicTimer timer;
 	// 現在実行中のタスクを保持する変数
 	std::optional<Task> current_task;
 	// 保留中のタスクを保持する変数

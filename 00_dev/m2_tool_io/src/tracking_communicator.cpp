@@ -198,6 +198,11 @@ std::string RecorderClient::generate_timestamp_filename() const {
 }
 
 std::optional<std::string> RecorderClient::start_recording(std::string filename) {
+	std::lock_guard<std::mutex> lock(m_filename_mutex);
+	if (m_current_filename.has_value()) {
+		return std::nullopt;
+	}
+
 	// ファイル名が指定されなかった場合は生成
 	if (filename.empty()) {
 		filename = generate_timestamp_filename();
@@ -219,10 +224,7 @@ std::optional<std::string> RecorderClient::start_recording(std::string filename)
 		// 成功した場合 (HTTP 2xx) はファイル名を返す
 		if (http_code >= 200 && http_code < 300) {
 			// 成功時にファイル名を保存して返す
-			{
-				std::lock_guard<std::mutex> lock(m_filename_mutex);
-				m_current_filename = filename;
-			}
+			m_current_filename = filename;
 			return filename;
 		} else {
 			// 失敗した場合はエラーログを出力して nullopt を返す
@@ -237,6 +239,12 @@ std::optional<std::string> RecorderClient::start_recording(std::string filename)
 }
 
 bool RecorderClient::stop_recording() {
+	std::lock_guard<std::mutex> lock(m_filename_mutex);
+
+	if (m_current_filename.has_value()) {
+		return true;
+	}
+
 	bool success = false;
 	try {
 		url_transfer::CurlRequest request;
@@ -258,7 +266,6 @@ bool RecorderClient::stop_recording() {
 
 	// 成功時にファイル名をクリア
 	if (success) {
-		std::lock_guard<std::mutex> lock(m_filename_mutex);
 		m_current_filename = std::nullopt;
 	}
 	return success;

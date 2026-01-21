@@ -457,8 +457,8 @@ MainWindow::MainWindow() :
 	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	confirmationNoButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_NO); });
 	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
-	overrideConfirmOverrideButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
-	overrideConfirmCancelButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
+	overrideConfirmOverrideButton.on_clicked([this]() { this->overrideConfirmDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
+	overrideConfirmCancelButton.on_clicked([this]() { this->overrideConfirmDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEntry.on_button_press_event([this](GdkEventButton* event) { if (event->button == GDK_BUTTON_PRIMARY) { onboard::show(); } return false; });
 	passwordEntry.on_focus_in_event([this](GdkEventFocus* event) { onboard::show(); return false; });
 	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
@@ -1059,6 +1059,18 @@ MainWindow::MainWindow() :
 		[this](const WidgetState& state){
 			if (state.text.has_value()			) { this->messageDialogLabel.set_label(get_display_text(state.text.value()).c_str()); }
 			if (state.is_visible.has_value()	) { this->messageDialogLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+
+	// --- メッセージダイアログ（ラベルは動的に変わるため空） ---
+	m_widget_states.try_emplace(&overrideConfirmLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"", ""},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->overrideConfirmLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->overrideConfirmLabel.set_visible(state.is_visible.value()); }
 		}
 	});
 
@@ -1891,6 +1903,8 @@ void MainWindow::reset_variables() {
 	plc::end_session();
 	db::disconnect();
 	stop_MediaServer();
+	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->disconnect(); }
+	if (tracker::g_recorder_client) { tracker::g_recorder_client->stop_recording(); }
 	g_logged_in_user_info = nullopt;
 
 	// --- 状態遷移管理用 ---
@@ -3310,6 +3324,8 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	// (これらは「前回のスキャン結果」なので、新しいスキャンをした時点でもう不要)
 	clear_scan_warnings(true);
 
+	m_pending_tool_info.reset();
+
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
 	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
 
@@ -3525,7 +3541,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 						}}, true);
 
 						// ダイアログの初期値を、前回入力した個数に設定
-						m_insertCountEntry_current_count = it->tool_num.value_or(1);
+						m_insertCountEntry_current_count = std::abs(it->tool_num.value_or(1));
 						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
 						confirmInsertCountDialog.run(this);	// m_insertCountEntry_current_count に新しい値が入る
 
@@ -3630,6 +3646,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 		break;
 	}
 	case tracker::ToolTrackerClient::NotificationType::SCAN_FAILURE: {
+		m_pending_tool_info.reset();
 		add_warning(WarningType::SCAN_FAILURE, true);
 		result = false;
 		break;
