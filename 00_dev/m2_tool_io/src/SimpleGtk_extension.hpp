@@ -136,16 +136,19 @@
  * @param[in] ... 静的コールバック関数の引数リスト。
  */
 #define SGEX_DEFINE_SIGNAL_HANDLER(signal_name, c_signal_name, instance_type, ...) \
-	public:\
+public: \
 	void on_##c_signal_name(std::function<void()> handler) { \
 		on_##c_signal_name##_handler = handler; \
 		if (on_##c_signal_name##_handler != nullptr) \
-			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), nullptr); \
 	} \
-	private:\
+private: \
 	std::function<void()> on_##c_signal_name##_handler = nullptr; \
-	static void on_##c_signal_name##_static(__VA_ARGS__, instance_type* thiz) { \
-		if (thiz->on_##c_signal_name##_handler != nullptr) \
+	static void on_##c_signal_name##_static(__VA_ARGS__, gpointer data) { \
+		instance_type* thiz = static_cast<instance_type*>( \
+			g_object_get_qdata(G_OBJECT(self), cpp_object_quark()) \
+		); \
+		if (thiz && thiz->on_##c_signal_name##_handler) \
 			thiz->on_##c_signal_name##_handler(); \
 	}
 
@@ -155,21 +158,24 @@
  * @param[in] signal_name GTKシグナル名 (文字列)。
  * @param[in] c_signal_name C++の関数名として使用する名前。
  * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] CppClass シグナルハンドラの所属クラス名。
  * @param[in] function std::function の型。
  * @param[in] ... std::function に渡す引数。
  */
-#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS(signal_name, c_signal_name, para_static, function, ...) \
-	public:\
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS(signal_name, c_signal_name, para_static, CppClass, function, ...) \
+public: \
 	void on_##c_signal_name(function handler) { \
 		on_##c_signal_name##_handler = handler; \
 		if (on_##c_signal_name##_handler != nullptr) \
-			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this->object); \
 	} \
-	private:\
+private: \
 	function on_##c_signal_name##_handler = nullptr; \
 	static void on_##c_signal_name##_static para_static { \
-		if (thiz->on_##c_signal_name##_handler != nullptr) \
-			thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+		gpointer cpp_obj = g_object_get_qdata(G_OBJECT(self), Object::cpp_object_quark()); \
+		CppClass* instance = static_cast<CppClass*>(cpp_obj); \
+		if (instance && instance->on_##c_signal_name##_handler) \
+			instance->on_##c_signal_name##_handler(__VA_ARGS__); \
 	}
 
 /**
@@ -181,21 +187,22 @@
  * @param[in] function std::function の型。
  * @param[in] ... std::function に渡す引数。
  */
-#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, function, ...) \
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, CppClass, function, ...) \
 public: \
-void on_##c_signal_name(function handler) { \
-	on_##c_signal_name##_handler = handler; \
-	if (on_##c_signal_name##_handler != nullptr) \
-		this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
-} \
-private: \
-function on_##c_signal_name##_handler = nullptr; \
-static return_type on_##c_signal_name##_static para_static { \
-	if (thiz->on_##c_signal_name##_handler != nullptr) { \
-		return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this->object); \
 	} \
-	return FALSE; \
-}
+private: \
+	function on_##c_signal_name##_handler = nullptr; \
+	static return_type on_##c_signal_name##_static para_static { \
+		gpointer cpp_obj = g_object_get_qdata(G_OBJECT(self), Object::cpp_object_quark()); \
+		CppClass* instance = static_cast<CppClass*>(cpp_obj); \
+		if (instance && instance->on_##c_signal_name##_handler) \
+			return instance->on_##c_signal_name##_handler(__VA_ARGS__); \
+		return FALSE; \
+	}
 
 /**
  * @brief CSSクラス操作用のメソッドを定義するマクロ。
@@ -598,10 +605,10 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), std::function<bool(GdkEventButton* event)>, event)
-	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), std::function<bool(GdkEventButton* event)>, event)
-	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-in-event", focus_in_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), std::function<bool(GdkEventFocus* event)>, event)
-	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-out-event", focus_out_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), std::function<bool(GdkEventFocus* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventButton* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventButton* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-in-event", focus_in_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventFocus* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-out-event", focus_out_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventFocus* event)>, event)
 	SGEX_DEFINE_SIGNAL_HANDLER("map", map, WidgetExtension, GtkWidget* self)
 	SGEX_DEFINE_SIGNAL_HANDLER("show", show, WidgetExtension, GtkWidget* self)
 };
@@ -877,7 +884,7 @@ public:
 	// プロパティ
 
 	// シグナル
-	SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), Dialog, std::function<void(gint)>, response_id)
 };
 
 /**
@@ -1038,7 +1045,7 @@ public:
 	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), Switch, std::function<bool(bool)>, state)
 };
 
 /**
