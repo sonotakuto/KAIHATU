@@ -146,7 +146,7 @@ private: \
 	std::function<void()> on_##c_signal_name##_handler = nullptr; \
 	static void on_##c_signal_name##_static(__VA_ARGS__, gpointer data) { \
 		instance_type* thiz = static_cast<instance_type*>( \
-			g_object_get_qdata(G_OBJECT(self), cpp_object_quark()) \
+			g_object_get_qdata(G_OBJECT(self), Object::cpp_object_quark()) \
 		); \
 		if (thiz && thiz->on_##c_signal_name##_handler) \
 			thiz->on_##c_signal_name##_handler(); \
