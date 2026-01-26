@@ -1229,6 +1229,7 @@ public:
 
 	// メソッド
 //	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
+	DEFINE_METHOD(tree_view, get_selection, GtkTreeSelection*)
 	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
 	DEFINE_METHOD(tree_view, get_n_columns, guint)
 	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
