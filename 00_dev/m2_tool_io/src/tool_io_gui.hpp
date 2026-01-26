@@ -950,6 +950,12 @@ private:
 	bool override_confirm_to_user(UiText&& message);
 
 	/**
+	 * @brief インサート枚数確認ダイアログを非同期に表示します。
+	 * @param[in] callback ダイアログが閉じた後に呼び出されるコールバック関数。
+	 */
+	void confirm_insert_count(int init_count, int max_count, std::function<void(int)> callback);
+
+	/**
 	 * @brief 現在の状態に応じた update_**_read_completed_buttons を呼び出す。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
@@ -1196,12 +1202,6 @@ private:
 	 * @details インサート個数検出サーバーに問い合わせた結果を、insertCountEntry に適用する。
 	 */
 	void insertCountDetectButton_on_clicked();
-
-	/**
-	 * @brief insertCountOkButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 次回のための変数の初期化を行ってから、GTK_RESPONSE_OK を返す。
-	 */
-	void insertCountOkButton_on_clicked();
 
 	/**
 	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。

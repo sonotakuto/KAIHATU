@@ -451,7 +451,7 @@ MainWindow::MainWindow() :
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
 	insertCountDetectButton.on_clicked([this]() { this->insertCountDetectButton_on_clicked(); });
-	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
+	insertCountOkButton.on_clicked([this]() { this->confirmInsertCountDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
@@ -2426,6 +2426,40 @@ bool MainWindow::override_confirm_to_user(UiText&& message) {
 	}
 }
 
+void MainWindow::confirm_insert_count(int init_count, int max_count, std::function<void(int)> callback) {
+	// 初期値と最大値を設定
+	m_insertCountEntry_current_count = init_count;
+	m_confirmInsertCountDialog_max_count = max_count;
+
+	// コールバックを保存
+	confirmInsertCountDialog.on_response([=, callback = std::move(callback)](gint response_id) mutable {
+		this->confirmInsertCountDialog.hide();
+		this->insertCountEntry.set_text("");
+		this->m_confirmInsertCountDialog_max_count = -1;
+
+		if (callback) {
+			callback(m_insertCountEntry_current_count);
+			callback = nullptr;
+			this->m_insertCountEntry_current_count = 0;
+		}
+
+		// 画面下部のボタン有効状態を再計算
+		auto* func = new std::function<void()>([this]() {
+			this->update_retrieve_read_completed_buttons();
+		});
+		g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+	});
+
+	// 画面下部のボタン有効状態を再計算
+	auto* func = new std::function<void()>([this]() {
+		this->update_retrieve_read_completed_buttons();
+	});
+	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+
+	// ダイアログを表示
+	confirmInsertCountDialog.show();
+}
+
 void MainWindow::update_read_completed_buttons(bool update_ui) {
 	switch (m_app_state) {
 	case AppState::RETRIEVE_READY_FOR_READING :
@@ -2685,6 +2719,7 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 	// GUIの条件を判定
 	bool gui_ready_for_action = !warningDialog.get_mapped()
 		&& !warningListDialog.get_mapped()
+		&& !confirmInsertCountDialog.get_mapped()
 		&& !m_pending_tool_info.has_value();	// BUG: 固まって応答が無いときの対応を考える (https://gemini.google.com/share/759604d1a439 ←最後の方の2つの会話)
 
 	// 選択された中で最後の工具の時 (またはリストが空の時)
@@ -2912,6 +2947,7 @@ void MainWindow::qrCodeEntry_on_activate() {
 		// 例外を無視して処理を続行
 	}
 	qrCodeEntry.set_text("");
+	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::falseButton_on_clicked() {
@@ -3005,12 +3041,6 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 	});
 
 	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
-}
-
-void MainWindow::insertCountOkButton_on_clicked() {
-	m_confirmInsertCountDialog_max_count = -1;
-	insertCountEntry.set_text("");
-	confirmInsertCountDialog.response(GtkResponseType::GTK_RESPONSE_OK);
 }
 
 void MainWindow::notRegroundButton_on_toggled() {
@@ -3320,6 +3350,10 @@ void MainWindow::on_enter_retrieve_ready_for_reading() {
 
 // TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
+	if (m_pending_tool_info.has_value() || confirmInsertCountDialog.get_mapped()) {
+		return;
+	}
+
 	// 既存の「スキャン系エラー」をすべて消す
 	// (これらは「前回のスキャン結果」なので、新しいスキャンをした時点でもう不要)
 	clear_scan_warnings(true);
@@ -3333,19 +3367,16 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 		UniqueToolInfo& unique_info = unique_info_opt.value();
 		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.value().id) {	// FIXME: nullopt対応
 			add_warning(WarningType::DIFFERENT_TOOL, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
 			add_warning(WarningType::ALREADY_RETRIEVED, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::NOT_STORED) {
 			add_warning(WarningType::NOT_YET_STORED, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
@@ -3354,24 +3385,23 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	} else {
 		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
-	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::on_falseButton_retrieve_ready_for_reading() {
-	if (
-		m_unscanned_count > 0 &&
-		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
-		})
-	) {
-		return;
-	}
 	if (
 		m_operated_records.empty() &&
 		!confirm_to_user(UiText{
 			"1個も工具を取り出していませんが、\nコンテナを搬入してよろしいですか？",
 			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
+		})
+	) {
+		return;
+	}
+	if (
+		m_unscanned_count > 0 &&
+		!override_confirm_to_user(UiText{
+			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
+			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
 		})
 	) {
 		return;
@@ -3530,6 +3560,8 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 					}
 				);
 
+				int case_pack_num = unique_info.case_pack_num;
+
 				// 存在する場合 (重複スキャン)
 				if (it != m_operated_records.end()) {
 					if (m_is_insert_operation) {
@@ -3540,40 +3572,43 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 							"とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください"
 						}}, true);
 
-						// ダイアログの初期値を、前回入力した個数に設定
-						m_insertCountEntry_current_count = std::abs(it->tool_num.value_or(1));
-						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-						confirmInsertCountDialog.run(this);	// m_insertCountEntry_current_count に新しい値が入る
+						// ダイアログの初期値を、前回入力した個数に設定し、再度確認
+						confirm_insert_count(std::abs(it->tool_num.value_or(1)), case_pack_num, [this, index = static_cast<std::size_t>(std::distance(m_operated_records.begin(), it)), unique_info = std::move(unique_info)](int count) {
+							if (index >= 0 && index < m_operated_records.size()) {
+								auto& record = m_operated_records[index]; // 再取得
 
-						// 履歴ベクトル(m_operated_records)の個数を更新	// TODO: 表でのデータ有無確認後に更新するかこのままか考える
-						it->tool_num = -m_insertCountEntry_current_count;
-						it->proc_time = sg::now(); // 処理時刻を更新
+								// 履歴ベクトル(m_operated_records)の個数を更新	// TODO: 表でのデータ有無確認後に更新するかこのままか考える
+								record.tool_num = -count;
+								record.proc_time = sg::now(); // 処理時刻を更新
 
-						// 表(liststore2columnsAll)の個数を更新
-						bool is_found = false;	// データを見つけたか: 基本的に true になるはず (m_operated_records と liststore は同期しているため)
-						liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data){
-							// 表から該当する行を検索
-							auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& item) {
-								return item.id == unique_info.id;
-							});
+								// 表(liststore2columnsAll)の個数を更新
+								bool is_found = false;	// データを見つけたか: 基本的に true になるはず (m_operated_records と liststore は同期しているため)
+								liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data){
+									// 表から該当する行を検索
+									auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& item) {
+										return item.id == unique_info.id;
+									});
 
-							if (it != data.end()) {
-								// 見つかったら、6列目(個数)を更新
-								it->data_columns[5] = std::to_string(m_insertCountEntry_current_count);
+									if (it != data.end()) {
+										// 見つかったら、6列目(個数)を更新
+										it->data_columns[5] = std::to_string(count);
 
-								// フラグを立てて外に知らせる
-								is_found = true;
+										// フラグを立てて外に知らせる
+										is_found = true;
+									}
+									// ここではエラー処理をしない
+								}, true);	// 第2引数を true にして、変更後に現在のページで更新させる
+
+								// エラー処理
+								if (!is_found) {
+									// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
+									// BUG: 不正値対応
+									DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
+								}
+							} else {
+								// BUG: 不正値対応（ありえないはずだが安全のため）
 							}
-							// ここではエラー処理をしない
-						}, true);	// 第2引数を true にして、変更後に現在のページで更新させる
-
-						// エラー処理
-						if (!is_found) {
-							// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
-							// BUG: 不正値対応
-							DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
-						}
-						m_insertCountEntry_current_count = 0;
+						});
 					} else {
 						// 2b. インサートでない場合: 何もしない
 						DEV_PRINT("重複スキャン (非インサート): ID {} を無視します。\n", unique_info.id);
@@ -3584,57 +3619,50 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 						m_unscanned_count--;
 					}
 
+					auto recording_lambda = [this, unique_info = std::move(unique_info)](int count) {
+						liststore2columnsAll.append(MainTableData{
+							.id = unique_info.id,
+							.data_columns = {
+								fmt::format("{:010d}", unique_info.id),
+								unique_info.mst_tool_info.category,
+								unique_info.mst_tool_info.maker,
+								unique_info.mst_tool_info.name,
+								unique_info.mst_tool_info.material,
+								to_string(((m_is_insert_operation)
+									? (count)
+									: (unique_info.regrind_count.value_or(0))	// FIXME: nullopt対応
+								))
+							},
+							.raw_data = unique_info
+						});
+
+						m_operated_records.push_back(RecOperationTable{
+							.operation_class	= OperationClass::OUT,
+							.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),
+							.proc_time			= sg::now(),
+							.storage_area_id	= unique_info.storage_area_info.value().id,
+							.unique_tool_id		= unique_info.id,
+							.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
+							.tool_num			= -count,
+							.line_id			= m_retrieving_list.value().line.id,
+							.track_result		= ((m_warning_closed_by_user)
+								? (TrackResult::OVERRIDDEN)
+								: (TrackResult::NORMAL)
+							)
+						});
+
+						update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+					};
+
 					if (m_is_insert_operation) {
 						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
 							"使用するインサートの枚数を\n入力して下さい",
 							"しようする インサートの まいすうを\nにゅうりょく してください"
 						}}, true);
-						m_insertCountEntry_current_count = 1;
-						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-						confirmInsertCountDialog.run(this);
+						confirm_insert_count(1, case_pack_num, std::move(recording_lambda));
+					} else {
+						recording_lambda(1);
 					}
-
-					liststore2columnsAll.append(MainTableData{
-						.id = unique_info.id,
-						.data_columns = {
-							fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
-							unique_info.mst_tool_info.category,
-							unique_info.mst_tool_info.maker,
-							unique_info.mst_tool_info.name,
-							unique_info.mst_tool_info.material,
-							to_string(((m_is_insert_operation)
-								? (m_insertCountEntry_current_count)
-								: (unique_info.regrind_count.value_or(0))	// FIXME: nullopt対応
-							))
-						},
-						.raw_data = unique_info
-					});
-
-					m_operated_records.push_back(RecOperationTable{
-						.operation_class	= OperationClass::OUT,
-						.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// FIXME: nullopt対応
-						.proc_time			= sg::now(),
-						.storage_area_id	= unique_info.storage_area_info.value().id,
-						.unique_tool_id		= unique_info.id,
-						.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
-						.tool_num			= -((m_is_insert_operation)
-							? (m_insertCountEntry_current_count)
-							: (1)
-						),
-						.line_id			= m_retrieving_list.value().line.id,
-						.track_result		= ((m_warning_closed_by_user)
-							? (TrackResult::OVERRIDDEN)
-							: (TrackResult::NORMAL)
-						)
-					});
-
-					if (m_unscanned_count > 0) {
-						m_unscanned_count--;
-					}
-
-					update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
-
-					m_insertCountEntry_current_count = 0;
 				}
 				result = true;
 			}
@@ -3850,14 +3878,12 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 		// 工具が合っているかチェック
 		if (unique_info.mst_tool_info.id != operating_tool.id) {	// FIXME: nullopt対応
 			add_warning(WarningType::DIFFERENT_TOOL, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		// データ整合性チェック
 		if (unique_info.storage_condition == StorageCondition::STORED) {
 			add_warning(WarningType::ALREADY_STORED, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
@@ -3972,7 +3998,6 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 	} else {
 		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
-	qrCodeEntry.grab_focus();
 
 	if (result) {
 		set_app_state(AppState::STORE_READ_COMPLETED);

@@ -506,13 +506,9 @@ inline std::optional<Rectangle> get_monitor_rectangle_at_window(GtkWindow* windo
  * @details オブジェクトが生存している間のみシグナルを監視します。破棄されると自動的に監視を解除します。
  */
 class UnixSignal {
-public:
-	// ハンドラの型: trueを返すと監視継続(G_SOURCE_CONTINUE), falseを返すと解除(G_SOURCE_REMOVE)
-	using Handler = std::function<bool()>;
-
 private:
 	guint m_source_id = 0;	// GLibのソースID
-	Handler m_handler;		// シグナルハンドラ
+	std::function<bool()> m_handler;		// シグナルハンドラ
 
 	// GLib用の静的トランポリン関数
 	static gboolean on_signal_static(gpointer user_data) {
@@ -528,9 +524,10 @@ public:
 	/**
 	 * @brief コンストラクタ。シグナル監視を開始します。
 	 * @param[in] signum 監視するシグナル番号 (例: SIGINT, SIGTERM)
-	 * @param[in] handler シグナル発生時に実行する関数
+	 * @param[in] handler シグナル発生時に実行する関数。
+	 * trueを返すと監視継続(G_SOURCE_CONTINUE), falseを返すと解除(G_SOURCE_REMOVE)。
 	 */
-	UnixSignal(int signum, Handler handler) : m_handler(handler) {
+	UnixSignal(int signum, std::function<bool()> handler) : m_handler(handler) {
 		if (m_handler) {
 			// G_PRIORITY_DEFAULT でシグナルを監視
 			m_source_id = g_unix_signal_add(signum, on_signal_static, this);

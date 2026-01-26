@@ -22,12 +22,6 @@ namespace gutils {
 class ProcessRunner {
 public:
 	/**
-	 * @brief プロセス終了時に呼び出されるコールバック関数の型定義。
-	 * 引数として終了コード（status）を受け取ります。
-	 */
-	using ExitCallback = std::function<void(int)>;
-
-	/**
 	 * @brief コンストラクタ。
 	 */
 	ProcessRunner();
@@ -48,10 +42,10 @@ public:
 	 * @brief 指定されたコマンドを非同期で実行します。
 	 * @param[in] command 実行するコマンドライン文字列（例: "ping google.com"）。
 	 * @param[in] on_exit (オプション・デフォルト nullptr) プロセス終了時に呼び出されるコールバック関数。
-	 * コールバックはメインスレッド（GTKメインループ）から呼び出されます。
+	 * 引数には終了コードが入り、コールバックはメインスレッド（GTKメインループ）から呼び出されます。
 	 * @return プロセスの起動に成功した場合はtrue、失敗した場合（または既に実行中の場合）はfalse。
 	 */
-	bool start(const std::string& command, ExitCallback on_exit = nullptr);
+	bool start(const std::string& command, std::function<void(int)> on_exit = nullptr);
 
 	/**
 	 * @brief 実行中のプロセスを停止します。
@@ -75,7 +69,7 @@ public:
 private:
 	GPid pid_ = 0;			///< 実行中のプロセスのPID。実行していない場合は0。
 	guint watch_id_ = 0;	///< g_child_watch_addの戻り値（イベントソースID）。
-	ExitCallback on_exit_;	///< ユーザー指定の終了時コールバック。
+	std::function<void(int)> on_exit_;	///< ユーザー指定の終了時コールバック。
 	std::string error_message_;	///< エラーメッセージ保持用。
 
 	/**

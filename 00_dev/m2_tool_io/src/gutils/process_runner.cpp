@@ -27,7 +27,7 @@ ProcessRunner::~ProcessRunner() {
 	stop();
 }
 
-bool ProcessRunner::start(const std::string& command, ExitCallback on_exit) {
+bool ProcessRunner::start(const std::string& command, std::function<void(int)> on_exit) {
 	// 二重起動防止
 	if (pid_ != 0) {
 		error_message_ = "[ProcessRunner] Process is already running.";
