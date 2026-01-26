@@ -152,8 +152,8 @@ MainWindow::MainWindow() :
 	storingToolListstore(
 		storingToolTable,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const MstToolInfo& row) {
-			store->set(iter,
+		[](sgex::ListStore& store, GtkTreeIter* iter, const MstToolInfo& row) {
+			store.set(iter,
 				0, row.category.c_str(),
 				1, row.maker.c_str(),
 				2, row.name.c_str(),
@@ -172,21 +172,21 @@ MainWindow::MainWindow() :
 	liststore3columns1st(
 		table3columns1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table3columns2ndBox(glade, "table3columns2ndBox"),
 	table3columns2nd(glade, "table3columns2nd"),
 	liststore3columns2nd(
 		table3columns2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table3columns3rdBox(glade, "table3columns3rdBox"),
 	table3columns3rd(glade, "table3columns3rd"),
 	liststore3columns3rd(
 		table3columns3rd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	liststore3columnsAll(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox3columns(glade, "paginationBox3columns"),
@@ -198,14 +198,14 @@ MainWindow::MainWindow() :
 	liststore2columns1st(
 		table2columns1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table2columns2ndBox(glade, "table2columns2ndBox"),
 	table2columns2nd(glade, "table2columns2nd"),
 	liststore2columns2nd(
 		table2columns2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	liststore2columnsAll(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox2columns(glade, "paginationBox2columns"),
@@ -217,7 +217,7 @@ MainWindow::MainWindow() :
 	liststore2types1st(
 		table2types1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	paginatedListstore2types1st(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox2types1st(glade, "paginationBox2types1st"),
@@ -229,7 +229,7 @@ MainWindow::MainWindow() :
 	liststore2types2nd(
 		table2types2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	paginatedListstore2types2nd(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox2types2nd(glade, "paginationBox2types2nd"),
@@ -286,10 +286,10 @@ MainWindow::MainWindow() :
 	warningListstore(
 		warningList,
 		{ G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const WarningListData& row) {
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const WarningListData& row) {
 			try {
 				GdkRGBA bgcolor = utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL);
-				store->set(iter,
+				store.set(iter,
 					0, this->get_display_text(this->g_warning_type_messages.at(row.type)).c_str(),
 					1, std::to_string(row.count).c_str(),
 					2, &bgcolor
@@ -310,8 +310,8 @@ MainWindow::MainWindow() :
 	reconcileToolTypeFilterComboBoxListstore(
 		reconcileToolTypeFilterComboBox,
 		{ G_TYPE_STRING },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const std::string& row) {
-			store->set(iter,
+		[](sgex::ListStore& store, GtkTreeIter* iter, const std::string& row) {
+			store.set(iter,
 				0, row.c_str()
 			);
 		}
@@ -2206,7 +2206,7 @@ void MainWindow::set_text_mode(TextMode text_mode, bool update_ui) {
 	}
 }
 
-void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+void MainWindow::main_ListStore_setter(sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) {
 	GdkRGBA bgcolor_0to4;
 	GdkRGBA bgcolor_5;
 	bgcolor_0to4 = utils::at_or(g_table_row_colors, row.cell_state_0to4, TABLE_BGCOLOR_NORMAL);
@@ -2214,7 +2214,7 @@ void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter
 		? (bgcolor_0to4)
 		: (utils::at_or(g_table_row_colors, row.cell_state_5, bgcolor_0to4))
 	);
-	store->set(iter,
+	store.set(iter,
 		0, row.data_columns[0].c_str(),
 		1, row.data_columns[1].c_str(),
 		2, row.data_columns[2].c_str(),

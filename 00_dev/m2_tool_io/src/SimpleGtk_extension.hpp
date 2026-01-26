@@ -1299,11 +1299,11 @@ public:
 	using const_reverse_iterator	= typename vector_type::const_reverse_iterator;
 
 	using indexed_value_pair		= std::pair<size_type, value_type>;	///< インデックスと value_type のペア型エイリアス
-	using setter_function_type		= std::function<void(sgex::ListStore*, GtkTreeIter*, const value_type&)>;	///< セッター関数の型エイリアス
+	using setter_function_type		= std::function<void(sgex::ListStore&, GtkTreeIter*, const value_type&)>;	///< セッター関数の型エイリアス
 
 protected:
-	/// @brief (View) SimpleGtk でラップされた GtkListStore の所有権を持つポインタ。
-	std::unique_ptr<sgex::ListStore> m_list_store_ptr;
+	/// @brief (View) SimpleGtk でラップされた GtkListStore。
+	sgex::ListStore m_list_store;
 	/// @brief (Model) C++側のデータ本体。アプリケーションロジックの「信頼できる唯一の情報源」。
 	vector_type m_data_model;
 	/// @brief value_type から GtkListStore の行データに変換するためのセッター関数。
@@ -1312,21 +1312,13 @@ protected:
 	bool m_is_programmatically_changing;
 
 	/**
-	 * @brief sgex::ListStore へのポインタを取得します。
-	 * @details ComboBox や TreeView にモデルとして設定する際に使用します。
-	 * @return 内部で管理している sgex::ListStore へのポインタ。
-	 */
-	sgex::ListStore* get_sg_store() const { return m_list_store_ptr.get(); }
-
-	/**
 	 * @brief 内部のListStoreをGtkListStore*として取得するヘルパー関数。
 	 * @details 複雑なキャストをこの関数内に隠蔽します。
 	 * @return 内部で管理している sgex::ListStore から取得した GtkListStore へのポインタ。
 	 */
 	GtkListStore* get_gtk_store() const {
-		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
-		return (GtkListStore*)(*m_list_store_ptr);
+		return (GtkListStore*)(m_list_store);
 	}
 
 	/**
@@ -1335,9 +1327,8 @@ protected:
 	 * @return 内部で管理している sgex::ListStore から取得した GtkTreeModel へのポインタ。
 	 */
 	GtkTreeModel* get_gtk_model() const {
-		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
-		return (GtkTreeModel*)(*m_list_store_ptr);
+		return (GtkTreeModel*)(m_list_store);
 	}
 
 	/**
@@ -1347,7 +1338,7 @@ protected:
 	 */
 	void set_row_to_store(GtkTreeIter* iter, const value_type& value) {
 		if (m_row_setter) {
-			m_row_setter(get_sg_store(), iter, value);
+			m_row_setter(m_list_store, iter, value);
 		}
 	}
 
@@ -1357,12 +1348,12 @@ protected:
 	 */
 	void repopulate_store() {
 		// GTK側のストアをクリア
-		m_list_store_ptr->clear();
+		m_list_store.clear();
 
 		GtkTreeIter iter;
 		// データモデルの全要素をGTK側に追加
 		for (const auto& value : m_data_model) {
-			get_sg_store()->append(&iter);
+			m_list_store.append(&iter);
 			set_row_to_store(&iter, value);
 		}
 	}
@@ -1377,7 +1368,7 @@ private:
 	void _append(const value_type& value) {
 		m_data_model.push_back(value);
 		GtkTreeIter iter;
-		get_sg_store()->append(&iter);
+		m_list_store.append(&iter);
 		set_row_to_store(&iter, value);
 	}
 
@@ -1391,7 +1382,7 @@ private:
 		m_data_model.push_back(std::move(value));
 
 		GtkTreeIter iter;
-		get_sg_store()->append(&iter);
+		m_list_store.append(&iter);
 
 		// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
 		set_row_to_store(&iter, m_data_model.back());
@@ -1419,7 +1410,7 @@ private:
 
 		m_data_model.insert(m_data_model.begin() + position, value);
 		GtkTreeIter iter;
-		get_sg_store()->insert(&iter, position);
+		m_list_store.insert(&iter, position);
 		set_row_to_store(&iter, value);
 		return !position_was_clamped;
 	}
@@ -1447,7 +1438,7 @@ private:
 		auto it = m_data_model.insert(m_data_model.begin() + position, std::move(value));
 
 		GtkTreeIter iter;
-		get_sg_store()->insert(&iter, position);
+		m_list_store.insert(&iter, position);
 
 		// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
 		set_row_to_store(&iter, *it);
@@ -1462,8 +1453,8 @@ private:
 	void _erase(size_type position) {
 		m_data_model.erase(m_data_model.begin() + position);
 		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
-			get_sg_store()->remove(&iter);
+		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
+			m_list_store.remove(&iter);
 		}
 	}
 
@@ -1475,7 +1466,7 @@ private:
 	void _update(size_type position, const value_type& value) {
 		m_data_model[position] = value;
 		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
 			set_row_to_store(&iter, value);
 		}
 	}
@@ -1498,7 +1489,7 @@ private:
 		m_data_model[position] = std::move(value);
 
 		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
 			// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
 			set_row_to_store(&iter, m_data_model[position]);
 		}
@@ -1522,14 +1513,10 @@ public:
 		const std::vector<GType>& column_types,
 		setter_function_type row_setter
 	) :
+		m_list_store(gtk_list_store_newv(column_types.size(), (GType*)column_types.data())),	// GTypeのリストに基づいて、GtkListStoreを生成
 		m_row_setter(row_setter),
 		m_is_programmatically_changing(false)
-	{
-		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
-		GtkListStore* new_gtk_store = gtk_list_store_newv(column_types.size(), (GType*)column_types.data());
-		// 生成したGtkListStoreをSimpleGtkラッパーでラップし、unique_ptrで所有権を管理します。
-		m_list_store_ptr = std::make_unique<sgex::ListStore>(new_gtk_store);
-	}
+	{}
 
 	/**
 	 * @brief 仮想デストラクタ。
@@ -1577,7 +1564,7 @@ public:
 		GtkTreeIter iter;
 
 		// 最初の行を取得
-		if (!get_sg_store()->get_iter_first(&iter)) {
+		if (!m_list_store.get_iter_first(&iter)) {
 			return; // データがない場合は何もしない
 		}
 
@@ -1589,14 +1576,14 @@ public:
 			set_row_to_store(&iter, m_data_model[index]);
 
 			index++;
-		} while (get_sg_store()->iter_next(&iter));	// 次の行へ移動。次がなければループ終了
+		} while (m_list_store.iter_next(&iter));	// 次の行へ移動。次がなければループ終了
 	}
 
 	/// @brief C++モデルとGtkListStoreの両方から全ての行を削除します。
 	void clear() {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_data_model.clear();
-		m_list_store_ptr->clear();
+		m_list_store.clear();
 	}
 
 	/**
@@ -2197,12 +2184,13 @@ public:
 	using const_reverse_iterator	= typename base_type::const_reverse_iterator;
 	using indexed_value_pair		= typename base_type::indexed_value_pair;
 	using setter_function_type		= typename base_type::setter_function_type;
+	using activation_callback_type	= std::function<void(std::optional<size_type>)>;
 
 private:
 	/// @brief このモデルが関連付けられている ComboBox ウィジェット。
 	sgex::ComboBox& m_combo_box;
 	/// @brief 外部に通知するコールバック (選択されたインデックスを渡す)
-	std::function<void(std::optional<size_type>)> m_user_activation_callback = nullptr;
+	activation_callback_type m_user_activation_callback = nullptr;
 
 	/**
 	 * @brief (内部ハンドラ) ComboBox の changed シグナルに接続
@@ -2294,7 +2282,7 @@ public:
 	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
 	 * 未選択の場合は std::nullopt が渡されます。
 	 */
-	void on_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+	void on_changed_by_user(activation_callback_type callback) {
 		m_user_activation_callback = callback;
 	}
 
@@ -2515,6 +2503,7 @@ public:
 	using const_reverse_iterator	= typename base_type::const_reverse_iterator;
 	using indexed_value_pair		= typename base_type::indexed_value_pair;
 	using setter_function_type		= typename base_type::setter_function_type;
+	using selection_callback_type	= std::function<void(std::optional<size_type>)>;
 
 private:
 	/// @brief このモデルが関連付けられている TreeView ウィジェット。
@@ -2526,7 +2515,7 @@ private:
 	/// @brief ユーザーがウィジェットを操作したことを示すフラグ
 	bool m_user_initiated_selection = false;
 	/// @brief 外部に通知するコールバック (ローカルインデックスを渡す)
-	std::function<void(std::optional<size_type>)> m_user_selection_callback = nullptr;
+	selection_callback_type m_user_selection_callback = nullptr;
 
 	/**
 	 * @brief (内部ハンドラ) TreeView の button-press-event に接続
@@ -2781,7 +2770,7 @@ public:
 	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
 	 * インデックスが無効な場合は std::nullopt が渡されます。
 	 */
-	void on_selection_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+	void on_selection_changed_by_user(selection_callback_type callback) {
 		m_user_selection_callback = callback;
 	}
 
@@ -2801,7 +2790,7 @@ public:
 	std::optional<size_type> get_selected_index() {
 		GtkTreeIter iter;
 		if (m_tree_selection.get_selected(nullptr, &iter)) {
-			sgex::TreePath path(this->get_sg_store()->get_path(&iter));
+			sgex::TreePath path(this->m_list_store.get_path(&iter));
 			if (!path) {
 				return std::nullopt;
 			}
@@ -2890,6 +2879,7 @@ public:
 
 	using indexed_value_pair		= std::pair<size_type, value_type>;		///< インデックスと value_type のペア型エイリアス
 	using model_type				= TreeViewListStoreModel<value_type>;	///< 内部で使用する TreeViewListStoreModel の型エイリアス
+	using selection_callback_type	= typename model_type::selection_callback_type;
 
 private:
 	/// @brief (Model) 全てのページのマスターデータ
@@ -2901,7 +2891,7 @@ private:
 	/// @brief 現在表示中のページ番号 (0から始まるインデックス)
 	int m_current_page_index;
 	/// @brief 外部に通知するコールバック (グローバルインデックスを渡す)
-	std::function<void(std::optional<size_type>)> m_user_selection_callback;
+	selection_callback_type m_user_selection_callback;
 	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
 	bool m_is_programmatically_changing;
 	/// @brief フォーカス可否
@@ -3085,7 +3075,7 @@ public:
 	 * @param[in] callback 選択された行のグローバルインデックスを受け取る関数オブジェクト。
 	 * インデックスが無効な場合は std::nullopt が渡されます。
 	 */
-	void on_selection_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+	void on_selection_changed_by_user(selection_callback_type callback) {
 		m_user_selection_callback = callback;
 	}
 

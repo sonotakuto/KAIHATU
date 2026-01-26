@@ -875,7 +875,7 @@ private:
 	 * @param[out] iter 更新する行のイテレータ。
 	 * @param[in] row 設定する MainTableData 構造体。
 	 */
-	void main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row);
+	void main_ListStore_setter(sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（ページ自動判別用）。
