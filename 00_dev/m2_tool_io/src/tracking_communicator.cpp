@@ -41,7 +41,7 @@ bool ToolTrackerClient::connect() {
 		socket.set_timeout(TIMEOUT_SECONDS);
 		std::array<char, MSG_LENGTH> buffer{};
 		ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
-		socket.set_timeout(0); // ブロッキングモードに戻す
+		socket.set_timeout(0);	// ブロッキングモードに戻す
 		std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
 		if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
@@ -70,25 +70,24 @@ void ToolTrackerClient::disconnect() {
 		return;
 	}
 	keep_listening = false;
-	if (socket.is_connected()) {
-		try {
-			if (socket.send(PADDED_MSG_DISCONNECT.data(), PADDED_MSG_DISCONNECT.size()) >= 0) {
-				socket.set_timeout(TIMEOUT_SECONDS);
-				std::array<char, MSG_LENGTH> buffer{};
-				ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
-				socket.set_timeout(0); // ブロッキングモードに戻す
-				std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
+	try {
+		if (socket.send(PADDED_MSG_DISCONNECT.data(), PADDED_MSG_DISCONNECT.size()) >= 0) {
+			socket.set_timeout(TIMEOUT_SECONDS);
+			std::array<char, MSG_LENGTH> buffer{};
+			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
+			socket.set_timeout(0); // ブロッキングモードに戻す
+			std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
-				if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
-					DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
-							((bytes_read > 0) ? (raw_view) : ("(No data or error)")));
-				}
-			} else {
-				DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Disconnect' message.\n");
+			if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
+				DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
+					((bytes_read > 0) ? (raw_view) : ("(No data or error)"))
+				);
 			}
-		} catch (...) {}
-		socket.close();
-	}
+		} else {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Disconnect' message.\n");
+		}
+	} catch (...) {}
+	socket.close();
 	if (listener_thread.joinable()) {
 		listener_thread.join();
 	}
@@ -199,7 +198,8 @@ std::string RecorderClient::generate_timestamp_filename() const {
 
 std::optional<std::string> RecorderClient::start_recording(std::string filename) {
 	std::lock_guard<std::mutex> lock(m_filename_mutex);
-	if (m_current_filename.has_value()) {
+
+	if (m_current_filename.has_value()) {	// TODO: 条件これで良いか考える
 		return std::nullopt;
 	}
 
@@ -241,7 +241,7 @@ std::optional<std::string> RecorderClient::start_recording(std::string filename)
 bool RecorderClient::stop_recording() {
 	std::lock_guard<std::mutex> lock(m_filename_mutex);
 
-	if (m_current_filename.has_value()) {
+	if (!m_current_filename.has_value()) {
 		return true;
 	}
 
