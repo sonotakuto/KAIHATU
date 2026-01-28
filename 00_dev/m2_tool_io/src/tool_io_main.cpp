@@ -39,13 +39,13 @@ int main(int argc, char *argv[])
 
 			// GUIスレッドで実行したい処理を std::function にキャプチャする
 			// notification 変数をコピーキャプチャ [=] する
-			// g_idle_add を使って GUI スレッドでの実行を予約
-			g_idle_add(gui::MainWindow::dispatch_to_gui_thread, new std::function<void()>([=]() {
+			// gutils::idle_add_once を使って GUI スレッドでの実行を予約
+			gutils::idle_add_once([=]() {
 				if (gui::mainWindow) { // mainWindow が有効か確認
 					// MainWindow のメソッド (例: tracker_on_notified) を呼び出す
 					gui::mainWindow->tracker_on_notified(notification);
 				}
-			}));
+			});
 		}
 	);
 

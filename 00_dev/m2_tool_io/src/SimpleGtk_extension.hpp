@@ -96,7 +96,6 @@
 		g_object_set(G_OBJECT(this->object), #property_name, (gboolean)value, NULL); \
 	}
 
-// 名前指定版（can-focusなどハイフン付き用）
 /**
  * @brief GTKプロパティ名にハイフンが含まれる場合に対応した、bool型プロパティのゲッターとセッターを定義するマクロ。
  * @details
@@ -128,6 +127,8 @@
 		g_object_set(G_OBJECT(this->object), gtk_property_name, (gboolean)value, NULL); \
 	}
 
+#ifdef SIMPLEGTK_GE_1_0_6
+
 /**
  * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数なし）。
  * @param[in] signal_name GTKシグナル名 (文字列)。
@@ -152,7 +153,6 @@ private: \
 			thiz->on_##c_signal_name##_handler(); \
 	}
 
-// シグナルのハンドラーを定義するマクロ
 /**
  * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数あり）。
  * @param[in] signal_name GTKシグナル名 (文字列)。
@@ -204,6 +204,78 @@ private: \
 		return FALSE; \
 	}
 
+#else
+
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数なし）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] instance_type シグナルハンドラの所属クラス名。
+ * @param[in] ... 静的コールバック関数の引数リスト。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER(signal_name, c_signal_name, instance_type, ...) \
+	public:\
+	void on_##c_signal_name(std::function<void()> handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+	private:\
+	std::function<void()> on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static(__VA_ARGS__, instance_type* thiz) { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) \
+			thiz->on_##c_signal_name##_handler(); \
+	}
+
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数あり）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS(signal_name, c_signal_name, para_static, CppClass, function, ...) \
+public:\
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+private:\
+	function on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static para_static { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) \
+			thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+	}
+
+/**
+ * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] return_type ハンドラの戻り値の型 (例: gboolean)。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, CppClass, function, ...) \
+public: \
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+private: \
+	function on_##c_signal_name##_handler = nullptr; \
+	static return_type on_##c_signal_name##_static para_static { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) { \
+			return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+		} \
+		return FALSE; \
+	}
+
+#endif
+
 /**
  * @brief CSSクラス操作用のメソッドを定義するマクロ。
  */
@@ -241,25 +313,25 @@ namespace sgex {
 constexpr GdkGravity to_gdk_gravity(layout::Gravity gravity) {
 	switch (gravity) {
 		case layout::Gravity::NorthWest:
-			return GDK_GRAVITY_NORTH_WEST;
+			return GdkGravity::GDK_GRAVITY_NORTH_WEST;
 		case layout::Gravity::North:
-			return GDK_GRAVITY_NORTH;
+			return GdkGravity::GDK_GRAVITY_NORTH;
 		case layout::Gravity::NorthEast:
-			return GDK_GRAVITY_NORTH_EAST;
+			return GdkGravity::GDK_GRAVITY_NORTH_EAST;
 		case layout::Gravity::West:
-			return GDK_GRAVITY_WEST;
+			return GdkGravity::GDK_GRAVITY_WEST;
 		case layout::Gravity::Center:
-			return GDK_GRAVITY_CENTER;
+			return GdkGravity::GDK_GRAVITY_CENTER;
 		case layout::Gravity::East:
-			return GDK_GRAVITY_EAST;
+			return GdkGravity::GDK_GRAVITY_EAST;
 		case layout::Gravity::SouthWest:
-			return GDK_GRAVITY_SOUTH_WEST;
+			return GdkGravity::GDK_GRAVITY_SOUTH_WEST;
 		case layout::Gravity::South:
-			return GDK_GRAVITY_SOUTH;
+			return GdkGravity::GDK_GRAVITY_SOUTH;
 		case layout::Gravity::SouthEast:
-			return GDK_GRAVITY_SOUTH_EAST;
+			return GdkGravity::GDK_GRAVITY_SOUTH_EAST;
 		default:
-			return GDK_GRAVITY_NORTH_WEST;
+			return GdkGravity::GDK_GRAVITY_NORTH_WEST;
 	}
 }
 
@@ -270,23 +342,23 @@ constexpr GdkGravity to_gdk_gravity(layout::Gravity gravity) {
  */
 constexpr layout::Gravity to_layout_gravity(GdkGravity gravity) {
 	switch (gravity) {
-		case GDK_GRAVITY_NORTH_WEST:
+		case GdkGravity::GDK_GRAVITY_NORTH_WEST:
 			return layout::Gravity::NorthWest;
-		case GDK_GRAVITY_NORTH:
+		case GdkGravity::GDK_GRAVITY_NORTH:
 			return layout::Gravity::North;
-		case GDK_GRAVITY_NORTH_EAST:
+		case GdkGravity::GDK_GRAVITY_NORTH_EAST:
 			return layout::Gravity::NorthEast;
-		case GDK_GRAVITY_WEST:
+		case GdkGravity::GDK_GRAVITY_WEST:
 			return layout::Gravity::West;
-		case GDK_GRAVITY_CENTER:
+		case GdkGravity::GDK_GRAVITY_CENTER:
 			return layout::Gravity::Center;
-		case GDK_GRAVITY_EAST:
+		case GdkGravity::GDK_GRAVITY_EAST:
 			return layout::Gravity::East;
-		case GDK_GRAVITY_SOUTH_WEST:
+		case GdkGravity::GDK_GRAVITY_SOUTH_WEST:
 			return layout::Gravity::SouthWest;
-		case GDK_GRAVITY_SOUTH:
+		case GdkGravity::GDK_GRAVITY_SOUTH:
 			return layout::Gravity::South;
-		case GDK_GRAVITY_SOUTH_EAST:
+		case GdkGravity::GDK_GRAVITY_SOUTH_EAST:
 			return layout::Gravity::SouthEast;
 		default:
 			return layout::Gravity::NorthWest;

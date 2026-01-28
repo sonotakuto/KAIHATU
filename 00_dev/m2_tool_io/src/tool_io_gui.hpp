@@ -8,6 +8,7 @@
 #include <SimpleGtk>
 #include "stdex/opt_extension.hpp"
 #include "utils/tracked_map.hpp"
+#include "gutils/gmain_utils.hpp"
 #include "gutils/process_runner.hpp"
 #include "SimpleGtk_extension.hpp"
 #include "typedef.hpp"
@@ -431,17 +432,6 @@ public:
 	 * @brief ウィンドウを強制的に閉じる。
 	 */
 	void force_close();
-
-	/**
-	 * @brief ワーカースレッドからの実行依頼をGUIスレッドで実行するためのディスパッチャ。
-	 * @details
-	 * C言語形式のコールバックである g_idle_add と C++ のラムダ式やメンバー関数を繋ぐための汎用的な糊（グルー）コード。
-	 * ワーカースレッドは、実行したい処理を std::function オブジェクトとしてヒープに作成し、
-	 * そのポインタをこの関数に渡すことで、GUIスレッドでの安全な実行を予約します。
-	 * @param[in] user_data std::function<void()>* にキャストされるポインタ。
-	 * @return G_SOURCE_REMOVE (一度だけ実行して解除)。
-	 */
-	static gboolean dispatch_to_gui_thread(gpointer user_data);
 
 	/**
 	 * @brief PLCモニタースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。

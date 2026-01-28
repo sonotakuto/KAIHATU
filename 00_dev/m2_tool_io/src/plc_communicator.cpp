@@ -39,11 +39,11 @@ static std::atomic<bool> g_cancel_requested{false};
  * @param[in] notification GUIに送る通知内容。
  */
 static void notify_gui_thread(const Notification& notification) {
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, new std::function<void()>([=]() {
+	gutils::idle_add_once([=]() {
 		if (gui::mainWindow) {
 			gui::mainWindow->plc_on_notified(notification);
 		}
-	}));
+	});
 }
 
 /**

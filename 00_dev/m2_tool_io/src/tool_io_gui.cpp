@@ -1808,17 +1808,6 @@ void MainWindow::force_close() {
 	this->close();
 }
 
-gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
-	// 渡されたポインタを元の std::function オブジェクトにキャスト
-	auto* func = static_cast<std::function<void()>*>(user_data);
-	// 関数を実行
-	(*func)();
-	// オブジェクトを解放
-	delete func;
-	// このコールバックは一度きりなので解除
-	return G_SOURCE_REMOVE;
-}
-
 void MainWindow::plc_on_notified(const plc::Notification& notification) {
 	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", (int)notification.type);
 	switch (notification.type) {
@@ -2448,19 +2437,19 @@ void MainWindow::confirm_insert_count(int init_count, int max_count, std::functi
 
 		// 画面下部のボタン有効状態を再計算
 		// ダイアログ非表示後に実行されるよう、遅延実行に登録
-		g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+		gutils::idle_add_once([this]() {
 			this->update_retrieve_read_completed_buttons();
-		}));
+		});
 	});
 
 	// 画面下部のボタン有効状態を再計算
 	// ダイアログ表示後に実行されるよう、遅延実行に登録
-	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+	gutils::idle_add_once([this]() {
 		this->update_retrieve_read_completed_buttons();
-	}));
+	});
 
 	// ダイアログを表示
-	confirmInsertCountDialog.show();
+	confirmInsertCountDialog.show_all();
 }
 
 void MainWindow::update_read_completed_buttons(bool update_ui) {
@@ -2523,9 +2512,9 @@ bool MainWindow::update_warning_display() {
 	refresh_ui(false);
 
 	// ダイアログの表示状態変化後に更新されるよう、遅延実行する
-	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this](){
+	gutils::idle_add_once([this](){
 		update_read_completed_buttons(true);
-	}));
+	});
 
 	return has_state_warning;
 }
@@ -2795,9 +2784,9 @@ void MainWindow::on_window_show() {
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
 
-		g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+		gutils::idle_add_once([this]() {
 			g_monitor_area = sgex::get_monitor_rectangle_at_window(*this).value_or(sgex::Rectangle{0, 0, MONITOR_WIDTH, MONITOR_HEIGHT});
-		}));
+		});
 
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
@@ -2934,7 +2923,7 @@ void MainWindow::userIdEntry_on_activate() {
 }
 
 void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_index_opt) {
-	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this, selected_index_opt]() {
+	gutils::idle_add_once([this, selected_index_opt]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
 		try {
 			auto state_config = g_app_state_configs.at(m_app_state);
@@ -2947,7 +2936,7 @@ void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_in
 		} catch (...) {
 			DEV_PRINT(stderr, "Error: Unexpected exception in delayed mainTableSelection_on_changed\n");
 		}
-	}));
+	});
 }
 
 void MainWindow::qrCodeEntry_on_activate() {
@@ -3002,11 +2991,11 @@ void MainWindow::passwordEntryDialog_on_show() {
 	pos.y -= 180;
 	passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
 /*/
-	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+	gutils::idle_add_once([this]() {
 		layout::Position pos = g_monitor_area.get_center();
 		pos.y -= 180;
 		passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
-	}));
+	});
 //*/
 }
 
@@ -3037,7 +3026,7 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 	messageDialog.set_transient_for(confirmInsertCountDialog);
 	messageDialog.show_all();
 
-	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+	gutils::idle_add_once([this]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
 		if (auto count_opt = tracker::get_insert_count()) {
 			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = count_opt.value()).c_str());
@@ -3051,7 +3040,7 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 		}
 		messageDialog.hide();
 		messageDialog.set_transient_for(*this);
-	}));
+	});
 }
 
 void MainWindow::notRegroundButton_on_toggled() {
@@ -3071,9 +3060,9 @@ void MainWindow::regroundButton_on_toggled() {
 }
 
 void MainWindow::warningList_on_map() {
-	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+	gutils::idle_add_once([this]() {
 		this->warningListstore.refresh(true);
-	}));
+	});
 }
 
 void MainWindow::warningListCloseButton_on_clicked() {
@@ -3394,12 +3383,12 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 
 		if (!tracker::g_tool_tracker->notify_qr_scan()) {
 			// 失敗時も処理を続行できるように、スキャン成功扱いにする
-			g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+			gutils::idle_add_once([this]() {
 				this->tracker_on_notified(tracker::ToolTrackerClient::Notification{
 					.type = tracker::ToolTrackerClient::NotificationType::SCAN_SUCCESS,
 					.error_details = "Communication failed"
 				});
-			}));
+			});
 			m_warning_closed_by_user = true;	// 履歴に警告有りだけ残しておく
 		}
 	} else {
