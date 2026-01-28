@@ -1859,8 +1859,11 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 			}
 		} else {
 			// FIXME: nullopt対応
-			DEV_PRINT(stderr, "PLC監視スレッドからMONITOR通知を受け取りましたが、monitor_result が空でした\n");
+			DEV_PRINT(stderr, "PLC通信スレッドからMONITOR通知を受け取りましたが、monitor_result が空でした\n");
 		}
+		break;
+	case plc::NotificationType::TASK_CLEARED :
+		DEV_PRINT(stderr, "PLC通信スレッドのタスクがクリアされました\n");
 		break;
 	default :
 		DEV_PRINT(stderr, "Error: 未知のPLC通知を受け取りました\n");
@@ -2444,17 +2447,17 @@ void MainWindow::confirm_insert_count(int init_count, int max_count, std::functi
 		}
 
 		// 画面下部のボタン有効状態を再計算
-		auto* func = new std::function<void()>([this]() {
+		// ダイアログ非表示後に実行されるよう、遅延実行に登録
+		g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
 			this->update_retrieve_read_completed_buttons();
-		});
-		g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+		}));
 	});
 
 	// 画面下部のボタン有効状態を再計算
-	auto* func = new std::function<void()>([this]() {
+	// ダイアログ表示後に実行されるよう、遅延実行に登録
+	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
 		this->update_retrieve_read_completed_buttons();
-	});
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+	}));
 
 	// ダイアログを表示
 	confirmInsertCountDialog.show();
@@ -2467,6 +2470,7 @@ void MainWindow::update_read_completed_buttons(bool update_ui) {
 		update_retrieve_read_completed_buttons(update_ui);
 		break;
 	default :
+		DEV_PRINT(stderr, "Info: update_read_completed_buttons() は現在の状態では無効です (AppState={})\n", static_cast<int>(m_app_state));
 		break;
 	}
 }
@@ -2516,8 +2520,13 @@ bool MainWindow::update_warning_display() {
 		// スキャン成功時には自動的に現在の画面に再遷移するため、ここでの書き換えは不要
 	}
 
-	update_read_completed_buttons(false);
 	refresh_ui(false);
+
+	// ダイアログの表示状態変化後に更新されるよう、遅延実行する
+	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this](){
+		update_read_completed_buttons(true);
+	}));
+
 	return has_state_warning;
 }
 
@@ -2740,7 +2749,16 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 		.is_sensitive = all_systems_ready
 	}, false);
 
-	// 4. 最後にUIを一括更新
+	if (!all_systems_ready) {
+		if (confirmationDialog.get_mapped()) {
+			confirmationDialog.response(GtkResponseType::GTK_RESPONSE_NO);
+		}
+		if (overrideConfirmDialog.get_mapped()) {
+			overrideConfirmDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL);
+		}
+	}
+
+	// 最後にUIを一括更新
 	if (update_ui) {
 		refresh_ui(false);
 	}
@@ -2777,10 +2795,9 @@ void MainWindow::on_window_show() {
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
 
-		auto* func = new std::function<void()>([this]() {
+		g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
 			g_monitor_area = sgex::get_monitor_rectangle_at_window(*this).value_or(sgex::Rectangle{0, 0, MONITOR_WIDTH, MONITOR_HEIGHT});
-		});
-		g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+		}));
 
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
@@ -2917,9 +2934,8 @@ void MainWindow::userIdEntry_on_activate() {
 }
 
 void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_index_opt) {
-	auto* func = new std::function<void()>([this, selected_index_opt]() {
+	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this, selected_index_opt]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
-
 		try {
 			auto state_config = g_app_state_configs.at(m_app_state);
 			if (state_config.on_mainTableSelection_changed) {
@@ -2931,9 +2947,7 @@ void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_in
 		} catch (...) {
 			DEV_PRINT(stderr, "Error: Unexpected exception in delayed mainTableSelection_on_changed\n");
 		}
-	});
-
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+	}));
 }
 
 void MainWindow::qrCodeEntry_on_activate() {
@@ -2988,12 +3002,11 @@ void MainWindow::passwordEntryDialog_on_show() {
 	pos.y -= 180;
 	passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
 /*/
-	auto* func = new std::function<void()>([this]() {
+	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
 		layout::Position pos = g_monitor_area.get_center();
 		pos.y -= 180;
 		passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
-	});
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+	}));
 //*/
 }
 
@@ -3024,7 +3037,7 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 	messageDialog.set_transient_for(confirmInsertCountDialog);
 	messageDialog.show_all();
 
-	auto* func = new std::function<void()>([this]() {
+	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
 		if (auto count_opt = tracker::get_insert_count()) {
 			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = count_opt.value()).c_str());
@@ -3038,9 +3051,7 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 		}
 		messageDialog.hide();
 		messageDialog.set_transient_for(*this);
-	});
-
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
+	}));
 }
 
 void MainWindow::notRegroundButton_on_toggled() {
@@ -3060,10 +3071,9 @@ void MainWindow::regroundButton_on_toggled() {
 }
 
 void MainWindow::warningList_on_map() {
-	auto* func = new std::function<void()>([this]() {
+	g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
 		this->warningListstore.refresh(true);
-	});
-	g_idle_add(MainWindow::dispatch_to_gui_thread, func);
+	}));
 }
 
 void MainWindow::warningListCloseButton_on_clicked() {
@@ -3380,8 +3390,18 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 			return;
 		}
 
-		tracker::g_tool_tracker->notify_qr_scan();
 		m_pending_tool_info = std::move(unique_info);
+
+		if (!tracker::g_tool_tracker->notify_qr_scan()) {
+			// 失敗時も処理を続行できるように、スキャン成功扱いにする
+			g_idle_add(dispatch_to_gui_thread, new std::function<void()>([this]() {
+				this->tracker_on_notified(tracker::ToolTrackerClient::Notification{
+					.type = tracker::ToolTrackerClient::NotificationType::SCAN_SUCCESS,
+					.error_details = "Communication failed"
+				});
+			}));
+			m_warning_closed_by_user = true;	// 履歴に警告有りだけ残しておく
+		}
 	} else {
 		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}

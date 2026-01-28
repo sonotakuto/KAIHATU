@@ -250,6 +250,12 @@ public:
 	 */
 	std::optional<std::string> get_current_filename() const;
 
+	/**
+	 * @brief 録画中かどうかを取得します。(スレッドセーフ)
+	 * @return 録画中の場合は true。
+	 */
+	bool is_recording() const;
+
 private:
 	std::string base_url;
 	std::string context_path;

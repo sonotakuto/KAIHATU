@@ -100,21 +100,21 @@ bool ToolTrackerClient::is_connected() {
 bool ToolTrackerClient::notify_qr_scan() {
 	if (!is_connected()) {
 		DEV_PRINT(stderr, "[ToolTrackerClient] Error: Not connected to send QR scan notification.\n");
-		// notification_callback({NotificationType::ERROR, {}, "Not connected"}); // 必要ならコールバックで通知
+		notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Not connected"});
 		return false;
 	}
 	try {
 		if (socket.send(PADDED_MSG_QR_SCAN.data(), PADDED_MSG_QR_SCAN.size()) < 0) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
 			disconnect();
-			notification_callback({NotificationType::ERROR, {}, "Send failed"});
+			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Send failed"});
 			return false;
 		}
 		return true;
 	} catch (const std::exception& e) {
 		DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification: {}\n", e.what());
 		disconnect();
-		notification_callback({NotificationType::ERROR, {}, std::string("Send error: ") + e.what()});
+		notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Send error: {}", e.what())});
 		return false;
 	}
 }
@@ -136,13 +136,13 @@ void ToolTrackerClient::listener_thread_func() {
 				std::string_view trimmed_view = utils::rstrip(raw_view);
 
 				// 固定長メッセージの比較を行い、通知タイプを判別、設定
-				if		(trimmed_view == MSG_SCAN_S					) { notification.type = NotificationType::SCAN_SUCCESS;				}
-				else if	(trimmed_view == MSG_SCAN_F					) { notification.type = NotificationType::SCAN_FAILURE;				}
-				else if	(trimmed_view == MSG_SCANNED_IN_CONTAINER	) { notification.type = NotificationType::SCANNED_IN_CONTAINER;		}
-				else if	(trimmed_view == MSG_SCANNED_OUT_CONTAINER	) { notification.type = NotificationType::SCANNED_OUT_CONTAINER;	}
-				else if	(trimmed_view == MSG_OTHER_IN_CONTAINER		) { notification.type = NotificationType::OTHER_IN_CONTAINER;		}
+				if		(trimmed_view == MSG_SCAN_S						) { notification.type = NotificationType::SCAN_SUCCESS;				}
+				else if	(trimmed_view == MSG_SCAN_F						) { notification.type = NotificationType::SCAN_FAILURE;				}
+				else if	(trimmed_view == MSG_SCANNED_IN_CONTAINER		) { notification.type = NotificationType::SCANNED_IN_CONTAINER;		}
+				else if	(trimmed_view == MSG_SCANNED_OUT_CONTAINER		) { notification.type = NotificationType::SCANNED_OUT_CONTAINER;	}
+				else if	(trimmed_view == MSG_OTHER_IN_CONTAINER			) { notification.type = NotificationType::OTHER_IN_CONTAINER;		}
 				else if	(trimmed_view == MSG_OTHER_OUT_CONTAINER		) { notification.type = NotificationType::OTHER_OUT_CONTAINER;		}
-				else if	(trimmed_view == MSG_UNSCANNED_IN_CONTAINER	) { notification.type = NotificationType::UNSCANNED_IN_CONTAINER;	}
+				else if	(trimmed_view == MSG_UNSCANNED_IN_CONTAINER		) { notification.type = NotificationType::UNSCANNED_IN_CONTAINER;	}
 				else if	(trimmed_view == MSG_UNSCANNED_OUT_CONTAINER	) { notification.type = NotificationType::UNSCANNED_OUT_CONTAINER;	}
 				else if	(trimmed_view == MSG_UNSCANNED_OUT_FRAME		) { notification.type = NotificationType::UNSCANNED_OUT_FRAME;		}
 				else { notification.type = NotificationType::UNKNOWN; }
@@ -154,15 +154,12 @@ void ToolTrackerClient::listener_thread_func() {
 			} else if (bytes_read <= 0) {
 				// receive が 0 (正常切断) または負数 (エラー) を返した場合
 				if (keep_listening) {	// disconnect()以外での切断
-					notification_callback({NotificationType::CONNECTION_LOST, {}, (bytes_read == 0 ? "Connection closed by peer (EOF)" : "Receive error")});
+					notification_callback(Notification{.type = NotificationType::CONNECTION_LOST, .error_details = ((bytes_read == 0) ? ("Connection closed by peer (EOF)") : ("Receive error"))});
 				}
 				break;
 
 			} else {
-				Notification notification;
-				notification.type = NotificationType::ERROR;
-				notification.error_details = fmt::format("Received unexpected data length: {}", bytes_read);
-				notification_callback(notification);
+				notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Received unexpected data length: {}", bytes_read)});
 				// break; // エラーなら終了する場合
 			}
 
@@ -170,7 +167,7 @@ void ToolTrackerClient::listener_thread_func() {
 			// タイムアウト例外は無視
 		} catch (const std::exception& e) {
 			if (keep_listening) {
-				notification_callback({NotificationType::ERROR, {}, std::string("Listener error: ") + e.what()});
+				notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Listener error: {}", e.what())});
 				DEV_PRINT(stderr, "[ToolTrackerClient] Listener error: {}\n", e.what());
 			}
 			break;
@@ -273,7 +270,12 @@ bool RecorderClient::stop_recording() {
 
 std::optional<std::string> RecorderClient::get_current_filename() const {
 	std::lock_guard<std::mutex> lock(m_filename_mutex);
-	return m_current_filename; // 現在のファイル名 (または nullopt) を返す
+	return m_current_filename;	// 現在のファイル名 (または nullopt) を返す
+}
+
+bool RecorderClient::is_recording() const {
+	std::lock_guard<std::mutex> lock(m_filename_mutex);
+	return m_current_filename.has_value();
 }
 
 // =================================
