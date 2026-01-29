@@ -2272,11 +2272,6 @@ void MainWindow::update_and_handle_pagination_3columns(PaginationAction action, 
 	}
 	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
 
-	liststore3columnsAll.queue_resize();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
-	}
-
 	// モデルの現在の状態に基づいて、UIを更新
 	std::string page_label = fmt::format("ページ {:2d} / {:2d}",
 		liststore3columnsAll.get_current_page(),
@@ -2288,6 +2283,12 @@ void MainWindow::update_and_handle_pagination_3columns(PaginationAction action, 
 
 	if (update_ui) {
 		refresh_ui(false);
+	}
+
+	liststore3columnsAll.queue_resize();
+	liststore3columnsAll.queue_draw();
+	while (gtk_events_pending()) {
+		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
 }
 
@@ -2305,11 +2306,6 @@ void MainWindow::update_and_handle_pagination_2columns(PaginationAction action, 
 	}
 	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
 
-	liststore2columnsAll.queue_resize();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
-	}
-
 	// モデルの現在の状態に基づいて、UIを更新
 	std::string page_label = fmt::format("ページ {:2d} / {:2d}",
 		liststore2columnsAll.get_current_page(),
@@ -2321,6 +2317,12 @@ void MainWindow::update_and_handle_pagination_2columns(PaginationAction action, 
 
 	if (update_ui) {
 		refresh_ui(false);
+	}
+
+	liststore2columnsAll.queue_resize();
+	liststore2columnsAll.queue_draw();
+	while (gtk_events_pending()) {
+		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
 }
 
@@ -2338,11 +2340,6 @@ void MainWindow::update_and_handle_pagination_2types1st(PaginationAction action,
 	}
 	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
 
-	paginatedListstore2types1st.queue_resize();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
-	}
-
 	// モデルの現在の状態に基づいて、UIを更新
 	std::string page_label = fmt::format("ページ {:2d} / {:2d}",
 		paginatedListstore2types1st.get_current_page(),
@@ -2354,6 +2351,12 @@ void MainWindow::update_and_handle_pagination_2types1st(PaginationAction action,
 
 	if (update_ui) {
 		refresh_ui(false);
+	}
+
+	paginatedListstore2types1st.queue_resize();
+	paginatedListstore2types1st.queue_draw();
+	while (gtk_events_pending()) {
+		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
 }
 
@@ -2371,11 +2374,6 @@ void MainWindow::update_and_handle_pagination_2types2nd(PaginationAction action,
 	}
 	// actionがUPDATE_UI_ONLYの場合は、ページ送りは行わない
 
-	paginatedListstore2types2nd.queue_resize();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
-	}
-
 	// モデルの現在の状態に基づいて、UIを更新
 	std::string page_label = fmt::format("ページ {:2d} / {:2d}",
 		paginatedListstore2types2nd.get_current_page(),
@@ -2387,6 +2385,12 @@ void MainWindow::update_and_handle_pagination_2types2nd(PaginationAction action,
 
 	if (update_ui) {
 		refresh_ui(false);
+	}
+
+	paginatedListstore2types2nd.queue_resize();
+	paginatedListstore2types2nd.queue_draw();
+	while (gtk_events_pending()) {
+		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
 }
 
