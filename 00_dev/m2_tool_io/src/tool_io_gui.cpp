@@ -1879,14 +1879,17 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 			"搬送ユニットとの接続が失われました\n再接続が確立されるまでお待ち下さい",
 			"はんそうユニットとの せつぞくが うしなわれました\nさいせつぞくが かくりつされるまで おまちください"
 		}}, true);
+		set_sensitive(false);
 		warningDialog.show_all();
 	} else if (m_plc_maintaining || m_plc_has_error) {
 		update_widget_state(&warningLabel, WidgetState{.text = UiText{
 			"ステータスモニタでの操作により、\n画面がロックされました\n\n詳細はステータスモニタをご覧ください",
 			"ステータスモニタでの そうさにより、\nがめんが ロックされました\n\nしょうさいは ステータスモニタを ごらんください"
 		}}, true);
+		set_sensitive(false);
 		warningDialog.show_all();
 	} else {
+		set_sensitive(true);
 		warningDialog.hide();
 	}
 }
