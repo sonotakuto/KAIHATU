@@ -158,6 +158,34 @@ public:
 	ToolTrackerClient& operator=(ToolTrackerClient&&) = delete;
 
 	/**
+	 * @brief サーバーに接続し、リスナースレッドを起動します。
+	 * @return 成功した場合は true。
+	 */
+	bool start();
+
+	/**
+	 * @brief リスナースレッドを終了し、サーバーから切断します。
+	 */
+	void stop();
+
+	/**
+	 * @brief 接続状態を確認します。
+	 * @details 単純な関数は、インライン展開した方が効率的。
+	 * @return 接続中の場合は true。
+	 */
+	bool is_connected() {
+		std::lock_guard<std::mutex> lock(socket_mutex);
+		return is_connected_internal();
+	}
+
+	/**
+	 * @brief QRコードスキャンが行われたことをサーバーに通知します。
+	 * @return 送信に成功した場合は true。
+	 */
+	bool notify_qr_scan(); // qr_data 引数を削除
+
+private:
+	/**
 	 * @brief サーバーへの接続を試みます。
 	 * @return 接続に成功した場合は true。
 	 */
@@ -170,23 +198,20 @@ public:
 
 	/**
 	 * @brief 接続状態を確認します。
+	 * @details 単純な関数は、ヘッダに書いてインライン展開した方が効率的。
 	 * @return 接続中の場合は true。
 	 */
-	bool is_connected();
+	bool is_connected_internal() {
+		return socket && socket->is_connected();
+	}
 
-	/**
-	 * @brief QRコードスキャンが行われたことをサーバーに通知します。
-	 * @return 送信に成功した場合は true。
-	 */
-	bool notify_qr_scan(); // qr_data 引数を削除
-
-private:
 	/**
 	 * @brief サーバーからのメッセージを受信し続けるリスナースレッドの本体。
 	 */
 	void listener_thread_func();
 
-	sg::Socket socket;
+	std::unique_ptr<sg::Socket> socket;
+	std::mutex socket_mutex;
 	std::thread listener_thread;
 	std::atomic<bool> keep_listening;
 	std::function<void(const tracker::ToolTrackerClient::Notification&)> notification_callback;
@@ -214,7 +239,7 @@ public:
 	 * @brief コンストラクタ。
 	 * @details 定義された定数を使用して初期化します。
 	 */
-	RecorderClient(); // 引数を削除
+	RecorderClient();
 
 	// コピー・ムーブを完全に禁止 (ミューテックスが存在するため)
 	RecorderClient(const RecorderClient&) = delete;

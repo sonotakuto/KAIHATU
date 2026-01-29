@@ -23,13 +23,13 @@ namespace utils {
 /**
  * @class SafeQueue
  * @brief ミューテックスと条件変数で保護された、スレッドセーフなFIFOキュー。
- * @tparam _Tp キューに格納する要素の型。
- * @tparam _Sequence 内部で使われるコンテナの型。デフォルトはstd::deque。
+ * @tparam T キューに格納する要素の型。
+ * @tparam Sequence 内部で使われるコンテナの型。デフォルトはstd::deque。
  */
-template<typename _Tp, typename _Sequence = std::deque<_Tp> >
+template<typename T, typename Sequence = std::deque<T> >
 class SafeQueue {
 public:
-	using que_type		= std::queue<_Tp, _Sequence>;
+	using que_type		= std::queue<T, Sequence>;
 	using value_type	= typename que_type::value_type;
 	using size_type		= typename que_type::size_type;
 	using cv_type		= std::condition_variable;

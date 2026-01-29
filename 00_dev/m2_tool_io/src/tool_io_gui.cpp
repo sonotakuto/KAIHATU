@@ -1895,7 +1895,7 @@ void MainWindow::reset_variables() {
 	plc::end_session();
 	db::disconnect();
 	stop_MediaServer();
-	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->disconnect(); }
+	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->stop(); }
 	if (tracker::g_recorder_client) { tracker::g_recorder_client->stop_recording(); }
 	g_logged_in_user_info = nullopt;
 
@@ -2808,7 +2808,7 @@ bool MainWindow::on_delete_event(GtkWidget* self, GdkEvent* event) {
 	DEV_PRINT("ウィンドウが閉じられました\n");
 
 	// 追跡システムとの通信を終了
-	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->disconnect(); }
+	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->stop(); }
 	if (tracker::g_recorder_client) { tracker::g_recorder_client->stop_recording(); }
 
 	// バックグラウンドプロセスの終了
@@ -3029,7 +3029,7 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 	gutils::idle_add_once([this]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
 		if (auto count_opt = tracker::get_insert_count()) {
-			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = count_opt.value()).c_str());
+			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = std::min(count_opt.value(), m_confirmInsertCountDialog_max_count)).c_str());
 			update_widget_state(&confirmInsertCountLabel, WidgetState{
 				.text = UiText{"検出に成功しました\n個数を確認して下さい", "けんしゅつに せいこうしました\nこすうを かくにん してください"}
 			}, true);
@@ -3254,7 +3254,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 
 	// 追跡システムの開始
 	// FIXME: エラー対応
-	tracker::g_tool_tracker->connect();
+	tracker::g_tool_tracker->start();
 	tracker::g_recorder_client->start_recording();
 
 	// インサートの操作か判定
@@ -3442,7 +3442,7 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 	plc::store_container();
 	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
 	db::save_history(m_operated_records);
-	tracker::g_tool_tracker->disconnect();
+	tracker::g_tool_tracker->stop();
 	tracker::g_recorder_client->stop_recording();
 	set_mode(GuiMode::NONE);
 }
@@ -3507,7 +3507,7 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 		set_app_state(AppState::RETRIEVE_CONTAINER_RETRIEVING);
 	} else {
 		// 選択された中で最後の工具の時
-		tracker::g_tool_tracker->disconnect();
+		tracker::g_tool_tracker->stop();
 
 		m_retrieving_index.reset();
 

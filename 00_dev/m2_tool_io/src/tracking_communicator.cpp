@@ -12,110 +12,151 @@ namespace tracker {
 // ToolTrackerClient クラス実装
 // =================================
 
+// --- 公開メンバ関数 ---
+
 ToolTrackerClient::ToolTrackerClient(std::function<void(const Notification&)> callback) :
 	keep_listening(false),
 	notification_callback(callback)
 {}
 
 ToolTrackerClient::~ToolTrackerClient() {
-	disconnect();
+	stop();
 }
 
-bool ToolTrackerClient::connect() {
-	if (socket.is_connected()) {
+bool ToolTrackerClient::start() {
+	if (keep_listening) {
 		return true;
 	}
 
+	stop();
+
 	try {
-		if (!socket.connect(HOST, PORT)) {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Connection Failed to {}:{}\n", HOST, PORT);
-			return false;
-		}
-
-		if (socket.send(PADDED_MSG_CONNECT.data(), PADDED_MSG_CONNECT.size()) < 0) {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Connect' message.\n");
-			socket.close();
-			return false;
-		}
-
-		socket.set_timeout(TIMEOUT_SECONDS);
-		std::array<char, MSG_LENGTH> buffer{};
-		ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
-		socket.set_timeout(0);	// ブロッキングモードに戻す
-		std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
-
-		if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
+		std::lock_guard<std::mutex> lock(socket_mutex);
+		if (connect()) {
 			keep_listening = true;
 			listener_thread = std::thread(&ToolTrackerClient::listener_thread_func, this);
 			return true;
 		} else {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
-					((bytes_read > 0) ? (raw_view) : ("(No data or error)")));
-			socket.close();
 			return false;
 		}
-	} catch (const sg::SocketTimeoutException& e) {
-		DEV_PRINT(stderr, "[ToolTrackerClient] Timeout waiting for ACK: {}\n", e.what());
-		socket.close();
-		return false;
 	} catch (const std::exception& e) {
-		DEV_PRINT(stderr, "[ToolTrackerClient] Connection error: {}\n", e.what());
-		socket.close();
+		DEV_PRINT(stderr, "[ToolTrackerClient] Start error: {}\n", e.what());
+		stop();
 		return false;
 	}
 }
 
-void ToolTrackerClient::disconnect() {
-	if (!keep_listening && !socket.is_connected()) {
-		return;
-	}
+void ToolTrackerClient::stop() {
 	keep_listening = false;
-	try {
-		if (socket.send(PADDED_MSG_DISCONNECT.data(), PADDED_MSG_DISCONNECT.size()) >= 0) {
-			socket.set_timeout(TIMEOUT_SECONDS);
-			std::array<char, MSG_LENGTH> buffer{};
-			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
-			socket.set_timeout(0); // ブロッキングモードに戻す
-			std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 
-			if (bytes_read == MSG_LENGTH && utils::rstrip(raw_view) == MSG_CONNECT_ACK) {
-				DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
-					((bytes_read > 0) ? (raw_view) : ("(No data or error)"))
-				);
-			}
-		} else {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Disconnect' message.\n");
-		}
-	} catch (...) {}
-	socket.close();
+	{
+		std::lock_guard<std::mutex> lock(socket_mutex);
+		disconnect();
+	}
+
 	if (listener_thread.joinable()) {
 		listener_thread.join();
 	}
 }
 
-bool ToolTrackerClient::is_connected() {
-	return keep_listening && socket.is_connected();
-}
 
 bool ToolTrackerClient::notify_qr_scan() {
-	if (!is_connected()) {
-		DEV_PRINT(stderr, "[ToolTrackerClient] Error: Not connected to send QR scan notification.\n");
-		notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Not connected"});
-		return false;
+	bool result{false};
+	{
+		std::lock_guard<std::mutex> lock(socket_mutex);
+		if (!is_connected_internal()) {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Error: Not connected to send QR scan notification.\n");
+			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Not connected"});
+			result = false;
+		}
+		try {
+			if (socket->send(PADDED_MSG_QR_SCAN.data(), PADDED_MSG_QR_SCAN.size()) >= 0) {
+				result = true;
+			} else {
+				DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
+				notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Send failed"});
+				result = false;
+			}
+		} catch (const std::exception& e) {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification: {}\n", e.what());
+			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Send error: {}", e.what())});
+			result = false;
+		}
 	}
+
+	if (!result) {
+		stop();
+	}
+
+	return result;
+}
+
+// --- 非公開メンバ関数 ---
+
+bool ToolTrackerClient::connect() {
+	if (is_connected_internal()) {
+		return true;
+	}
+
+	disconnect();
+
 	try {
-		if (socket.send(PADDED_MSG_QR_SCAN.data(), PADDED_MSG_QR_SCAN.size()) < 0) {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
-			disconnect();
-			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Send failed"});
+		socket = std::make_unique<sg::Socket>();
+
+		if (!socket->connect(HOST, PORT)) {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Connection Failed to {}:{}\n", HOST, PORT);
 			return false;
 		}
-		return true;
-	} catch (const std::exception& e) {
-		DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification: {}\n", e.what());
-		disconnect();
-		notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Send error: {}", e.what())});
+
+		if (socket->send(PADDED_MSG_CONNECT.data(), PADDED_MSG_CONNECT.size()) < 0) {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Connect' message.\n");
+			socket->close();
+			return false;
+		}
+
+		socket->set_timeout(TIMEOUT_SECONDS);
+		std::array<char, MSG_LENGTH> buffer{};
+		ssize_t bytes_read = socket->receive(buffer.data(), buffer.size());
+		socket->set_timeout(0);	// ブロッキングモードに戻す
+		std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
+		DEV_PRINT(stderr, "[ToolTrackerClient] Received {} bytes\n", bytes_read);
+		DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", raw_view);
+
+		std::string_view trimmed_view = utils::rstrip(raw_view);
+
+		if (bytes_read == MSG_LENGTH && trimmed_view == MSG_CONNECT_ACK) {
+			notification_callback(Notification{
+				.type = NotificationType::CONNECT_ACK,
+				.raw_message = buffer,
+				.trimmed_message = std::string(trimmed_view)
+			});
+			return true;
+		} else {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
+				((bytes_read > 0) ? (raw_view) : ("(No data or error)"))
+			);
+			socket->close();
+			return false;
+		}
+	} catch (const sg::SocketTimeoutException& e) {
+		DEV_PRINT(stderr, "[ToolTrackerClient] Timeout waiting for ACK: {}\n", e.what());
+		socket->close();
 		return false;
+	} catch (const std::exception& e) {
+		DEV_PRINT(stderr, "[ToolTrackerClient] Connection error: {}\n", e.what());
+		socket->close();
+		return false;
+	}
+}
+
+void ToolTrackerClient::disconnect() {
+	if (is_connected_internal()) {
+		try {
+			if (socket->send(PADDED_MSG_DISCONNECT.data(), PADDED_MSG_DISCONNECT.size()) < 0) {
+				DEV_PRINT(stderr, "[ToolTrackerClient] Error sending 'Disconnect' message.\n");
+			}
+		} catch (...) {}
+		socket->close();
 	}
 }
 
@@ -126,7 +167,7 @@ void ToolTrackerClient::listener_thread_func() {
 		try {
 			// 受信のためにバッファをクリア
 			buffer.fill('\0');
-			ssize_t bytes_read = socket.receive(buffer.data(), buffer.size());
+			ssize_t bytes_read = socket->receive(buffer.data(), buffer.size());
 			std::string_view raw_view = utils::make_strn_view(buffer.data(), ((bytes_read > 0) ? (static_cast<size_t>(bytes_read)) : (0)));
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received {} bytes\n", bytes_read);
 			DEV_PRINT(stderr, "[ToolTrackerClient] Received data: '{}'\n", raw_view);
@@ -136,7 +177,9 @@ void ToolTrackerClient::listener_thread_func() {
 				std::string_view trimmed_view = utils::rstrip(raw_view);
 
 				// 固定長メッセージの比較を行い、通知タイプを判別、設定
-				if		(trimmed_view == MSG_SCAN_S						) { notification.type = NotificationType::SCAN_SUCCESS;				}
+				if		(trimmed_view == MSG_CONNECT_ACK				) { notification.type = NotificationType::CONNECT_ACK;				}
+				else if	(trimmed_view == MSG_DISCONNECT_ACK				) { notification.type = NotificationType::DISCONNECT_ACK;			}
+				else if	(trimmed_view == MSG_SCAN_S						) { notification.type = NotificationType::SCAN_SUCCESS;				}
 				else if	(trimmed_view == MSG_SCAN_F						) { notification.type = NotificationType::SCAN_FAILURE;				}
 				else if	(trimmed_view == MSG_SCANNED_IN_CONTAINER		) { notification.type = NotificationType::SCANNED_IN_CONTAINER;		}
 				else if	(trimmed_view == MSG_SCANNED_OUT_CONTAINER		) { notification.type = NotificationType::SCANNED_OUT_CONTAINER;	}
@@ -174,6 +217,9 @@ void ToolTrackerClient::listener_thread_func() {
 		}
 	} // while
 	keep_listening = false;
+
+	std::lock_guard<std::mutex> lock(socket_mutex);
+	disconnect();
 }
 
 // =================================

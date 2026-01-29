@@ -458,7 +458,7 @@ struct PreferredSize {
 	Size natural_size{};
 
 	constexpr PreferredSize() = default;
-	constexpr PreferredSize(Size _minimum_size, Size _natural_size) : minimum_size(_minimum_size), natural_size(_natural_size) {}
+	constexpr PreferredSize(Size minimum_size_arg, Size natural_size_arg) : minimum_size(minimum_size_arg), natural_size(natural_size_arg) {}
 
 	/**
 	 * @brief std::pair から Size への変換コンストラクタ。
@@ -788,7 +788,7 @@ public:
 		if (size.has_value()) {
 			pos = layout::calculate_top_left(pos, get_size().first, gravity);
 		}
-		_move(pos.x, pos.y);
+		move_internal(pos.x, pos.y);
 	}
 
 	/**
@@ -804,7 +804,7 @@ public:
 	 * @param[in] pos 移動量を表す Position 構造体。
 	 */
 	void move_by(const Position& pos) {
-		_move(get_position() + pos);
+		move_internal(get_position() + pos);
 	}
 
 	/**
@@ -814,7 +814,7 @@ public:
 	 */
 	void move_by(gint x, gint y) {
 		Position current_pos = get_position();
-		_move(current_pos.x + x, current_pos.y + y);
+		move_internal(current_pos.x + x, current_pos.y + y);
 	}
 
 	/**
@@ -868,16 +868,16 @@ private:
 	layout::Gravity gravity{layout::Gravity::NorthWest};
 
 	// メソッド
-	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, _get_size, void, (gint* width, gint* height), width, height)
-	void _move(gint x, gint y) { WidgetExtension<Base>::move(x, y); }
+	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, get_size_internal, void, (gint* width, gint* height), width, height)
+	void move_internal(gint x, gint y) { WidgetExtension<Base>::move(x, y); }
 
 	/**
 	 * @brief ウィンドウの現在のサイズを取得します。
 	 * @return ウィンドウのサイズを表す Size 構造体
 	 */
-	Size _get_size() {
+	Size get_size_internal() {
 		Size crnt_size;
-		_get_size(&crnt_size.width, &crnt_size.height);
+		get_size_internal(&crnt_size.width, &crnt_size.height);
 		return crnt_size;
 	}
 
@@ -908,7 +908,7 @@ private:
 	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, WindowExtension* thiz) {
 		if (thiz->use_size) {
 			Size new_size;
-			new_size = thiz->_get_size();
+			new_size = thiz->get_size_internal();
 			if (new_size.width > 0 && new_size.height > 0) {
 				thiz->size = new_size;
 			}
@@ -1351,17 +1351,17 @@ public:
 
 /**
  * @class ListStoreModelBase
- * @brief GtkListStoreとstd::vector<_Tp>を同期させる、汎用的なデータモデルの基底クラス。
+ * @brief GtkListStoreとstd::vector<T>を同期させる、汎用的なデータモデルの基底クラス。
  * @details このクラスはTreeViewやComboBoxなどの特定のウィジェットには依存せず、
  * GtkListStoreそのものの生成と、C++側のデータモデル(std::vector)の基本的な
  * CRUD(Create, Read, Update, Delete)操作のみを提供します。
- * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
+ * @tparam T テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
+template<typename T>
 class ListStoreModelBase {
 public:
 	// --- 型定義 ---
-	using vector_type				= std::vector<_Tp>;	///< 内部データモデルとして使用する std::vector の型エイリアス
+	using vector_type				= std::vector<T>;	///< 内部データモデルとして使用する std::vector の型エイリアス
 	using value_type				= typename vector_type::value_type;
 	using size_type					= typename vector_type::size_type;
 	using const_iterator			= typename vector_type::const_iterator;
@@ -1403,7 +1403,7 @@ protected:
 	/**
 	 * @brief 保持しているセッター関数(m_row_setter)を呼び出して、GtkListStoreの行に値を設定します。
 	 * @param[out] iter 値を設定する行を指すGtkTreeIter。
-	 * @param[in] value セットするデータを持つ _Tp。
+	 * @param[in] value セットするデータを持つ T。
 	 */
 	void set_row_to_store(GtkTreeIter* iter, const value_type& value) {
 		if (m_row_setter) {
@@ -1434,7 +1434,7 @@ private:
 	 * @param[in] value 追加する行のデータ。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	void _append(const value_type& value) {
+	void append_internal(const value_type& value) {
 		m_data_model.push_back(value);
 		GtkTreeIter iter;
 		m_list_store.append(&iter);
@@ -1446,7 +1446,7 @@ private:
 	 * @param[in] value 追加する行のデータ（右辺値）。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	void _append(value_type&& value) {
+	void append_internal(value_type&& value) {
 		// vector にムーブ
 		m_data_model.push_back(std::move(value));
 
@@ -1465,7 +1465,7 @@ private:
 	 * @param[in] value 挿入する行のデータ。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool _insert(size_type position, const value_type& value) {
+	bool insert_internal(size_type position, const value_type& value) {
 		size_type original_position = position;
 		bool position_was_clamped = false;
 		if (position > size()) {
@@ -1491,7 +1491,7 @@ private:
 	 * @param[in] value 挿入する行のデータ（右辺値）。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool _insert(size_type position, value_type&& value) {
+	bool insert_internal(size_type position, value_type&& value) {
 		size_type original_position = position;
 		bool position_was_clamped = false;
 		if (position > size()) {
@@ -1519,7 +1519,7 @@ private:
 	 * @brief 指定した位置の行を削除します。
 	 * @param[in] position 削除位置のインデックス。
 	 */
-	void _erase(size_type position) {
+	void erase_internal(size_type position) {
 		m_data_model.erase(m_data_model.begin() + position);
 		GtkTreeIter iter;
 		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
@@ -1532,7 +1532,7 @@ private:
 	 * @param[in] position 上書き位置のインデックス。
 	 * @param[in] value 新しい行データ。
 	 */
-	void _update(size_type position, const value_type& value) {
+	void update_internal(size_type position, const value_type& value) {
 		m_data_model[position] = value;
 		GtkTreeIter iter;
 		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
@@ -1544,8 +1544,8 @@ private:
 	 * @brief 指定した位置の行をコピー上書きします。
 	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア。
 	 */
-	void _update(const indexed_value_pair& indexed_value) {
-		_update(indexed_value.first, indexed_value.second);	// 別のオーバーロードへ処理を委譲
+	void update_internal(const indexed_value_pair& indexed_value) {
+		update_internal(indexed_value.first, indexed_value.second);	// 別のオーバーロードへ処理を委譲
 	}
 
 	/**
@@ -1553,7 +1553,7 @@ private:
 	 * @param[in] position 上書き位置のインデックス。
 	 * @param[in] value 新しい行データ（右辺値）。
 	 */
-	void _update(size_type position, value_type&& value) {
+	void update_internal(size_type position, value_type&& value) {
 		// vector にムーブ代入
 		m_data_model[position] = std::move(value);
 
@@ -1568,15 +1568,15 @@ private:
 	 * @brief 指定した位置の行をムーブ上書きします。
 	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア（右辺値）。
 	 */
-	void _update(indexed_value_pair&& indexed_value) {
-		_update(indexed_value.first, std::move(indexed_value.second));	// 別のオーバーロードへ処理を委譲
+	void update_internal(indexed_value_pair&& indexed_value) {
+		update_internal(indexed_value.first, std::move(indexed_value.second));	// 別のオーバーロードへ処理を委譲
 	}
 
 public:
 	/**
 	 * @brief ListStoreModelBaseのコンストラクタ。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ListStoreModelBase(
 		const std::vector<GType>& column_types,
@@ -1673,7 +1673,7 @@ public:
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		_append(value);
+		append_internal(value);
 		return true; // 成功
 	}
 
@@ -1687,7 +1687,7 @@ public:
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		_append(std::move(value));
+		append_internal(std::move(value));
 		return true; // 成功
 	}
 
@@ -1707,7 +1707,7 @@ public:
 		reserve(appended_size);
 
 		for (const auto& value : values) {
-			_append(value);	// 内部ヘルパーをループで呼び出す
+			append_internal(value);	// 内部ヘルパーをループで呼び出す
 		}
 		return true;	// 成功
 	}
@@ -1731,7 +1731,7 @@ public:
 		for (auto& value : values) {
 			// 単一行のムーブ版 append を呼び出す
 			// (value自体は左辺値なので、std::moveで右辺値キャストして渡す)
-			_append(std::move(value));
+			append_internal(std::move(value));
 		}
 		return true;	// 成功
 	}
@@ -1749,7 +1749,7 @@ public:
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		return _insert(position, value);
+		return insert_internal(position, value);
 	}
 
 	/**
@@ -1764,7 +1764,7 @@ public:
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		return _insert(position, std::move(value));
+		return insert_internal(position, std::move(value));
 	}
 
 	/**
@@ -1790,7 +1790,7 @@ public:
 
 		for (const auto& value : values) {
 			// 位置補正(Clamp)は単一行版がやってくれるので、ここではインクリメントするだけで良い
-			_insert(current_pos++, value);
+			insert_internal(current_pos++, value);
 		}
 		return position_was_valid;
 	}
@@ -1820,7 +1820,7 @@ public:
 		for (auto& value : values) {
 			// 単一行のムーブ版 insert を呼び出す
 			// 位置補正(Clamp)は単一行版がやってくれるので、ここではインクリメントするだけで良い
-			_insert(current_pos++, std::move(value));
+			insert_internal(current_pos++, std::move(value));
 		}
 		return position_was_valid;
 	}
@@ -1835,7 +1835,7 @@ public:
 		if (position >= m_data_model.size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-		_erase(position);
+		erase_internal(position);
 		return true; // 成功
 	}
 
@@ -1855,7 +1855,7 @@ public:
 
 		std::sort(positions.rbegin(), positions.rend());
 		for (size_type pos : positions) {
-			_erase(pos);
+			erase_internal(pos);
 		}
 		return true; // 全て成功
 	}
@@ -1871,7 +1871,7 @@ public:
 		if (position >= size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-		_update(position, value);
+		update_internal(position, value);
 		return true; // 成功
 	}
 
@@ -1895,7 +1895,7 @@ public:
 		if (position >= size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-		_update(position, std::move(value));
+		update_internal(position, std::move(value));
 		return true; // 成功
 	}
 
@@ -1923,7 +1923,7 @@ public:
 		}
 
 		for (const auto& pair : updates) {
-			_update(pair);
+			update_internal(pair);
 		}
 		return true; // 全て成功
 	}
@@ -1942,7 +1942,7 @@ public:
 
 		for (auto& pair : updates) {
 			// 単一行のムーブ版 update を呼び出す
-			_update(std::move(pair));
+			update_internal(std::move(pair));
 		}
 		return true;
 	}
@@ -2009,7 +2009,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 使用例: IDでソートする
-	 * model.modify_model_data([](std::vector<_Tp>& values) {
+	 * model.modify_model_data([](std::vector<T>& values) {
 	 * 	std::sort(values.begin(), values.end(), [](const auto& a, const auto& b) {
 	 * 		return a.id < b.id;
 	 * 	});
@@ -2076,7 +2076,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indices = find_indices([](const _Tp& value) {
+	 * auto indices = find_indices([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -2098,7 +2098,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto values = find_values([](const _Tp& value) {
+	 * auto values = find_values([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -2129,7 +2129,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * std::vector<std::pair<size_t, _Tp>> pairs = find_indexed_value_pairs([](const _Tp& value) {
+	 * std::vector<std::pair<size_t, T>> pairs = find_indexed_value_pairs([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -2160,7 +2160,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_opt = find_first_index([](const _Tp& value) {
+	 * auto index_opt = find_first_index([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -2181,7 +2181,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto value_opt = find_first_value([](const _Tp& value) {
+	 * auto value_opt = find_first_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -2211,7 +2211,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indexed_value_opt = find_first_indexed_value([](const _Tp& value) {
+	 * auto indexed_value_opt = find_first_indexed_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -2239,13 +2239,13 @@ public:
  * @class ComboBoxListStoreModel
  * @brief ListStoreModelBaseを継承し、GtkComboBoxに特化した機能を追加した派生クラス。
  * @details セルレンダラーの自動設定や、選択状態の管理機能を提供します。
- * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
+ * @tparam T テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
-class ComboBoxListStoreModel : public ListStoreModelBase<_Tp> {
+template<typename T>
+class ComboBoxListStoreModel : public ListStoreModelBase<T> {
 public:
 	// --- 型定義 ---
-	using base_type					= ListStoreModelBase<_Tp>;	///< 基底クラスの型エイリアス
+	using base_type					= ListStoreModelBase<T>;	///< 基底クラスの型エイリアス
 	using vector_type				= typename base_type::vector_type;
 	using value_type				= typename base_type::value_type;
 	using size_type					= typename base_type::size_type;
@@ -2281,7 +2281,7 @@ public:
 	 * @brief ComboBoxListStoreModelのコンストラクタ。
 	 * @param[in, out] combo_box 管理対象のComboBoxウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ComboBoxListStoreModel(
 		sgex::ComboBox& combo_box,
@@ -2558,13 +2558,13 @@ public:
  * @class TreeViewListStoreModel
  * @brief ListStoreModelBaseを継承し、GtkTreeViewに特化した機能を追加した派生クラス。
  * @details 選択行の取得や、パフォーマンスを考慮した複数行の一括更新機能などを提供します。
- * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
+ * @tparam T テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
-class TreeViewListStoreModel : public ListStoreModelBase<_Tp>, public ListStoreViewInterface {
+template<typename T>
+class TreeViewListStoreModel : public ListStoreModelBase<T>, public ListStoreViewInterface {
 public:
 	// --- 型定義 ---
-	using base_type					= ListStoreModelBase<_Tp>;	///< 基底クラスの型エイリアス
+	using base_type					= ListStoreModelBase<T>;	///< 基底クラスの型エイリアス
 	using vector_type				= typename base_type::vector_type;
 	using value_type				= typename base_type::value_type;
 	using size_type					= typename base_type::size_type;
@@ -2622,7 +2622,7 @@ public:
 	 * @brief TreeViewListStoreModelのコンストラクタ。
 	 * @param[in, out] tree_view 管理対象のTreeViewウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	TreeViewListStoreModel(
 		sgex::TreeView& tree_view,
@@ -2934,13 +2934,13 @@ public:
  * @class PaginatedListStoreModel
  * @brief 複数のTreeViewListStoreModelを1ページとして扱い、ページネーション機能を提供するクラス。
  * @details 全データ(マスターデータ)を内部に保持し、データ操作とページ表示を完全にカプセル化します。
- * @tparam _Tp 1行分のデータを表現する構造体の型。
+ * @tparam T 1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
+template<typename T>
 class PaginatedListStoreModel : public ListStoreViewInterface {
 public:
 	// --- 型定義 ---
-	using vector_type				= std::vector<_Tp>;	///< 内部データモデルとして使用する std::vector の型エイリアス
+	using vector_type				= std::vector<T>;	///< 内部データモデルとして使用する std::vector の型エイリアス
 	using value_type				= typename vector_type::value_type;
 	using size_type					= typename vector_type::size_type;
 	using const_iterator			= typename vector_type::const_iterator;
@@ -4150,7 +4150,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indices = find_indices([](const _Tp& value) {
+	 * auto indices = find_indices([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -4172,7 +4172,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto values = find_values([](const _Tp& value) {
+	 * auto values = find_values([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -4203,7 +4203,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * std::vector<std::pair<size_t, _Tp>> pairs = find_indexed_value_pairs([](const _Tp& value) {
+	 * std::vector<std::pair<size_t, T>> pairs = find_indexed_value_pairs([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -4234,7 +4234,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_opt = find_first_index([](const _Tp& value) {
+	 * auto index_opt = find_first_index([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -4255,7 +4255,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto value_opt = find_first_value([](const _Tp& value) {
+	 * auto value_opt = find_first_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -4285,7 +4285,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indexed_value_opt = find_first_indexed_value([](const _Tp& value) {
+	 * auto indexed_value_opt = find_first_indexed_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```

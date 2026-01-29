@@ -4,7 +4,7 @@
  */
 #include "utils/periodic_timer.hpp"
 #include "utils/signal.hpp"
-#include "includes.hpp" // DEV_PRINTとsg::Socketのためにインクルード
+#include "includes.hpp"
 #include "tool_io_gui.hpp"
 #include "plc_communicator.hpp"
 
@@ -18,7 +18,7 @@ static const std::map<std::uint16_t, std::string> mc_error_map = {
 };
 
 /// @brief PLCとの通信に使用するソケットオブジェクト。
-static sg::Socket socket;
+static std::unique_ptr<sg::Socket> socket;
 /// @brief 複数のスレッドからソケットへ安全にアクセスするためのミューテックス
 static std::mutex socket_mutex;
 /// @brief PLCの状態監視リスト。キーは監視内容のユニークな名前。
@@ -33,6 +33,34 @@ static std::atomic<std::uint32_t> g_session_generation{0};
 static std::atomic<bool> g_cancel_requested{false};
 
 // --- このファイル内部でのみ使用するヘルパー関数 ---
+
+/**
+ * @brief 接続状態を確認するヘルパー関数(非ロック)
+ * @details 単純な関数は、インライン展開した方が効率的。
+ * @return 接続中の場合は true。
+ */
+static inline bool is_connected() {
+	return socket && socket->is_connected();
+}
+
+/**
+ * @brief スレッドセーフに接続状態を確認するヘルパー関数
+ * @return 接続中の場合は true。
+ */
+static bool is_connected_safe() {
+	std::lock_guard<std::mutex> lock(socket_mutex);
+	return is_connected();
+}
+
+/**
+ * @brief スレッドセーフにソケットを閉じるヘルパー関数
+ */
+static void socket_close_safe() {
+	std::lock_guard<std::mutex> lock(socket_mutex);
+	if (socket) {
+		socket->close();
+	}
+}
 
 /**
  * @brief PLCモニタースレッドからGUIスレッドに通知を送るためのヘルパー関数。
@@ -117,12 +145,16 @@ static bool send_and_receive_ack(const std::vector<std::uint8_t>& cmd) {
 	return true;
 #else
 	std::lock_guard<std::mutex> lock(socket_mutex);
-	if (socket.send(cmd.data(), cmd.size()) < 0) {
+	if (!is_connected()) {
+		DEV_PRINT(stderr, "PLCに接続されていません。コマンド送信に失敗しました。\n");
+		return false;
+	}
+	if (socket->send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへのコマンド送信エラー\n");
 		return false;
 	}
 	std::uint8_t resp[1024];
-	int n = socket.receive(resp, sizeof(resp));
+	int n = socket->receive(resp, sizeof(resp));
 	if (n <= 0) {
 		DEV_PRINT(stderr, "PLCからの応答受信エラー\n");
 		return false;
@@ -178,14 +210,22 @@ static bool connect_to_plc() {
 	int port = PORT;
 
 	std::lock_guard<std::mutex> lock(socket_mutex);
-	if (socket.is_connected()) { return true; }
+	if (is_connected()) { return true; }
 
 	DEV_PRINT("PLCへの接続を試みています... ({}:{})\n", host, port);
-	if (socket.connect(host, port)) {
-		DEV_PRINT("PLCへの接続が確立しました。\n");
-		notify_gui_thread({.type = NotificationType::CONNECTION_ESTABLISHED});
-		return true;
+
+	try {
+		socket = std::make_unique<sg::Socket>();
+
+		if (socket->connect(host, port)) {
+			DEV_PRINT("PLCへの接続が確立しました。\n");
+			notify_gui_thread({.type = NotificationType::CONNECTION_ESTABLISHED});
+			return true;
+		}
+	} catch (const std::exception& e) {
+		DEV_PRINT(stderr, "PLC接続例外: {}\n", e.what());
 	}
+
 	return false;
 }
 
@@ -241,7 +281,7 @@ static void run_communicator() {
 	while (true) {
 		try {
 			// --- 接続処理 ---
-			if (!socket.is_connected()) {
+			if (!is_connected_safe()) {
 				if (!connect_to_plc()) {
 					std::this_thread::sleep_for(std::chrono::seconds(5));
 					continue;
@@ -266,11 +306,11 @@ static void run_communicator() {
 
 			// --- A. 新しいタスクの取り出し ---
 			// タスク実行中でなければ、新しいタスクをキューから取得
-			if (!current_task.has_value() && socket.is_connected()) {
+			if (!current_task.has_value() && is_connected_safe()) {
 				if (!pending_task.has_value()) {
 					pending_task = g_task_queue.try_pop();
 				}
-				while (pending_task.has_value() && socket.is_connected()) {
+				while (pending_task.has_value() && is_connected_safe()) {
 					DEV_PRINT("PLC: 新しいタスクを開始します。\n");
 					// 書き込みアクションを実行
 					if (pending_task->action()) {
@@ -288,7 +328,7 @@ static void run_communicator() {
 					} else {
 						DEV_PRINT(stderr, "PLC: タスクの書き込み処理に失敗しました。\n");
 						// 通信エラー等
-						socket.close();
+						socket_close_safe();
 						notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
 						// pending_task にタスクを残しておくことで、再接続後にリトライする
 					}
@@ -335,7 +375,7 @@ static void run_communicator() {
 			// =========================================================
 
 			// --- A. タスクの完了待ちチェック ---
-			if (current_task.has_value() && socket.is_connected()) {
+			if (current_task.has_value() && is_connected_safe()) {
 				if (current_task->wait_completion_addr.has_value()) {
 					bool state = false;
 					// 完了信号の状態を読み出し
@@ -356,7 +396,7 @@ static void run_communicator() {
 						}
 					} else {
 						// 通信エラー等
-						socket.close();
+						socket_close_safe();
 						notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
 						// 通信切断時は、再接続後にリトライする
 					}
@@ -369,7 +409,7 @@ static void run_communicator() {
 			}
 
 			// --- B. 監視処理 (g_watchlist 内のアクティブな項目全ての値を順番にPLCに問い合わせる) ---
-			for (auto it = g_watchlist.begin(); (it != g_watchlist.end() && socket.is_connected()); /* ここではインクリメントしない */) {
+			for (auto it = g_watchlist.begin(); (it != g_watchlist.end() && is_connected_safe()); /* ここではインクリメントしない */) {
 				auto& [addr, item] = *it;
 
 				bool current_state = false;
@@ -398,7 +438,7 @@ static void run_communicator() {
 						it++; // 状態変化がなかったので、次の要素へ
 					}
 				} else {
-					socket.close(); // 読み出し失敗＝切断とみなす
+					socket_close_safe(); // 読み出し失敗＝切断とみなす
 					notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
 				}
 			}
@@ -619,11 +659,11 @@ void initialize() {
 
 	// 監視リストを初期化
 	g_watchlist.insert(std::make_pair(M_DEVICE_MAINTENANCE_MODE, WatchData{
-		.flags = WatchFlags{ true, true, false, false},
+		.flags = WatchFlags{true, true, false, false},
 		.is_first = true
 	}));
 	g_watchlist.insert(std::make_pair(M_DEVICE_ERROR, WatchData{
-		.flags = WatchFlags{ true, true, false, false},
+		.flags = WatchFlags{true, true, false, false},
 		.is_first = true
 	}));
 
@@ -633,13 +673,17 @@ void initialize() {
 
 bool read_M_status(std::uint16_t addr, bool& is_on) {
 	std::lock_guard<std::mutex> lock(socket_mutex);
+	if (!is_connected()) {
+		DEV_PRINT(stderr, "PLCに接続されていません。M読み出しに失敗しました。\n");
+		return false;
+	}
 	std::vector<std::uint8_t> cmd = make_read_M_command(addr);
-	if (socket.send(cmd.data(), cmd.size()) < 0) {
+	if (socket->send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへの読み出しコマンド送信エラー\n");
 		return false;
 	}
 	std::uint8_t resp[1024];
-	int n = socket.receive(resp, sizeof(resp));
+	int n = socket->receive(resp, sizeof(resp));
 	if (n <= 0) {
 		DEV_PRINT(stderr, "PLCからの読み出し応答受信エラー\n");
 		return false;
@@ -661,15 +705,19 @@ bool read_M_status(std::uint16_t addr, bool& is_on) {
 
 bool read_D_word(std::uint16_t addr, std::uint16_t& out_data) {
 	std::lock_guard<std::mutex> lock(socket_mutex);
+	if (!is_connected()) {
+		DEV_PRINT(stderr, "PLCに接続されていません。D読み出しに失敗しました。\n");
+		return false;
+	}
 	std::vector<std::uint8_t> cmd = make_read_D_command(addr);
 
-	if (socket.send(cmd.data(), cmd.size()) < 0) {
+	if (socket->send(cmd.data(), cmd.size()) < 0) {
 		DEV_PRINT(stderr, "PLCへのD読み出しコマンド送信エラー\n");
 		return false;
 	}
 
 	std::uint8_t resp[1024];
-	int n = socket.receive(resp, sizeof(resp));
+	int n = socket->receive(resp, sizeof(resp));
 	if (n <= 0) {
 		DEV_PRINT(stderr, "PLCからのD読み出し応答受信エラー\n");
 		return false;

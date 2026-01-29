@@ -666,13 +666,13 @@ template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::g
  * @details このクラスのunique_ptrを一つ保持して利用するのが基本的な使い方です。
  * RAIIにより、このクラスのオブジェクトが破棄される際に、全てのステートメントが破棄された後で
  * 接続が安全に破棄されることを保証します。
- * @tparam _Key ステートメントを識別するキーの型 (デフォルト: std::string)。
- * @tparam _Compare キーの比較を行う関数オブジェクト (デフォルト: std::less<_Key>)。
+ * @tparam Key ステートメントを識別するキーの型 (デフォルト: std::string)。
+ * @tparam Compare キーの比較を行う関数オブジェクト (デフォルト: std::less<Key>)。
  */
-template <typename _Key = std::string, typename _Compare = std::less<_Key>>
+template <typename Key = std::string, typename Compare = std::less<Key>>
 struct OdbcSession {
 	// --- 型定義 ---
-	using map_type					= std::map<_Key, std::unique_ptr<OdbcStatement>, _Compare>;
+	using map_type					= std::map<Key, std::unique_ptr<OdbcStatement>, Compare>;
 	using key_type					= typename map_type::key_type;
 	using mapped_type				= typename map_type::mapped_type;
 	using value_type				= typename map_type::value_type;

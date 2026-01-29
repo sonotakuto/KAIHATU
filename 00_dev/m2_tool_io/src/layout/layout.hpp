@@ -21,7 +21,7 @@ struct Position {
 
 	// デフォルトコンストラクタ（他のコンストラクタを定義すると自動生成されなくなるため）
 	constexpr Position() = default;
-	constexpr Position(int _x, int _y) : x(_x), y(_y) {}
+	constexpr Position(int x_arg, int y_arg) : x(x_arg), y(y_arg) {}
 
 	/**
 	 * @brief std::pair から Position への変換コンストラクタ。
@@ -109,7 +109,7 @@ struct Size {
 	int height = 0;
 
 	constexpr Size() = default;
-	constexpr Size(int _w, int _h) : width(_w), height(_h) {}
+	constexpr Size(int w_arg, int h_arg) : width(w_arg), height(h_arg) {}
 
 	/**
 	 * @brief std::pair から Size への変換コンストラクタ。
