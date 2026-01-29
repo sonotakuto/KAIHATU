@@ -371,6 +371,8 @@ MainWindow::MainWindow() :
 	warningListDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 	reconcileFilterDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 
+	passwordEntryDialog.set_gravity(layout::Gravity::Center);
+
 	this->set_timeout(100);	// 100ミリ秒ごとにタイムアウトイベントを発生させる
 
 	this->fullscreen();	// フルスクリーンで表示
