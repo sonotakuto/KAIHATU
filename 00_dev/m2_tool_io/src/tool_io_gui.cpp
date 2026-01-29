@@ -62,6 +62,14 @@ const std::map<MainWindow::WarningType, MainWindow::UiText> MainWindow::g_warnin
 		"この工具は既に『取り出し済み』になっています\n別の工具を読み取って下さい",
 		"このこうぐは すでに『とりだしずみ』に なっています\nべつのこうぐを よみとってください"
 	}},
+	{WarningType::ALREADY_STORED, UiText{
+		"この工具は既に『保管中』になっています\n別の工具を読み取って下さい",
+		"このこうぐは すでに『ほかんちゅう』に なっています\nべつのこうぐを よみとってください"
+	}},
+	{WarningType::RESTORE_RETRIEVED_INSERT, UiText{
+		"一度取り出したインサートを再補充したい場合は、\n新規工具として再登録してから補充して下さい",
+		"いちど とりだした インサートを さいほじゅう したいばあいは、\nしんきこうぐとして さいとうろくしてから ほじゅうして ください"
+	}},
 	{WarningType::SCAN_FAILURE, UiText{
 		"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい",
 		"さぎょうだいに うめこまれた\nQRコードリーダーで よみとってください"
@@ -1364,7 +1372,9 @@ MainWindow::MainWindow() :
 
 	// --- 状態：取り出し - 移行 ---
 	g_app_state_configs.try_emplace(AppState::RETRIEVE, WidgetStateConfig{
-		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); }
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state	= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
+		.on_enter_state		= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); }
 	});
 
 	// --- 状態：取り出し - プログラムQR待ち ---
@@ -1380,6 +1390,7 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName = "retrieveOperationPage",
 		.tableStackPageName		= "pageNone",	// 初期ページ
+		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_waiting_for_program_qr(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_waiting_for_program_qr(); }
 	});
@@ -1551,7 +1562,9 @@ MainWindow::MainWindow() :
 
 	// --- 状態：補充 - 移行 ---
 	g_app_state_configs.try_emplace(AppState::STORE, WidgetStateConfig{
-		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state	= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
+		.on_enter_state		= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }
 	});
 
 	// --- 状態：補充 - 工具QR待ち ---
@@ -1669,7 +1682,9 @@ MainWindow::MainWindow() :
 
 	// --- 状態：棚卸し - 移行 ---
 	g_app_state_configs.try_emplace(AppState::RECONCILE, WidgetStateConfig{
-		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION); }
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state	= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
+		.on_enter_state		= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION); }
 	});
 
 	// --- 状態：棚卸し - コンテナ選択待ち ---
@@ -3893,6 +3908,11 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 		// データ整合性チェック
 		if (unique_info.storage_condition == StorageCondition::STORED) {
 			add_warning(WarningType::ALREADY_STORED, true);
+			return;
+		}
+
+		if (m_is_insert_operation && unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
+			add_warning(WarningType::RESTORE_RETRIEVED_INSERT, true);
 			return;
 		}
 

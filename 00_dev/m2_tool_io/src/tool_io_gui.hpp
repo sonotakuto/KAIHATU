@@ -147,16 +147,17 @@ public:
 	 * @brief 警告の種類を定義する列挙型。
 	 */
 	enum class WarningType {
-		NONE,					// 警告なし
-		TOOL_NOT_FOUND,			// 未登録工具
-		DIFFERENT_TOOL,			// 別の工具
-		NOT_YET_STORED,			// 未だ補充前
-		ALREADY_RETRIEVED,		// 既に取り出されていた
-		ALREADY_STORED,			// 既に補充されていた
-		SCAN_FAILURE,			// スキャン失敗
-		UNSCANNED_OUT_FRAME,	// 未スキャン工具がフレーム外に出た
-		SCANNED_IN_CONTAINER,	// スキャン済工具がコンテナ内に入った
-		OTHER_IN_CONTAINER,		// その他工具がコンテナ内に入った
+		NONE,						// 警告なし
+		TOOL_NOT_FOUND,				// 未登録工具
+		DIFFERENT_TOOL,				// 別の工具
+		NOT_YET_STORED,				// 未だ補充前
+		ALREADY_RETRIEVED,			// 既に取り出されていた
+		ALREADY_STORED,				// 既に補充されていた
+		RESTORE_RETRIEVED_INSERT,	// 一度取り出されたインサートを再補充しようとした
+		SCAN_FAILURE,				// スキャン失敗
+		UNSCANNED_OUT_FRAME,		// 未スキャン工具がフレーム外に出た
+		SCANNED_IN_CONTAINER,		// スキャン済工具がコンテナ内に入った
+		OTHER_IN_CONTAINER,			// その他工具がコンテナ内に入った
 		END
 	};
 
@@ -1005,6 +1006,7 @@ private:
 		remove_warning(WarningType::NOT_YET_STORED, true, false);
 		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);
 		remove_warning(WarningType::ALREADY_STORED, true, false);
+		remove_warning(WarningType::RESTORE_RETRIEVED_INSERT, true, false);
 		if (update_ui) { update_warning_display(); }
 	}
 
