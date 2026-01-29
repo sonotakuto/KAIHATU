@@ -75,7 +75,9 @@ public:
 #endif
 	static constexpr int			PORT			= 5000;
 	static constexpr size_t			MSG_LENGTH		= 24;	// メッセージ長
-	static constexpr std::uint32_t	TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
+
+	static constexpr std::uint32_t			TIMEOUT_SECONDS		= COMMON_TIMEOUT_SECONDS;
+	static constexpr std::chrono::seconds	RETRY_INTERVAL_SEC	= std::chrono::seconds(5);	// 接続のリトライ間隔 (秒)
 
 	// --- プロトコルメッセージ定数 (パディングなし) ---
 	// 送信メッセージ

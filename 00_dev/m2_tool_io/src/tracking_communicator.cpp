@@ -31,14 +31,9 @@ bool ToolTrackerClient::start() {
 	stop();
 
 	try {
-		std::lock_guard<std::mutex> lock(socket_mutex);
-		if (connect()) {
-			keep_listening = true;
-			listener_thread = std::thread(&ToolTrackerClient::listener_thread_func, this);
-			return true;
-		} else {
-			return false;
-		}
+		keep_listening = true;
+		listener_thread = std::thread(&ToolTrackerClient::listener_thread_func, this);
+		return true;
 	} catch (const std::exception& e) {
 		DEV_PRINT(stderr, "[ToolTrackerClient] Start error: {}\n", e.what());
 		stop();
@@ -61,31 +56,29 @@ void ToolTrackerClient::stop() {
 
 
 bool ToolTrackerClient::notify_qr_scan() {
+	std::lock_guard<std::mutex> lock(socket_mutex);
 	bool result{false};
-	{
-		std::lock_guard<std::mutex> lock(socket_mutex);
-		if (!is_connected_internal()) {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Error: Not connected to send QR scan notification.\n");
-			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Not connected"});
-			result = false;
-		}
-		try {
-			if (socket->send(PADDED_MSG_QR_SCAN.data(), PADDED_MSG_QR_SCAN.size()) >= 0) {
-				result = true;
-			} else {
-				DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
-				notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Send failed"});
-				result = false;
-			}
-		} catch (const std::exception& e) {
-			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification: {}\n", e.what());
-			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Send error: {}", e.what())});
-			result = false;
-		}
-	}
 
+	if (!is_connected_internal()) {
+		DEV_PRINT(stderr, "[ToolTrackerClient] Error: Not connected to send QR scan notification.\n");
+		notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Not connected"});
+		return false;
+	}
+	try {
+		if (socket->send(PADDED_MSG_QR_SCAN.data(), PADDED_MSG_QR_SCAN.size()) >= 0) {
+			result = true;
+		} else {
+			DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification (send returned < 0).\n");
+			notification_callback(Notification{.type = NotificationType::ERROR, .error_details = "Send failed"});
+			result = false;
+		}
+	} catch (const std::exception& e) {
+		DEV_PRINT(stderr, "[ToolTrackerClient] Error sending QR scan notification: {}\n", e.what());
+		notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Send error: {}", e.what())});
+		result = false;
+	}
 	if (!result) {
-		stop();
+		disconnect();
 	}
 
 	return result;
@@ -102,6 +95,8 @@ bool ToolTrackerClient::connect() {
 
 	try {
 		socket = std::make_unique<sg::Socket>();
+
+		socket->set_timeout(TIMEOUT_SECONDS);
 
 		if (!socket->connect(HOST, PORT)) {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Connection Failed to {}:{}\n", HOST, PORT);
@@ -164,6 +159,34 @@ void ToolTrackerClient::listener_thread_func() {
 	std::array<char, MSG_LENGTH> buffer{};
 
 	while (keep_listening) {
+		// ---------------------------------------------------------
+		// 接続確認と再接続フェーズ
+		// ---------------------------------------------------------
+		bool connected = is_connected();
+
+		if (!connected) {
+			bool connect_success = false;
+			{
+				std::lock_guard<std::mutex> lock(socket_mutex);
+				// connect() は内部で古い socket を破棄し、新規接続・ハンドシェイクを行う
+				connect_success = connect();
+			}
+
+			if (!connect_success) {
+				// 接続失敗時は、少し待機してからリトライする
+				// stop() や notify_qr_scan() をブロックしないよう、ロック外で待機する
+				if (keep_listening) {
+					// 再試行間隔 (例: 1秒)。要件に合わせて調整してください。
+					std::this_thread::sleep_for(RETRY_INTERVAL_SEC);
+				}
+				continue; // whileループの先頭に戻り、再接続を試みる
+			}
+			// 接続成功時はそのまま受信フェーズへ
+		}
+
+		// ---------------------------------------------------------
+		// 受信フェーズ
+		// ---------------------------------------------------------
 		try {
 			// 受信のためにバッファをクリア
 			buffer.fill('\0');
@@ -194,13 +217,31 @@ void ToolTrackerClient::listener_thread_func() {
 				notification.trimmed_message = std::string(trimmed_view);	// トリムしたメッセージをコピー
 				notification_callback(notification);
 
-			} else if (bytes_read <= 0) {
-				// receive が 0 (正常切断) または負数 (エラー) を返した場合
-				if (keep_listening) {	// disconnect()以外での切断
-					notification_callback(Notification{.type = NotificationType::CONNECTION_LOST, .error_details = ((bytes_read == 0) ? ("Connection closed by peer (EOF)") : ("Receive error"))});
-				}
-				break;
+			} else if (bytes_read <= 0) {	// receive が 0 (正常切断) または負数 (エラー) を返した場合
+				// --- 切断またはエラー検知 ---
+				if (keep_listening) {
+					// 意図しない切断の場合
+					DEV_PRINT(stderr, "[ToolTrackerClient] Connection lost. Retrying...\n");
 
+					notification_callback(Notification{
+						.type = NotificationType::CONNECTION_LOST,
+						.error_details = ((bytes_read == 0) ? ("Connection closed by peer (EOF)") : ("Receive error"))
+					});
+
+					// 内部状態をリセットするために disconnect() を呼ぶ
+					// これにより is_connected_internal() が false になり、次ループで再接続が走る
+					{
+						std::lock_guard<std::mutex> lock(socket_mutex);
+						disconnect();
+					}
+
+					// 即座にリトライせず少し待つ (再接続ストーム防止)
+					std::this_thread::sleep_for(RETRY_INTERVAL_SEC);
+
+				} else {
+					// stop() による正常な終了 (breakしてスレッド終了)
+					break;
+				}
 			} else {
 				notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Received unexpected data length: {}", bytes_read)});
 				// break; // エラーなら終了する場合
@@ -210,10 +251,18 @@ void ToolTrackerClient::listener_thread_func() {
 			// タイムアウト例外は無視
 		} catch (const std::exception& e) {
 			if (keep_listening) {
+				DEV_PRINT(stderr, "[ToolTrackerClient] Listener exception: {}. Reconnecting...\n", e.what());
 				notification_callback(Notification{.type = NotificationType::ERROR, .error_details = fmt::format("Listener error: {}", e.what())});
-				DEV_PRINT(stderr, "[ToolTrackerClient] Listener error: {}\n", e.what());
+
+				// 例外発生時は安全のため一度切断処理を行う
+				{
+					std::lock_guard<std::mutex> lock(socket_mutex);
+					disconnect();
+				}
+				std::this_thread::sleep_for(RETRY_INTERVAL_SEC);
+			} else {
+				break;
 			}
-			break;
 		}
 	} // while
 	keep_listening = false;
@@ -242,7 +291,7 @@ std::string RecorderClient::generate_timestamp_filename() const {
 std::optional<std::string> RecorderClient::start_recording(std::string filename) {
 	std::lock_guard<std::mutex> lock(m_filename_mutex);
 
-	if (m_current_filename.has_value()) {	// TODO: 条件これで良いか考える
+	if (m_current_filename.has_value()) {
 		return std::nullopt;
 	}
 
