@@ -19,8 +19,8 @@ inline constexpr const char*	ODBC_DSN	= "system";		// ODBCのDSN名
 
 // 開発環境と本番環境でユーザー名とパスワードを分ける
 #ifdef PRODUCTION
-inline constexpr const char*	ODBC_USER	= "root";	// ODBCのユーザー名
-inline constexpr const char*	ODBC_PASS	= "gr4";	// ODBCのパスワード
+inline constexpr const char*	ODBC_USER	= "root";		// ODBCのユーザー名
+inline constexpr const char*	ODBC_PASS	= "gr4";		// ODBCのパスワード
 #else
 inline constexpr const char*	ODBC_USER	= "pi";			// ODBCのユーザー名
 inline constexpr const char*	ODBC_PASS	= "pipasswd";	// ODBCのパスワード

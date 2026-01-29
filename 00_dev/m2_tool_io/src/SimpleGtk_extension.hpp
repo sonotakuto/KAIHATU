@@ -651,6 +651,8 @@ public:
 	WidgetExtension& operator=(WidgetExtension&&) = delete;
 
 	// メソッド
+	DEFINE_METHOD(widget, queue_draw, void)
+	DEFINE_METHOD(widget, queue_resize, void)
 	DEFINE_METHOD_WITH_ARGS(widget, get_preferred_size, void, (GtkRequisition *minimum_size, GtkRequisition *natural_size), minimum_size, natural_size)
 	DEFINE_METHOD(widget, grab_focus, void)
 	DEFINE_METHOD_WITH_ARGS(widget, set_mapped, void, (gboolean mapped), mapped)
@@ -2482,7 +2484,17 @@ public:
 	 */
 	virtual guint get_n_columns() = 0;	// 実装の制約により非const
 
-	// --- グリッド線 ---
+	// --- ウィジェット用メソッド ---
+
+	/**
+	 * @brief ウィジェットの再描画をキューに登録します。
+	 */
+	virtual void queue_draw() = 0;
+
+	/**
+	 * @brief ウィジェットのサイズ変更をキューに登録します。
+	 */
+	virtual void queue_resize() = 0;
 
 	/**
 	 * @brief グリッド線の表示設定を取得します。
@@ -2496,7 +2508,7 @@ public:
 	 */
 	virtual void set_grid_lines(GtkTreeViewGridLines grid_lines) = 0;
 
-	// --- ウィジェット状態 ---
+	// --- ウィジェット用プロパティアクセス ---
 
 	/**
 	 * @brief ウィジェットがフォーカス可能かどうかを設定します。
@@ -2734,6 +2746,20 @@ public:
 	 */
 	guint get_n_columns() override {
 		return m_tree_view.get_n_columns();
+	}
+
+	/**
+	 * @brief ウィジェットの再描画をキューに登録します。
+	 */
+	void queue_draw() override {
+		m_tree_view.queue_draw();
+	}
+
+	/**
+	 * @brief ウィジェットのサイズ変更をキューに登録します。
+	 */
+	void queue_resize() override {
+		m_tree_view.queue_resize();
 	}
 
 	/**
@@ -3411,6 +3437,24 @@ public:
 	 */
 	guint get_n_columns() override {
 		return m_n_columns;
+	}
+
+	/**
+	 * @brief TreeViewの再描画をキューに追加します。
+	 */
+	void queue_draw() override {
+		for (auto* model : m_page_models) {
+			model->queue_draw();
+		}
+	}
+
+	/**
+	 * @brief TreeViewのサイズ変更をキューに追加します。
+	 */
+	void queue_resize() override {
+		for (auto* model : m_page_models) {
+			model->queue_resize();
+		}
 	}
 
 	/**
