@@ -2177,7 +2177,7 @@ message message message message message</property>
   </object>
   <object class="GtkDialog" id="confirmInsertCountDialog">
     <property name="width-request">850</property>
-    <property name="height-request">530</property>
+    <property name="height-request">575</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">インサート個数を入力</property>
     <property name="resizable">False</property>
@@ -2217,14 +2217,15 @@ message message message message message</property>
             <property name="spacing">50</property>
             <child>
               <object class="GtkLabel" id="confirmInsertCountLabel">
-                <property name="height-request">90</property>
+                <property name="height-request">135</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">center</property>
                 <property name="margin-start">50</property>
                 <property name="margin-end">50</property>
                 <property name="label" translatable="yes">使用するインサートの枚数を
-入力してください</property>
+入力してください
+(最大 n 個)</property>
                 <property name="justify">center</property>
                 <style>
                   <class name="font-bold"/>
@@ -2838,6 +2839,8 @@ message message message</property>
             <property name="can-focus">False</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
+            <property name="margin-start">50</property>
+            <property name="margin-end">50</property>
             <property name="margin-top">50</property>
             <property name="margin-bottom">50</property>
             <property name="orientation">vertical</property>
@@ -2847,8 +2850,6 @@ message message message</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">center</property>
-                <property name="margin-start">50</property>
-                <property name="margin-end">50</property>
                 <property name="spacing">30</property>
                 <child>
                   <object class="GtkImage">

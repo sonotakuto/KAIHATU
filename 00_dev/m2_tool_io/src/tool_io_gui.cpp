@@ -3469,19 +3469,19 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 
 void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	if (
-		m_unscanned_count > 0 &&
-		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
+		m_operated_records.empty() &&
+		!confirm_to_user(UiText{
+			"1個も工具を取り出していませんが、\nコンテナを搬入してよろしいですか？",
+			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
 		})
 	) {
 		return;
 	}
 	if (
-		m_operated_records.empty() &&
-		!confirm_to_user(UiText{
-			"1個も工具を取り出していませんが、\nコンテナを搬入してよろしいですか？",
-			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
+		m_unscanned_count > 0 &&
+		!override_confirm_to_user(UiText{
+			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
+			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
 		})
 	) {
 		return;
@@ -3597,8 +3597,8 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 						// 2a. インサートの場合: 個数確認ダイアログを再表示
 						DEV_PRINT("重複スキャン (インサート): ID {} の個数を更新します。\n", unique_info.id);
 						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-							"取り出す枚数を変更します\n何枚取り出すか入力してください",
-							"とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください"
+							fmt::format("取り出す枚数を変更します\n何枚取り出すか入力してください\n(最大 {} 個)", case_pack_num),
+							fmt::format("とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください\n(最大 {} こ)", case_pack_num)
 						}}, true);
 
 						// ダイアログの初期値を、前回入力した個数に設定し、再度確認
@@ -3685,8 +3685,8 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 
 					if (m_is_insert_operation) {
 						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-							"使用するインサートの枚数を\n入力して下さい",
-							"しようする インサートの まいすうを\nにゅうりょく してください"
+							fmt::format("使用するインサートの枚数を\n入力して下さい\n(最大 {} 個)", case_pack_num),
+							fmt::format("しようする インサートの まいすうを\nにゅうりょく してください\n(最大 {} こ)", case_pack_num)
 						}}, true);
 						confirm_insert_count(1, case_pack_num, std::move(recording_lambda));
 					} else {

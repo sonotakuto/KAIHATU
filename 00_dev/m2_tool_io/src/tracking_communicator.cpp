@@ -125,6 +125,7 @@ bool ToolTrackerClient::connect() {
 				.raw_message = buffer,
 				.trimmed_message = std::string(trimmed_view)
 			});
+			DEV_PRINT(stderr, "[ToolTrackerClient] Connected successfully and received ACK.\n");
 			return true;
 		} else {
 			DEV_PRINT(stderr, "[ToolTrackerClient] Error: Failed to get ACK. Received: '{}'\n",
@@ -384,6 +385,7 @@ std::optional<int> get_insert_count(const char* host, int port, std::uint32_t ti
 
 	try {
 		// 1. 接続
+		local_socket.set_timeout(timeout_sec);
 		if (!local_socket.connect(host, port)) {
 			DEV_PRINT(stderr, "[InsertCounter] Connection Failed to {}:{}\n", host, port);
 			return std::nullopt; // RAIIによりソケットは自動で閉じられる

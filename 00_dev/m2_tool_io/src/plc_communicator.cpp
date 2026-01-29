@@ -332,7 +332,7 @@ static void run_communicator() {
 						notify_gui_thread({.type = NotificationType::CONNECTION_LOST});
 						// pending_task にタスクを残しておくことで、再接続後にリトライする
 					}
-					if (!current_task.has_value() && !pending_task.has_value() && socket.is_connected()) {
+					if (!current_task.has_value() && !pending_task.has_value() && is_connected_safe()) {
 						// 完了待ちタスクがセットされなかった場合、次のタスクを試行的に取得
 						pending_task = g_task_queue.try_pop();
 					}
