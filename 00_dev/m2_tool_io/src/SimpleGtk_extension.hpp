@@ -2753,6 +2753,9 @@ public:
 	 */
 	void queue_draw() override {
 		m_tree_view.queue_draw();
+		if (m_enclosing_widget) {
+			gtk_widget_queue_draw(*m_enclosing_widget);
+		}
 	}
 
 	/**
@@ -2760,6 +2763,9 @@ public:
 	 */
 	void queue_resize() override {
 		m_tree_view.queue_resize();
+		if (m_enclosing_widget) {
+			gtk_widget_queue_resize(*m_enclosing_widget);
+		}
 	}
 
 	/**
