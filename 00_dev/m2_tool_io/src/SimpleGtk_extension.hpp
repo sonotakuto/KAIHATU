@@ -2995,6 +2995,8 @@ private:
 	selection_callback_type m_user_selection_callback;
 	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
 	bool m_is_programmatically_changing;
+	/// @brief 強制的にサイズ変更をキューに登録するかどうか
+	bool m_force_resize;
 	/// @brief フォーカス可否
 	bool m_can_focus;
 	/// @brief 感応可否
@@ -3145,6 +3147,13 @@ public:
 			model->set_visible(m_visible && (model->size() > 0));
 		}
 		m_current_page_index = page_index;
+
+		// 必要に応じてサイズ変更をキューに登録
+		if (m_force_resize) {
+			gutils::idle_add([this]() {
+				queue_resize();
+			})
+		}
 	}
 
 	/**
@@ -3169,6 +3178,22 @@ public:
 				model->refresh(false);
 			}
 		}
+	}
+
+	/**
+	 * @brief 強制的にサイズ変更をキューに登録するかどうかを設定します。
+	 * @param[in] force_resize trueの場合、ページ表示時にサイズ変更をキューに登録します。
+	 */
+	void set_force_resize(bool force_resize) {
+		m_force_resize = force_resize;
+	}
+
+	/**
+	 * @brief 強制的にサイズ変更をキューに登録するかどうかを取得します。
+	 * @return trueの場合、ページ表示時にサイズ変更をキューに登録します。
+	 */
+	bool get_force_resize() const {
+		return m_force_resize;
 	}
 
 	/**
@@ -3449,6 +3474,7 @@ public:
 	 * @brief TreeViewの再描画をキューに追加します。
 	 */
 	void queue_draw() override {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		for (auto* model : m_page_models) {
 			model->queue_draw();
 		}
@@ -3458,6 +3484,7 @@ public:
 	 * @brief TreeViewのサイズ変更をキューに追加します。
 	 */
 	void queue_resize() override {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		for (auto* model : m_page_models) {
 			model->queue_resize();
 		}

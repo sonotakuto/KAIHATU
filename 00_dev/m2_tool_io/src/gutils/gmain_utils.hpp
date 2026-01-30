@@ -23,7 +23,7 @@ namespace detail
 	/**
 	 * @brief GLibのメインループで関数オブジェクトを実行するためのディスパッチャー。
 	 * @details
-	 * C言語形式のコールバックである g_idle_add と C++ の関数オブジェクトを繋ぐための汎用的な糊（グルー）コード。
+	 * C言語形式のコールバックである g_idle_add 等と C++ の関数オブジェクトを繋ぐための汎用的な糊（グルー）コード。
 	 * 利用者は、実行したい処理を std::function オブジェクトとしてヒープに作成し、
 	 * そのポインタをこの関数に渡すことで、GLibのメインループでの安全な実行を予約します。
 	 * @param[in] func std::function<bool()>* にキャストされるポインタ。戻り値で false を返すと1回限りの実行、true を返すと継続的に実行されます。
@@ -46,6 +46,79 @@ namespace detail
 #endif
 
 } // namespace detail
+
+/**
+ * @brief GLibのメインループで関数オブジェクトをタイマー実行する。
+ * @tparam F 関数オブジェクトの型。bool() の呼び出し可能な型である必要があります。
+ * @param[in] interval_ms タイマーの間隔（ミリ秒）。
+ * @param[in] func 実行したい関数オブジェクト。戻り値で false を返すと1回限りの実行、true を返すと継続的に実行されます。
+ */
+template <typename F>
+guint timeout_add(guint interval_ms, F&& func) {
+	return g_timeout_add(interval_ms, detail::dispatch_to_gmain, new std::function<bool()>(std::forward<F>(func)));
+}
+
+/**
+ * @brief GLibのメインループで関数オブジェクトを1回だけタイマー実行する。
+ * @tparam F 関数オブジェクトの型。
+ * @param[in] interval_ms タイマーの間隔（ミリ秒）。
+ * @param[in] func 実行したい関数オブジェクト。戻り値を返したとしても使用されません。
+ * @return イベントソースのID。
+ */
+template <typename F>
+guint timeout_add_once(guint interval_ms, F&& func) {
+#if GLIB_CHECK_VERSION(2, 74, 0)
+
+	return g_timeout_add_once(interval_ms, detail::dispatch_to_gmain_once, new std::function<void()>(std::forward<F>(func)));
+
+#else
+
+	// ユーザーの void() 関数をラップし、強制的に false (G_SOURCE_REMOVE) を返す
+	// bool() 関数として timeout_add に渡す。
+	return timeout_add(interval_ms, [f = std::forward<F>(func)]() mutable -> bool {
+		f();
+		return false; // 1回で終了させる
+	});
+
+#endif
+}
+
+/**
+ * @brief GLibのメインループで関数オブジェクトを秒単位のタイマー実行する。
+ * @tparam F 関数オブジェクトの型。bool() の呼び出し可能な型である必要があります。
+ * @param[in] interval_sec タイマーの間隔（秒）。
+ * @param[in] func 実行したい関数オブジェクト。戻り値で false を返すと1回限りの実行、true を返すと継続的に実行されます。
+ * @return イベントソースのID。
+ */
+template <typename F>
+guint timeout_add_seconds(guint interval_sec, F&& func) {
+	return g_timeout_add_seconds(interval_sec, detail::dispatch_to_gmain, new std::function<bool()>(std::forward<F>(func)));
+}
+
+/**
+ * @brief GLibのメインループで関数オブジェクトを1回だけ秒単位のタイマー実行する。
+ * @tparam F 関数オブジェクトの型。
+ * @param[in] interval_sec タイマーの間隔（秒）。
+ * @param[in] func 実行したい関数オブジェクト。戻り値を返したとしても使用されません。
+ * @return イベントソースのID。
+ */
+template <typename F>
+guint timeout_add_seconds_once(guint interval_sec, F&& func) {
+#if GLIB_CHECK_VERSION(2, 74, 0)
+
+	return g_timeout_add_seconds_once(interval_sec, detail::dispatch_to_gmain_once, new std::function<void()>(std::forward<F>(func)));
+
+#else
+
+	// ユーザーの void() 関数をラップし、強制的に false (G_SOURCE_REMOVE) を返す
+	// bool() 関数として timeout_add に渡す。
+	return timeout_add_seconds(interval_sec, [f = std::forward<F>(func)]() mutable -> bool {
+		f();
+		return false; // 1回で終了させる
+	});
+
+#endif
+}
 
 /**
  * @brief GLibのメインループで関数オブジェクトを非同期実行する。

@@ -1026,6 +1026,12 @@ private:
 	// --- 外部連携用のヘルパー関数 ---
 
 	/**
+	 * @brief コンテナを搬入できるかチェックし、できる場合は搬入し、できない場合に適切なエラーメッセージを表示する関数。
+	 * @return 搬入可能な場合はtrue、不可能な場合はfalseを返します。
+	 */
+	bool check_and_store_container();
+
+	/**
 	 * @brief MediaServerを起動します。
 	 * @return 起動に成功した場合はtrue、失敗した場合はfalseを返します。
 	 */
@@ -1320,6 +1326,12 @@ private:
 	void on_qrCodeEntry_retrieve_ready_for_reading();
 
 	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の falseButton と trueButton の on_clicked の共通処理
+	 * @return 操作がキャンセルされた場合は false、そうでなければ true を返す。
+	 */
+	bool on_false_and_true_Button_retrieve_ready_for_reading();
+
+	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態の falseButton.on_clicked の処理
 	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
 	 */
@@ -1396,6 +1408,12 @@ private:
 	 * 読み取りに成功した場合は次の画面に遷移する。
 	 */
 	void on_qrCodeEntry_store_ready_for_reading();
+
+	/**
+	 * @brief STORE_READY_FOR_READING 状態の falseButton と trueButton の on_clicked の共通処理
+	 * @return 操作がキャンセルされた場合は false、そうでなければ true を返す。
+	 */
+	bool on_false_and_true_Button_store_ready_for_reading();
 
 	/**
 	 * @brief STORE_READY_FOR_READING 状態の falseButton.on_clicked の処理

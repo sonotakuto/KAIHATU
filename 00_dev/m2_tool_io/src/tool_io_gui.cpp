@@ -371,11 +371,24 @@ MainWindow::MainWindow() :
 	warningListDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 	reconcileFilterDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 
-	passwordEntryDialog.set_gravity(layout::Gravity::Center);
-
 	this->set_timeout(100);	// 100ミリ秒ごとにタイムアウトイベントを発生させる
 
 	this->fullscreen();	// フルスクリーンで表示
+
+	//=========================================================================
+	// ウィジェットの初期プロパティを設定
+	//=========================================================================
+
+	// ダイアログの配置基準点を設定
+	passwordEntryDialog.set_gravity(layout::Gravity::Center);
+
+	// --- 表のプロパティを設定 ---
+
+	// 巨大な表の描画時には、強制的にサイズ変更をキューに登録する
+	liststore3columnsAll.set_force_resize(true);
+	liststore2columnsAll.set_force_resize(true);
+	paginatedListstore2types1st.set_force_resize(true);
+	paginatedListstore2types2nd.set_force_resize(true);
 
 	// 中央揃えに設定するカラムの配列を作成
 	std::vector<GtkTreeViewColumn*> center_aligned_columns;
@@ -2284,14 +2297,6 @@ void MainWindow::update_and_handle_pagination_3columns(PaginationAction action, 
 	if (update_ui) {
 		refresh_ui(false);
 	}
-
-	liststore3columnsAll.queue_resize();
-	tableStack.queue_resize();
-	liststore3columnsAll.queue_draw();
-	tableStack.queue_draw();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
-	}
 }
 
 void MainWindow::update_and_handle_pagination_2columns(PaginationAction action, bool update_ui) {
@@ -2319,16 +2324,6 @@ void MainWindow::update_and_handle_pagination_2columns(PaginationAction action, 
 
 	if (update_ui) {
 		refresh_ui(false);
-	}
-
-	liststore2columnsAll.queue_resize();
-	tableStack.queue_resize();
-	queue_resize();
-	liststore2columnsAll.queue_draw();
-	tableStack.queue_draw();
-	queue_draw();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
 }
 
@@ -2358,16 +2353,6 @@ void MainWindow::update_and_handle_pagination_2types1st(PaginationAction action,
 	if (update_ui) {
 		refresh_ui(false);
 	}
-
-	paginatedListstore2types1st.queue_resize();
-	tableStack.queue_resize();
-	queue_resize();
-	paginatedListstore2types1st.queue_draw();
-	tableStack.queue_draw();
-	queue_draw();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
-	}
 }
 
 void MainWindow::update_and_handle_pagination_2types2nd(PaginationAction action, bool update_ui) {
@@ -2395,16 +2380,6 @@ void MainWindow::update_and_handle_pagination_2types2nd(PaginationAction action,
 
 	if (update_ui) {
 		refresh_ui(false);
-	}
-
-	paginatedListstore2types2nd.queue_resize();
-	tableStack.queue_resize();
-	queue_resize();
-	paginatedListstore2types2nd.queue_draw();
-	tableStack.queue_draw();
-	queue_draw();
-	while (gtk_events_pending()) {
-		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
 }
 
@@ -2737,6 +2712,35 @@ bool MainWindow::authenticate_with_password() {
 	}
 	return m_password_authenticated;
 }
+
+bool MainWindow::check_and_store_container() {
+	bool plc_status = false;
+#ifndef STUB_PLC
+	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
+		// BUG: エラー対応
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
+		}, true);
+		return false;
+	}
+#else
+	plc_status = true;
+#endif
+	if (!plc_status) {
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
+		}, true);
+		return false;
+	}
+	plc::store_container();
+	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
+	return true;
+}
+
 
 void MainWindow::set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWindow::MainTableData>& list_store_model, const std::vector<ToolAssignmentInfo> &tool_assignments)
 {
@@ -3454,7 +3458,7 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 	}
 }
 
-void MainWindow::on_falseButton_retrieve_ready_for_reading() {
+bool MainWindow::on_false_and_true_Button_retrieve_ready_for_reading() {
 	if (
 		m_operated_records.empty() &&
 		!confirm_to_user(UiText{
@@ -3462,7 +3466,7 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
 		})
 	) {
-		return;
+		return false;
 	}
 	if (
 		m_unscanned_count > 0 &&
@@ -3471,87 +3475,54 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
 		})
 	) {
-		return;
+		return false;
 	}
-	bool plc_status = false;
-#ifndef STUB_PLC
-	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
-		// BUG: エラー対応
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
-		}, true);
-		return;
+
+	if (!check_and_store_container()) {
+		return false;
 	}
-#else
-	plc_status = true;
-#endif
-	if (!plc_status) {
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
-		}, true);
-		return;
-	}
+
 	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
+
+	// 履歴データが空の場合に、コンテナ情報だけの履歴を作成
+	if (m_operated_records.empty()) {
+		m_operated_records.push_back(RecOperationTable{
+			.operation_class	= OperationClass::OUT,
+			.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),
+			.proc_time			= sg::now(),
+			.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
+			.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
+			.line_id			= m_retrieving_list.value().line.id	// BUG: nullopt対応
+		});
+	}
+
+	// 履歴データの追跡結果を設定
+	for (auto& record : m_operated_records) {
+		record.track_result = ((m_warning_closed_by_user)
+			? (TrackResult::OVERRIDDEN)
+			: (TrackResult::NORMAL)
+		);
+	}
+
 	db::save_history(m_operated_records);
-	tracker::g_tool_tracker->stop();
 	tracker::g_recorder_client->stop_recording();
+	return true;
+}
+
+void MainWindow::on_falseButton_retrieve_ready_for_reading() {
+	if (!on_false_and_true_Button_retrieve_ready_for_reading()) {
+		return;
+	}
+
+	tracker::g_tool_tracker->stop();
 	set_mode(GuiMode::NONE);
 }
 
 void MainWindow::on_trueButton_retrieve_ready_for_reading() {
-	if (
-		m_operated_records.empty() &&
-		!confirm_to_user(UiText{
-			"1個も工具を取り出していませんが、\nコンテナを搬入してよろしいですか？",
-			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
-		})
-	) {
+	if (!on_false_and_true_Button_retrieve_ready_for_reading()) {
 		return;
 	}
-	if (
-		m_unscanned_count > 0 &&
-		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
-		})
-	) {
-		return;
-	}
-	bool plc_status = false;
-#ifndef STUB_PLC
-	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
-		// BUG: エラー対応
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
-		}, true);
-		return;
-	}
-#else
-	plc_status = true;
-#endif
-	if (!plc_status) {
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
-		}, true);
-		return;
-	}
-	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
-	db::save_history(m_operated_records);
-	tracker::g_recorder_client->stop_recording();
+
 	m_is_insert_operation = false;
 	m_operating_area.reset();
 	m_operated_records.clear();
@@ -3559,6 +3530,7 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	m_warning_closed_by_user = false;
 	m_ignore_all_warnings = false;
 	m_unscanned_count = 0;
+
 	if (m_retrieving_index.has_value() && m_retrieving_index.value() + 1 < m_retrieving_tools.size()) {
 		// 次の工具の搬出処理へ
 		m_retrieving_index.value()++;
@@ -3711,11 +3683,7 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 							.unique_tool_id		= unique_info.id,
 							.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
 							.tool_num			= -count,
-							.line_id			= m_retrieving_list.value().line.id,
-							.track_result		= ((m_warning_closed_by_user)
-								? (TrackResult::OVERRIDDEN)
-								: (TrackResult::NORMAL)
-							)
+							.line_id			= m_retrieving_list.value().line.id
 						});
 
 						update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
@@ -4076,7 +4044,7 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 	}
 }
 
-void MainWindow::on_falseButton_store_ready_for_reading() {
+bool MainWindow::on_false_and_true_Button_store_ready_for_reading() {
 	if (
 		m_operated_records.empty() &&
 		!confirm_to_user(UiText{
@@ -4084,80 +4052,41 @@ void MainWindow::on_falseButton_store_ready_for_reading() {
 			"1こも こうぐを ほじゅうしていませんが、\nコンテナを はんにゅうして よろしいですか？"
 		})
 	) {
-		return;
+		return false;
 	}
-	bool plc_status = false;
-#ifndef STUB_PLC
-	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
-		// BUG: エラー対応
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
-		}, true);
-		return;
+
+	if (!check_and_store_container()) {
+		return false;
 	}
-#else
-	plc_status = true;
-#endif
-	if (!plc_status) {
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
-		}, true);
-		return;
-	}
+
 	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
+
+	// 履歴データが空の場合に、コンテナ情報だけの履歴を作成
+	if (m_operated_records.empty()) {
+		m_operated_records.push_back(RecOperationTable{
+			.operation_class	= OperationClass::ADD,
+			.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// FIXME: nullopt対応
+			.proc_time			= sg::now(),
+			.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
+			.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0")
+		});
+	}
+
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
 	tracker::g_recorder_client->stop_recording();
-	set_mode(GuiMode::NONE);
+}
+
+void MainWindow::on_falseButton_store_ready_for_reading() {
+	if (on_false_and_true_Button_store_ready_for_reading()) {
+		set_mode(GuiMode::NONE);
+	}
 }
 
 void MainWindow::on_trueButton_store_ready_for_reading() {
-	if (
-		m_operated_records.empty() &&
-		!confirm_to_user(UiText{
-			"1個も工具を補充していませんが、\nコンテナを搬入してよろしいですか？",
-			"1こも こうぐを ほじゅうしていませんが、\nコンテナを はんにゅうして よろしいですか？"
-		})
-	) {
-		return;
+	if (on_false_and_true_Button_store_ready_for_reading()) {
+		set_app_state(AppState::STORE);
 	}
-	bool plc_status = false;
-#ifndef STUB_PLC
-	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
-		// BUG: エラー対応
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
-		}, true);
-		return;
-	}
-#else
-	plc_status = true;
-#endif
-	if (!plc_status) {
-		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
-		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
-		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
-			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
-		}, true);
-		return;
-	}
-	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
-	db::increment_regrind_counts(m_reground_tools);
-	db::save_history(m_operated_records);
-	tracker::g_recorder_client->stop_recording();
-	set_app_state(AppState::STORE);
 }
 
 void MainWindow::on_plc_store_ready_for_reading(const plc::Notification& notification) {
