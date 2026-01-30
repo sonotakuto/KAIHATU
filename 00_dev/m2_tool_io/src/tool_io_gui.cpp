@@ -2323,8 +2323,10 @@ void MainWindow::update_and_handle_pagination_2columns(PaginationAction action, 
 
 	liststore2columnsAll.queue_resize();
 	tableStack.queue_resize();
+	queue_resize();
 	liststore2columnsAll.queue_draw();
 	tableStack.queue_draw();
+	queue_draw();
 	while (gtk_events_pending()) {
 		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
@@ -2359,8 +2361,10 @@ void MainWindow::update_and_handle_pagination_2types1st(PaginationAction action,
 
 	paginatedListstore2types1st.queue_resize();
 	tableStack.queue_resize();
+	queue_resize();
 	paginatedListstore2types1st.queue_draw();
 	tableStack.queue_draw();
+	queue_draw();
 	while (gtk_events_pending()) {
 		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
@@ -2395,8 +2399,10 @@ void MainWindow::update_and_handle_pagination_2types2nd(PaginationAction action,
 
 	paginatedListstore2types2nd.queue_resize();
 	tableStack.queue_resize();
+	queue_resize();
 	paginatedListstore2types2nd.queue_draw();
 	tableStack.queue_draw();
+	queue_draw();
 	while (gtk_events_pending()) {
 		gtk_main_iteration(); // サイズ計算等のイベントを全て消化させる
 	}
