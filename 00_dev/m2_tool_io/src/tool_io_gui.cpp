@@ -2443,6 +2443,7 @@ bool MainWindow::override_confirm_to_user(UiText&& message) {
 	if (overrideConfirmDialog.run(this) == GtkResponseType::GTK_RESPONSE_YES) {
 		// ユーザーが「無視して続ける」を選択した場合
 		DEV_PRINT("強制実行確認: 無視して続行\n");
+		m_warning_closed_by_user = true;
 		return true;
 	} else {
 		// ユーザーが「キャンセル」を選択した場合
@@ -4075,6 +4076,8 @@ bool MainWindow::on_false_and_true_Button_store_ready_for_reading() {
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
 	tracker::g_recorder_client->stop_recording();
+
+	return true;
 }
 
 void MainWindow::on_falseButton_store_ready_for_reading() {

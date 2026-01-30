@@ -3150,9 +3150,9 @@ public:
 
 		// 必要に応じてサイズ変更をキューに登録
 		if (m_force_resize) {
-			gutils::idle_add([this]() {
+			gutils::idle_add_once([this]() {
 				queue_resize();
-			})
+			});
 		}
 	}
 

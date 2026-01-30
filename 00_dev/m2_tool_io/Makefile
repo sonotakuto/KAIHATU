@@ -180,7 +180,7 @@ debug: print_env $(DEBUG_TARGET_PATH)
 # 'make check' で、ソースコードの構文チェックを行う
 check: $(SOURCES)
 	@echo "Checking source files in $(ENV_MSG) mode..."
-	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(src) -o /dev/null; echo "";)
+	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(SRC_DIR)/$(src) -o /dev/null; echo "";)
 
 # 'make clean' で、現在のターゲットのファイルのみ削除
 clean:
