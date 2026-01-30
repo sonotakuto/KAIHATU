@@ -2,6 +2,7 @@
  * @file gmain_utils.hpp
  * @brief GLibのメインループ関連のユーティリティ関数の宣言
  */
+#pragma once
 #include <functional>
 #include <glib.h>
 
