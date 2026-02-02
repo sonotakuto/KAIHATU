@@ -2492,7 +2492,7 @@ public:
 	virtual void queue_draw() = 0;
 
 	/**
-	 * @brief ウィジェットのサイズ変更をキューに登録します。
+	 * @brief ウィジェットのサイズ再計算をキューに登録します。
 	 */
 	virtual void queue_resize() = 0;
 
@@ -2759,7 +2759,7 @@ public:
 	}
 
 	/**
-	 * @brief ウィジェットのサイズ変更をキューに登録します。
+	 * @brief ウィジェットのサイズ再計算をキューに登録します。
 	 */
 	void queue_resize() override {
 		m_tree_view.queue_resize();
@@ -2995,7 +2995,9 @@ private:
 	selection_callback_type m_user_selection_callback;
 	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
 	bool m_is_programmatically_changing;
-	/// @brief 強制的にサイズ変更をキューに登録するかどうか
+	/// @brief 強制的に再描画をキューに登録するかどうか
+	bool m_force_draw;
+	/// @brief 強制的にサイズ再計算をキューに登録するかどうか
 	bool m_force_resize;
 	/// @brief フォーカス可否
 	bool m_can_focus;
@@ -3148,10 +3150,17 @@ public:
 		}
 		m_current_page_index = page_index;
 
-		// 必要に応じてサイズ変更をキューに登録
+		// 必要に応じてサイズ再計算をキューに登録
 		if (m_force_resize) {
 			gutils::idle_add_once([this]() {
 				queue_resize();
+			});
+		}
+
+		// 必要に応じて再描画をキューに登録
+		if (m_force_draw) {
+			gutils::idle_add_once([this]() {
+				queue_draw();
 			});
 		}
 	}
@@ -3181,16 +3190,32 @@ public:
 	}
 
 	/**
-	 * @brief 強制的にサイズ変更をキューに登録するかどうかを設定します。
-	 * @param[in] force_resize trueの場合、ページ表示時にサイズ変更をキューに登録します。
+	 * @brief 強制的に再描画をキューに登録するかどうかを設定します。
+	 * @param[in] force_draw trueの場合、ページ表示時に再描画をキューに登録します。
+	 */
+	void set_force_draw(bool force_draw) {
+		m_force_draw = force_draw;
+	}
+
+	/**
+	 * @brief 強制的に再描画をキューに登録するかの設定を取得します。
+	 * @return trueの場合、ページ表示時に再描画をキューに登録します。
+	 */
+	bool get_force_draw() const {
+		return m_force_draw;
+	}
+
+	/**
+	 * @brief 強制的にサイズ再計算をキューに登録するかどうかを設定します。
+	 * @param[in] force_resize trueの場合、ページ表示時にサイズ再計算をキューに登録します。
 	 */
 	void set_force_resize(bool force_resize) {
 		m_force_resize = force_resize;
 	}
 
 	/**
-	 * @brief 強制的にサイズ変更をキューに登録するかどうかを取得します。
-	 * @return trueの場合、ページ表示時にサイズ変更をキューに登録します。
+	 * @brief 強制的にサイズ再計算をキューに登録するかの設定を取得します。
+	 * @return trueの場合、ページ表示時にサイズ再計算をキューに登録します。
 	 */
 	bool get_force_resize() const {
 		return m_force_resize;
@@ -3481,7 +3506,7 @@ public:
 	}
 
 	/**
-	 * @brief TreeViewのサイズ変更をキューに追加します。
+	 * @brief TreeViewのサイズ再計算をキューに追加します。
 	 */
 	void queue_resize() override {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
