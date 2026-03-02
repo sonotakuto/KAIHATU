@@ -329,8 +329,10 @@ MainWindow::MainWindow() :
 	reconcileToolPeriodFilterComboBoxListstore(
 		reconcileToolPeriodFilterComboBox,
 		{ G_TYPE_STRING },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const std::string& row) {
-			store->set(iter, 0, row.c_str());
+		[](sgex::ListStore& store, GtkTreeIter* iter, const std::string& row) {
+			store.set(iter,
+				0, row.c_str()
+			);
 		}
 	),
 	reconcilePeriodFilterBox(glade, "reconcilePeriodFilterBox"),
@@ -1809,7 +1811,7 @@ MainWindow::MainWindow() :
 	g_app_state_configs.try_emplace(AppState::RECONCILE_READY_FOR_READING, WidgetStateConfig{
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
-			{ {&messageLabel}, {.text = UiText{"コンテナ内の工具をすべてQRコードリーダーで読み取ってください", "コンテナないの こうぐを すべて QRコードリーダーで よみとってください"}} },
+			{ {&messageLabel}, {.text = UiText{"コンテナ内の工具をすべて\nQRコードリーダーで読み取ってください", "コンテナないの こうぐを すべて\nQRコードリーダーで よみとってください"}} },
 			{ {&falseButton}, {.text = UiText{"終了", "しゅうりょう"}, .is_sensitive = false} },
 			{ {&trueButton}, {.text = UiText{"続ける", "つづける"}, .is_sensitive = false} }
 		},
@@ -4484,7 +4486,7 @@ void MainWindow::on_enter_reconcile_container_retrieved() {
 	plc::g_command_queue.push(plc::WatchCommand{
 		// 仮のアドレス定数を使用しています。実際の定数名に合わせてください。
 		// .addr = plc::M_DEVICE_DOOR_OPEND, 
-		.addr = 95, // 仮: 扉オープン信号のアドレス
+		.addr = plc::M_DEVICE_READY_TO_STORE, // 仮: 扉オープン信号のアドレス
 		.flags = plc::WatchFlags{
 			.enable_rise_notification = true,
 			.rise_is_one_shot = true
@@ -4502,7 +4504,7 @@ void MainWindow::on_plc_reconcile_container_retrieved(const plc::Notification& n
 		const plc::MonitorResult& result = notification.monitor_result.value();
 		
 		// 扉オープン信号検知 (アドレスは仮)
-		if (result.addr == 95 /* plc::M_DEVICE_DOOR_OPEND */ && result.status) {
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE /* plc::M_DEVICE_DOOR_OPEND */ && result.status) {
 			DEV_PRINT("棚卸し: 扉オープン検知。スキャン待ちへ遷移します。\n");
 			set_app_state(AppState::RECONCILE_READY_FOR_READING);
 		}
