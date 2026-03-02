@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <optional>
 #include <SimpleGtk>
-#include "./parameters.hpp"
-#include "./math_utils.hpp"
+#include "utils/math_utils.hpp"
+#include "parameters.hpp"
 
 //typedef int sample;
 
@@ -100,9 +100,9 @@ enum class StorageCondition {
 	TAKEN_OUT
 };
 
-constexpr const char* StorageCondition_NOT_STORED_STR	= "補充前";	// NOT_STORED
-constexpr const char* StorageCondition_STORED_STR		= "保管中";	// STORED
-constexpr const char* StorageCondition_TAKEN_OUT_STR	= "取出";	// TAKEN_OUT
+inline constexpr const char* StorageCondition_NOT_STORED_STR	= "補充前";	// NOT_STORED
+inline constexpr const char* StorageCondition_STORED_STR		= "保管中";	// STORED
+inline constexpr const char* StorageCondition_TAKEN_OUT_STR		= "取出";	// TAKEN_OUT
 
 /**
  * @brief StorageCondition 列挙型をDB保存用の文字列に変換するヘルパー関数
@@ -203,9 +203,9 @@ enum class OperationClass {
 	INVENTORY
 };
 
-constexpr const char* OperationClass_OUT_STR		= "取出";	// OUT
-constexpr const char* OperationClass_ADD_STR		= "補充";	// ADD
-constexpr const char* OperationClass_INVENTORY_STR	= "棚卸";	// INVENTORY
+inline constexpr const char* OperationClass_OUT_STR			= "取出";	// OUT
+inline constexpr const char* OperationClass_ADD_STR			= "補充";	// ADD
+inline constexpr const char* OperationClass_INVENTORY_STR	= "棚卸";	// INVENTORY
 
 /**
  * @brief OperationClass 列挙型をDB保存用の文字列に変換するヘルパー関数
@@ -245,8 +245,8 @@ enum class TrackResult {
 	OVERRIDDEN
 };
 
-constexpr const char* TrackResult_NORMAL_STR		= "なし";	// NORMAL
-constexpr const char* TrackResult_OVERRIDDEN_STR	= "あり";	// OVERRIDDEN
+inline constexpr const char* TrackResult_NORMAL_STR		= "なし";	// NORMAL
+inline constexpr const char* TrackResult_OVERRIDDEN_STR	= "あり";	// OVERRIDDEN
 
 /**
  * @brief TrackResult 列挙型をDB保存用の文字列に変換するヘルパー関数
@@ -291,7 +291,7 @@ struct RecOperationTable {
 	/// @brief 個別工具ID (工具識別用連番)
 	std::optional<std::int64_t> unique_tool_id{};
 	/// @brief 動画パス (動画の保存先リンク)
-	std::optional<std::string> video_path{};
+	std::string video_path{};
 	/// @brief 操作個数 (補充、取出の際の個数)
 	std::optional<std::int32_t> tool_num{};
 	/// @brief ラインID (ライン識別用連番)
@@ -433,19 +433,19 @@ struct ToolingListInfo {
 // --- 個別工具ID (UniqueToolID) 関連 ---
 
 /// @brief 個別工具IDの桁数 (10桁)
-constexpr int UNIQUE_TOOL_ID_DIGITS = 10;
+inline constexpr int UNIQUE_TOOL_ID_DIGITS = 10;
 
 /// @brief 個別工具ID内の「個別番号」部分の桁数 (5桁)
-constexpr int UNIQUE_TOOL_ID_UNIQUE_DIGITS = 5;
+inline constexpr int UNIQUE_TOOL_ID_UNIQUE_DIGITS = 5;
 
 /// @brief 個別工具IDから基本工具IDと個別番号を分離するための除数 (10の UNIQUE_TOOL_ID_UNIQUE_DIGITS 乗)
-constexpr std::int64_t UNIQUE_TOOL_ID_DIVISOR = utils::constexpr_pow(static_cast<std::int64_t>(10), static_cast<std::size_t>(UNIQUE_TOOL_ID_UNIQUE_DIGITS));
+inline constexpr std::int64_t UNIQUE_TOOL_ID_DIVISOR = utils::constexpr_pow(static_cast<std::int64_t>(10), static_cast<std::size_t>(UNIQUE_TOOL_ID_UNIQUE_DIGITS));
 
 /// @brief 有効な個別工具IDの最小値 (10^9)
-constexpr std::int64_t MIN_UNIQUE_TOOL_ID = 0;
+inline constexpr std::int64_t MIN_UNIQUE_TOOL_ID = 0;
 
 /// @brief 有効な個別工具IDの最大値 (10^10 - 1)
-constexpr std::int64_t MAX_UNIQUE_TOOL_ID = utils::constexpr_pow(static_cast<std::int64_t>(10), static_cast<std::size_t>(10)) - 1;
+inline constexpr std::int64_t MAX_UNIQUE_TOOL_ID = utils::constexpr_pow(static_cast<std::int64_t>(10), static_cast<std::size_t>(10)) - 1;
 
 /**
  * @brief 10桁の個別工具IDを「基本工具ID」と「個別番号」に分割します。

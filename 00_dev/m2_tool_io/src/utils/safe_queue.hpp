@@ -23,20 +23,23 @@ namespace utils {
 /**
  * @class SafeQueue
  * @brief ミューテックスと条件変数で保護された、スレッドセーフなFIFOキュー。
- * @tparam _Tp キューに格納する要素の型。
- * @tparam _Sequence 内部で使われるコンテナの型。デフォルトはstd::deque。
+ * @tparam T キューに格納する要素の型。
+ * @tparam Sequence 内部で使われるコンテナの型。デフォルトはstd::deque。
  */
-template<typename _Tp, typename _Sequence = std::deque<_Tp> >
+template<typename T, typename Sequence = std::deque<T> >
 class SafeQueue {
 public:
-	typedef std::queue<_Tp, _Sequence>		que_type;
-	typedef typename que_type::value_type	value_type;
-	typedef typename que_type::size_type	size_type;
+	using que_type		= std::queue<T, Sequence>;
+	using value_type	= typename que_type::value_type;
+	using size_type		= typename que_type::size_type;
+	using cv_type		= std::condition_variable;
+	using notifier_type	= std::function<void()>;
 
 private:
-	que_type que;					// 内部キュー
-	mutable std::mutex mtx;			// 排他制御用ミューテックス
-	std::condition_variable cv;		// 条件変数
+	que_type que;			// 内部キュー
+	mutable std::mutex mtx;	// 排他制御用ミューテックス
+	cv_type cv;				// 条件変数
+	notifier_type notifier; // 通知用コールバック
 
 public:
 	// デフォルトコンストラクタ
@@ -45,6 +48,17 @@ public:
 	// コピー不可にする（誤用防止）
 	SafeQueue(const SafeQueue&) = delete;
 	SafeQueue& operator=(const SafeQueue&) = delete;
+
+	// --- 基本動作の変更 ---
+	/**
+	 * @brief 要素が追加された際に呼び出されるコールバック関数を設定します。
+	 * @param[in] func 要素追加時に呼び出される関数オブジェクト。
+	 * @details 何も設定しない場合は通知は行われません。
+	 */
+	void set_notifier(const notifier_type& func) {
+		std::lock_guard<std::mutex> lock(mtx);
+		notifier = func;
+	}
 
 	// --- 容量 ---
 	/**
@@ -209,6 +223,15 @@ public:
 		}
 	}
 
+	/**
+	 * @brief キューをクリアする。
+	 * @details キュー内の全ての要素を破棄します。
+	 */
+	void clear() {
+		std::lock_guard<std::mutex> lock(mtx);
+		que = {};
+	}
+
 	// --- 追加 (Producers) ---
 	/**
 	 * @brief キューに要素をコピーして追加（プッシュ）し、待機中のスレッドに通知する。
@@ -220,6 +243,9 @@ public:
 			que.push(value);
 		}
 		cv.notify_one();  // 待機中のスレッドに通知
+		if (notifier) {
+			notifier();
+		}
 	}
 
 	/**
@@ -233,6 +259,9 @@ public:
 			que.push(std::move(value));
 		}
 		cv.notify_one();
+		if (notifier) {
+			notifier();
+		}
 	}
 
 	/**
@@ -247,6 +276,9 @@ public:
 			que.emplace(std::forward<Args>(args)...);
 		}
 		cv.notify_one();
+		if (notifier) {
+			notifier();
+		}
 	}
 
 	/**
@@ -274,6 +306,9 @@ public:
 		}
 		// 一括追加されたので、待機中の全てのスレッドを起こすのが一般的
 		cv.notify_all();
+		if (notifier) {
+			notifier();
+		}
 	}
 
 	/**

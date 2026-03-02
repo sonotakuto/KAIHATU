@@ -6,12 +6,16 @@
 #include <any>
 #include <cstdint>
 #include <SimpleGtk>
-#include "./opt_extension.hpp"
-#include "./safe_queue.hpp"
+#include "stdex/opt_extension.hpp"
+#include "utils/safe_queue.hpp"
+
+#if !defined(PRODUCTION) && !defined(STUB_PLC)
+#define STUB_PLC	// 開発環境の場合はデフォルトでPLCスタブを有効化
+#endif
 
 // PLCを使わずにテストしたいときに定義する。
 #ifndef STUB_PLC
-#define STUB_PLC	// TODO: リリース時はコメントアウト
+//#define STUB_PLC	// TODO: リリース時はコメントアウト
 #endif
 
 /**
@@ -21,6 +25,17 @@
 namespace plc {
 
 // --- 型定義 ---
+
+/**
+ * @struct Task
+ * @brief 書き込み処理と、その後の完了待ち条件を定義する構造体
+ */
+struct Task {
+	std::function<bool()> action;	// 実行する書き込み処理（成功したら true を返す関数オブジェクト）
+	std::optional<std::uint16_t> wait_completion_addr{};	// 書き込み後に待機する完了信号のMアドレス (std::nulloptの場合は待機なし)
+	bool wait_target_state = true;	// 待機する状態 (true=ONになるのを待つ, false=OFFになるのを待つ)
+	bool notify_completion = false;	// 完了時に通知を送るか (デフォルトfalse)
+};
 
 /**
  * @struct WatchFlags
@@ -72,7 +87,8 @@ enum class NotificationType {
 	NONE,
 	CONNECTION_LOST,		// PLCとの接続が切れた
 	CONNECTION_ESTABLISHED,	// PLCとの接続が確立した
-	MONITOR					// 監視項目で通知が発生した
+	MONITOR,				// 監視項目で通知が発生した
+	TASK_CLEARED			// タスクキューがクリアされた
 };
 
 struct MonitorResult {
@@ -91,20 +107,22 @@ struct Notification {
 
 // --- 定数定義 ---
 
-constexpr const char*	HOST	= "10.19.106.181";	// PLCのホスト名
-constexpr int			PORT	= 10000;			// PLCのポート番号
+inline constexpr const char*	HOST	= "10.19.106.181";	// PLCのホスト名
+inline constexpr int			PORT	= 10000;			// PLCのポート番号
 
-constexpr std::chrono::milliseconds	POLLING_INTERVAL_MS(100);	// PLCのポーリング間隔 (ミリ秒)
+inline constexpr std::chrono::milliseconds	POLLING_INTERVAL_MS(100);	// PLCのポーリング間隔 (ミリ秒)
 
 // Mデバイスのアドレス定義
-constexpr std::uint16_t M_DEVICE_RETRIEVE_COMPLETED	= 80;	// 搬出完了信号
-constexpr std::uint16_t M_DEVICE_STORE_COMPLETED	= 81;	// 搬入完了信号
-constexpr std::uint16_t M_DEVICE_SESSION_START		= 82;	// GUIセッション開始信号
-constexpr std::uint16_t M_DEVICE_SESSION_END		= 83;	// GUIセッション終了信号
-constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始トリガ
-constexpr std::uint16_t M_DEVICE_STORE_START		= 92;	// 搬入開始トリガ
-constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
-constexpr std::uint16_t M_DEVICE_READY_TO_STORE		= 94;	// 搬入準備完了信号
+inline constexpr std::uint16_t M_DEVICE_RETRIEVE_COMPLETED	= 80;	// 搬出完了信号
+inline constexpr std::uint16_t M_DEVICE_STORE_COMPLETED		= 81;	// 搬入完了信号
+inline constexpr std::uint16_t M_DEVICE_SESSION_START		= 82;	// GUIセッション開始信号
+inline constexpr std::uint16_t M_DEVICE_SESSION_END			= 83;	// GUIセッション終了信号
+inline constexpr std::uint16_t M_DEVICE_RETRIEVE_START		= 91;	// 搬出開始トリガ
+inline constexpr std::uint16_t M_DEVICE_STORE_START			= 92;	// 搬入開始トリガ
+inline constexpr std::uint16_t M_DEVICE_MAINTENANCE_MODE	= 93;	// メンテナンスモード信号
+inline constexpr std::uint16_t M_DEVICE_READY_TO_STORE		= 94;	// 搬入準備完了信号
+inline constexpr std::uint16_t M_DEVICE_ERROR				= 95;	// エラー信号
+inline constexpr std::uint16_t D_DEVICE_CONTAINER_ADDRESS	= 2000;	// コンテナアドレス書き込みレジスタ
 
 // --- PLC通信機能の使用に必要なグローバル変数を定義 ---
 
@@ -120,32 +138,52 @@ inline utils::SafeQueue<WatchCommand> g_command_queue;
 void initialize();
 
 /**
+ * @brief Mデバイスの状態を読み出し、その結果を返します。
+ * @param[in] addr 読み出し対象のMデバイスアドレス。
+ * @param[out] is_on 読み出されたMデバイスの状態を格納する参照。
+ * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
+ */
+bool read_M_status(std::uint16_t addr, bool& is_on);
+
+/**
+ * @brief Dレジスタ（ワード）の値を読み出します。
+ * @param[in] addr 読み出し対象のDレジスタアドレス。
+ * @param[out] out_data 読み出された値を格納する参照。
+ * @return 読み出しが成功した場合はtrue、失敗した場合はfalse。
+ */
+bool read_D_word(std::uint16_t addr, std::uint16_t& out_data);
+
+/**
  * @brief PLCにセッションの開始を通知します。
  * @details セッション開始を意味するM82をONにします。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
  */
-bool start_session();
+void start_session();
 
 /**
  * @brief PLCにセッションの終了を通知します。
  * @details セッション終了を意味するM83をONにします。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
  */
-bool end_session();
+void end_session();
 
 /**
  * @brief PLCにコンテナの搬出を要求します。
  * @details 指定されたコンテナ番号に対応するMデバイスと、搬出開始を指示するM91をONにします。
  * @param[in] container_number 搬出するコンテナ番号。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
+ * @param[in] notify_completion 完了時にGUIに通知するか。
  */
-bool retrieve_container(std::uint16_t container_number);
+void retrieve_container(std::uint16_t container_number, bool notify_completion = true);
 
 /**
  * @brief PLCにコンテナの搬入を要求します。
  * @details 搬入開始を指示するM92をONにします。
- * @return 処理が成功した場合はtrue、失敗した場合はfalse。
+ * @param[in] notify_completion 完了時にGUIに通知するか。
  */
-bool store_container();
+void store_container(bool notify_completion = true);
+
+/**
+ * @brief PLC通信タスクキューをクリアします。
+ * @details 保留中の全てのタスクを破棄します。
+ */
+void clear_task_queue();
 
 } // namespace plc

@@ -6,9 +6,10 @@
 
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <SimpleGtk>
 
-#include "./url_transfer.hpp"
+#include "url_transfer/url_transfer.hpp"
 
 namespace tracker {
 
@@ -19,15 +20,14 @@ class RecorderClient;
 
 // 固定長メッセージを生成するヘルパー関数
 template<std::size_t length>
-constexpr std::array<char, length> make_fixed_message(const char* msg) {
+constexpr std::array<char, length> make_fixed_message(std::string_view sv) {
 	std::array<char, length> arr{}; // ゼロ初期化
-	std::string_view sv(msg);
-	// コピーする文字数 = msgの長さ と バッファサイズ-1 (ヌル終端用) の小さい方
+	// コピーする文字数 = svの長さ と バッファサイズ-1 (ヌル終端用) の小さい方
 	size_t len_to_copy = std::min(sv.length(), length - 1);
 
 	// 文字列をコピー
 	for (size_t i = 0; i < len_to_copy; i++) {
-		arr[i] = msg[i];
+		arr[i] = sv[i];
 	}
 
 	// 残りをスペースでパディング (ヌル終端の1つ手前まで)
@@ -38,15 +38,23 @@ constexpr std::array<char, length> make_fixed_message(const char* msg) {
 
 	return arr;
 }
+
 // --- 共通定数 ---
-//constexpr int COMMON_TIMEOUT_SECONDS = 5;
-constexpr int COMMON_TIMEOUT_SECONDS = 1;	// TODO: テスト用
+#ifdef PRODUCTION
+inline constexpr int COMMON_TIMEOUT_SECONDS = 5;
+#else
+inline constexpr int COMMON_TIMEOUT_SECONDS = 1;
+#endif
 
 // --- インサート個数取得クライアント 定数 ---
-//constexpr const char*	COUNTER_HOST			= "10.19.133.3";
-constexpr const char*	COUNTER_HOST			= "localhost";	// dummy
-constexpr int			COUNTER_PORT			= 12345;
-constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
+#ifdef PRODUCTION
+inline constexpr const char*	COUNTER_HOST			= "localhost";
+//inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// dummy
+#else
+inline constexpr const char*	COUNTER_HOST			= "10.19.133.117";	// 開発環境なら、デフォルトでダミーサーバに接続
+#endif
+inline constexpr int			COUNTER_PORT			= 12345;
+inline constexpr int			COUNTER_TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
 
 inline std::unique_ptr<tracker::ToolTrackerClient> g_tool_tracker;	// 工具追跡クライアントのグローバルインスタンス
 inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画クライアントのグローバルインスタンス
@@ -58,30 +66,36 @@ inline std::unique_ptr<tracker::RecorderClient> g_recorder_client;	// 録画ク�
 class ToolTrackerClient {
 public:
 	// --- 定数 ---
+#ifdef PRODUCTION
 	//static constexpr const char*	HOST			= "10.19.133.122";	// D201
-	//static constexpr const char*	HOST			= "10.19.106.160";	// C103
-	static constexpr const char*	HOST			= "localhost";	// dummy
+	static constexpr const char*	HOST			= "10.19.106.160";	// C103
+	//static constexpr const char*	HOST			= "10.19.133.117";	// dummy
+#else
+	static constexpr const char*	HOST			= "10.19.133.117";	// 開発環境なら、デフォルトでダミーサーバに接続
+#endif
 	static constexpr int			PORT			= 5000;
 	static constexpr size_t			MSG_LENGTH		= 24;	// メッセージ長
-	static constexpr std::uint32_t	TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;
+
+	static constexpr std::uint32_t			TIMEOUT_SECONDS		= COMMON_TIMEOUT_SECONDS;
+	static constexpr std::chrono::seconds	RETRY_INTERVAL_SEC	= std::chrono::seconds(5);	// 接続のリトライ間隔 (秒)
 
 	// --- プロトコルメッセージ定数 (パディングなし) ---
 	// 送信メッセージ
-	static constexpr const char*	MSG_CONNECT					= "Connect";					// 接続要求
-	static constexpr const char*	MSG_DISCONNECT				= "Disconnect";					// 切断要求
-	static constexpr const char*	MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
+	static constexpr std::string_view	MSG_CONNECT					= "Connect";					// 接続要求
+	static constexpr std::string_view	MSG_DISCONNECT				= "Disconnect";					// 切断要求
+	static constexpr std::string_view	MSG_QR_SCAN					= "QR_scan";					// QRコードスキャン通知
 	// 受信メッセージ
-	static constexpr const char*	MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
-	static constexpr const char*	MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
-	static constexpr const char*	MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
-	static constexpr const char*	MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
-	static constexpr const char*	MSG_SCANNED_IN_CONTAINER	= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
-	static constexpr const char*	MSG_SCANNED_OUT_CONTAINER	= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
-	static constexpr const char*	MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
-	static constexpr const char*	MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
-	static constexpr const char*	MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
-	static constexpr const char*	MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
-	static constexpr const char*	MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
+	static constexpr std::string_view	MSG_CONNECT_ACK				= "Connect_ACK";				// 接続完了応答
+	static constexpr std::string_view	MSG_DISCONNECT_ACK			= "Disconnect_ACK";				// 切断完了応答
+	static constexpr std::string_view	MSG_SCAN_S					= "Scan_S";						// スキャン成功通知
+	static constexpr std::string_view	MSG_SCAN_F					= "Scan_F";						// スキャン失敗通知
+	static constexpr std::string_view	MSG_SCANNED_IN_CONTAINER	= "Scanned_in_container";		// スキャン済工具がコンテナ内に入った通知
+	static constexpr std::string_view	MSG_SCANNED_OUT_CONTAINER	= "Scanned_out_container";		// スキャン済工具がコンテナ外に出た通知
+	static constexpr std::string_view	MSG_OTHER_IN_CONTAINER		= "Other_in_container";			// その他工具がコンテナ内に入った通知
+	static constexpr std::string_view	MSG_OTHER_OUT_CONTAINER		= "Other_out_container";		// その他工具がコンテナ外に出た通知
+	static constexpr std::string_view	MSG_UNSCANNED_IN_CONTAINER	= "Unscanned_in_container";		// 未スキャン工具がコンテナ内に入った通知
+	static constexpr std::string_view	MSG_UNSCANNED_OUT_CONTAINER	= "Unscanned_out_container";	// 未スキャン工具がコンテナ外に出た通知
+	static constexpr std::string_view	MSG_UNSCANNED_OUT_FRAME		= "Unscanned_out_frame";		// 未スキャン工具がフレーム外に出た通知
 
 	// --- プロトコルメッセージ定数 (パディングあり) ---
 	// 送信メッセージ
@@ -146,6 +160,34 @@ public:
 	ToolTrackerClient& operator=(ToolTrackerClient&&) = delete;
 
 	/**
+	 * @brief サーバーに接続し、リスナースレッドを起動します。
+	 * @return 成功した場合は true。
+	 */
+	bool start();
+
+	/**
+	 * @brief リスナースレッドを終了し、サーバーから切断します。
+	 */
+	void stop();
+
+	/**
+	 * @brief 接続状態を確認します。
+	 * @details 単純な関数は、インライン展開した方が効率的。
+	 * @return 接続中の場合は true。
+	 */
+	bool is_connected() {
+		std::lock_guard<std::mutex> lock(socket_mutex);
+		return is_connected_internal();
+	}
+
+	/**
+	 * @brief QRコードスキャンが行われたことをサーバーに通知します。
+	 * @return 送信に成功した場合は true。
+	 */
+	bool notify_qr_scan(); // qr_data 引数を削除
+
+private:
+	/**
 	 * @brief サーバーへの接続を試みます。
 	 * @return 接続に成功した場合は true。
 	 */
@@ -158,23 +200,20 @@ public:
 
 	/**
 	 * @brief 接続状態を確認します。
+	 * @details 単純な関数は、ヘッダに書いてインライン展開した方が効率的。
 	 * @return 接続中の場合は true。
 	 */
-	bool is_connected();
+	bool is_connected_internal() {
+		return socket && socket->is_connected();
+	}
 
-	/**
-	 * @brief QRコードスキャンが行われたことをサーバーに通知します。
-	 * @return 送信に成功した場合は true。
-	 */
-	bool notify_qr_scan(); // qr_data 引数を削除
-
-private:
 	/**
 	 * @brief サーバーからのメッセージを受信し続けるリスナースレッドの本体。
 	 */
 	void listener_thread_func();
 
-	sg::Socket socket;
+	std::unique_ptr<sg::Socket> socket;
+	std::mutex socket_mutex;
 	std::thread listener_thread;
 	std::atomic<bool> keep_listening;
 	std::function<void(const tracker::ToolTrackerClient::Notification&)> notification_callback;
@@ -187,7 +226,12 @@ private:
 class RecorderClient {
 public:
 	// --- 定数 ---
-	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";
+#ifdef PRODUCTION
+	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
+	//static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
+#else
+	static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// 開発環境なら、デフォルトでダミーサーバに接続
+#endif
 	static constexpr const char*	CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
 	static constexpr const char*	USERNAME		= "yourUsername";
 	static constexpr const char*	PASSWORD		= "yourPassword";
@@ -197,7 +241,7 @@ public:
 	 * @brief コンストラクタ。
 	 * @details 定義された定数を使用して初期化します。
 	 */
-	RecorderClient(); // 引数を削除
+	RecorderClient();
 
 	// コピー・ムーブを完全に禁止 (ミューテックスが存在するため)
 	RecorderClient(const RecorderClient&) = delete;
@@ -232,6 +276,12 @@ public:
 	 * @return 録画中の場合はファイル名、録画中でない場合は std::nullopt。
 	 */
 	std::optional<std::string> get_current_filename() const;
+
+	/**
+	 * @brief 録画中かどうかを取得します。(スレッドセーフ)
+	 * @return 録画中の場合は true。
+	 */
+	bool is_recording() const;
 
 private:
 	std::string base_url;

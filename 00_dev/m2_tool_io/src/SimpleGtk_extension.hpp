@@ -4,34 +4,38 @@
  * @details ToggleButton, Stack, Boxの3クラスを提供します。
  */
 #pragma once
+#include <algorithm>
 #include <optional>
+#include <glib-2.0/glib-unix.h>
 #include <SimpleGtk>
-#include "./utility.hpp"
+#include "utils/utility.hpp"
+#include "layout/layout.hpp"
 
 /**
- * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
- * @param[in] signal_name GTKシグナル名 (文字列)。
- * @param[in] c_signal_name C++の関数名として使用する名前。
- * @param[in] return_type ハンドラの戻り値の型 (例: gboolean)。
- * @param[in] para_static 静的コールバック関数の引数リスト。
- * @param[in] function std::function の型。
- * @param[in] ... std::function に渡す引数。
+ * @brief メソッドを定義するマクロ（メソッド名を任意に指定可能版）。
+ * @param[in] class_name GTKクラス名。
+ * @param[in] method_name GTKメソッド名。
+ * @param[in] c_method_name C++の関数名として使用する名前。
+ * @param[in] return_type メソッドの戻り値の型。
  */
-#define DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, function, ...) \
-public: \
-void on_##c_signal_name(function handler) { \
-	on_##c_signal_name##_handler = handler; \
-	if (on_##c_signal_name##_handler != nullptr) \
-		set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
-} \
-private: \
-function on_##c_signal_name##_handler = nullptr; \
-static return_type on_##c_signal_name##_static para_static { \
-	if (thiz->on_##c_signal_name##_handler != nullptr) { \
-		return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
-	} \
-	return FALSE; \
-}
+#define DEFINE_METHOD_WITH_NAME(class_name, method_name, c_method_name, return_type) \
+	return_type c_method_name() { \
+		return gtk_##class_name##_##method_name(*this); \
+	}
+
+/**
+ * @brief メソッドを定義するマクロ（メソッド名を任意に指定可能版、引数付き）。
+ * @param[in] class_name GTKクラス名。
+ * @param[in] method_name GTKメソッド名。
+ * @param[in] c_method_name C++の関数名として使用する名前。
+ * @param[in] return_type メソッドの戻り値の型。
+ * @param[in] arg_types メソッドの引数リスト。
+ * @param[in] ... メソッドの引数。
+ */
+#define DEFINE_METHOD_WITH_NAME_AND_ARGS(class_name, method_name, c_method_name, return_type, arg_types, ...) \
+	return_type c_method_name arg_types { \
+		return gtk_##class_name##_##method_name(*this, ##__VA_ARGS__); \
+	}
 
 /**
  * @brief GTKプロパティ名にハイフンが含まれる場合に対応した、プロパティのゲッターとセッターを定義するマクロ。
@@ -92,7 +96,6 @@ static return_type on_##c_signal_name##_static para_static { \
 		g_object_set(G_OBJECT(this->object), #property_name, (gboolean)value, NULL); \
 	}
 
-// 名前指定版（can-focusなどハイフン付き用）
 /**
  * @brief GTKプロパティ名にハイフンが含まれる場合に対応した、bool型プロパティのゲッターとセッターを定義するマクロ。
  * @details
@@ -124,12 +127,158 @@ static return_type on_##c_signal_name##_static para_static { \
 		g_object_set(G_OBJECT(this->object), gtk_property_name, (gboolean)value, NULL); \
 	}
 
-/**
- * @namespace sgex
- * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
- */
-namespace sgex {
+#ifdef SIMPLEGTK_GE_1_0_6
 
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数なし）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] instance_type シグナルハンドラの所属クラス名。
+ * @param[in] ... 静的コールバック関数の引数リスト。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER(signal_name, c_signal_name, instance_type, ...) \
+public: \
+	void on_##c_signal_name(std::function<void()> handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), nullptr); \
+	} \
+private: \
+	std::function<void()> on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static(__VA_ARGS__, gpointer data) { \
+		instance_type* thiz = static_cast<instance_type*>( \
+			g_object_get_qdata(G_OBJECT(self), Object::cpp_object_quark()) \
+		); \
+		if (thiz && thiz->on_##c_signal_name##_handler) \
+			thiz->on_##c_signal_name##_handler(); \
+	}
+
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数あり）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] CppClass シグナルハンドラの所属クラス名。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS(signal_name, c_signal_name, para_static, CppClass, function, ...) \
+public: \
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this->object); \
+	} \
+private: \
+	function on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static para_static { \
+		gpointer cpp_obj = g_object_get_qdata(G_OBJECT(self), Object::cpp_object_quark()); \
+		CppClass* instance = static_cast<CppClass*>(cpp_obj); \
+		if (instance && instance->on_##c_signal_name##_handler) \
+			instance->on_##c_signal_name##_handler(__VA_ARGS__); \
+	}
+
+/**
+ * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] return_type ハンドラの戻り値の型 (例: gboolean)。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, CppClass, function, ...) \
+public: \
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this->object); \
+	} \
+private: \
+	function on_##c_signal_name##_handler = nullptr; \
+	static return_type on_##c_signal_name##_static para_static { \
+		gpointer cpp_obj = g_object_get_qdata(G_OBJECT(self), Object::cpp_object_quark()); \
+		CppClass* instance = static_cast<CppClass*>(cpp_obj); \
+		if (instance && instance->on_##c_signal_name##_handler) \
+			return instance->on_##c_signal_name##_handler(__VA_ARGS__); \
+		return FALSE; \
+	}
+
+#else
+
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数なし）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] instance_type シグナルハンドラの所属クラス名。
+ * @param[in] ... 静的コールバック関数の引数リスト。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER(signal_name, c_signal_name, instance_type, ...) \
+	public:\
+	void on_##c_signal_name(std::function<void()> handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+	private:\
+	std::function<void()> on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static(__VA_ARGS__, instance_type* thiz) { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) \
+			thiz->on_##c_signal_name##_handler(); \
+	}
+
+/**
+ * @brief シグナルのハンドラを定義するマクロ（戻り値の型がvoid型で引数あり）。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS(signal_name, c_signal_name, para_static, CppClass, function, ...) \
+public:\
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+private:\
+	function on_##c_signal_name##_handler = nullptr; \
+	static void on_##c_signal_name##_static para_static { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) \
+			thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+	}
+
+/**
+ * @brief 戻り値を持つシグナルのハンドラを定義するマクロ。
+ * @param[in] signal_name GTKシグナル名 (文字列)。
+ * @param[in] c_signal_name C++の関数名として使用する名前。
+ * @param[in] return_type ハンドラの戻り値の型 (例: gboolean)。
+ * @param[in] para_static 静的コールバック関数の引数リスト。
+ * @param[in] function std::function の型。
+ * @param[in] ... std::function に渡す引数。
+ */
+#define SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN(signal_name, c_signal_name, return_type, para_static, CppClass, function, ...) \
+public: \
+	void on_##c_signal_name(function handler) { \
+		on_##c_signal_name##_handler = handler; \
+		if (on_##c_signal_name##_handler != nullptr) \
+			this->set_handler(signal_name, G_CALLBACK(on_##c_signal_name##_static), this); \
+	} \
+private: \
+	function on_##c_signal_name##_handler = nullptr; \
+	static return_type on_##c_signal_name##_static para_static { \
+		if (thiz->on_##c_signal_name##_handler != nullptr) { \
+			return thiz->on_##c_signal_name##_handler(__VA_ARGS__); \
+		} \
+		return FALSE; \
+	}
+
+#endif
+
+/**
+ * @brief CSSクラス操作用のメソッドを定義するマクロ。
+ */
 #define DEFINE_CSS_CLASS_ACCESSORS() \
 	void add_css_class(const gchar* class_name) { \
 		gtk_style_context_add_class(*this, class_name); \
@@ -151,29 +300,642 @@ namespace sgex {
 	}
 
 /**
+ * @namespace sgex
+ * @brief SimpleGtk を拡張する、gtkのラッパークラスを格納する名前空間。
+ */
+namespace sgex {
+
+/**
+ * @brief layout::Gravity と GdkGravity 間の変換を行います。
+ * @param[in] gravity layout::Gravity 列挙型の値。
+ * @return 対応する GdkGravity 列挙型の値。
+ */
+constexpr GdkGravity to_gdk_gravity(layout::Gravity gravity) {
+	switch (gravity) {
+		case layout::Gravity::NorthWest:
+			return GdkGravity::GDK_GRAVITY_NORTH_WEST;
+		case layout::Gravity::North:
+			return GdkGravity::GDK_GRAVITY_NORTH;
+		case layout::Gravity::NorthEast:
+			return GdkGravity::GDK_GRAVITY_NORTH_EAST;
+		case layout::Gravity::West:
+			return GdkGravity::GDK_GRAVITY_WEST;
+		case layout::Gravity::Center:
+			return GdkGravity::GDK_GRAVITY_CENTER;
+		case layout::Gravity::East:
+			return GdkGravity::GDK_GRAVITY_EAST;
+		case layout::Gravity::SouthWest:
+			return GdkGravity::GDK_GRAVITY_SOUTH_WEST;
+		case layout::Gravity::South:
+			return GdkGravity::GDK_GRAVITY_SOUTH;
+		case layout::Gravity::SouthEast:
+			return GdkGravity::GDK_GRAVITY_SOUTH_EAST;
+		default:
+			return GdkGravity::GDK_GRAVITY_NORTH_WEST;
+	}
+}
+
+/**
+ * @brief GdkGravity と layout::Gravity 間の変換を行います。
+ * @param[in] gravity GdkGravity 列挙型の値。
+ * @return 対応する layout::Gravity 列挙型の値。
+ */
+constexpr layout::Gravity to_layout_gravity(GdkGravity gravity) {
+	switch (gravity) {
+		case GdkGravity::GDK_GRAVITY_NORTH_WEST:
+			return layout::Gravity::NorthWest;
+		case GdkGravity::GDK_GRAVITY_NORTH:
+			return layout::Gravity::North;
+		case GdkGravity::GDK_GRAVITY_NORTH_EAST:
+			return layout::Gravity::NorthEast;
+		case GdkGravity::GDK_GRAVITY_WEST:
+			return layout::Gravity::West;
+		case GdkGravity::GDK_GRAVITY_CENTER:
+			return layout::Gravity::Center;
+		case GdkGravity::GDK_GRAVITY_EAST:
+			return layout::Gravity::East;
+		case GdkGravity::GDK_GRAVITY_SOUTH_WEST:
+			return layout::Gravity::SouthWest;
+		case GdkGravity::GDK_GRAVITY_SOUTH:
+			return layout::Gravity::South;
+		case GdkGravity::GDK_GRAVITY_SOUTH_EAST:
+			return layout::Gravity::SouthEast;
+		default:
+			return layout::Gravity::NorthWest;
+	}
+}
+
+struct Position : public layout::Position {
+	using layout::Position::Position;	// 基底クラスのコンストラクタを継承
+
+	/**
+	 * @brief layout::Position から sgex::Position への変換コンストラクタ。
+	 * @param[in] pos layout::Position 構造体。
+	 */
+	constexpr Position(const layout::Position& pos) :
+		layout::Position(pos)
+	{}
+
+	/**
+	 * @brief GdkPoint から Position への変換コンストラクタ。
+	 * @param[in] point GdkPoint 構造体。
+	 */
+	constexpr Position(const GdkPoint& point) noexcept :
+		layout::Position(point.x, point.y)
+	{}
+
+	/**
+	 * @brief GdkPoint への変換演算子。
+	 * @return GdkPoint 構造体。
+	 */
+	constexpr operator GdkPoint() const noexcept {
+		return GdkPoint{x, y};
+	}
+};
+
+/**
+ * @class Size
+ * @brief layout::Size を拡張し、GtkRequisition との相互変換を可能にしたクラス。
+ */
+struct Size : public layout::Size {
+	using layout::Size::Size;	// 基底クラスのコンストラクタを継承
+
+	/**
+	 * @brief layout::Size から sgex::Size への変換コンストラクタ。
+	 * @param[in] size layout::Size 構造体。
+	 */
+	constexpr Size(const layout::Size& size) noexcept
+		: layout::Size(size)
+	{}
+
+	/**
+	 * @brief GtkRequisition から Size への変換コンストラクタ。
+	 * @param[in] req GtkRequisition 構造体。
+	 */
+	constexpr Size(const GtkRequisition& req) noexcept
+		: layout::Size(req.width, req.height)
+	{}
+
+	/**
+	 * @brief GtkRequisition への変換演算子。
+	 * @return GtkRequisition 構造体。
+	 */
+	constexpr operator GtkRequisition() const {
+		return GtkRequisition{width, height};
+	}
+};
+
+/**
+ * @class Rectangle
+ * @brief layout::BasicRectangle を拡張し、GdkRectangle との相互変換を可能にしたクラス。
+ */
+struct Rectangle : public layout::BasicRectangle<sgex::Position, sgex::Size> {
+	using layout::BasicRectangle<sgex::Position, sgex::Size>::BasicRectangle;	// 基底クラスのコンストラクタを継承
+
+	/**
+	 * @brief GdkRectangle から Rectangle への変換コンストラクタ。
+	 * @param[in] req GdkRectangle 構造体。
+	 */
+	constexpr Rectangle(const GdkRectangle& rec) noexcept :
+		layout::BasicRectangle<sgex::Position, sgex::Size>(rec.x, rec.y, rec.width, rec.height)
+	{}
+
+	/**
+	 * @brief GdkRectangle への変換演算子。
+	 * @return GdkRectangle 構造体。
+	 */
+	constexpr operator GdkRectangle() const {
+		return GdkRectangle{ pos.x, pos.y, size.width, size.height };
+	}
+};
+
+/**
+ * @struct Size
+ * @brief 2次元サイズを表す構造体。
+ */
+struct PreferredSize {
+	Size minimum_size{};
+	Size natural_size{};
+
+	constexpr PreferredSize() = default;
+	constexpr PreferredSize(Size minimum_size_arg, Size natural_size_arg) : minimum_size(minimum_size_arg), natural_size(natural_size_arg) {}
+
+	/**
+	 * @brief std::pair から Size への変換コンストラクタ。
+	 * @param[in] p std::pair<Size, Size> 型のサイズペア。
+	 */
+	explicit constexpr PreferredSize(const std::pair<Size, Size>& p) : minimum_size(p.first), natural_size(p.second) {}
+
+	/**
+	 * @brief PreferredSize から std::pair への変換演算子。
+	 * @return std::pair<Size, Size> 型のサイズペア。
+	 */
+	explicit constexpr operator std::pair<Size, Size>() const {
+		return std::make_pair(minimum_size, natural_size);
+	}
+};
+
+// 以下は未使用の関数群。必要に応じて有効化すること。
+#if 0
+/**
+ * @brief 指定したGdkScreenの幅を取得します。
+ * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
+ * nullptrの場合、デフォルトスクリーンが使用されます。
+ * @return スクリーンの幅 (ピクセル単位)。
+ */
+inline gint get_screen_width(GdkScreen* screen = nullptr) {
+	if (screen == nullptr) {
+		screen = gdk_screen_get_default();
+	}
+	return gdk_screen_get_width(screen);
+}
+
+/**
+ * @brief 指定したGdkScreenの高さを取得します。
+ * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
+ * nullptrの場合、デフォルトスクリーンが使用されます。
+ * @return スクリーンの高さ (ピクセル単位)。
+ */
+inline gint get_screen_height(GdkScreen* screen = nullptr) {
+	if (screen == nullptr) {
+		screen = gdk_screen_get_default();
+	}
+	return gdk_screen_get_height(screen);
+}
+
+/**
+ * @brief 指定したGdkScreenのサイズを取得します。
+ * @param[in] screen (オプション・デフォルト nullptr) 対象のGdkScreenポインタ。
+ * nullptrの場合、デフォルトスクリーンが使用されます。
+ * @return スクリーンのサイズを表す Size 構造体。
+ */
+inline Size get_screen_size(GdkScreen* screen = nullptr) {
+	if (screen == nullptr) {
+		screen = gdk_screen_get_default();
+	}
+	return Size{
+		gdk_screen_get_width(screen),
+		gdk_screen_get_height(screen)
+	};
+}
+#endif
+
+/**
+ * @brief 指定したGdkMonitorの矩形領域を取得します。
+ * @param[in] monitor (オプション・デフォルト nullptr) 対象のGdkMonitorポインタ。
+ * nullptrの場合、デフォルト(プライマリ)モニターが使用されます。
+ * @return モニターの矩形領域を表す Rectangle 構造体の optional。
+ * 取得に失敗した場合、std::nullopt を返します。
+ */
+inline std::optional<Rectangle> get_monitor_rectangle(GdkMonitor* monitor = nullptr) {
+	// 1. モニターが指定されていない場合、デフォルトを取得
+	if (monitor == nullptr) {
+		GdkDisplay* display = gdk_display_get_default();
+		if (display != nullptr) {
+			monitor = gdk_display_get_primary_monitor(display);
+		}
+	}
+
+	// 2. それでもモニターが取得できない場合のガード
+	if (monitor == nullptr) {
+		return std::nullopt; // エラー値として0などを返す
+	}
+
+	// 3. ピクセル単位の幅を取得 (単位の不一致を修正)
+	GdkRectangle geometry;
+	gdk_monitor_get_geometry(monitor, &geometry);
+
+	return std::make_optional(Rectangle(geometry));
+}
+
+inline std::optional<Rectangle> get_monitor_rectangle_at_window(GtkWindow* window) {
+	// 1. GdkWindow（ウィンドウシステム上のウィンドウ）を取得
+	// 注意: ウィンドウが表示(realize)される前だとNULLになる可能性があります
+	GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
+	if (gdk_window == nullptr) {
+		return std::nullopt;
+	}
+
+	// 2. ディスプレイ（接続）を取得
+	GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(window));
+	if (display == nullptr) {
+		return std::nullopt;
+	}
+
+	// 3. ウィンドウが存在するモニターを取得
+	// ウィンドウが複数のモニターにまたがっている場合、最も面積が大きいモニターが返されます
+	GdkMonitor *monitor = gdk_display_get_monitor_at_window(display, gdk_window);
+	if (monitor == nullptr) {
+		return std::nullopt;
+	}
+
+	return get_monitor_rectangle(monitor);
+}
+
+/**
+ * @class UnixSignal
+ * @brief Unixシグナル (SIGINT, SIGTERM等) を捕捉し、std::functionを実行するRAIIラッパークラス。
+ * @details オブジェクトが生存している間のみシグナルを監視します。破棄されると自動的に監視を解除します。
+ */
+class UnixSignal {
+private:
+	guint m_source_id = 0;	// GLibのソースID
+	std::function<bool()> m_handler;		// シグナルハンドラ
+
+	// GLib用の静的トランポリン関数
+	static gboolean on_signal_static(gpointer user_data) {
+		auto* self = static_cast<UnixSignal*>(user_data);
+		if (self && self->m_handler) {
+			// C++のboolをgbooleanに変換
+			return self->m_handler() ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
+		}
+		return G_SOURCE_REMOVE;
+	}
+
+public:
+	/**
+	 * @brief コンストラクタ。シグナル監視を開始します。
+	 * @param[in] signum 監視するシグナル番号 (例: SIGINT, SIGTERM)
+	 * @param[in] handler シグナル発生時に実行する関数。
+	 * trueを返すと監視継続(G_SOURCE_CONTINUE), falseを返すと解除(G_SOURCE_REMOVE)。
+	 */
+	UnixSignal(int signum, std::function<bool()> handler) : m_handler(handler) {
+		if (m_handler) {
+			// G_PRIORITY_DEFAULT でシグナルを監視
+			m_source_id = g_unix_signal_add(signum, on_signal_static, this);
+		}
+	}
+
+	// デストラクタ: 自動的に監視を解除
+	~UnixSignal() {
+		release();
+	}
+
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	UnixSignal(const UnixSignal&) = delete;
+	UnixSignal& operator=(const UnixSignal&) = delete;
+	UnixSignal(UnixSignal&&) = delete;
+	UnixSignal& operator=(UnixSignal&&) = delete;
+
+	/**
+	 * @brief シグナル監視を解除します。
+	 */
+	void release() {
+		if (m_source_id > 0) {
+			g_source_remove(m_source_id);
+			m_source_id = 0;
+		}
+	}
+};
+
+/**
+ * @class WidgetExtension
+ * @brief GtkWidget に帰属する機能（表示、感度、シグナル等）を提供するMixinクラス
+ * @tparam Base 継承元のクラス (例: sg::Container, sg::Button, sg::Window)
+ */
+template <typename Base>
+class WidgetExtension : public Base {
+public:
+	// コンストラクタとデストラクタ
+	using Base::Base;	// コンストラクタ継承
+	virtual ~WidgetExtension() = default;
+
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	WidgetExtension(const WidgetExtension&) = delete;
+	WidgetExtension& operator=(const WidgetExtension&) = delete;
+	WidgetExtension(WidgetExtension&&) = delete;
+	WidgetExtension& operator=(WidgetExtension&&) = delete;
+
+	// メソッド
+	DEFINE_METHOD(widget, queue_draw, void)
+	DEFINE_METHOD(widget, queue_resize, void)
+	DEFINE_METHOD_WITH_ARGS(widget, get_preferred_size, void, (GtkRequisition *minimum_size, GtkRequisition *natural_size), minimum_size, natural_size)
+	DEFINE_METHOD(widget, grab_focus, void)
+	DEFINE_METHOD_WITH_ARGS(widget, set_mapped, void, (gboolean mapped), mapped)
+	DEFINE_METHOD(widget, get_mapped, gboolean)
+	DEFINE_CSS_CLASS_ACCESSORS()
+
+	/**
+	 * @brief ウィンドウの推奨サイズを取得します。
+	 * @return ウィンドウの推奨サイズを表す PreferredSize 構造体。
+	 */
+	PreferredSize get_preferred_size() {
+		GtkRequisition minimum_size;
+		GtkRequisition natural_size;
+		get_preferred_size(&minimum_size, &natural_size);
+		return PreferredSize(Size(minimum_size), Size(natural_size));
+	}
+
+	// プロパティ
+	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
+
+	// シグナル
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventButton* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventButton* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-in-event", focus_in_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventFocus* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("focus-out-event", focus_out_event, gboolean, (GtkWidget* self, GdkEventFocus* event, WidgetExtension* thiz), WidgetExtension, std::function<bool(GdkEventFocus* event)>, event)
+	SGEX_DEFINE_SIGNAL_HANDLER("map", map, WidgetExtension, GtkWidget* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("show", show, WidgetExtension, GtkWidget* self)
+};
+
+/**
+ * @class WindowExtension
+ * @brief GtkWindow に帰属する機能（表示、感度、シグナル等）を提供するMixinクラス
+ * @tparam Base 継承元のクラス (例: sg::Window, sg::Dialog)
+ */
+template <typename Base>
+class WindowExtension : public WidgetExtension<Base> {
+public:
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	WindowExtension(bool use_size = false) : WidgetExtension<Base>() {
+		set_use_size(use_size);
+	}
+
+	/**
+	 * @brief コンストラクタ。
+	 * @param[in] glade Gladeオブジェクトの参照。
+	 * @param[in] id ウィンドウのID文字列。
+	 * @param[in] use_size (オプション・デフォルト false) ウィンドウのサイズ追跡を有効にする場合はtrue。
+	 * サイズ追跡が有効な場合、ウィンドウのサイズが変更されるたびに内部的にサイズが更新されます。
+	 */
+	WindowExtension(Glade& glade, const char* id, bool use_size = false) : WidgetExtension<Base>(glade, id) {
+		set_use_size(use_size);
+	}
+
+	// デストラクタ
+	virtual ~WindowExtension() = default;
+
+	// コピーとムーブは禁止。
+	// Gtkシグナルにthisポインタを登録しているため、ムーブも禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	WindowExtension(const WindowExtension&) = delete;
+	WindowExtension& operator=(const WindowExtension&) = delete;
+	WindowExtension(WindowExtension&&) = delete;
+	WindowExtension& operator=(WindowExtension&&) = delete;
+
+	// メソッド
+	DEFINE_METHOD(window, fullscreen, void)
+	DEFINE_METHOD(window, close, void)
+	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (bool setting), setting)
+	using WidgetExtension<Base>::set_default_size;
+	DEFINE_METHOD_WITH_ARGS(window, get_default_size, void, (gint* width, gint* height), width, height)
+	DEFINE_METHOD_WITH_ARGS(window, get_position, void, (gint* root_x, gint* root_y), root_x, root_y)
+
+	/**
+	 * @brief ウィンドウの配置基準を設定します。
+	 * @param[in] gravity layout::Gravity 列挙型の値。
+	 */
+	void set_gravity(layout::Gravity gravity) {
+		if (use_size) {
+			this->gravity = gravity;
+			if (!init_gdk_gravity) {
+				set_gdk_gravity(GdkGravity::GDK_GRAVITY_NORTH_WEST);
+				init_gdk_gravity = true;
+			}
+		} else {
+			set_gdk_gravity(to_gdk_gravity(gravity));
+		}
+	}
+
+	/**
+	 * @brief ウィンドウの配置基準を取得します。
+	 * @return ウィンドウの配置基準を表す layout::Gravity 列挙型の値。
+	 */
+	const layout::Gravity& get_gravity() const {
+		return gravity;
+	}
+
+	/**
+	 * @brief ウィンドウのデフォルトサイズを設定します。
+	 * @param[in] size ウィンドウのデフォルトサイズを表す Size 構造体。
+	 */
+	void set_default_size(Size size) {
+		set_default_size(size.width, size.height);
+	}
+
+	/**
+	 * @brief ウィンドウのデフォルトサイズを取得します。
+	 * @return ウィンドウのデフォルトサイズを表す Size 構造体。
+	 */
+	Size get_default_size() {
+		Size default_size;
+		get_default_size(&default_size.width, &default_size.height);
+		return default_size;
+	}
+
+	/**
+	 * @brief ウィンドウのサイズを取得します。
+	 * @return ウィンドウのサイズを表す Size 構造体と、実体サイズ(true)か推定サイズ(false)かどうかを示すbool値のペア。
+	 */
+	std::pair<Size, bool> get_size() {
+		bool is_estimated_size = !size.has_value();
+		return std::make_pair(((size.has_value()) ? (size.value()) : (get_estimated_size())), is_estimated_size);
+	}
+
+	/**
+	 * @brief ウィンドウを指定した位置に移動します。
+	 * @param[in] pos 移動先の位置を表す Position 構造体。
+	 */
+	void move(Position pos) {
+		if (size.has_value()) {
+			pos = layout::calculate_top_left(pos, get_size().first, gravity);
+		}
+		move_internal(pos.x, pos.y);
+	}
+
+	/**
+	 * @brief ウィンドウを指定した位置に移動します。
+	 * @param[in] pos 移動先の位置を表す Position 構造体。
+	 */
+	void move(gint x, gint y) {
+		move(Position(x, y));
+	}
+
+	/**
+	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
+	 * @param[in] pos 移動量を表す Position 構造体。
+	 */
+	void move_by(const Position& pos) {
+		move_internal(get_position() + pos);
+	}
+
+	/**
+	 * @brief ウィンドウを現在の位置から指定したオフセット分だけ移動します。
+	 * @param[in] x 移動量のX成分。
+	 * @param[in] y 移動量のY成分。
+	 */
+	void move_by(gint x, gint y) {
+		Position current_pos = get_position();
+		move_internal(current_pos.x + x, current_pos.y + y);
+	}
+
+	/**
+	 * @brief ウィンドウの現在の位置を取得します。
+	 * @return ウィンドウの位置を表す Position 構造体。
+	 */
+	Position get_position() {
+		Position pos;
+		get_position(&pos.x, &pos.y);
+		return pos;
+	}
+
+	/**
+	 * @brief ウィンドウの推定サイズを取得します。
+	 * @return ウィンドウの推定サイズを表す Size 構造体。
+	 * ウィンドウのデフォルトサイズと推奨サイズのうち大きい方が返されます。
+	 */
+	Size get_estimated_size() {
+		Size default_size;
+		Size preferred_size;
+		default_size = get_default_size();
+		preferred_size = this->get_preferred_size().natural_size;
+		return Size(std::max(default_size.width, preferred_size.width), std::max(default_size.height, preferred_size.height));
+	}
+
+	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
+
+	// シグナル
+public:
+	/**
+	 * @brief "size-allocate"シグナルのハンドラを設定します。
+	 * @param[in] handler サイズ割り当て時に呼び出されるコールバック関数。
+	 * コールバック関数は GtkAllocation* 型の引数を受け取ります。
+	 */
+	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
+		on_size_allocate_handler = handler;
+		if (on_size_allocate_handler != nullptr) {
+			this->set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+		}
+	}
+
+private:
+	// メンバ変数
+	bool use_size{false};
+	bool init_gdk_gravity{false};
+	std::optional<Size> size{};
+	layout::Gravity gravity{layout::Gravity::NorthWest};
+
+	// メソッド
+	DEFINE_METHOD_WITH_NAME_AND_ARGS(window, get_size, get_size_internal, void, (gint* width, gint* height), width, height)
+	void move_internal(gint x, gint y) { WidgetExtension<Base>::move(x, y); }
+
+	/**
+	 * @brief ウィンドウの現在のサイズを取得します。
+	 * @return ウィンドウのサイズを表す Size 構造体
+	 */
+	Size get_size_internal() {
+		Size crnt_size;
+		get_size_internal(&crnt_size.width, &crnt_size.height);
+		return crnt_size;
+	}
+
+	// プロパティ
+	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("gravity", gdk_gravity, GdkGravity)
+
+	// シグナル
+
+	std::function<void(GtkAllocation*)> on_size_allocate_handler = nullptr;
+
+	/**
+	 * @brief ウィンドウのサイズ追跡を有効または無効にします。
+	 * @param[in] use_size ウィンドウのサイズ追跡を有効にする場合はtrue、無効にする場合はfalse。
+	 */
+	void set_use_size(bool use_size) {
+		this->use_size = use_size;
+		if (use_size) {
+			this->set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+		}
+	}
+
+	/**
+	 * @brief "size-allocate"シグナルの静的コールバック関数。
+	 * @param[in] self ウィジェットポインタ。
+	 * @param[in] allocation 割り当てられたサイズ情報へのポインタ。
+	 * @param[in] thiz Windowクラスのインスタンスへのポインタ。
+	 */
+	static void on_size_allocate_static (GtkWidget* self, GtkAllocation* allocation, WindowExtension* thiz) {
+		if (thiz->use_size) {
+			Size new_size;
+			new_size = thiz->get_size_internal();
+			if (new_size.width > 0 && new_size.height > 0) {
+				thiz->size = new_size;
+			}
+		}
+		if (thiz->on_size_allocate_handler != nullptr) {
+			thiz->on_size_allocate_handler(allocation);
+		}
+	}
+};
+
+/**
  * @class Window
  * @brief sg::Windowを拡張し、機能を追加したクラス。
  */
-class Window : public sg::Window {
+class Window : public WindowExtension<sg::Window> {
 public:
-	using sg::Window::Window; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WindowExtension<sg::Window>::WindowExtension;
+	virtual ~Window() = default;
 
 	// メソッド
-	DEFINE_METHOD(widget, get_mapped, gboolean)
-	DEFINE_METHOD(window, fullscreen, void)
-	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Window, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Window, GtkWidget* self)
 };
 
 /**
@@ -181,29 +943,19 @@ public:
  * @brief sg::Dialogを拡張し、機能を追加したクラス。
  * @details "show"シグナルは、ダイアログが表示された直後に発生します。
  */
-class Dialog : public sg::Dialog {
+class Dialog : public WindowExtension<sg::Dialog> {
 public:
-	// 基底クラスのコンストラクタを継承
-	using sg::Dialog::Dialog;
+	// コンストラクタとデストラクタ
+	using WindowExtension<sg::Dialog>::WindowExtension;
+	virtual ~Dialog() = default;
 
 	// メソッド
-	DEFINE_METHOD(widget, get_mapped, gboolean)
-	DEFINE_METHOD(window, fullscreen, void)
-	DEFINE_METHOD_WITH_ARGS(window, set_keep_above, void, (gboolean setting), setting)
 	DEFINE_METHOD_WITH_ARGS(dialog, response, void, (gint response_id), response_id)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("transient-for", transient_for, GtkWindow*)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(modal)
-	DEFINE_PROPERTY_ACCESSORS_WITH_NAME("type-hint", type_hint, GdkWindowTypeHint)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(deletable)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Dialog, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Dialog, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER_WIDTH_ARGS("response", response, (GtkDialog* self, gint response_id, Dialog* thiz), std::function<void(gint)>, response_id)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_ARGS("response", response, (GtkWidget* self, gint response_id, Dialog* thiz), Dialog, std::function<void(gint)>, response_id)
 };
 
 /**
@@ -211,21 +963,11 @@ public:
  * @brief GtkBoxのラッパークラス。ウィジェットを水平または垂直に配置するためのコンテナです。
  * @details sg::Containerを継承し、ウィジェットのパッキング（追加）機能などを提供します。
  */
-class Box : public sg::Container {
+class Box : public WidgetExtension<sg::Container> {
 public:
-	// コンストラクタ
-	Box(Glade& glade, const char* id) : Container(glade, id) {}
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Container>::WidgetExtension;
 	virtual ~Box() = default;
-
-	// コピーは禁止
-	Box(const Box&) = delete;
-	Box& operator=(const Box&) = delete;
-	// ムーブは許可
-	Box(Box&& other) noexcept : Container(std::move(other)) {}
-	Box& operator=(Box&& other) noexcept {
-		Container::operator=(std::move(other));
-		return *this;
-	}
 
 	// GtkBox*へのキャスト演算子
 	operator GtkBox*() const { return GTK_BOX(this->object); }
@@ -233,16 +975,10 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(box, pack_start, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
 	DEFINE_METHOD_WITH_ARGS(box, pack_end, void, (GtkWidget* child, bool expand, bool fill, guint padding), child, expand, fill, padding)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Box, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Box, GtkWidget* self)
 };
 
 /**
@@ -250,21 +986,11 @@ public:
  * @brief GtkStackのラッパークラス。複数のページを重ねて管理し、一度に1つだけ表示します。
  * @details sg::Containerを継承し、表示するページを名前で切り替える機能などを提供します。
  */
-class Stack : public sg::Container {
+class Stack : public WidgetExtension<sg::Container> {
 public:
-	// コンストラクタ
-	Stack(Glade& glade, const char* id) : Container(glade, id) {}
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Container>::WidgetExtension;
 	virtual ~Stack() = default;
-
-	// コピーは禁止
-	Stack(const Stack&) = delete;
-	Stack& operator=(const Stack&) = delete;
-	// ムーブは許可
-	Stack(Stack&& other) noexcept : Container(std::move(other)) {}
-	Stack& operator=(Stack&& other) noexcept {
-		Container::operator=(std::move(other));
-		return *this;
-	}
 
 	// GtkStack*へのキャスト演算子
 	operator GtkStack*() const { return GTK_STACK(this->object); }
@@ -272,105 +998,81 @@ public:
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(stack, set_visible_child_name, void, (const char* name), name)
 	DEFINE_METHOD(stack, get_visible_child_name, const char*)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Stack, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Stack, GtkWidget* self)
 };
 
 /**
  * @class Button
  * @brief sg::Buttonを拡張し、機能を追加したクラス。
  */
-class Button : public sg::Button {
+class Button : public WidgetExtension<sg::Button> {
 public:
-	using sg::Button::Button; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Button>::WidgetExtension;
+	virtual ~Button() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Button, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Button, GtkWidget* self)
 };
 
 /**
  * @class CheckButton
  * @brief sg::CheckButtonを拡張し、機能を追加したクラス。
  */
-class CheckButton : public sg::CheckButton {
+class CheckButton : public WidgetExtension<sg::CheckButton> {
 public:
-	using sg::CheckButton::CheckButton; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::CheckButton>::WidgetExtension;
+	virtual ~CheckButton() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, CheckButton, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, CheckButton, GtkWidget* self)
 };
 
 /**
  * @class RadioButton
  * @brief sg::RadioButtonを拡張し、機能を追加したクラス。
  */
-class RadioButton : public sg::RadioButton {
+class RadioButton : public WidgetExtension<sg::RadioButton> {
 public:
-	using sg::RadioButton::RadioButton; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::RadioButton>::WidgetExtension;
+	virtual ~RadioButton() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, RadioButton, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, RadioButton, GtkWidget* self)
 };
 
 /**
  * @class Entry
  * @brief sg::Entryを拡張し、機能を追加したクラス。
  */
-class Entry : public sg::Entry {
+class Entry : public WidgetExtension<sg::Entry> {
 public:
-	// 基底クラスのコンストラクタを継承
-	using sg::Entry::Entry;
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Entry>::WidgetExtension;
+	virtual ~Entry() = default;
 
 	// メソッド
-	DEFINE_METHOD(widget, grab_focus, void)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_BOOL_PROPERTY_ACCESSORS(editable)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Entry, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Entry, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("activate", activate, Entry, GtkEntry* self)
 };
 
 /**
@@ -380,100 +1082,80 @@ public:
  */
 class ToggleButton : public sgex::Button {
 public:
-	// コンストラクタ
-	ToggleButton(Glade& glade, const char* id) : Button(glade, id) {}
+	// コンストラクタとデストラクタ
+	using Button::Button;
 	virtual ~ToggleButton() = default;
-
-	// コピーは禁止
-	ToggleButton(const ToggleButton&) = delete;
-	ToggleButton& operator=(const ToggleButton&) = delete;
-	// ムーブは許可
-	ToggleButton(ToggleButton&& other) noexcept : Button(std::move(other)) {}
-	ToggleButton& operator=(ToggleButton&& other) noexcept {
-		Button::operator=(std::move(other));
-		return *this;
-	}
 
 	// GtkToggleButton*へのキャスト演算子
 	operator GtkToggleButton*() const { return GTK_TOGGLE_BUTTON(this->object); }
 
 	// メソッド
-	DEFINE_METHOD_WITH_ARGS(toggle_button, set_active, void, (bool is_active), is_active)
-	DEFINE_METHOD(toggle_button, get_active, bool)
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("toggled", toggled, ToggleButton, GtkToggleButton* self)
 };
 
 /**
  * @class Switch
  * @brief GtkSwitchのラッパークラス。オン/オフを切り替えるスイッチを提供します。
  */
-class Switch : public sg::Widget {
+class Switch : public WidgetExtension<sg::Widget> {
 public:
-	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Widget>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~Switch() = default;
+
 	operator GtkSwitch*() const { return GTK_SWITCH(this->object); }
 
 	// メソッド
-	DEFINE_METHOD(switch, get_active, bool)
-	DEFINE_METHOD_WITH_ARGS(switch, set_active, void, (bool is_active), is_active)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
+	DEFINE_BOOL_PROPERTY_ACCESSORS(active)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Switch, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Switch, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), std::function<bool(bool)>, state)
+	SGEX_DEFINE_SIGNAL_HANDLER_WITH_RETURN("state-set", state_set, gboolean, (GtkSwitch* self, gboolean state, sgex::Switch* thiz), Switch, std::function<bool(bool)>, state)
 };
 
 /**
  * @class ComboBox
  * @brief GtkComboBoxのラッパークラス。ドロップダウンリストを提供します。
  */
-class ComboBox : public sg::Widget {
+class ComboBox : public WidgetExtension<sg::Widget> {
 public:
-	using sg::Widget::Widget;	// 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Widget>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~ComboBox() = default;
+
 	operator GtkComboBox*() const { return GTK_COMBO_BOX(this->object); }
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS(ComboBox, active, gint)
 	DEFINE_PROPERTY_ACCESSORS(ComboBox, model, GtkTreeModel*)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, ComboBox, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, ComboBox, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
+	SGEX_DEFINE_SIGNAL_HANDLER("changed", changed, ComboBox, GtkComboBox* self)
 };
 
 /**
  * @class Label
  * @brief sg::Labelを拡張し、機能を追加したクラス。
  */
-class Label : public sg::Label {
+class Label : public WidgetExtension<sg::Label> {
 public:
-	using sg::Label::Label; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::Label>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~Label() = default;
 
 	// メソッド
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER("map", map, Label, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, Label, GtkWidget* self)
 };
 
 /**
@@ -482,7 +1164,14 @@ public:
  */
 class ListStore : public sg::ListStore {
 public:
-	using sg::ListStore::ListStore; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using sg::ListStore::ListStore;	// 基底クラスのコンストラクタを継承
+	virtual ~ListStore() = default;
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	ListStore(ListStore&&) = delete;
+	ListStore& operator=(ListStore&&) = delete;
 
 	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
 
@@ -580,14 +1269,21 @@ public:
  */
 class TreeSelection : public sg::TreeSelection {
 public:
-	using sg::TreeSelection::TreeSelection; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using sg::TreeSelection::TreeSelection;	// 基底クラスのコンストラクタを継承
+	virtual ~TreeSelection() = default;
+
+	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
+	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
+	TreeSelection(TreeSelection&&) = delete;
+	TreeSelection& operator=(TreeSelection&&) = delete;
 
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_selection, get_selected, gboolean, (GtkTreeModel **model, GtkTreeIter *iter), model, iter)
 	DEFINE_METHOD(tree_selection, unselect_all, void)
 
 	// プロパティ
-	DEFINE_PROPERTY_ACCESSORS(Widget, mode, GtkSelectionMode)
+	DEFINE_PROPERTY_ACCESSORS(TreeSelection, mode, GtkSelectionMode)
 
 	// シグナル
 };
@@ -596,30 +1292,25 @@ public:
  * @class TreeView
  * @brief sg::TreeViewを拡張し、機能を追加したクラス。
  */
-class TreeView : public sg::TreeView {
+class TreeView : public WidgetExtension<sg::TreeView> {
 public:
-	using sg::TreeView::TreeView; // 基底クラスのコンストラクタを継承
+	// コンストラクタとデストラクタ
+	using WidgetExtension<sg::TreeView>::WidgetExtension;	// 基底クラスのコンストラクタを継承
+	virtual ~TreeView() = default;
 
 	// メソッド
 //	DEFINE_METHOD_WITH_ARGS(tree_view, set_model, void, (GtkTreeModel* model), model)
+	DEFINE_METHOD(tree_view, get_selection, GtkTreeSelection*)
 	DEFINE_METHOD_WITH_ARGS(tree_view, append_column, gint, (GtkTreeViewColumn* column), column)
 	DEFINE_METHOD(tree_view, get_n_columns, guint)
 	DEFINE_METHOD_WITH_ARGS(tree_view, get_column, GtkTreeViewColumn*, (gint n), n)
 	DEFINE_METHOD(tree_view, get_grid_lines, GtkTreeViewGridLines)
 	DEFINE_METHOD_WITH_ARGS(tree_view, set_grid_lines, void, (GtkTreeViewGridLines grid_lines), grid_lines)
-	DEFINE_CSS_CLASS_ACCESSORS()
 
 	// プロパティ
-	DEFINE_BOOL_PROPERTY_ACCESSORS_WITH_NAME("can-focus", can_focus)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(sensitive)
-	DEFINE_BOOL_PROPERTY_ACCESSORS(visible)
 	DEFINE_PROPERTY_ACCESSORS(TreeView, model, GtkTreeModel*)
 
 	// シグナル
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-press-event", button_press_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER_WITH_RETURN("button-release-event", button_release_event, gboolean, (GtkWidget* self, GdkEventButton* event, sgex::TreeView* thiz), std::function<bool(GdkEventButton* event)>, event)
-	DEFINE_SIGNAL_HANDLER("map", map, TreeView, GtkWidget* self)
-	DEFINE_SIGNAL_HANDLER("show", show, TreeView, GtkWidget* self)
 };
 
 /**
@@ -634,16 +1325,13 @@ public:
 	TreeViewColumn(GtkTreeViewColumn* column) = delete;
 	virtual ~TreeViewColumn() = default;
 
-	// コピーは禁止
+	// コピーとムーブ禁止
+	// (Gtkシグナルにthisポインタを登録しているため、
+	// 移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
 	TreeViewColumn(const TreeViewColumn&) = delete;
 	TreeViewColumn& operator=(const TreeViewColumn&) = delete;
-
-	// ムーブは許可
-	TreeViewColumn(TreeViewColumn&& other) noexcept : sg::Object(std::move(other)) {}
-	TreeViewColumn& operator=(TreeViewColumn&& other) noexcept {
-		sg::Object::operator=(std::move(other));
-		return *this;
-	}
+	TreeViewColumn(TreeViewColumn&&) = delete;
+	TreeViewColumn& operator=(TreeViewColumn&&) = delete;
 
 	// GtkTreeViewColumn*へのキャスト演算子
 	operator GtkTreeViewColumn*() const {
@@ -665,28 +1353,28 @@ public:
 
 /**
  * @class ListStoreModelBase
- * @brief GtkListStoreとstd::vector<_Tp>を同期させる、汎用的なデータモデルの基底クラス。
+ * @brief GtkListStoreとstd::vector<T>を同期させる、汎用的なデータモデルの基底クラス。
  * @details このクラスはTreeViewやComboBoxなどの特定のウィジェットには依存せず、
  * GtkListStoreそのものの生成と、C++側のデータモデル(std::vector)の基本的な
  * CRUD(Create, Read, Update, Delete)操作のみを提供します。
- * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
+ * @tparam T テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
+template<typename T>
 class ListStoreModelBase {
 public:
 	// --- 型定義 ---
-	using vector_type				= std::vector<_Tp>;	///< 内部データモデルとして使用する std::vector の型エイリアス
+	using vector_type				= std::vector<T>;	///< 内部データモデルとして使用する std::vector の型エイリアス
 	using value_type				= typename vector_type::value_type;
 	using size_type					= typename vector_type::size_type;
 	using const_iterator			= typename vector_type::const_iterator;
 	using const_reverse_iterator	= typename vector_type::const_reverse_iterator;
 
 	using indexed_value_pair		= std::pair<size_type, value_type>;	///< インデックスと value_type のペア型エイリアス
-	using setter_function_type		= std::function<void(sgex::ListStore*, GtkTreeIter*, const value_type&)>;	///< セッター関数の型エイリアス
+	using setter_function_type		= std::function<void(sgex::ListStore&, GtkTreeIter*, const value_type&)>;	///< セッター関数の型エイリアス
 
 protected:
-	/// @brief (View) SimpleGtk でラップされた GtkListStore の所有権を持つポインタ。
-	std::unique_ptr<sgex::ListStore> m_list_store_ptr;
+	/// @brief (View) SimpleGtk でラップされた GtkListStore。
+	sgex::ListStore m_list_store;
 	/// @brief (Model) C++側のデータ本体。アプリケーションロジックの「信頼できる唯一の情報源」。
 	vector_type m_data_model;
 	/// @brief value_type から GtkListStore の行データに変換するためのセッター関数。
@@ -695,21 +1383,13 @@ protected:
 	bool m_is_programmatically_changing;
 
 	/**
-	 * @brief sgex::ListStore へのポインタを取得します。
-	 * @details ComboBox や TreeView にモデルとして設定する際に使用します。
-	 * @return 内部で管理している sgex::ListStore へのポインタ。
-	 */
-	sgex::ListStore* get_sg_store() const { return m_list_store_ptr.get(); }
-
-	/**
 	 * @brief 内部のListStoreをGtkListStore*として取得するヘルパー関数。
 	 * @details 複雑なキャストをこの関数内に隠蔽します。
 	 * @return 内部で管理している sgex::ListStore から取得した GtkListStore へのポインタ。
 	 */
 	GtkListStore* get_gtk_store() const {
-		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
-		return (GtkListStore*)(*m_list_store_ptr);
+		return (GtkListStore*)(m_list_store);
 	}
 
 	/**
@@ -718,19 +1398,18 @@ protected:
 	 * @return 内部で管理している sgex::ListStore から取得した GtkTreeModel へのポインタ。
 	 */
 	GtkTreeModel* get_gtk_model() const {
-		if (!m_list_store_ptr) return nullptr;
 		// 複雑なキャストはこの一箇所に集約
-		return (GtkTreeModel*)(*m_list_store_ptr);
+		return (GtkTreeModel*)(m_list_store);
 	}
 
 	/**
 	 * @brief 保持しているセッター関数(m_row_setter)を呼び出して、GtkListStoreの行に値を設定します。
 	 * @param[out] iter 値を設定する行を指すGtkTreeIter。
-	 * @param[in] value セットするデータを持つ _Tp。
+	 * @param[in] value セットするデータを持つ T。
 	 */
 	void set_row_to_store(GtkTreeIter* iter, const value_type& value) {
 		if (m_row_setter) {
-			m_row_setter(get_sg_store(), iter, value);
+			m_row_setter(m_list_store, iter, value);
 		}
 	}
 
@@ -740,12 +1419,12 @@ protected:
 	 */
 	void repopulate_store() {
 		// GTK側のストアをクリア
-		m_list_store_ptr->clear();
+		m_list_store.clear();
 
 		GtkTreeIter iter;
 		// データモデルの全要素をGTK側に追加
 		for (const auto& value : m_data_model) {
-			get_sg_store()->append(&iter);
+			m_list_store.append(&iter);
 			set_row_to_store(&iter, value);
 		}
 	}
@@ -757,10 +1436,10 @@ private:
 	 * @param[in] value 追加する行のデータ。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	void _append(const value_type& value) {
+	void append_internal(const value_type& value) {
 		m_data_model.push_back(value);
 		GtkTreeIter iter;
-		get_sg_store()->append(&iter);
+		m_list_store.append(&iter);
 		set_row_to_store(&iter, value);
 	}
 
@@ -769,12 +1448,12 @@ private:
 	 * @param[in] value 追加する行のデータ（右辺値）。
 	 * @return 追加に成功すればtrue、行数がintの最大値を超える場合はfalse。
 	 */
-	void _append(value_type&& value) {
+	void append_internal(value_type&& value) {
 		// vector にムーブ
 		m_data_model.push_back(std::move(value));
 
 		GtkTreeIter iter;
-		get_sg_store()->append(&iter);
+		m_list_store.append(&iter);
 
 		// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
 		set_row_to_store(&iter, m_data_model.back());
@@ -788,7 +1467,7 @@ private:
 	 * @param[in] value 挿入する行のデータ。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool _insert(size_type position, const value_type& value) {
+	bool insert_internal(size_type position, const value_type& value) {
 		size_type original_position = position;
 		bool position_was_clamped = false;
 		if (position > size()) {
@@ -802,7 +1481,7 @@ private:
 
 		m_data_model.insert(m_data_model.begin() + position, value);
 		GtkTreeIter iter;
-		get_sg_store()->insert(&iter, position);
+		m_list_store.insert(&iter, position);
 		set_row_to_store(&iter, value);
 		return !position_was_clamped;
 	}
@@ -814,7 +1493,7 @@ private:
 	 * @param[in] value 挿入する行のデータ（右辺値）。
 	 * @return 指定された位置通りに挿入できればtrue、位置が丸められたか、行数が最大値を超えた場合はfalse。
 	 */
-	bool _insert(size_type position, value_type&& value) {
+	bool insert_internal(size_type position, value_type&& value) {
 		size_type original_position = position;
 		bool position_was_clamped = false;
 		if (position > size()) {
@@ -830,7 +1509,7 @@ private:
 		auto it = m_data_model.insert(m_data_model.begin() + position, std::move(value));
 
 		GtkTreeIter iter;
-		get_sg_store()->insert(&iter, position);
+		m_list_store.insert(&iter, position);
 
 		// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
 		set_row_to_store(&iter, *it);
@@ -842,11 +1521,11 @@ private:
 	 * @brief 指定した位置の行を削除します。
 	 * @param[in] position 削除位置のインデックス。
 	 */
-	void _erase(size_type position) {
+	void erase_internal(size_type position) {
 		m_data_model.erase(m_data_model.begin() + position);
 		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
-			get_sg_store()->remove(&iter);
+		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
+			m_list_store.remove(&iter);
 		}
 	}
 
@@ -855,10 +1534,10 @@ private:
 	 * @param[in] position 上書き位置のインデックス。
 	 * @param[in] value 新しい行データ。
 	 */
-	void _update(size_type position, const value_type& value) {
+	void update_internal(size_type position, const value_type& value) {
 		m_data_model[position] = value;
 		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
 			set_row_to_store(&iter, value);
 		}
 	}
@@ -867,8 +1546,8 @@ private:
 	 * @brief 指定した位置の行をコピー上書きします。
 	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア。
 	 */
-	void _update(const indexed_value_pair& indexed_value) {
-		_update(indexed_value.first, indexed_value.second);	// 別のオーバーロードへ処理を委譲
+	void update_internal(const indexed_value_pair& indexed_value) {
+		update_internal(indexed_value.first, indexed_value.second);	// 別のオーバーロードへ処理を委譲
 	}
 
 	/**
@@ -876,12 +1555,12 @@ private:
 	 * @param[in] position 上書き位置のインデックス。
 	 * @param[in] value 新しい行データ（右辺値）。
 	 */
-	void _update(size_type position, value_type&& value) {
+	void update_internal(size_type position, value_type&& value) {
 		// vector にムーブ代入
 		m_data_model[position] = std::move(value);
 
 		GtkTreeIter iter;
-		if (get_sg_store()->iter_nth_child(&iter, nullptr, position)) {
+		if (m_list_store.iter_nth_child(&iter, nullptr, position)) {
 			// GTKへの設定には、vector内の（ムーブ済みの）実体を使用する
 			set_row_to_store(&iter, m_data_model[position]);
 		}
@@ -891,28 +1570,24 @@ private:
 	 * @brief 指定した位置の行をムーブ上書きします。
 	 * @param[in] indexed_value 上書き位置のインデックスと新しい行データのペア（右辺値）。
 	 */
-	void _update(indexed_value_pair&& indexed_value) {
-		_update(indexed_value.first, std::move(indexed_value.second));	// 別のオーバーロードへ処理を委譲
+	void update_internal(indexed_value_pair&& indexed_value) {
+		update_internal(indexed_value.first, std::move(indexed_value.second));	// 別のオーバーロードへ処理を委譲
 	}
 
 public:
 	/**
 	 * @brief ListStoreModelBaseのコンストラクタ。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ListStoreModelBase(
 		const std::vector<GType>& column_types,
 		setter_function_type row_setter
 	) :
+		m_list_store(gtk_list_store_newv(column_types.size(), (GType*)column_types.data())),	// GTypeのリストに基づいて、GtkListStoreを生成
 		m_row_setter(row_setter),
 		m_is_programmatically_changing(false)
-	{
-		// GTypeのリストに基づいて、新しいGtkListStoreをプログラムで生成します。
-		GtkListStore* new_gtk_store = gtk_list_store_newv(column_types.size(), (GType*)column_types.data());
-		// 生成したGtkListStoreをSimpleGtkラッパーでラップし、unique_ptrで所有権を管理します。
-		m_list_store_ptr = std::make_unique<sgex::ListStore>(new_gtk_store);
-	}
+	{}
 
 	/**
 	 * @brief 仮想デストラクタ。
@@ -960,7 +1635,7 @@ public:
 		GtkTreeIter iter;
 
 		// 最初の行を取得
-		if (!get_sg_store()->get_iter_first(&iter)) {
+		if (!m_list_store.get_iter_first(&iter)) {
 			return; // データがない場合は何もしない
 		}
 
@@ -972,14 +1647,14 @@ public:
 			set_row_to_store(&iter, m_data_model[index]);
 
 			index++;
-		} while (get_sg_store()->iter_next(&iter));	// 次の行へ移動。次がなければループ終了
+		} while (m_list_store.iter_next(&iter));	// 次の行へ移動。次がなければループ終了
 	}
 
 	/// @brief C++モデルとGtkListStoreの両方から全ての行を削除します。
 	void clear() {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		m_data_model.clear();
-		m_list_store_ptr->clear();
+		m_list_store.clear();
 	}
 
 	/**
@@ -1000,7 +1675,7 @@ public:
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		_append(value);
+		append_internal(value);
 		return true; // 成功
 	}
 
@@ -1014,7 +1689,7 @@ public:
 		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		_append(std::move(value));
+		append_internal(std::move(value));
 		return true; // 成功
 	}
 
@@ -1034,7 +1709,7 @@ public:
 		reserve(appended_size);
 
 		for (const auto& value : values) {
-			_append(value);	// 内部ヘルパーをループで呼び出す
+			append_internal(value);	// 内部ヘルパーをループで呼び出す
 		}
 		return true;	// 成功
 	}
@@ -1058,7 +1733,7 @@ public:
 		for (auto& value : values) {
 			// 単一行のムーブ版 append を呼び出す
 			// (value自体は左辺値なので、std::moveで右辺値キャストして渡す)
-			_append(std::move(value));
+			append_internal(std::move(value));
 		}
 		return true;	// 成功
 	}
@@ -1076,7 +1751,7 @@ public:
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		return _insert(position, value);
+		return insert_internal(position, value);
 	}
 
 	/**
@@ -1091,7 +1766,7 @@ public:
 		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
-		return _insert(position, std::move(value));
+		return insert_internal(position, std::move(value));
 	}
 
 	/**
@@ -1117,7 +1792,7 @@ public:
 
 		for (const auto& value : values) {
 			// 位置補正(Clamp)は単一行版がやってくれるので、ここではインクリメントするだけで良い
-			_insert(current_pos++, value);
+			insert_internal(current_pos++, value);
 		}
 		return position_was_valid;
 	}
@@ -1147,7 +1822,7 @@ public:
 		for (auto& value : values) {
 			// 単一行のムーブ版 insert を呼び出す
 			// 位置補正(Clamp)は単一行版がやってくれるので、ここではインクリメントするだけで良い
-			_insert(current_pos++, std::move(value));
+			insert_internal(current_pos++, std::move(value));
 		}
 		return position_was_valid;
 	}
@@ -1162,7 +1837,7 @@ public:
 		if (position >= m_data_model.size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-		_erase(position);
+		erase_internal(position);
 		return true; // 成功
 	}
 
@@ -1182,7 +1857,7 @@ public:
 
 		std::sort(positions.rbegin(), positions.rend());
 		for (size_type pos : positions) {
-			_erase(pos);
+			erase_internal(pos);
 		}
 		return true; // 全て成功
 	}
@@ -1198,7 +1873,7 @@ public:
 		if (position >= size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-		_update(position, value);
+		update_internal(position, value);
 		return true; // 成功
 	}
 
@@ -1222,7 +1897,7 @@ public:
 		if (position >= size()) {
 			return false; // 失敗: インデックスが範囲外
 		}
-		_update(position, std::move(value));
+		update_internal(position, std::move(value));
 		return true; // 成功
 	}
 
@@ -1250,7 +1925,7 @@ public:
 		}
 
 		for (const auto& pair : updates) {
-			_update(pair);
+			update_internal(pair);
 		}
 		return true; // 全て成功
 	}
@@ -1269,7 +1944,7 @@ public:
 
 		for (auto& pair : updates) {
 			// 単一行のムーブ版 update を呼び出す
-			_update(std::move(pair));
+			update_internal(std::move(pair));
 		}
 		return true;
 	}
@@ -1336,7 +2011,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 使用例: IDでソートする
-	 * model.modify_model_data([](std::vector<_Tp>& values) {
+	 * model.modify_model_data([](std::vector<T>& values) {
 	 * 	std::sort(values.begin(), values.end(), [](const auto& a, const auto& b) {
 	 * 		return a.id < b.id;
 	 * 	});
@@ -1403,7 +2078,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indices = find_indices([](const _Tp& value) {
+	 * auto indices = find_indices([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -1425,7 +2100,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto values = find_values([](const _Tp& value) {
+	 * auto values = find_values([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -1456,7 +2131,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * std::vector<std::pair<size_t, _Tp>> pairs = find_indexed_value_pairs([](const _Tp& value) {
+	 * std::vector<std::pair<size_t, T>> pairs = find_indexed_value_pairs([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -1487,7 +2162,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_opt = find_first_index([](const _Tp& value) {
+	 * auto index_opt = find_first_index([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -1508,7 +2183,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto value_opt = find_first_value([](const _Tp& value) {
+	 * auto value_opt = find_first_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -1538,7 +2213,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indexed_value_opt = find_first_indexed_value([](const _Tp& value) {
+	 * auto indexed_value_opt = find_first_indexed_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -1566,13 +2241,13 @@ public:
  * @class ComboBoxListStoreModel
  * @brief ListStoreModelBaseを継承し、GtkComboBoxに特化した機能を追加した派生クラス。
  * @details セルレンダラーの自動設定や、選択状態の管理機能を提供します。
- * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
+ * @tparam T テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
-class ComboBoxListStoreModel : public ListStoreModelBase<_Tp> {
+template<typename T>
+class ComboBoxListStoreModel : public ListStoreModelBase<T> {
 public:
 	// --- 型定義 ---
-	using base_type					= ListStoreModelBase<_Tp>;	///< 基底クラスの型エイリアス
+	using base_type					= ListStoreModelBase<T>;	///< 基底クラスの型エイリアス
 	using vector_type				= typename base_type::vector_type;
 	using value_type				= typename base_type::value_type;
 	using size_type					= typename base_type::size_type;
@@ -1580,12 +2255,13 @@ public:
 	using const_reverse_iterator	= typename base_type::const_reverse_iterator;
 	using indexed_value_pair		= typename base_type::indexed_value_pair;
 	using setter_function_type		= typename base_type::setter_function_type;
+	using activation_callback_type	= std::function<void(std::optional<size_type>)>;
 
 private:
 	/// @brief このモデルが関連付けられている ComboBox ウィジェット。
 	sgex::ComboBox& m_combo_box;
 	/// @brief 外部に通知するコールバック (選択されたインデックスを渡す)
-	std::function<void(std::optional<size_type>)> m_user_activation_callback = nullptr;
+	activation_callback_type m_user_activation_callback = nullptr;
 
 	/**
 	 * @brief (内部ハンドラ) ComboBox の changed シグナルに接続
@@ -1607,7 +2283,7 @@ public:
 	 * @brief ComboBoxListStoreModelのコンストラクタ。
 	 * @param[in, out] combo_box 管理対象のComboBoxウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ComboBoxListStoreModel(
 		sgex::ComboBox& combo_box,
@@ -1677,7 +2353,7 @@ public:
 	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
 	 * 未選択の場合は std::nullopt が渡されます。
 	 */
-	void on_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+	void on_changed_by_user(activation_callback_type callback) {
 		m_user_activation_callback = callback;
 	}
 
@@ -1808,7 +2484,17 @@ public:
 	 */
 	virtual guint get_n_columns() = 0;	// 実装の制約により非const
 
-	// --- グリッド線 ---
+	// --- ウィジェット用メソッド ---
+
+	/**
+	 * @brief ウィジェットの再描画をキューに登録します。
+	 */
+	virtual void queue_draw() = 0;
+
+	/**
+	 * @brief ウィジェットのサイズ再計算をキューに登録します。
+	 */
+	virtual void queue_resize() = 0;
 
 	/**
 	 * @brief グリッド線の表示設定を取得します。
@@ -1822,7 +2508,7 @@ public:
 	 */
 	virtual void set_grid_lines(GtkTreeViewGridLines grid_lines) = 0;
 
-	// --- ウィジェット状態 ---
+	// --- ウィジェット用プロパティアクセス ---
 
 	/**
 	 * @brief ウィジェットがフォーカス可能かどうかを設定します。
@@ -1884,13 +2570,13 @@ public:
  * @class TreeViewListStoreModel
  * @brief ListStoreModelBaseを継承し、GtkTreeViewに特化した機能を追加した派生クラス。
  * @details 選択行の取得や、パフォーマンスを考慮した複数行の一括更新機能などを提供します。
- * @tparam _Tp テーブルの1行分のデータを表現する構造体の型。
+ * @tparam T テーブルの1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
-class TreeViewListStoreModel : public ListStoreModelBase<_Tp>, public ListStoreViewInterface {
+template<typename T>
+class TreeViewListStoreModel : public ListStoreModelBase<T>, public ListStoreViewInterface {
 public:
 	// --- 型定義 ---
-	using base_type					= ListStoreModelBase<_Tp>;	///< 基底クラスの型エイリアス
+	using base_type					= ListStoreModelBase<T>;	///< 基底クラスの型エイリアス
 	using vector_type				= typename base_type::vector_type;
 	using value_type				= typename base_type::value_type;
 	using size_type					= typename base_type::size_type;
@@ -1898,6 +2584,7 @@ public:
 	using const_reverse_iterator	= typename base_type::const_reverse_iterator;
 	using indexed_value_pair		= typename base_type::indexed_value_pair;
 	using setter_function_type		= typename base_type::setter_function_type;
+	using selection_callback_type	= std::function<void(std::optional<size_type>)>;
 
 private:
 	/// @brief このモデルが関連付けられている TreeView ウィジェット。
@@ -1909,7 +2596,7 @@ private:
 	/// @brief ユーザーがウィジェットを操作したことを示すフラグ
 	bool m_user_initiated_selection = false;
 	/// @brief 外部に通知するコールバック (ローカルインデックスを渡す)
-	std::function<void(std::optional<size_type>)> m_user_selection_callback = nullptr;
+	selection_callback_type m_user_selection_callback = nullptr;
 
 	/**
 	 * @brief (内部ハンドラ) TreeView の button-press-event に接続
@@ -1947,7 +2634,7 @@ public:
 	 * @brief TreeViewListStoreModelのコンストラクタ。
 	 * @param[in, out] tree_view 管理対象のTreeViewウィジェット。
 	 * @param[in] column_types GtkListStoreが持つ列のGTypeのリスト。
-	 * @param[in] row_setter _Tp のデータをGtkListStoreの行に変換・設定する関数。
+	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	TreeViewListStoreModel(
 		sgex::TreeView& tree_view,
@@ -2062,6 +2749,26 @@ public:
 	}
 
 	/**
+	 * @brief ウィジェットの再描画をキューに登録します。
+	 */
+	void queue_draw() override {
+		m_tree_view.queue_draw();
+		if (m_enclosing_widget) {
+			gtk_widget_queue_draw(*m_enclosing_widget);
+		}
+	}
+
+	/**
+	 * @brief ウィジェットのサイズ再計算をキューに登録します。
+	 */
+	void queue_resize() override {
+		m_tree_view.queue_resize();
+		if (m_enclosing_widget) {
+			gtk_widget_queue_resize(*m_enclosing_widget);
+		}
+	}
+
+	/**
 	 * @brief TreeViewのグリッド線の表示状態を取得します。
 	 * @return グリッド線の表示状態。
 	 */
@@ -2164,7 +2871,7 @@ public:
 	 * @param[in] callback 選択された行のインデックスを受け取る関数オブジェクト。
 	 * インデックスが無効な場合は std::nullopt が渡されます。
 	 */
-	void on_selection_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+	void on_selection_changed_by_user(selection_callback_type callback) {
 		m_user_selection_callback = callback;
 	}
 
@@ -2184,7 +2891,7 @@ public:
 	std::optional<size_type> get_selected_index() {
 		GtkTreeIter iter;
 		if (m_tree_selection.get_selected(nullptr, &iter)) {
-			sgex::TreePath path(this->get_sg_store()->get_path(&iter));
+			sgex::TreePath path(this->m_list_store.get_path(&iter));
 			if (!path) {
 				return std::nullopt;
 			}
@@ -2259,13 +2966,13 @@ public:
  * @class PaginatedListStoreModel
  * @brief 複数のTreeViewListStoreModelを1ページとして扱い、ページネーション機能を提供するクラス。
  * @details 全データ(マスターデータ)を内部に保持し、データ操作とページ表示を完全にカプセル化します。
- * @tparam _Tp 1行分のデータを表現する構造体の型。
+ * @tparam T 1行分のデータを表現する構造体の型。
  */
-template<typename _Tp>
+template<typename T>
 class PaginatedListStoreModel : public ListStoreViewInterface {
 public:
 	// --- 型定義 ---
-	using vector_type				= std::vector<_Tp>;	///< 内部データモデルとして使用する std::vector の型エイリアス
+	using vector_type				= std::vector<T>;	///< 内部データモデルとして使用する std::vector の型エイリアス
 	using value_type				= typename vector_type::value_type;
 	using size_type					= typename vector_type::size_type;
 	using const_iterator			= typename vector_type::const_iterator;
@@ -2273,6 +2980,7 @@ public:
 
 	using indexed_value_pair		= std::pair<size_type, value_type>;		///< インデックスと value_type のペア型エイリアス
 	using model_type				= TreeViewListStoreModel<value_type>;	///< 内部で使用する TreeViewListStoreModel の型エイリアス
+	using selection_callback_type	= typename model_type::selection_callback_type;
 
 private:
 	/// @brief (Model) 全てのページのマスターデータ
@@ -2284,9 +2992,13 @@ private:
 	/// @brief 現在表示中のページ番号 (0から始まるインデックス)
 	int m_current_page_index;
 	/// @brief 外部に通知するコールバック (グローバルインデックスを渡す)
-	std::function<void(std::optional<size_type>)> m_user_selection_callback;
+	selection_callback_type m_user_selection_callback;
 	/// @brief モデルがプログラムによって更新されている最中かを示すフラグ
 	bool m_is_programmatically_changing;
+	/// @brief 強制的に再描画をキューに登録するかどうか
+	bool m_force_draw;
+	/// @brief 強制的にサイズ再計算をキューに登録するかどうか
+	bool m_force_resize;
 	/// @brief フォーカス可否
 	bool m_can_focus;
 	/// @brief 感応可否
@@ -2437,6 +3149,20 @@ public:
 			model->set_visible(m_visible && (model->size() > 0));
 		}
 		m_current_page_index = page_index;
+
+		// 必要に応じてサイズ再計算をキューに登録
+		if (m_force_resize) {
+			gutils::idle_add_once([this]() {
+				queue_resize();
+			});
+		}
+
+		// 必要に応じて再描画をキューに登録
+		if (m_force_draw) {
+			gutils::idle_add_once([this]() {
+				queue_draw();
+			});
+		}
 	}
 
 	/**
@@ -2464,11 +3190,43 @@ public:
 	}
 
 	/**
+	 * @brief 強制的に再描画をキューに登録するかどうかを設定します。
+	 * @param[in] force_draw trueの場合、ページ表示時に再描画をキューに登録します。
+	 */
+	void set_force_draw(bool force_draw) {
+		m_force_draw = force_draw;
+	}
+
+	/**
+	 * @brief 強制的に再描画をキューに登録するかの設定を取得します。
+	 * @return trueの場合、ページ表示時に再描画をキューに登録します。
+	 */
+	bool get_force_draw() const {
+		return m_force_draw;
+	}
+
+	/**
+	 * @brief 強制的にサイズ再計算をキューに登録するかどうかを設定します。
+	 * @param[in] force_resize trueの場合、ページ表示時にサイズ再計算をキューに登録します。
+	 */
+	void set_force_resize(bool force_resize) {
+		m_force_resize = force_resize;
+	}
+
+	/**
+	 * @brief 強制的にサイズ再計算をキューに登録するかの設定を取得します。
+	 * @return trueの場合、ページ表示時にサイズ再計算をキューに登録します。
+	 */
+	bool get_force_resize() const {
+		return m_force_resize;
+	}
+
+	/**
 	 * @brief ユーザーが選択を変更したときに呼び出されるコールバックを登録します。
 	 * @param[in] callback 選択された行のグローバルインデックスを受け取る関数オブジェクト。
 	 * インデックスが無効な場合は std::nullopt が渡されます。
 	 */
-	void on_selection_changed_by_user(std::function<void(std::optional<size_type>)> callback) {
+	void on_selection_changed_by_user(selection_callback_type callback) {
 		m_user_selection_callback = callback;
 	}
 
@@ -2735,6 +3493,26 @@ public:
 	 */
 	guint get_n_columns() override {
 		return m_n_columns;
+	}
+
+	/**
+	 * @brief TreeViewの再描画をキューに追加します。
+	 */
+	void queue_draw() override {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		for (auto* model : m_page_models) {
+			model->queue_draw();
+		}
+	}
+
+	/**
+	 * @brief TreeViewのサイズ再計算をキューに追加します。
+	 */
+	void queue_resize() override {
+		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
+		for (auto* model : m_page_models) {
+			model->queue_resize();
+		}
 	}
 
 	/**
@@ -3474,7 +4252,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indices = find_indices([](const _Tp& value) {
+	 * auto indices = find_indices([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -3496,7 +4274,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto values = find_values([](const _Tp& value) {
+	 * auto values = find_values([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -3527,7 +4305,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * std::vector<std::pair<size_t, _Tp>> pairs = find_indexed_value_pairs([](const _Tp& value) {
+	 * std::vector<std::pair<size_t, T>> pairs = find_indexed_value_pairs([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -3558,7 +4336,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto index_opt = find_first_index([](const _Tp& value) {
+	 * auto index_opt = find_first_index([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -3579,7 +4357,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto value_opt = find_first_value([](const _Tp& value) {
+	 * auto value_opt = find_first_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```
@@ -3609,7 +4387,7 @@ public:
 	 *
 	 * ```cpp
 	 * // 例: ageフィールドが30以上の行のインデックスを取得
-	 * auto indexed_value_opt = find_first_indexed_value([](const _Tp& value) {
+	 * auto indexed_value_opt = find_first_indexed_value([](const T& value) {
 	 * 	return value.age >= 30;
 	 * });
 	 * ```

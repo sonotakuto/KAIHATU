@@ -2,16 +2,33 @@
  * @file tool_io_gui.cpp
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
-#include "./opt_extension.hpp"
-#include "./utility.hpp"
-#include "./container_utils.hpp"
-#include "./SimpleGtk_extension.hpp"
-#include "./includes.hpp"
-#include "./db_client.hpp"
-#include "./tracking_communicator.hpp"
-#include "./tool_io_gui.hpp"
+#include <stdlib.h>
+#include "utils/utility.hpp"
+#include "utils/container_utils.hpp"
+#include "utils/filesystem_utils.hpp"
+#include "includes.hpp"
+#include "db_client.hpp"
+#include "keyboard_utils.hpp"
+#include "tool_io_gui.hpp"
 
 namespace gui {
+
+//=============================================================================
+// このファイルのみで使うヘルパー関数群
+//=============================================================================
+
+/**
+ * @brief 現在のDISPLAY環境変数がローカルディスプレイを指しているかどうかを判定する。
+ * @return ローカルディスプレイを指している場合にtrue、そうでない場合にfalseを返す。
+ */
+bool is_local_display() {
+	const char* display_env = std::getenv("DISPLAY");
+	if (!display_env) return false; // DISPLAYがない場合はGUIなしとみなす
+
+	// X11の仕様上、先頭が ':' ならローカルソケット（例: ":0.0"）
+	// ホスト名やIPがある場合は外部（例: "192.168.x.x:0.0", "host.docker.internal:0.0"）
+	return display_env[0] == ':';
+}
 
 //=============================================================================
 // 静的メンバ変数の定義
@@ -44,6 +61,14 @@ const std::map<MainWindow::WarningType, MainWindow::UiText> MainWindow::g_warnin
 	{WarningType::ALREADY_RETRIEVED, UiText{
 		"この工具は既に『取り出し済み』になっています\n別の工具を読み取って下さい",
 		"このこうぐは すでに『とりだしずみ』に なっています\nべつのこうぐを よみとってください"
+	}},
+	{WarningType::ALREADY_STORED, UiText{
+		"この工具は既に『保管中』になっています\n別の工具を読み取って下さい",
+		"このこうぐは すでに『ほかんちゅう』に なっています\nべつのこうぐを よみとってください"
+	}},
+	{WarningType::RESTORE_RETRIEVED_INSERT, UiText{
+		"一度取り出したインサートを再補充したい場合は、\n新規工具として再登録してから補充して下さい",
+		"いちど とりだした インサートを さいほじゅう したいばあいは、\nしんきこうぐとして さいとうろくしてから ほじゅうして ください"
 	}},
 	{WarningType::SCAN_FAILURE, UiText{
 		"作業台に埋め込まれた\nQRコードリーダーで読み取って下さい",
@@ -113,7 +138,7 @@ bool operator!=(const MainWindow::TableState& lhs, const MainWindow::TableState&
 MainWindow::MainWindow() :
 	// --- メンバ初期化子リスト ---
 	// Gladeオブジェクトを初期化
-	glade("tool_io.glade"),
+	glade(utils::filesystem::path_join(utils::filesystem::get_executable_dir().first, "..", "gui", "tool_io.glade").lexically_normal().c_str()),
 	// ヘッダー部
 	dateTimeLabel(glade, "dateTimeLabel"),
 	retrieveToggleButton(glade, "retrieveToggleButton"),
@@ -135,8 +160,8 @@ MainWindow::MainWindow() :
 	storingToolListstore(
 		storingToolTable,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const MstToolInfo& row) {
-			store->set(iter,
+		[](sgex::ListStore& store, GtkTreeIter* iter, const MstToolInfo& row) {
+			store.set(iter,
 				0, row.category.c_str(),
 				1, row.maker.c_str(),
 				2, row.name.c_str(),
@@ -155,21 +180,21 @@ MainWindow::MainWindow() :
 	liststore3columns1st(
 		table3columns1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table3columns2ndBox(glade, "table3columns2ndBox"),
 	table3columns2nd(glade, "table3columns2nd"),
 	liststore3columns2nd(
 		table3columns2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table3columns3rdBox(glade, "table3columns3rdBox"),
 	table3columns3rd(glade, "table3columns3rd"),
 	liststore3columns3rd(
 		table3columns3rd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	liststore3columnsAll(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox3columns(glade, "paginationBox3columns"),
@@ -181,14 +206,14 @@ MainWindow::MainWindow() :
 	liststore2columns1st(
 		table2columns1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	table2columns2ndBox(glade, "table2columns2ndBox"),
 	table2columns2nd(glade, "table2columns2nd"),
 	liststore2columns2nd(
 		table2columns2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	liststore2columnsAll(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox2columns(glade, "paginationBox2columns"),
@@ -200,7 +225,7 @@ MainWindow::MainWindow() :
 	liststore2types1st(
 		table2types1st,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	paginatedListstore2types1st(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox2types1st(glade, "paginationBox2types1st"),
@@ -212,7 +237,7 @@ MainWindow::MainWindow() :
 	liststore2types2nd(
 		table2types2nd,
 		{ G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) { this->main_ListStore_setter(store, iter, row); }
 	),
 	paginatedListstore2types2nd(DISPLAY_ROWS_PER_COLUMN, NUM_OF_VIEW_COLUMNS, {.can_focus = false, .grid_lines = GTK_TREE_VIEW_GRID_LINES_BOTH, .selection_mode = GTK_SELECTION_NONE}),
 	paginationBox2types2nd(glade, "paginationBox2types2nd"),
@@ -231,7 +256,7 @@ MainWindow::MainWindow() :
 	confirmationDialog(glade, "confirmationDialog"),
 	messageDialog(glade, "messageDialog"),
 	overrideConfirmDialog(glade, "overrideConfirmDialog"),
-	passwordEntryDialog(glade, "passwordEntryDialog"),
+	passwordEntryDialog(glade, "passwordEntryDialog", true),
 	warningDialog(glade, "warningDialog"),
 	warningListDialog(glade, "warningListDialog"),
 	reconcileFilterDialog(glade, "reconcileFilterDialog"),
@@ -270,10 +295,10 @@ MainWindow::MainWindow() :
 	warningListstore(
 		warningList,
 		{ G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_RGBA },
-		[this](sgex::ListStore* store, GtkTreeIter* iter, const WarningListData& row) {
+		[this](sgex::ListStore& store, GtkTreeIter* iter, const WarningListData& row) {
 			try {
 				GdkRGBA bgcolor = utils::at_or(this->g_table_row_colors, row.cell_state, TABLE_BGCOLOR_NORMAL);
-				store->set(iter,
+				store.set(iter,
 					0, this->get_display_text(this->g_warning_type_messages.at(row.type)).c_str(),
 					1, std::to_string(row.count).c_str(),
 					2, &bgcolor
@@ -294,8 +319,8 @@ MainWindow::MainWindow() :
 	reconcileToolTypeFilterComboBoxListstore(
 		reconcileToolTypeFilterComboBox,
 		{ G_TYPE_STRING },
-		[](sgex::ListStore* store, GtkTreeIter* iter, const std::string& row) {
-			store->set(iter,
+		[](sgex::ListStore& store, GtkTreeIter* iter, const std::string& row) {
+			store.set(iter,
 				0, row.c_str()
 			);
 		}
@@ -358,6 +383,21 @@ MainWindow::MainWindow() :
 	this->set_timeout(100);	// 100ミリ秒ごとにタイムアウトイベントを発生させる
 
 	this->fullscreen();	// フルスクリーンで表示
+
+	//=========================================================================
+	// ウィジェットの初期プロパティを設定
+	//=========================================================================
+
+	// ダイアログの配置基準点を設定
+	passwordEntryDialog.set_gravity(layout::Gravity::Center);
+
+	// --- 表のプロパティを設定 ---
+
+	// 巨大な表の描画時には、強制的にサイズ変更をキューに登録する
+	liststore3columnsAll.set_force_resize(true);
+	liststore2columnsAll.set_force_resize(true);
+	paginatedListstore2types1st.set_force_resize(true);
+	paginatedListstore2types2nd.set_force_resize(true);
 
 	// 中央揃えに設定するカラムの配列を作成
 	std::vector<GtkTreeViewColumn*> center_aligned_columns;
@@ -457,18 +497,20 @@ MainWindow::MainWindow() :
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
 	confirmInsertCountDialog.on_show([this]() { this->confirmInsertCountDialog_on_show(); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
-	warningListDialog.on_response([this](gint response_id) { this->warningDialog.hide(); });
+	warningListDialog.on_response([this](gint response_id) { this->clear_warnings(); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
 	insertCountDecrementButton.on_clicked([this]() { this->insertCountDecrementButton_on_clicked(); });
 	insertCountDetectButton.on_clicked([this]() { this->insertCountDetectButton_on_clicked(); });
-	insertCountOkButton.on_clicked([this]() { this->insertCountOkButton_on_clicked(); });
+	insertCountOkButton.on_clicked([this]() { this->confirmInsertCountDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	notRegroundButton.on_toggled([this]() { this->notRegroundButton_on_toggled(); });
 	regroundButton.on_toggled([this]() { this->regroundButton_on_toggled(); });
 	confirmRegroundOkButton.on_clicked([this]() { this->confirmRegroundDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	confirmationNoButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_NO); });
 	confirmationYesButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
-	overrideConfirmOverrideButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
-	overrideConfirmCancelButton.on_clicked([this]() { this->confirmationDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
+	overrideConfirmOverrideButton.on_clicked([this]() { this->overrideConfirmDialog.response(GtkResponseType::GTK_RESPONSE_YES); });
+	overrideConfirmCancelButton.on_clicked([this]() { this->overrideConfirmDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
+	passwordEntry.on_button_press_event([this](GdkEventButton* event) { if (event->button == GDK_BUTTON_PRIMARY) { onboard::show(); } return false; });
+	passwordEntry.on_focus_in_event([this](GdkEventFocus* event) { onboard::show(); return false; });
 	passwordEntry.on_activate([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });	// 確定ボタンがクリックされた時と同様
 	passwordCancelButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL); });
 	passwordEnterButton.on_clicked([this]() { this->passwordEntryDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
@@ -488,6 +530,16 @@ MainWindow::MainWindow() :
 	reconcileFilterEndYearDecrementButton.on_clicked([this](){ this->reconcileFilterEndYearDecrementButton_on_clicked(); });
 	reconcileFilterEndMonthIncrementButton.on_clicked([this](){ this->reconcileFilterEndMonthIncrementButton_on_clicked(); });
 	reconcileFilterEndMonthDecrementButton.on_clicked([this](){ this->reconcileFilterEndMonthDecrementButton_on_clicked(); });
+
+	// 実行時に環境をチェックして、ローカルの場合のみ登録するイベントハンドラ
+	if (is_local_display()) {
+		passwordEntry.on_focus_out_event([this](GdkEventFocus* event) { onboard::hide(); return false; });
+	} else {
+		// 外部ディスプレイ時はログを出す
+		DEV_PRINT("[Info] External DISPLAY detected ({}) . Onboard auto-hide disabled.\n",
+			(std::getenv("DISPLAY") ? std::getenv("DISPLAY") : "null")
+		);
+	}
 
 	//=========================================================================
 	// ウィジェットの状態を保持するマップの構築
@@ -1073,6 +1125,18 @@ MainWindow::MainWindow() :
 		}
 	});
 
+	// --- メッセージダイアログ（ラベルは動的に変わるため空） ---
+	m_widget_states.try_emplace(&overrideConfirmLabel, WidgetStateUpdater{
+		{
+			.text = UiText{"", ""},
+			.is_visible		= true
+		},
+		[this](const WidgetState& state){
+			if (state.text.has_value()			) { this->overrideConfirmLabel.set_label(get_display_text(state.text.value()).c_str()); }
+			if (state.is_visible.has_value()	) { this->overrideConfirmLabel.set_visible(state.is_visible.value()); }
+		}
+	});
+
 	// --- パスワード入力ダイアログ ---
 	m_widget_states.try_emplace(&passwordEntryLabel, WidgetStateUpdater{
 		{
@@ -1364,7 +1428,9 @@ MainWindow::MainWindow() :
 
 	// --- 状態：取り出し - 移行 ---
 	g_app_state_configs.try_emplace(AppState::RETRIEVE, WidgetStateConfig{
-		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); }
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state	= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
+		.on_enter_state		= [](MainWindow* thiz){ thiz->set_app_state(AppState::RETRIEVE_WAITING_FOR_PROGRAM_QR); }
 	});
 
 	// --- 状態：取り出し - プログラムQR待ち ---
@@ -1380,6 +1446,7 @@ MainWindow::MainWindow() :
 		// --- 各スタックの「表示ページ」を定義 ---
 		.operationStackPageName = "retrieveOperationPage",
 		.tableStackPageName		= "pageNone",	// 初期ページ
+		// --- 状態の「振る舞い」を定義 ---
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_retrieve_waiting_for_program_qr(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_retrieve_waiting_for_program_qr(); }
 	});
@@ -1551,7 +1618,9 @@ MainWindow::MainWindow() :
 
 	// --- 状態：補充 - 移行 ---
 	g_app_state_configs.try_emplace(AppState::STORE, WidgetStateConfig{
-		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state	= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
+		.on_enter_state		= [](MainWindow* thiz){ thiz->set_app_state(AppState::STORE_WAITING_FOR_TOOL_QR); }
 	});
 
 	// --- 状態：補充 - 工具QR待ち ---
@@ -1669,7 +1738,9 @@ MainWindow::MainWindow() :
 
 	// --- 状態：棚卸し - 移行 ---
 	g_app_state_configs.try_emplace(AppState::RECONCILE, WidgetStateConfig{
-		.on_enter_state	= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION); }
+		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state	= [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
+		.on_enter_state		= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION); }
 	});
 
 	// --- 状態：棚卸し - コンテナ選択待ち ---
@@ -1790,44 +1861,50 @@ MainWindow::MainWindow() :
 // 公開メンバ関数実装
 //=============================================================================
 
-gboolean MainWindow::dispatch_to_gui_thread(gpointer user_data) {
-	// 渡されたポインタを元の std::function オブジェクトにキャスト
-	auto* func = static_cast<std::function<void()>*>(user_data);
-	// 関数を実行
-	(*func)();
-	// オブジェクトを解放
-	delete func;
-	// このコールバックは一度きりなので解除
-	return G_SOURCE_REMOVE;
+void MainWindow::force_close() {
+	GList *toplevels = gtk_window_list_toplevels();
+	GList *iter;
+
+	for (iter = toplevels; iter != NULL; iter = iter->next) {
+		GtkWidget *widget = GTK_WIDGET(iter->data);
+
+		// ウィジェットがダイアログかどうか判定
+		if (GTK_IS_DIALOG(widget)) {
+			// レスポンスを送って非表示にすることで全てのダイアログを閉じる
+			gtk_dialog_response(GTK_DIALOG(widget), GTK_RESPONSE_CANCEL);
+			gtk_widget_hide(widget);
+		}
+	}
+	// 最後に自身を閉じる
+	this->close();
 }
 
 void MainWindow::plc_on_notified(const plc::Notification& notification) {
 	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", (int)notification.type);
 	switch (notification.type) {
-	case plc::NotificationType::CONNECTION_ESTABLISHED :
-		// TODO: CONNECTION_ESTABLISHED 通知を受け取ったときの処理
-		break;
 	case plc::NotificationType::CONNECTION_LOST :
-		// TODO: CONNECTION_LOST 通知を受け取ったときの処理
+		m_plc_connected = false;
+		break;
+	case plc::NotificationType::CONNECTION_ESTABLISHED :
+		m_plc_connected = true;
 		break;
 	case plc::NotificationType::MONITOR :
 		if (notification.monitor_result.has_value()) {
 			switch (notification.monitor_result.value().addr) {
 			case plc::M_DEVICE_MAINTENANCE_MODE :
-				// TODO: メンテナンスモードに関する処理を追加
-				if (notification.monitor_result.value().status) {
-					update_widget_state(&warningLabel, WidgetState{.text = UiText{
-						"ステータスモニタでの操作により、画面がロックされました\n詳細はステータスモニタをご覧ください",
-						"ステータスモニタでの そうさにより、がめんが ロックされました\nしょうさいは ステータスモニタを ごらんください"
-					}}, true);
-					warningDialog.show_all();
-				} else {
-					warningDialog.hide();
+				m_plc_maintaining = notification.monitor_result.value().status;
+				if (!m_plc_maintaining) {
+					plc::clear_task_queue();
+					set_mode(GuiMode::NONE);
 				}
 				break;
-
-			// TODO: 他にも全画面共通の処理があれば追加
-
+			case plc::M_DEVICE_ERROR :
+				m_plc_has_error = notification.monitor_result.value().status;
+				if (!m_plc_has_error) {
+					plc::clear_task_queue();
+					set_mode(GuiMode::NONE);
+				}
+				break;
 			default :	// 全画面共通の処理を行わないモニター通知は、状態毎の処理に投げる
 				try {
 					auto state_config = g_app_state_configs.at(m_app_state);
@@ -1842,11 +1919,32 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 			}
 		} else {
 			// FIXME: nullopt対応
-			DEV_PRINT(stderr, "PLC監視スレッドからMONITOR通知を受け取りましたが、monitor_result が空でした\n");
+			DEV_PRINT(stderr, "PLC通信スレッドからMONITOR通知を受け取りましたが、monitor_result が空でした\n");
 		}
+		break;
+	case plc::NotificationType::TASK_CLEARED :
+		DEV_PRINT(stderr, "PLC通信スレッドのタスクがクリアされました\n");
 		break;
 	default :
 		DEV_PRINT(stderr, "Error: 未知のPLC通知を受け取りました\n");
+	}
+	if (!m_plc_connected) {
+		update_widget_state(&warningLabel, WidgetState{.text = UiText{
+			"搬送ユニットとの接続が失われました\n再接続が確立されるまでお待ち下さい",
+			"はんそうユニットとの せつぞくが うしなわれました\nさいせつぞくが かくりつされるまで おまちください"
+		}}, true);
+		set_sensitive(false);
+		warningDialog.show_all();
+	} else if (m_plc_maintaining || m_plc_has_error) {
+		update_widget_state(&warningLabel, WidgetState{.text = UiText{
+			"ステータスモニタでの操作により、\n画面がロックされました\n\n詳細はステータスモニタをご覧ください",
+			"ステータスモニタでの そうさにより、\nがめんが ロックされました\n\nしょうさいは ステータスモニタを ごらんください"
+		}}, true);
+		set_sensitive(false);
+		warningDialog.show_all();
+	} else {
+		set_sensitive(true);
+		warningDialog.hide();
 	}
 }
 
@@ -1867,8 +1965,12 @@ void MainWindow::tracker_on_notified(const tracker::ToolTrackerClient::Notificat
 //=============================================================================
 
 void MainWindow::reset_variables() {
-	// --- グローバルな要素 ---
+	// --- 外部連携 ---
+	plc::end_session();
 	db::disconnect();
+	stop_MediaServer();
+	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->stop(); }
+	if (tracker::g_recorder_client) { tracker::g_recorder_client->stop_recording(); }
 	g_logged_in_user_info = nullopt;
 
 	// --- 状態遷移管理用 ---
@@ -1897,7 +1999,6 @@ void MainWindow::reset_variables() {
 
 	// --- 操作中の状態保持用 (補充専用) ---
 	m_reground_tools.clear();
-
 
 	// --- 操作中の状態保持用 (棚卸し専用) ---
 
@@ -2135,6 +2236,7 @@ void MainWindow::set_mode(GuiMode mode) {
 	// 2. モードが変化する場合、モードに応じて現在の状態を切り替え
 	if (m_gui_mode != mode) {
 		reset_header_buttons(false);
+		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 
 		switch (mode) {
 		case GuiMode::NONE:
@@ -2170,7 +2272,7 @@ void MainWindow::set_text_mode(TextMode text_mode, bool update_ui) {
 	}
 }
 
-void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row) {
+void MainWindow::main_ListStore_setter(sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row) {
 	GdkRGBA bgcolor_0to4;
 	GdkRGBA bgcolor_5;
 	bgcolor_0to4 = utils::at_or(g_table_row_colors, row.cell_state_0to4, TABLE_BGCOLOR_NORMAL);
@@ -2178,7 +2280,7 @@ void MainWindow::main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter
 		? (bgcolor_0to4)
 		: (utils::at_or(g_table_row_colors, row.cell_state_5, bgcolor_0to4))
 	);
-	store->set(iter,
+	store.set(iter,
 		0, row.data_columns[0].c_str(),
 		1, row.data_columns[1].c_str(),
 		2, row.data_columns[2].c_str(),
@@ -2382,12 +2484,47 @@ bool MainWindow::override_confirm_to_user(UiText&& message) {
 	if (overrideConfirmDialog.run(this) == GtkResponseType::GTK_RESPONSE_YES) {
 		// ユーザーが「無視して続ける」を選択した場合
 		DEV_PRINT("強制実行確認: 無視して続行\n");
+		m_warning_closed_by_user = true;
 		return true;
 	} else {
 		// ユーザーが「キャンセル」を選択した場合
 		DEV_PRINT("強制実行確認: キャンセル\n");
 		return false;
 	}
+}
+
+void MainWindow::confirm_insert_count(int init_count, int max_count, std::function<void(int)> callback) {
+	// 初期値と最大値を設定
+	m_insertCountEntry_current_count = init_count;
+	m_confirmInsertCountDialog_max_count = max_count;
+
+	// コールバックを保存
+	confirmInsertCountDialog.on_response([=, callback = std::move(callback)](gint response_id) mutable {
+		this->confirmInsertCountDialog.hide();
+		this->insertCountEntry.set_text("");
+		this->m_confirmInsertCountDialog_max_count = -1;
+
+		if (callback) {
+			callback(m_insertCountEntry_current_count);
+			callback = nullptr;
+			this->m_insertCountEntry_current_count = 0;
+		}
+
+		// 画面下部のボタン有効状態を再計算
+		// ダイアログ非表示後に実行されるよう、遅延実行に登録
+		gutils::idle_add_once([this]() {
+			this->update_retrieve_read_completed_buttons();
+		});
+	});
+
+	// 画面下部のボタン有効状態を再計算
+	// ダイアログ表示後に実行されるよう、遅延実行に登録
+	gutils::idle_add_once([this]() {
+		this->update_retrieve_read_completed_buttons();
+	});
+
+	// ダイアログを表示
+	confirmInsertCountDialog.show_all();
 }
 
 void MainWindow::update_read_completed_buttons(bool update_ui) {
@@ -2397,6 +2534,7 @@ void MainWindow::update_read_completed_buttons(bool update_ui) {
 		update_retrieve_read_completed_buttons(update_ui);
 		break;
 	default :
+		DEV_PRINT(stderr, "Info: update_read_completed_buttons() は現在の状態では無効です (AppState={})\n", static_cast<int>(m_app_state));
 		break;
 	}
 }
@@ -2412,7 +2550,7 @@ bool MainWindow::update_warning_display() {
 			has_state_warning = true;
 		} else {
 			// スキャンエラーのタイプを保持しておく（最新1件を表示するため）
-			// リストの末尾にあるものが最新と仮定
+			// スキャンエラーは常に1つのみのはずなので、上書きで問題ない
 			scan_error_type = item.type;
 		}
 	}
@@ -2446,8 +2584,13 @@ bool MainWindow::update_warning_display() {
 		// スキャン成功時には自動的に現在の画面に再遷移するため、ここでの書き換えは不要
 	}
 
-	update_read_completed_buttons(false);
 	refresh_ui(false);
+
+	// ダイアログの表示状態変化後に更新されるよう、遅延実行する
+	gutils::idle_add_once([this](){
+		update_read_completed_buttons(true);
+	});
+
 	return has_state_warning;
 }
 
@@ -2586,8 +2729,8 @@ bool MainWindow::authenticate_with_password() {
 			.text = UiText{"パスワードを\n入力してください", "パスワードを\nにゅうりょく してください"}
 		}, true);
 		do {
-			// run()でダイアログをモーダル表示し、ユーザーの応答を待つ
-			response = passwordEntryDialog.run(this);
+			passwordEntry.set_text("");					// ダイアログ表示前にパスワード欄をクリア
+			response = passwordEntryDialog.run(this);	// run()でダイアログをモーダル表示し、ユーザーの応答を待つ
 			if (response == GtkResponseType::GTK_RESPONSE_OK) {
 				DEV_PRINT("認証開始\n");
 				if (db::authenticate_with_password(std::string(passwordEntry.get_text()))) {
@@ -2611,6 +2754,35 @@ bool MainWindow::authenticate_with_password() {
 	}
 	return m_password_authenticated;
 }
+
+bool MainWindow::check_and_store_container() {
+	bool plc_status = false;
+#ifndef STUB_PLC
+	if (!plc::read_M_status(plc::M_DEVICE_READY_TO_STORE, plc_status)) {
+		// BUG: エラー対応
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"搬送ユニットと通信できません\n少し待ってからもう一度試してください", "はんそうユニットと つうしんできません\nすこしまってから もういちど ためしてください"}
+		}, true);
+		return false;
+	}
+#else
+	plc_status = true;
+#endif
+	if (!plc_status) {
+		update_widget_state({&falseButton, &trueButton}, WidgetState{.is_sensitive = false}, false);
+		messageLabel.add_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベルの背景を警告色に
+		update_widget_state(&messageLabel, WidgetState{	// ラベルのテキストを更新
+			.text = UiText{"コンテナを戻して扉を閉めてから\nボタンを押してください", "コンテナを もどして とびらを しめてから\nボタンを おしてください"}
+		}, true);
+		return false;
+	}
+	plc::store_container();
+	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
+	return true;
+}
+
 
 void MainWindow::set_tool_assignments(sgex::PaginatedListStoreModel<gui::MainWindow::MainTableData>& list_store_model, const std::vector<ToolAssignmentInfo> &tool_assignments)
 {
@@ -2649,6 +2821,7 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 	// GUIの条件を判定
 	bool gui_ready_for_action = !warningDialog.get_mapped()
 		&& !warningListDialog.get_mapped()
+		&& !confirmInsertCountDialog.get_mapped()
 		&& !m_pending_tool_info.has_value();	// BUG: 固まって応答が無いときの対応を考える (https://gemini.google.com/share/759604d1a439 ←最後の方の2つの会話)
 
 	// 選択された中で最後の工具の時 (またはリストが空の時)
@@ -2669,7 +2842,16 @@ void MainWindow::update_retrieve_read_completed_buttons(bool update_ui) {
 		.is_sensitive = all_systems_ready
 	}, false);
 
-	// 4. 最後にUIを一括更新
+	if (!all_systems_ready) {
+		if (confirmationDialog.get_mapped()) {
+			confirmationDialog.response(GtkResponseType::GTK_RESPONSE_NO);
+		}
+		if (overrideConfirmDialog.get_mapped()) {
+			overrideConfirmDialog.response(GtkResponseType::GTK_RESPONSE_CANCEL);
+		}
+	}
+
+	// 最後にUIを一括更新
 	if (update_ui) {
 		refresh_ui(false);
 	}
@@ -2706,6 +2888,10 @@ void MainWindow::on_window_show() {
 		paginatedListstore2types2nd.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH, true);	// テーブルのグリッド線を表示
 		warningListstore.set_grid_lines(GtkTreeViewGridLines::GTK_TREE_VIEW_GRID_LINES_BOTH);					// テーブルのグリッド線を表示
 
+		gutils::idle_add_once([this]() {
+			g_monitor_area = sgex::get_monitor_rectangle_at_window(*this).value_or(sgex::Rectangle{0, 0, MONITOR_WIDTH, MONITOR_HEIGHT});
+		});
+
 		set_mode(GuiMode::NONE);	// 最初は取り出しモード
 		set_app_state(AppState::WAITING_FOR_USER_LOGIN);	// 最初の状態を設定
 		refresh_ui(true);
@@ -2719,6 +2905,24 @@ bool MainWindow::on_timeout() {
 	string str = format("{:%Y / %m / %d   %H : %M}", t);
 	dateTimeLabel.set_text(str.c_str());
 	return true; // タイマーを継続
+}
+
+bool MainWindow::on_delete_event(GtkWidget* self, GdkEvent* event) {
+	// ウィンドウが閉じられようとしているときの処理
+	DEV_PRINT("ウィンドウが閉じられました\n");
+
+	// 追跡システムとの通信を終了
+	if (tracker::g_tool_tracker) { tracker::g_tool_tracker->stop(); }
+	if (tracker::g_recorder_client) { tracker::g_recorder_client->stop_recording(); }
+
+	// バックグラウンドプロセスの終了
+	stop_MediaServer();
+
+	// DBとの通信を切断
+	db::disconnect();
+
+	// 基底クラスの同名メソッドを呼び出す
+	return sg::Window::on_delete_event(self, event);
 }
 
 void MainWindow::retrieveToggleButton_on_toggled() {
@@ -2783,6 +2987,11 @@ void MainWindow::userIdEntry_on_activate() {
 
 	if (db::user_authenticate(userIdEntry.get_text())) {
 		DEV_PRINT("ユーザー認証成功\n");
+
+		plc::start_session();	// PLCセッションを開始
+
+		start_MediaServer();	// メディアサーバーを起動
+
 		messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);	// メッセージラベル背景の警告色を解除
 
 		// ユーザーIDエントリにログインユーザー名を表示して固定
@@ -2818,9 +3027,8 @@ void MainWindow::userIdEntry_on_activate() {
 }
 
 void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_index_opt) {
-	auto* func = new std::function<void()>([this, selected_index_opt]() {
+	gutils::idle_add_once([this, selected_index_opt]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
-
 		try {
 			auto state_config = g_app_state_configs.at(m_app_state);
 			if (state_config.on_mainTableSelection_changed) {
@@ -2833,8 +3041,6 @@ void MainWindow::mainTableSelection_on_changed(std::optional<size_t> selected_in
 			DEV_PRINT(stderr, "Error: Unexpected exception in delayed mainTableSelection_on_changed\n");
 		}
 	});
-
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
 }
 
 void MainWindow::qrCodeEntry_on_activate() {
@@ -2848,6 +3054,7 @@ void MainWindow::qrCodeEntry_on_activate() {
 		// 例外を無視して処理を続行
 	}
 	qrCodeEntry.set_text("");
+	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::falseButton_on_clicked() {
@@ -2883,6 +3090,17 @@ void MainWindow::confirmInsertCountDialog_on_show() {
 void MainWindow::passwordEntryDialog_on_show() {
 	// Gtkウィジェットにキーボードフォーカスを強制的に設定する
 	passwordEntry.grab_focus();
+/*
+	layout::Position pos = g_monitor_area.get_center();
+	pos.y -= 180;
+	passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
+/*/
+	gutils::idle_add_once([this]() {
+		layout::Position pos = g_monitor_area.get_center();
+		pos.y -= 180;
+		passwordEntryDialog.move(pos);	// ダイアログを少し上に移動してソフトキーボードと被らないようにする
+	});
+//*/
 }
 
 void MainWindow::warningListDialog_on_response(gint response_id) {
@@ -2912,10 +3130,10 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 	messageDialog.set_transient_for(confirmInsertCountDialog);
 	messageDialog.show_all();
 
-	auto* func = new std::function<void()>([this]() {
+	gutils::idle_add_once([this]() {
 		// このラムダ式はアイドル時に GUI スレッドで実行される
 		if (auto count_opt = tracker::get_insert_count()) {
-			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = count_opt.value()).c_str());
+			insertCountEntry.set_text(std::to_string(m_insertCountEntry_current_count = std::min(count_opt.value(), m_confirmInsertCountDialog_max_count)).c_str());
 			update_widget_state(&confirmInsertCountLabel, WidgetState{
 				.text = UiText{"検出に成功しました\n個数を確認して下さい", "けんしゅつに せいこうしました\nこすうを かくにん してください"}
 			}, true);
@@ -2927,14 +3145,6 @@ void MainWindow::insertCountDetectButton_on_clicked() {
 		messageDialog.hide();
 		messageDialog.set_transient_for(*this);
 	});
-
-	g_idle_add(gui::MainWindow::dispatch_to_gui_thread, func);
-}
-
-void MainWindow::insertCountOkButton_on_clicked() {
-	m_confirmInsertCountDialog_max_count = -1;
-	insertCountEntry.set_text("");
-	confirmInsertCountDialog.response(GtkResponseType::GTK_RESPONSE_OK);
 }
 
 void MainWindow::notRegroundButton_on_toggled() {
@@ -2954,10 +3164,9 @@ void MainWindow::regroundButton_on_toggled() {
 }
 
 void MainWindow::warningList_on_map() {
-	auto* func = new std::function<void()>([this]() {
+	gutils::idle_add_once([this]() {
 		this->warningListstore.refresh(true);
 	});
-	g_idle_add(MainWindow::dispatch_to_gui_thread, func);
 }
 
 void MainWindow::warningListCloseButton_on_clicked() {
@@ -3294,18 +3503,11 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 
 	// コンテナ搬出
 	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
-	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address));	// FIXME: nullopt対応	// FIXME: 例外処理
-	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
-		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
-		}
-	});
+	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 
 	// 追跡システムの開始
 	// FIXME: エラー対応
-	tracker::g_tool_tracker->connect();
+	tracker::g_tool_tracker->start();
 	tracker::g_recorder_client->start_recording();
 
 	// インサートの操作か判定
@@ -3400,9 +3602,15 @@ void MainWindow::on_enter_retrieve_ready_for_reading() {
 
 // TODO: storage_condition の値に応じた警告表示を追加
 void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
+	if (m_pending_tool_info.has_value() || confirmInsertCountDialog.get_mapped()) {
+		return;
+	}
+
 	// 既存の「スキャン系エラー」をすべて消す
 	// (これらは「前回のスキャン結果」なので、新しいスキャンをした時点でもう不要)
 	clear_scan_warnings(true);
+
+	m_pending_tool_info.reset();
 
 	const MstToolInfo& retrieving_tool = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// BUG: nullopt対応
 	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
@@ -3411,40 +3619,37 @@ void MainWindow::on_qrCodeEntry_retrieve_ready_for_reading() {
 		UniqueToolInfo& unique_info = unique_info_opt.value();
 		if (unique_info.mst_tool_info.id != retrieving_tool.id && unique_info.storage_area_info.has_value() && unique_info.storage_area_info.value().id != m_operating_area.value().id) {	// FIXME: nullopt対応
 			add_warning(WarningType::DIFFERENT_TOOL, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
 			add_warning(WarningType::ALREADY_RETRIEVED, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		if (unique_info.storage_condition == StorageCondition::NOT_STORED) {
 			add_warning(WarningType::NOT_YET_STORED, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
-		tracker::g_tool_tracker->notify_qr_scan();
 		m_pending_tool_info = std::move(unique_info);
+
+		if (!tracker::g_tool_tracker->notify_qr_scan()) {
+			// 失敗時も処理を続行できるように、スキャン成功扱いにする
+			gutils::idle_add_once([this]() {
+				this->tracker_on_notified(tracker::ToolTrackerClient::Notification{
+					.type = tracker::ToolTrackerClient::NotificationType::SCAN_SUCCESS,
+					.error_details = "Communication failed"
+				});
+			});
+			m_warning_closed_by_user = true;	// 履歴に警告有りだけ残しておく
+		}
 	} else {
 		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
-	qrCodeEntry.grab_focus();
 }
 
-void MainWindow::on_falseButton_retrieve_ready_for_reading() {
-	if (
-		m_unscanned_count > 0 &&
-		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
-		})
-	) {
-		return;
-	}
+bool MainWindow::on_false_and_true_Button_retrieve_ready_for_reading() {
 	if (
 		m_operated_records.empty() &&
 		!confirm_to_user(UiText{
@@ -3452,42 +3657,63 @@ void MainWindow::on_falseButton_retrieve_ready_for_reading() {
 			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
 		})
 	) {
+		return false;
+	}
+	if (
+		m_unscanned_count > 0 &&
+		!override_confirm_to_user(UiText{
+			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
+			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
+		})
+	) {
+		return false;
+	}
+
+	if (!check_and_store_container()) {
+		return false;
+	}
+
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
+
+	// 履歴データが空の場合に、コンテナ情報だけの履歴を作成
+	if (m_operated_records.empty()) {
+		m_operated_records.push_back(RecOperationTable{
+			.operation_class	= OperationClass::OUT,
+			.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),
+			.proc_time			= sg::now(),
+			.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
+			.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
+			.line_id			= m_retrieving_list.value().line.id	// BUG: nullopt対応
+		});
+	}
+
+	// 履歴データの追跡結果を設定
+	for (auto& record : m_operated_records) {
+		record.track_result = ((m_warning_closed_by_user)
+			? (TrackResult::OVERRIDDEN)
+			: (TrackResult::NORMAL)
+		);
+	}
+
+	db::save_history(m_operated_records);
+	tracker::g_recorder_client->stop_recording();
+	return true;
+}
+
+void MainWindow::on_falseButton_retrieve_ready_for_reading() {
+	if (!on_false_and_true_Button_retrieve_ready_for_reading()) {
 		return;
 	}
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
-	db::save_history(m_operated_records);
-	tracker::g_tool_tracker->disconnect();
-	tracker::g_recorder_client->stop_recording();
+
+	tracker::g_tool_tracker->stop();
 	set_mode(GuiMode::NONE);
 }
 
 void MainWindow::on_trueButton_retrieve_ready_for_reading() {
-	if (
-		m_unscanned_count > 0 &&
-		!override_confirm_to_user(UiText{
-			"コンテナから取り出した後、\nQRコードを読み取っていない工具があります\n\n取り出す工具は、全てQRコードを読み取って下さい",
-			"コンテナから とりだしたあと、\nQRコードを よみとっていない こうぐが あります\n\nとりだすこうぐは、すべてQRコードを よみとってください"
-		})
-	) {
+	if (!on_false_and_true_Button_retrieve_ready_for_reading()) {
 		return;
 	}
-	if (
-		m_operated_records.empty() &&
-		!confirm_to_user(UiText{
-			"1個も工具を取り出していませんが、\nコンテナを搬入してよろしいですか？",
-			"1こも こうぐを とりだしていませんが、\nコンテナを はんにゅうして よろしいですか？"
-		})
-	) {
-		return;
-	}
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
-	db::save_history(m_operated_records);
-	tracker::g_tool_tracker->disconnect();
-	tracker::g_recorder_client->stop_recording();
+
 	m_is_insert_operation = false;
 	m_operating_area.reset();
 	m_operated_records.clear();
@@ -3495,12 +3721,15 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	m_warning_closed_by_user = false;
 	m_ignore_all_warnings = false;
 	m_unscanned_count = 0;
+
 	if (m_retrieving_index.has_value() && m_retrieving_index.value() + 1 < m_retrieving_tools.size()) {
 		// 次の工具の搬出処理へ
 		m_retrieving_index.value()++;
 		set_app_state(AppState::RETRIEVE_CONTAINER_RETRIEVING);
 	} else {
 		// 選択された中で最後の工具の時
+		tracker::g_tool_tracker->stop();
+
 		m_retrieving_index.reset();
 
 		// m_retrieving_list に保存しておいた、現在取り出し中のツーリングリストを更新
@@ -3561,50 +3790,55 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 					}
 				);
 
+				int case_pack_num = unique_info.case_pack_num;
+
 				// 存在する場合 (重複スキャン)
 				if (it != m_operated_records.end()) {
 					if (m_is_insert_operation) {
 						// 2a. インサートの場合: 個数確認ダイアログを再表示
 						DEV_PRINT("重複スキャン (インサート): ID {} の個数を更新します。\n", unique_info.id);
 						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-							"取り出す枚数を変更します\n何枚取り出すか入力してください",
-							"とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください"
+							fmt::format("取り出す枚数を変更します\n何枚取り出すか入力してください\n(最大 {} 個)", case_pack_num),
+							fmt::format("とりだす まいすうを へんこうします\nなんまい とりだすか にゅうりょくしてください\n(最大 {} こ)", case_pack_num)
 						}}, true);
 
-						// ダイアログの初期値を、前回入力した個数に設定
-						m_insertCountEntry_current_count = it->tool_num.value_or(1);
-						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-						confirmInsertCountDialog.run(this);	// m_insertCountEntry_current_count に新しい値が入る
+						// ダイアログの初期値を、前回入力した個数に設定し、再度確認
+						confirm_insert_count(std::abs(it->tool_num.value_or(1)), case_pack_num, [this, index = static_cast<std::size_t>(std::distance(m_operated_records.begin(), it)), unique_info = std::move(unique_info)](int count) {
+							if (index >= 0 && index < m_operated_records.size()) {
+								auto& record = m_operated_records[index]; // 再取得
 
-						// 履歴ベクトル(m_operated_records)の個数を更新	// TODO: 表でのデータ有無確認後に更新するかこのままか考える
-						it->tool_num = -m_insertCountEntry_current_count;
-						it->proc_time = sg::now(); // 処理時刻を更新
+								// 履歴ベクトル(m_operated_records)の個数を更新	// TODO: 表でのデータ有無確認後に更新するかこのままか考える
+								record.tool_num = -count;
+								record.proc_time = sg::now(); // 処理時刻を更新
 
-						// 表(liststore2columnsAll)の個数を更新
-						bool is_found = false;	// データを見つけたか: 基本的に true になるはず (m_operated_records と liststore は同期しているため)
-						liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data){
-							// 表から該当する行を検索
-							auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& item) {
-								return item.id == unique_info.id;
-							});
+								// 表(liststore2columnsAll)の個数を更新
+								bool is_found = false;	// データを見つけたか: 基本的に true になるはず (m_operated_records と liststore は同期しているため)
+								liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data){
+									// 表から該当する行を検索
+									auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& item) {
+										return item.id == unique_info.id;
+									});
 
-							if (it != data.end()) {
-								// 見つかったら、6列目(個数)を更新
-								it->data_columns[5] = std::to_string(m_insertCountEntry_current_count);
+									if (it != data.end()) {
+										// 見つかったら、6列目(個数)を更新
+										it->data_columns[5] = std::to_string(count);
 
-								// フラグを立てて外に知らせる
-								is_found = true;
+										// フラグを立てて外に知らせる
+										is_found = true;
+									}
+									// ここではエラー処理をしない
+								}, true);	// 第2引数を true にして、変更後に現在のページで更新させる
+
+								// エラー処理
+								if (!is_found) {
+									// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
+									// BUG: 不正値対応
+									DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
+								}
+							} else {
+								// BUG: 不正値対応（ありえないはずだが安全のため）
 							}
-							// ここではエラー処理をしない
-						}, true);	// 第2引数を true にして、変更後に現在のページで更新させる
-
-						// エラー処理
-						if (!is_found) {
-							// 基本的にここには来ないはず (m_operated_records と liststore は同期しているため)
-							// BUG: 不正値対応
-							DEV_PRINT(stderr, "CRITICAL: m_operated_records に ID {} がありましたが、liststore にはありませんでした。\n", unique_info.id);
-						}
-						m_insertCountEntry_current_count = 0;
+						});
 					} else {
 						// 2b. インサートでない場合: 何もしない
 						DEV_PRINT("重複スキャン (非インサート): ID {} を無視します。\n", unique_info.id);
@@ -3615,57 +3849,46 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 						m_unscanned_count--;
 					}
 
+					auto recording_lambda = [this, unique_info = std::move(unique_info)](int count) {
+						liststore2columnsAll.append(MainTableData{
+							.id = unique_info.id,
+							.data_columns = {
+								fmt::format("{:010d}", unique_info.id),
+								unique_info.mst_tool_info.category,
+								unique_info.mst_tool_info.maker,
+								unique_info.mst_tool_info.name,
+								unique_info.mst_tool_info.material,
+								to_string(((m_is_insert_operation)
+									? (count)
+									: (unique_info.regrind_count.value_or(0))	// FIXME: nullopt対応
+								))
+							},
+							.raw_data = unique_info
+						});
+
+						m_operated_records.push_back(RecOperationTable{
+							.operation_class	= OperationClass::OUT,
+							.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),
+							.proc_time			= sg::now(),
+							.storage_area_id	= unique_info.storage_area_info.value().id,
+							.unique_tool_id		= unique_info.id,
+							.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
+							.tool_num			= -count,
+							.line_id			= m_retrieving_list.value().line.id
+						});
+
+						update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+					};
+
 					if (m_is_insert_operation) {
 						update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
-							"使用するインサートの枚数を\n入力して下さい",
-							"しようする インサートの まいすうを\nにゅうりょく してください"
+							fmt::format("使用するインサートの枚数を\n入力して下さい\n(最大 {} 個)", case_pack_num),
+							fmt::format("しようする インサートの まいすうを\nにゅうりょく してください\n(最大 {} こ)", case_pack_num)
 						}}, true);
-						m_insertCountEntry_current_count = 1;
-						m_confirmInsertCountDialog_max_count = unique_info.case_pack_num;
-						confirmInsertCountDialog.run(this);
+						confirm_insert_count(1, case_pack_num, std::move(recording_lambda));
+					} else {
+						recording_lambda(1);
 					}
-
-					liststore2columnsAll.append(MainTableData{
-						.id = unique_info.id,
-						.data_columns = {
-							fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
-							unique_info.mst_tool_info.category,
-							unique_info.mst_tool_info.maker,
-							unique_info.mst_tool_info.name,
-							unique_info.mst_tool_info.material,
-							to_string(((m_is_insert_operation)
-								? (m_insertCountEntry_current_count)
-								: (unique_info.regrind_count.value_or(0))	// FIXME: nullopt対応
-							))
-						},
-						.raw_data = unique_info
-					});
-
-					m_operated_records.push_back(RecOperationTable{
-						.operation_class	= OperationClass::OUT,
-						.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// FIXME: nullopt対応
-						.proc_time			= sg::now(),
-						.storage_area_id	= unique_info.storage_area_info.value().id,
-						.unique_tool_id		= unique_info.id,
-						.video_path			= tracker::g_recorder_client->get_current_filename(),
-						.tool_num			= -((m_is_insert_operation)
-							? (m_insertCountEntry_current_count)
-							: (1)
-						),
-						.line_id			= m_retrieving_list.value().line.id,
-						.track_result		= ((m_warning_closed_by_user)
-							? (TrackResult::OVERRIDDEN)
-							: (TrackResult::NORMAL)
-						)
-					});
-
-					if (m_unscanned_count > 0) {
-						m_unscanned_count--;
-					}
-
-					update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
-
-					m_insertCountEntry_current_count = 0;
 				}
 				result = true;
 			}
@@ -3677,12 +3900,15 @@ void MainWindow::on_tracker_retrieve_ready_for_reading(const tracker::ToolTracke
 		break;
 	}
 	case tracker::ToolTrackerClient::NotificationType::SCAN_FAILURE: {
+		m_pending_tool_info.reset();
 		add_warning(WarningType::SCAN_FAILURE, true);
 		result = false;
 		break;
 	}
 	case tracker::ToolTrackerClient::NotificationType::SCANNED_IN_CONTAINER: {
-		add_warning(WarningType::SCANNED_IN_CONTAINER, true);
+		if (!m_is_insert_operation) {
+			add_warning(WarningType::SCANNED_IN_CONTAINER, true);
+		}
 		result = false;
 		break;
 	}
@@ -3792,15 +4018,7 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 
 void MainWindow::on_enter_store_container_retrieving() {
 	m_operating_area = db::get_StrageAreaInfo_with_min_cases(m_operating_tool.value().id);	// FIXME: nullopt対応
-	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address));	// FIXME: nullopt対応	// FIXME: 例外処理
-	plc::g_command_queue.push(plc::WatchCommand{
-		.addr = plc::M_DEVICE_RETRIEVE_COMPLETED,
-		.flags = plc::WatchFlags{
-			.enable_rise_notification = true,
-			.rise_is_one_shot = true
-		}
-	});
-
+	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 	// FIXME: エラー対応
 	tracker::g_recorder_client->start_recording();
 }
@@ -3886,14 +4104,17 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 		// 工具が合っているかチェック
 		if (unique_info.mst_tool_info.id != operating_tool.id) {	// FIXME: nullopt対応
 			add_warning(WarningType::DIFFERENT_TOOL, true);
-			qrCodeEntry.grab_focus();
 			return;
 		}
 
 		// データ整合性チェック
 		if (unique_info.storage_condition == StorageCondition::STORED) {
 			add_warning(WarningType::ALREADY_STORED, true);
-			qrCodeEntry.grab_focus();
+			return;
+		}
+
+		if (m_is_insert_operation && unique_info.storage_condition == StorageCondition::TAKEN_OUT) {
+			add_warning(WarningType::RESTORE_RETRIEVED_INSERT, true);
 			return;
 		}
 
@@ -3992,7 +4213,7 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 				.proc_time			= sg::now(),
 				.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
 				.unique_tool_id		= unique_info.id,
-				.video_path			= tracker::g_recorder_client->get_current_filename(),
+				.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
 				.tool_num			= ((unique_info.case_pack_num == 0)
 					? (1)
 					: (unique_info.case_pack_num)
@@ -4008,14 +4229,13 @@ void MainWindow::on_qrCodeEntry_store_ready_for_reading() {
 	} else {
 		add_warning(WarningType::TOOL_NOT_FOUND, true);
 	}
-	qrCodeEntry.grab_focus();
 
 	if (result) {
 		set_app_state(AppState::STORE_READ_COMPLETED);
 	}
 }
 
-void MainWindow::on_falseButton_store_ready_for_reading() {
+bool MainWindow::on_false_and_true_Button_store_ready_for_reading() {
 	if (
 		m_operated_records.empty() &&
 		!confirm_to_user(UiText{
@@ -4023,34 +4243,43 @@ void MainWindow::on_falseButton_store_ready_for_reading() {
 			"1こも こうぐを ほじゅうしていませんが、\nコンテナを はんにゅうして よろしいですか？"
 		})
 	) {
-		return;
+		return false;
 	}
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
+
+	if (!check_and_store_container()) {
+		return false;
+	}
+
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
+
+	// 履歴データが空の場合に、コンテナ情報だけの履歴を作成
+	if (m_operated_records.empty()) {
+		m_operated_records.push_back(RecOperationTable{
+			.operation_class	= OperationClass::ADD,
+			.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// FIXME: nullopt対応
+			.proc_time			= sg::now(),
+			.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
+			.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0")
+		});
+	}
+
 	db::increment_regrind_counts(m_reground_tools);
 	db::save_history(m_operated_records);
 	tracker::g_recorder_client->stop_recording();
-	set_mode(GuiMode::NONE);
+
+	return true;
+}
+
+void MainWindow::on_falseButton_store_ready_for_reading() {
+	if (on_false_and_true_Button_store_ready_for_reading()) {
+		set_mode(GuiMode::NONE);
+	}
 }
 
 void MainWindow::on_trueButton_store_ready_for_reading() {
-	if (
-		m_operated_records.empty() &&
-		!confirm_to_user(UiText{
-			"1個も工具を補充していませんが、\nコンテナを搬入してよろしいですか？",
-			"1こも こうぐを ほじゅうしていませんが、\nコンテナを はんにゅうして よろしいですか？"
-		})
-	) {
-		return;
+	if (on_false_and_true_Button_store_ready_for_reading()) {
+		set_app_state(AppState::STORE);
 	}
-	// BUG: エラー対応
-	plc::store_container();
-	plc::g_command_queue.push(plc::WatchCommand{.addr = plc::M_DEVICE_READY_TO_STORE, .flags = plc::WatchFlags{}});	// 監視対象を削除
-	db::increment_regrind_counts(m_reground_tools);
-	db::save_history(m_operated_records);
-	tracker::g_recorder_client->stop_recording();
-	set_app_state(AppState::STORE);
 }
 
 void MainWindow::on_plc_store_ready_for_reading(const plc::Notification& notification) {

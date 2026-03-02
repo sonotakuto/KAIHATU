@@ -12,7 +12,7 @@
  * @namespace stdex
  * @brief 標準ライブラリの拡張機能を格納する名前空間。
  */
-namespace stdex{
+namespace stdex {
 
 // --- ヘルパー (C++17のstd::optional<T&>対応) ---
 

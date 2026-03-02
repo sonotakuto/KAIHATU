@@ -5,8 +5,8 @@
 #pragma once
 #include <cstdint>
 #include <SimpleGtk>
-#include "./typedef.hpp"
-#include "./parameters.hpp"
+#include "typedef.hpp"
+#include "parameters.hpp"
 
 /**
  * @namespace db
@@ -14,10 +14,17 @@
  */
 namespace db {
 
-constexpr int	RETRY_LIMIT	= 3;	// DB接続のリトライ回数
-constexpr const char*	ODBC_DSN	= "system";		// ODBCのDSN名
-constexpr const char*	ODBC_USER	= "pi";			// ODBCのユーザー名
-constexpr const char*	ODBC_PASS	= "pipasswd";	// ODBCのパスワード
+inline constexpr int			RETRY_LIMIT	= 3;			// DB接続のリトライ回数
+inline constexpr const char*	ODBC_DSN	= "system";		// ODBCのDSN名
+
+// 開発環境と本番環境でユーザー名とパスワードを分ける
+#ifdef PRODUCTION
+inline constexpr const char*	ODBC_USER	= "root";		// ODBCのユーザー名
+inline constexpr const char*	ODBC_PASS	= "gr4";		// ODBCのパスワード
+#else
+inline constexpr const char*	ODBC_USER	= "pi";			// ODBCのユーザー名
+inline constexpr const char*	ODBC_PASS	= "pipasswd";	// ODBCのパスワード
+#endif
 
 /**
  * @brief QRコードの種類を示すenum

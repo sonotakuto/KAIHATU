@@ -2,15 +2,17 @@
  * @file db_client.cpp
  * @brief db_client.hppで宣言された関数の実装ファイル。
  */
+#include <charconv>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
-#include "./any_extension.hpp"
-#include "./odbc.hpp"
-#include "./includes.hpp"
-#include "./db_client.hpp"
+#include "stdex/any_extension.hpp"
+#include "utils/string_utils.hpp"
+#include "odbc/odbc.hpp"
+#include "includes.hpp"
+#include "db_client.hpp"
 
 using namespace odbc;
 
@@ -244,22 +246,24 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 // --- 公開関数 ---
 
 std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
-	if (qr_string.empty()) {
-		DEV_PRINT("QR解析失敗\n");
-		return std::nullopt; // 空の文字列は無効
+	std::string_view sv = utils::rstrip(qr_string);
+
+	if (sv.empty()) {
+		DEV_PRINT("QR解析失敗: 空文字列\n");
+		return std::nullopt;
 	}
 
 	// ハイフンでID部とタイムスタンプ部を分割
-	const size_t hyphen_pos = qr_string.find('-');
-	if (hyphen_pos == std::string::npos) {
-		DEV_PRINT("QR解析失敗\n");
-		return std::nullopt; // ハイフンがない形式は無効
+	const size_t hyphen_pos = sv.find('-');
+	if (hyphen_pos == std::string_view::npos) {
+		DEV_PRINT("QR解析失敗: フォーマット不正(ハイフンなし)\n");
+		return std::nullopt;
 	}
 
-	// 各パーツを抽出
-	const char type_char = qr_string[0];
-	const std::string id_str = qr_string.substr(1, hyphen_pos - 1);
-	const std::string time_str = qr_string.substr(hyphen_pos + 1);
+	// 各パーツを抽出 (ここも View なのでコピーは発生しません)
+	const char type_char = sv[0];
+	const std::string_view id_view = sv.substr(1, hyphen_pos - 1);
+	const std::string_view time_view = sv.substr(hyphen_pos + 1);
 
 	QrCodeData result;
 	result.type = QrCodeType::Unknown;
@@ -267,57 +271,58 @@ std::optional<QrCodeData> parse_qr(const std::string& qr_string) {
 	// 最初の文字でタイプを判別し、各IDの桁数と文字列長を検証
 	switch (type_char) {
 	case 'U':
-		if (id_str.length() != 4 || qr_string.length() != 20) {
-			DEV_PRINT("QR解析失敗\n");
+		if (id_view.length() != 4 || sv.length() != 20) {
+			DEV_PRINT("QR解析失敗: User ID長または全体長不一致\n");
 			return std::nullopt;
 		}
 		result.type = QrCodeType::User;
 		break;
 	case 'T':
-		if (id_str.length() != 10 || qr_string.length() != 26) {
-			DEV_PRINT("QR解析失敗\n");
+		if (id_view.length() != 10 || sv.length() != 26) {
+			DEV_PRINT("QR解析失敗: Tool ID長または全体長不一致\n");
 			return std::nullopt;
 		}
 		result.type = QrCodeType::Tool;
 		break;
 	case 'P':
-		if (id_str.length() != 3 || qr_string.length() != 19) {
-			DEV_PRINT("QR解析失敗\n");
+		if (id_view.length() != 3 || sv.length() != 19) {
+			DEV_PRINT("QR解析失敗: Program ID長または全体長不一致\n");
 			return std::nullopt;
 		}
 		result.type = QrCodeType::Program;
 		break;
 	default:
-		DEV_PRINT("QR解析失敗\n");
-		return std::nullopt; // 'U', 'T', 'P' 以外は無効
+		DEV_PRINT("QR解析失敗: 不明な種別 '{}'\n", type_char);
+		return std::nullopt;
 	}
 
-	// ID文字列を数値に変換
-	try {
-		if constexpr (sizeof(signed long) == 8){
-			result.id = std::stol(id_str);
-		} else {
-			result.id = std::stoll(id_str);
-		}
-	} catch (const std::invalid_argument& e) {
-		DEV_PRINT("QR解析失敗\n");
-		return std::nullopt; // 数値に変換できないIDは無効
-	} catch (const std::out_of_range& e) {
-		DEV_PRINT("QR解析失敗\n");
-		return std::nullopt; // IDが数値型の範囲外
+	// ID文字列を数値に変換 (std::string を作らず、Viewを直接読む)
+	// sv.data() はポインタ、sv.data() + sv.size() は終端を指します
+	auto [ptr, ec] = std::from_chars(id_view.data(), id_view.data() + id_view.size(), result.id);
+
+	if (ec != std::errc{}) {
+		DEV_PRINT("QR解析失敗: ID数値変換エラー\n");
+		return std::nullopt;
+	}
+
+	// さらに厳密にやるなら、「全ての文字が消費されたか」もチェック可能
+	if (ptr != id_view.data() + id_view.size()) {
+		DEV_PRINT("QR解析失敗: IDの一部が数値として読めませんでした\n");
+		return std::nullopt;
 	}
 
 	// タイムスタンプ文字列(YYYYMMDDHHMMSS)をtime_pointに変換
 	std::tm tm = {};
+	std::string time_str(time_view);
 	std::stringstream ss(time_str);
 	ss >> std::get_time(&tm, "%Y%m%d%H%M%S");
 	if (ss.fail()) {
-		DEV_PRINT("QR解析失敗\n");
+		DEV_PRINT("QR解析失敗: 日時フォーマット不正\n");
 		return std::nullopt; // タイムスタンプのフォーマットが不正
 	}
 	result.timestamp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
 
-	DEV_PRINT("QR解析結果 種別：{}, ID：{}, 日時：{:%Y-%m-%d %H:%M:%S}\n", ((result.type == QrCodeType::User) ? ("User") : ((result.type == QrCodeType::User) ? ("Tool") : ("Program"))), result.id, result.timestamp);
+	DEV_PRINT("QR解析結果 種別：{}, ID：{}, 日時：{:%Y-%m-%d %H:%M:%S}\n", ((result.type == QrCodeType::User) ? ("User") : ((result.type == QrCodeType::Tool) ? ("Tool") : ("Program"))), result.id, result.timestamp);
 
 	return result;
 }
@@ -495,7 +500,7 @@ bool save_history(const std::vector<RecOperationTable>& records) {
 		std::vector<std::chrono::system_clock::time_point> proc_times;
 		std::vector<std::int32_t> storage_area_ids;
 		std::vector<std::optional<std::int64_t>> unique_tool_ids;
-		std::vector<std::optional<std::string>> video_paths;
+		std::vector<std::string> video_paths;
 		std::vector<std::optional<std::int32_t>> tool_nums;
 		std::vector<std::optional<std::int32_t>> line_ids;
 		std::vector<std::optional<std::string>> track_result_strs;

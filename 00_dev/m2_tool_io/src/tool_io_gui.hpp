@@ -6,13 +6,15 @@
 #include <cstdint>
 #include <set>
 #include <SimpleGtk>
-#include "./opt_extension.hpp"
-#include "./SimpleGtk_extension.hpp"
-#include "./typedef.hpp"
-#include "./parameters.hpp"
-#include "./tracked_map.hpp"
-#include "./plc_communicator.hpp"
-#include "./tracking_communicator.hpp"
+#include "stdex/opt_extension.hpp"
+#include "utils/tracked_map.hpp"
+#include "gutils/gmain_utils.hpp"
+#include "gutils/process_runner.hpp"
+#include "SimpleGtk_extension.hpp"
+#include "typedef.hpp"
+#include "parameters.hpp"
+#include "plc_communicator.hpp"
+#include "tracking_communicator.hpp"
 
 /**
  * @namespace gui
@@ -21,6 +23,9 @@
 namespace gui {
 
 struct MainWindow;
+
+/// @brief グローバルな画面領域情報。
+inline sgex::Rectangle g_monitor_area;
 
 /// @brief アプリケーション全体で唯一のウィンドウインスタンスへのポインタ。
 inline std::unique_ptr<gui::MainWindow> mainWindow;
@@ -142,16 +147,17 @@ public:
 	 * @brief 警告の種類を定義する列挙型。
 	 */
 	enum class WarningType {
-		NONE,					// 警告なし
-		TOOL_NOT_FOUND,			// 未登録工具
-		DIFFERENT_TOOL,			// 別の工具
-		NOT_YET_STORED,			// 未だ補充前
-		ALREADY_RETRIEVED,		// 既に取り出されていた
-		ALREADY_STORED,			// 既に補充されていた
-		SCAN_FAILURE,			// スキャン失敗
-		UNSCANNED_OUT_FRAME,	// 未スキャン工具がフレーム外に出た
-		SCANNED_IN_CONTAINER,	// スキャン済工具がコンテナ内に入った
-		OTHER_IN_CONTAINER,		// その他工具がコンテナ内に入った
+		NONE,						// 警告なし
+		TOOL_NOT_FOUND,				// 未登録工具
+		DIFFERENT_TOOL,				// 別の工具
+		NOT_YET_STORED,				// 未だ補充前
+		ALREADY_RETRIEVED,			// 既に取り出されていた
+		ALREADY_STORED,				// 既に補充されていた
+		RESTORE_RETRIEVED_INSERT,	// 一度取り出されたインサートを再補充しようとした
+		SCAN_FAILURE,				// スキャン失敗
+		UNSCANNED_OUT_FRAME,		// 未スキャン工具がフレーム外に出た
+		SCANNED_IN_CONTAINER,		// スキャン済工具がコンテナ内に入った
+		OTHER_IN_CONTAINER,			// その他工具がコンテナ内に入った
 		END
 	};
 
@@ -424,15 +430,9 @@ public:
 	//=========================================================================
 
 	/**
-	 * @brief ワーカースレッドからの実行依頼をGUIスレッドで実行するためのディスパッチャ。
-	 * @details
-	 * C言語形式のコールバックである g_idle_add と C++ のラムダ式やメンバー関数を繋ぐための汎用的な糊（グルー）コード。
-	 * ワーカースレッドは、実行したい処理を std::function オブジェクトとしてヒープに作成し、
-	 * そのポインタをこの関数に渡すことで、GUIスレッドでの安全な実行を予約します。
-	 * @param[in] user_data std::function<void()>* にキャストされるポインタ。
-	 * @return G_SOURCE_REMOVE (一度だけ実行して解除)。
+	 * @brief ウィンドウを強制的に閉じる。
 	 */
-	static gboolean dispatch_to_gui_thread(gpointer user_data);
+	void force_close();
 
 	/**
 	 * @brief PLCモニタースレッドからタスク完了通知を受け取り、GUIスレッドで実行されるコールバック。
@@ -870,7 +870,7 @@ private:
 	 * @param[out] iter 更新する行のイテレータ。
 	 * @param[in] row 設定する MainTableData 構造体。
 	 */
-	void main_ListStore_setter(sgex::ListStore* store, GtkTreeIter* iter, const MainTableData& row);
+	void main_ListStore_setter(sgex::ListStore& store, GtkTreeIter* iter, const MainTableData& row);
 
 	/**
 	 * @brief ページネーションのUI更新と操作をまとめて行うヘルパー関数（ページ自動判別用）。
@@ -945,6 +945,12 @@ private:
 	bool override_confirm_to_user(UiText&& message);
 
 	/**
+	 * @brief インサート枚数確認ダイアログを非同期に表示します。
+	 * @param[in] callback ダイアログが閉じた後に呼び出されるコールバック関数。
+	 */
+	void confirm_insert_count(int init_count, int max_count, std::function<void(int)> callback);
+
+	/**
 	 * @brief 現在の状態に応じた update_**_read_completed_buttons を呼び出す。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
 	 */
@@ -1004,6 +1010,7 @@ private:
 		remove_warning(WarningType::NOT_YET_STORED, true, false);
 		remove_warning(WarningType::ALREADY_RETRIEVED, true, false);
 		remove_warning(WarningType::ALREADY_STORED, true, false);
+		remove_warning(WarningType::RESTORE_RETRIEVED_INSERT, true, false);
 		if (update_ui) { update_warning_display(); }
 	}
 
@@ -1019,6 +1026,34 @@ private:
 	 * @return 認証に成功した場合はtrue、失敗またはキャンセルの場合はfalseを返します。
 	 */
 	bool authenticate_with_password();
+
+	// --- 外部連携用のヘルパー関数 ---
+
+	/**
+	 * @brief コンテナを搬入できるかチェックし、できる場合は搬入し、できない場合に適切なエラーメッセージを表示する関数。
+	 * @return 搬入可能な場合はtrue、不可能な場合はfalseを返します。
+	 */
+	bool check_and_store_container();
+
+	/**
+	 * @brief MediaServerを起動します。
+	 * @return 起動に成功した場合はtrue、失敗した場合はfalseを返します。
+	 */
+	bool start_MediaServer() {
+#ifdef PRODUCTION
+		return runner.start("live555MediaServer");
+//		return true;
+#else
+		return true;
+#endif
+	}
+
+	/**
+	 * @brief MediaServerを停止します。
+	 */
+	void stop_MediaServer() {
+		runner.stop();
+	}
 
 	// --- 取り出しモード用のヘルパー関数 ---
 
@@ -1065,6 +1100,13 @@ private:
 	 * @return trueを返すとタイマーが継続し、falseを返すと停止します。
 	 */
 	bool on_timeout() override;
+
+	/**
+	 * @brief ウィンドウの閉じるボタンが押されたときに呼び出されるハンドラ。
+	 * 各種リソースの解放処理を行う。
+	 * @return trueを返すとウィンドウの閉鎖がキャンセルされ、falseを返すと閉鎖が続行される。
+	 */
+	bool on_delete_event(GtkWidget* self, GdkEvent* event) override;
 
 	/**
 	 * @brief retrieveToggleButton の "toggled" シグナルに対応するハンドラ。
@@ -1162,12 +1204,6 @@ private:
 	 * @details インサート個数検出サーバーに問い合わせた結果を、insertCountEntry に適用する。
 	 */
 	void insertCountDetectButton_on_clicked();
-
-	/**
-	 * @brief insertCountOkButton の "clicked" シグナルに対応するハンドラ。
-	 * @details 次回のための変数の初期化を行ってから、GTK_RESPONSE_OK を返す。
-	 */
-	void insertCountOkButton_on_clicked();
 
 	/**
 	 * @brief notRegroundButton の "toggled" シグナルに対応するハンドラ。
@@ -1352,6 +1388,12 @@ private:
 	void on_qrCodeEntry_retrieve_ready_for_reading();
 
 	/**
+	 * @brief RETRIEVE_READY_FOR_READING 状態の falseButton と trueButton の on_clicked の共通処理
+	 * @return 操作がキャンセルされた場合は false、そうでなければ true を返す。
+	 */
+	bool on_false_and_true_Button_retrieve_ready_for_reading();
+
+	/**
 	 * @brief RETRIEVE_READY_FOR_READING 状態の falseButton.on_clicked の処理
 	 * @details 取り出し機能に用いていた変数を初期化し、取り出し機能を終了する。
 	 */
@@ -1428,6 +1470,12 @@ private:
 	 * 読み取りに成功した場合は次の画面に遷移する。
 	 */
 	void on_qrCodeEntry_store_ready_for_reading();
+
+	/**
+	 * @brief STORE_READY_FOR_READING 状態の falseButton と trueButton の on_clicked の共通処理
+	 * @return 操作がキャンセルされた場合は false、そうでなければ true を返す。
+	 */
+	bool on_false_and_true_Button_store_ready_for_reading();
 
 	/**
 	 * @brief STORE_READY_FOR_READING 状態の falseButton.on_clicked の処理
@@ -1532,6 +1580,16 @@ private:
 	// プライベートメンバ変数 (状態管理用)
 	//=========================================================================
 
+	// --- 外部連携用 ---
+	/// @brief PLCに接続されているかどうかのフラグ。
+	bool m_plc_connected;
+	/// @brief PLCメンテナンスモード中かどうかのフラグ。
+	bool m_plc_maintaining;
+	/// @brief PLCでエラー発生中かどうかのフラグ。
+	bool m_plc_has_error;
+	/// @brief 追跡システムのカメラサーバ起動に使う、バックグラウンドプロセス管理者
+	gutils::ProcessRunner runner;
+
 	// --- 二重処理防止用 ---
 
 	/// @brief ウィンドウが初回表示かどうかを判定するフラグ
@@ -1544,7 +1602,6 @@ private:
 	bool m_is_programmatically_changing_toggle;
 
 	// --- 状態管理用 ---
-
 	/// @brief パスワード認証が成功したかどうかのフラグ。
 	bool m_password_authenticated;
 	/// @brief 現在のGUI操作モードを保持するメンバ変数。

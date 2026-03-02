@@ -30,30 +30,30 @@ namespace utils {
  * 要素の読み取りは at() (コピーを返す), const_iterator、
  * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() などをそれぞれ使用してください。
  *
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  */
-template <typename _Key, typename _Tp, typename _Compare = std::less<_Key>,
-		typename _Alloc = std::allocator<std::pair<const _Key, _Tp>>>
+template <typename Key, typename Tp, typename Compare = std::less<Key>,
+		typename Alloc = std::allocator<std::pair<const Key, Tp>>>
 class TrackedMap {
 public:
 	// --- 型定義 ---
-	typedef std::map<_Key, _Tp, _Compare, _Alloc>		map_type;
-	typedef typename map_type::key_type					key_type;
-	typedef typename map_type::mapped_type				mapped_type;
-	typedef typename map_type::value_type				value_type;
-	typedef typename map_type::key_compare				key_compare;
-	typedef typename map_type::allocator_type			allocator_type;
-	typedef typename map_type::size_type				size_type;
-	typedef typename map_type::iterator					iterator;
-	typedef typename map_type::const_iterator			const_iterator;
-	typedef typename map_type::reverse_iterator			reverse_iterator;
-	typedef typename map_type::const_reverse_iterator	const_reverse_iterator;
+	using map_type					= std::map<Key, Tp, Compare, Alloc>;
+	using key_type					= typename map_type::key_type;
+	using mapped_type				= typename map_type::mapped_type;
+	using value_type				= typename map_type::value_type;
+	using key_compare				= typename map_type::key_compare;
+	using allocator_type			= typename map_type::allocator_type;
+	using size_type					= typename map_type::size_type;
+	using iterator					= typename map_type::iterator;
+	using const_iterator			= typename map_type::const_iterator;
+	using reverse_iterator			= typename map_type::reverse_iterator;
+	using const_reverse_iterator	= typename map_type::const_reverse_iterator;
 
-	typedef std::set<key_type, _Compare, typename std::allocator_traits<_Alloc>::template rebind_alloc<key_type>>	set_type;
-	typedef typename set_type::key_type					set_key_type;
+	using set_type					= std::set<key_type, key_compare, typename std::allocator_traits<Alloc>::template rebind_alloc<key_type>>;
+	using set_key_type				= typename set_type::key_type;
 
 private:
 	// --- メンバ変数 ---
@@ -68,7 +68,7 @@ private:
 	 * @param[in] flag_clear_updated_keys updated_keysをクリアするかどうかのフラグ。
 	 * @return flag_clear_updated_keysの値をそのまま返す。
 	 */
-	bool _if_true_clear_updated_keys(bool flag_clear_updated_keys) {
+	bool if_true_clear_updated_keys(bool flag_clear_updated_keys) {
 		if(flag_clear_updated_keys){
 			updated_keys.clear();
 		}
@@ -81,7 +81,7 @@ private:
 	 * @param[in] flag_erase_updated_keys 削除するかどうかのフラグ。
 	 * @return flag_erase_updated_keysの値をそのまま返す。
 	 */
-	bool _if_true_erase_updated_keys(const set_key_type& key, bool flag_erase_updated_keys) {
+	bool if_true_erase_updated_keys(const set_key_type& key, bool flag_erase_updated_keys) {
 		if(flag_erase_updated_keys){
 			updated_keys.erase(key);
 		}
@@ -94,7 +94,7 @@ private:
 	 * `updated_keys` に記録されているキーに対応する要素を全て抽出し、新しいマップとして返します。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
-	map_type _get_updated_elements() const {
+	map_type get_updated_elements_internal() const {
 		map_type updated_elements;
 		for (const auto& key : updated_keys) {
 			auto it = map.find(key);
@@ -267,7 +267,7 @@ public:
 	 */
 	const mapped_type& at(const key_type& key, bool flag_erase_updated_keys) {
 		const mapped_type& value = map.at(key); // 参照を取得
-		_if_true_erase_updated_keys(key, flag_erase_updated_keys);
+		if_true_erase_updated_keys(key, flag_erase_updated_keys);
 		return value; // 参照を返す (mapから削除しない限り安全)
 	}
 
@@ -300,7 +300,7 @@ public:
 	std::optional<mapped_type> try_at(const key_type& key, bool flag_erase_updated_keys) {
 		auto it = map.find(key);
 		if (it != map.end()) {
-			_if_true_erase_updated_keys(key, flag_erase_updated_keys);
+			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return it->second;
 		} else {
 			return std::nullopt;
@@ -345,7 +345,7 @@ public:
 	mapped_type at_or(const key_type& key, U&& default_value, bool flag_erase_updated_keys) {
 		auto it = map.find(key);
 		if (it != map.end()) {
-			_if_true_erase_updated_keys(key, flag_erase_updated_keys);
+			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return it->second;
 		} else {
 			return std::forward<U>(default_value);
@@ -388,7 +388,7 @@ public:
 		for (const auto& [key, value] : map) {
 			action(key, value);
 		}
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 	}
 
 	// 更新要素走査
@@ -428,7 +428,7 @@ public:
 				action(key, static_cast<const mapped_type&>(it->second));
 			}
 		}
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 	}
 
 	// --- 一括取得 (Getters) ---
@@ -452,7 +452,7 @@ public:
 	 * @return マップ全体への const 参照。
 	 */
 	const map_type& get_all(bool flag_clear_updated_keys) {
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 		return map;
 	}
 
@@ -477,7 +477,7 @@ public:
 	 */
 	set_type get_updated_keys(bool flag_clear_updated_keys) {
 		set_type copy = updated_keys; // ここでコピー発生
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 		return copy;
 	}
 
@@ -490,7 +490,7 @@ public:
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements() const {
-		return _get_updated_elements();
+		return get_updated_elements_internal();
 	}
 
 	/**
@@ -504,8 +504,8 @@ public:
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
 	map_type get_updated_elements(bool flag_clear_updated_keys = false) {
-		map_type updated_elements = _get_updated_elements();
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		map_type updated_elements = get_updated_elements_internal();
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 		return updated_elements;
 	}
 
@@ -763,16 +763,16 @@ public:
 // --- (グローバル) swap ---
 /**
  * @brief 2つのTrackedMapの内容を交換する。
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  * @param[in, out] lhs 交換対象の左側のマップ
  * @param[in, out] rhs 交換対象の右側のマップ
  */
-template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
-void swap(TrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
-		TrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+template <typename Key, typename Tp, typename Compare, typename Alloc>
+void swap(TrackedMap<Key, Tp, Compare, Alloc>& lhs,
+		TrackedMap<Key, Tp, Compare, Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
 	lhs.swap(rhs);
 }
 
@@ -790,28 +790,30 @@ void swap(TrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
  * 要素の読み取りは at() (コピーを返す)、
  * 書き込みは insert(), insert_or_assign(), emplace(), try_emplace() を使用してください。
  *
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  */
-template <typename _Key, typename _Tp, typename _Compare = std::less<_Key>,
-	typename _Alloc = std::allocator<std::pair<const _Key, _Tp> > >
+template <typename Key, typename Tp, typename Compare = std::less<Key>,
+	typename Alloc = std::allocator<std::pair<const Key, Tp> > >
 class SafeTrackedMap {
 public:
 	// --- 型定義 ---
-	typedef std::map<_Key, _Tp, _Compare, _Alloc>	map_type;
-	typedef typename map_type::key_type				key_type;
-	typedef typename map_type::mapped_type			mapped_type;
-	typedef typename map_type::value_type			value_type;
-	typedef typename map_type::key_compare			key_compare;
-	typedef typename map_type::allocator_type		allocator_type;
-	typedef typename map_type::size_type			size_type;
-	// iterator 型は、内部でのみ使用 (e.g., insert結果のfirst)
-	typedef typename map_type::iterator				iterator;
+	using map_type					= std::map<Key, Tp, Compare, Alloc>;
+	using key_type					= typename map_type::key_type;
+	using mapped_type				= typename map_type::mapped_type;
+	using value_type				= typename map_type::value_type;
+	using key_compare				= typename map_type::key_compare;
+	using allocator_type			= typename map_type::allocator_type;
+	using size_type					= typename map_type::size_type;
+	using iterator					= typename map_type::iterator;
+	using const_iterator			= typename map_type::const_iterator;
+	using reverse_iterator			= typename map_type::reverse_iterator;
+	using const_reverse_iterator	= typename map_type::const_reverse_iterator;
 
-	typedef std::set<key_type, key_compare, typename std::allocator_traits<allocator_type>::template rebind_alloc<key_type>>	set_type;
-	typedef typename set_type::key_type				set_key_type;
+	using set_type					= std::set<key_type, key_compare, typename std::allocator_traits<Alloc>::template rebind_alloc<key_type>>;
+	using set_key_type				= typename set_type::key_type;
 
 private:
 	// --- メンバ変数 ---
@@ -832,7 +834,7 @@ private:
 	 * 他のスレッドによってデータが更新され通知（notify）が来るまで、ロックを解放して待機します。
 	 * @param[in, out] lock 待機中にアンロック/再ロックされるユニークロック。
 	 */
-	void _wait_for_updates(std::unique_lock<std::recursive_mutex>& lock) const {
+	void wait_for_updates_internal(std::unique_lock<std::recursive_mutex>& lock) const {
 		cv.wait(lock, [this] { return !updated_keys.empty(); }); // updated_keysがセットされるまで待機
 	}
 
@@ -844,7 +846,7 @@ private:
 	 * @param[in, out] lock 待機中にアンロック/再ロックされるユニークロック。
 	 * @param[in] key 待機するキー。
 	 */
-	void _wait_for_updates(std::unique_lock<std::recursive_mutex>& lock, const key_type& key) const {
+	void wait_for_updates_internal(std::unique_lock<std::recursive_mutex>& lock, const key_type& key) const {
 		cv.wait(lock, [this, &key] { return updated_keys.find(key) != updated_keys.end(); });	// keyがセットされるまで待機
 	}
 
@@ -854,9 +856,9 @@ private:
 	 * @param[in] flag_wait_for_updates 待機するかどうかのフラグ。
 	 * @return flag_wait_for_updatesの値をそのまま返す。
 	 */
-	bool _if_true_wait_for_updates(std::unique_lock<std::recursive_mutex> &lock, bool flag_wait_for_updates) const {
+	bool if_true_wait_for_updates(std::unique_lock<std::recursive_mutex> &lock, bool flag_wait_for_updates) const {
 		if(flag_wait_for_updates){
-			_wait_for_updates(lock);
+			wait_for_updates_internal(lock);
 		}
 		return flag_wait_for_updates;
 	}
@@ -868,9 +870,9 @@ private:
 	 * @param[in] flag_wait_for_updates 待機するかどうかのフラグ。
 	 * @return flag_wait_for_key_updateの値をそのまま返す。
 	 */
-	bool _if_true_wait_for_updates(std::unique_lock<std::recursive_mutex> &lock, const key_type& key, bool flag_wait_for_updates) const {
+	bool if_true_wait_for_updates(std::unique_lock<std::recursive_mutex> &lock, const key_type& key, bool flag_wait_for_updates) const {
 		if(flag_wait_for_updates){
-			_wait_for_updates(lock, key);
+			wait_for_updates_internal(lock, key);
 		}
 		return flag_wait_for_updates;
 	}
@@ -880,7 +882,7 @@ private:
 	 * @param[in] flag_clear_updated_keys updated_keysをクリアするかどうかのフラグ。
 	 * @return flag_clear_updated_keysの値をそのまま返す。
 	 */
-	bool _if_true_clear_updated_keys(bool flag_clear_updated_keys) {
+	bool if_true_clear_updated_keys(bool flag_clear_updated_keys) {
 		if(flag_clear_updated_keys){
 			updated_keys.clear();
 		}
@@ -893,7 +895,7 @@ private:
 	 * @param[in] flag_erase_updated_keys 削除するかどうかのフラグ。
 	 * @return flag_erase_updated_keysの値をそのまま返す。
 	 */
-	bool _if_true_erase_updated_keys(const set_key_type& key, bool flag_erase_updated_keys) {
+	bool if_true_erase_updated_keys(const set_key_type& key, bool flag_erase_updated_keys) {
 		if(flag_erase_updated_keys){
 			updated_keys.erase(key);
 		}
@@ -906,7 +908,7 @@ private:
 	 * `updated_keys` に記録されているキーに対応する要素を全て抽出し、新しいマップとして返します。
 	 * @return 更新された要素のみを含む新しいマップ。
 	 */
-	map_type _get_updated_elements() const {
+	map_type get_updated_elements_internal() const {
 		map_type updated_elements;
 		for (const auto& key : updated_keys) {
 			auto it = map.find(key);
@@ -923,12 +925,12 @@ private:
 	 * @brief マップに要素を挿入する。
 	 * @details
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加します。
-	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
+	 * @tparam P 挿入する値の型 (例: std::pair<const Key, Tp>)
 	 * @param[in] x 挿入する値。左辺値ならコピー、右辺値ならムーブされます。
 	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
 	template <class P>
-	bool _insert(P&& x) {
+	bool insert_internal(P&& x) {
 		auto result = map.insert(std::forward<P>(x));
 		if (result.second) {
 			updated_keys.insert(result.first->first); // 更新されたキーを保存
@@ -1028,7 +1030,7 @@ public:
 	 */
 	void wait_for_updates() const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_wait_for_updates(lock);
+		wait_for_updates_internal(lock);
 	}
 
 	/**
@@ -1038,7 +1040,7 @@ public:
 	void wait_for_updates(const key_type& key) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
 		// 指定されたキーが updated_keys セットに見つかるまで待機
-		_wait_for_updates(lock, key);
+		wait_for_updates_internal(lock, key);
 	}
 
 	/**
@@ -1224,7 +1226,7 @@ public:
 	 */
 	mapped_type at(const key_type& key, bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		_if_true_wait_for_updates(lock, key, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, key, flag_wait_for_updates);
 		return map.at(key);	// コピーを返す
 	}
 
@@ -1241,8 +1243,8 @@ public:
 	 */
 	mapped_type at(const key_type& key, bool flag_wait_for_updates, bool flag_erase_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		_if_true_wait_for_updates(lock, key, flag_wait_for_updates);
-		_if_true_erase_updated_keys(key, flag_erase_updated_keys);	// 更新情報を解除
+		if_true_wait_for_updates(lock, key, flag_wait_for_updates);
+		if_true_erase_updated_keys(key, flag_erase_updated_keys);	// 更新情報を解除
 		return map.at(key);	// コピーを返す
 	}
 
@@ -1275,7 +1277,7 @@ public:
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
 		auto it = map.find(key);
 		if (it != map.end()) {
-			_if_true_erase_updated_keys(key, flag_erase_updated_keys);
+			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return std::make_optional(it->second);	// コピーを返す
 		} else {
 			return std::nullopt;
@@ -1320,7 +1322,7 @@ public:
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
 		auto it = map.find(key);
 		if (it != map.end()) {
-			_if_true_erase_updated_keys(key, flag_erase_updated_keys);
+			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return it->second;
 		} else {
 			return std::forward<U>(default_value);
@@ -1343,7 +1345,7 @@ public:
 	template <typename Func>
 	void for_each(Func action, bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
 		for (const auto& [key, value] : map) {
 			action(key, value);
 		}
@@ -1365,11 +1367,11 @@ public:
 	template <typename Func>
 	void for_each(Func action, bool flag_wait_for_updates, bool flag_clear_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
 		for (const auto& [key, value] : map) {
 			action(key, value);
 		}
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 	}
 
 	// 更新要素走査
@@ -1386,7 +1388,7 @@ public:
 	template <typename Func>
 	void for_each_updated(Func action, bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
 		for (const auto& key : updated_keys) {
 			if (auto it = map.find(key); it != map.end()) {
 				action(key, static_cast<const mapped_type&>(it->second));
@@ -1409,13 +1411,13 @@ public:
 	template <typename Func>
 	void for_each_updated(Func action, bool flag_clear_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_if_true_wait_for_updates(lock, flag_clear_updated_keys);
+		if_true_wait_for_updates(lock, flag_clear_updated_keys);
 		for (const auto& key : updated_keys) {
 			if (auto it = map.find(key); it != map.end()) {
 				action(key, static_cast<const mapped_type&>(it->second));
 			}
 		}
-		_if_true_clear_updated_keys(flag_clear_updated_keys);
+		if_true_clear_updated_keys(flag_clear_updated_keys);
 	}
 
 	// --- 一括取得 (Getters) ---
@@ -1426,7 +1428,7 @@ public:
 	 */
 	map_type get_all(bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
 		return map;	// コピーを返す
 	}
 
@@ -1438,8 +1440,8 @@ public:
 	 */
 	map_type get_all(bool flag_wait_for_updates, bool flag_clear_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
-		_if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
 		return map;	// コピーを返す
 	}
 
@@ -1452,7 +1454,7 @@ public:
 	 */
 	set_type get_updated_keys(bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
 		return updated_keys;	// コピーを返す
 	}
 
@@ -1466,9 +1468,9 @@ public:
 	 */
 	set_type get_updated_keys(bool flag_wait_for_updates, bool flag_clear_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
 		set_type copy = updated_keys;	// コピーを取得
-		_if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
+		if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
 		return copy;
 	}
 
@@ -1482,8 +1484,8 @@ public:
 	 */
 	map_type get_updated_elements(bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
-		return _get_updated_elements();	// ロックはunique_lockのデストラクタで解放
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
+		return get_updated_elements_internal();	// ロックはunique_lockのデストラクタで解放
 	}
 
 	/**
@@ -1498,9 +1500,9 @@ public:
 	 */
 	map_type get_updated_elements(bool flag_wait_for_updates, bool flag_clear_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		_if_true_wait_for_updates(lock, flag_wait_for_updates);
-		map_type updated_elements = _get_updated_elements();	// 更新された要素を取得
-		_if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
+		if_true_wait_for_updates(lock, flag_wait_for_updates);
+		map_type updated_elements = get_updated_elements_internal();	// 更新された要素を取得
+		if_true_clear_updated_keys(flag_clear_updated_keys);	// updated_keysをクリア
 		return updated_elements;	// ロックはunique_lockのデストラクタで解放
 	}
 
@@ -1559,7 +1561,7 @@ public:
 	 * @brief マップに要素を挿入する。
 	 * @details
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加し、待機中のスレッドに通知します。
-	 * @tparam P 挿入する値の型 (例: std::pair<const _Key, _Tp>)
+	 * @tparam P 挿入する値の型 (例: std::pair<const Key, Tp>)
 	 * @param[in] x 挿入する値。左辺値ならコピー、右辺値ならムーブされます。
 	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
 	 */
@@ -1568,7 +1570,7 @@ public:
 		bool result;
 		{
 			std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
-			result = _insert(x);
+			result = insert_internal(x);
 		} // ロックを解放
 		if(result){
 			cv.notify_all();	// 更新を待機しているスレッドに通知
@@ -1685,7 +1687,7 @@ public:
 		{
 			std::lock_guard<std::recursive_mutex> lock(mtx);
 			for (auto&& item : range) {
-				inserted_count += _insert(std::forward<decltype(item)>(item));	// コピーまたはムーブ
+				inserted_count += insert_internal(std::forward<decltype(item)>(item));	// コピーまたはムーブ
 			}
 		}
 		if (inserted_count > 0) {
@@ -1775,16 +1777,16 @@ public:
 // --- (グローバル) swap ---
 /**
  * @brief 2つのSafeTrackedMapの内容を交換する。
- * @tparam _Key キーの型
- * @tparam _Tp 値の型
- * @tparam _Compare キーの比較関数の型
- * @tparam _Alloc アロケータの型
+ * @tparam Key キーの型
+ * @tparam Tp 値の型
+ * @tparam Compare キーの比較関数の型
+ * @tparam Alloc アロケータの型
  * @param[in, out] lhs 交換対象の左側のマップ
  * @param[in, out] rhs 交換対象の右側のマップ
  */
-template <typename _Key, typename _Tp, typename _Compare, typename _Alloc>
-void swap(SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& lhs,
-		SafeTrackedMap<_Key, _Tp, _Compare, _Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+template <typename Key, typename Tp, typename Compare, typename Alloc>
+void swap(SafeTrackedMap<Key, Tp, Compare, Alloc>& lhs,
+		SafeTrackedMap<Key, Tp, Compare, Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
 	lhs.swap(rhs);
 }
 
