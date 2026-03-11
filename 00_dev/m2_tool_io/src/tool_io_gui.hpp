@@ -785,8 +785,9 @@ private:
 	 * @param[in] widget 更新対象のウィジェット。
 	 * @param[in] state 適用する状態 (WidgetState)。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 * @return ウィジェットの状態が更新された場合は true、そうでない場合は false。
 	 */
-	void update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui = true);
+	bool update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui = true);
 
 	/**
 	 * @brief ウィジェットの状態をムーブ更新するヘルパー関数。
@@ -794,8 +795,9 @@ private:
 	 * @param[in] widget 更新対象のウィジェット。
 	 * @param[in] state ムーブ適用する状態 (WidgetState)。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 * @return ウィジェットの状態が更新された場合は true、そうでない場合は false。
 	 */
-	void update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui = true);
+	bool update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のウィジェットの状態を更新するヘルパー関数。
@@ -803,8 +805,9 @@ private:
 	 * @param[in] widgets 更新対象のウィジェットのリスト。
 	 * @param[in] state 適用する状態 (WidgetState)。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 * @return いずれかのウィジェットの状態が更新された場合は true、全てのウィジェットの状態が更新されなかった場合は false。
 	 */
-	void update_widget_state(const std::vector<sg::Widget*>& widgets, const WidgetState& state, bool update_ui = true);
+	bool update_widget_state(const std::vector<sg::Widget*>& widgets, const WidgetState& state, bool update_ui = true);
 
 	/**
 	 * @brief テーブルの状態を更新するヘルパー関数。
@@ -812,8 +815,9 @@ private:
 	 * @param[in] table 更新対象のテーブルウィジェット。
 	 * @param[in] state 適用する状態 (TableState)。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 * @return テーブルの状態が更新された場合は true、そうでない場合は false。
 	 */
-	void update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui = true);
+	bool update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui = true);
 
 	/**
 	 * @brief テーブルの状態をムーブ更新するヘルパー関数。
@@ -821,8 +825,9 @@ private:
 	 * @param[in] table 更新対象のテーブルウィジェット。
 	 * @param[in] state ムーブ適用する状態 (TableState)。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 * @return テーブルの状態が更新された場合は true、そうでない場合は false。
 	 */
-	void update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui = true);
+	bool update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui = true);
 
 	/**
 	 * @brief 複数のテーブルの状態を更新するヘルパー関数。
@@ -830,8 +835,9 @@ private:
 	 * @param[in] tables 更新対象のテーブルウィジェットのリスト。
 	 * @param[in] state 適用する状態 (TableState)。
 	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 * @return いずれかのテーブルの状態が更新された場合は true、全てのテーブルの状態が更新されなかった場合は false。
 	 */
-	void update_table_state(const std::vector<sgex::ListStoreViewInterface*>& tables, const TableState& state, bool update_ui = true);
+	bool update_table_state(const std::vector<sgex::ListStoreViewInterface*>& tables, const TableState& state, bool update_ui = true);
 
 	/**
 	 * @brief UI全体の表示を、モデルの現在の状態に応じて再描画する。
@@ -1580,7 +1586,7 @@ private:
 	// --- 操作中の状態保持用 (複数場面共通) ---
 
 	/// @brief 操作している保管領域。
-	std::optional<StrageAreaInfo> m_operating_area;
+	std::optional<StorageAreaInfo> m_operating_area;
 
 	/// @brief 操作している工具の基本情報
 	std::optional<MstToolInfo> m_operating_tool;

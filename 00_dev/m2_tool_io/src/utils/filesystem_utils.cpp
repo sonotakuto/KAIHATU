@@ -5,8 +5,16 @@
 #include "filesystem_utils.hpp"
 #include <limits.h>
 
+/**
+ * @namespace utils
+ * @brief ユーティリティ関数やクラスをまとめた名前空間
+ */
 namespace utils {
 
+/**
+ * @namespace utils::detail
+ * @brief utils名前空間内の詳細実装を格納する名前空間
+ */
 namespace filesystem {
 
 namespace fs = std::filesystem;

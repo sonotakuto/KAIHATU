@@ -11,6 +11,10 @@
 #include <vector>
 #include <curl/curl.h>
 
+/**
+ * @namespace url_transfer
+ * @brief URLを使ったデータ転送に関連するクラスや関数をまとめた名前空間。
+ */
 namespace url_transfer {
 
 /**

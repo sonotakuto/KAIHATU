@@ -2,6 +2,8 @@
  * @file tool_io_main.cpp
  * @brief アプリケーションの入り口となるmain関数などの実装ファイル。
  */
+#include "gutils/common.hpp"
+#include "odbc/odbc.hpp"
 #include "utils/filesystem_utils.hpp"
 #include "includes.hpp"
 #include "keyboard_utils.hpp"
@@ -15,6 +17,10 @@ int main(int argc, char *argv[])
 	Application app;
 
 	onboard::ensure_running(); // onboardキーボードが起動していなければ起動する
+
+	// 各種ラッパーで使うログ関数を登録
+	gutils::LogManager::error_callback = [](const std::string& msg) { DEV_PRINT(stderr, "{}\n", msg); };
+	odbc::LogManager::error_callback = [](const std::string& msg) { DEV_PRINT(stderr, "{}\n", msg); };
 
 	// activateハンドラ: アプリケーション起動時に一度だけ呼ばれる
 	app.on_activate([&app]{

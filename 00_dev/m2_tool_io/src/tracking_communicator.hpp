@@ -11,6 +11,10 @@
 
 #include "url_transfer/url_transfer.hpp"
 
+/**
+ * @namespace tracker
+ * @brief 工具追跡システムおよび録画サーバーとの通信に関連するクラスと関数を格納する名前空間。
+ */
 namespace tracker {
 
 // --- クラスの前方宣言 ---

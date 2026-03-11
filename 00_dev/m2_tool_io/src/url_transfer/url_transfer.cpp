@@ -5,6 +5,10 @@
 #include "url_transfer.hpp"
 #include <SimpleGtk>
 
+/**
+ * @namespace url_transfer
+ * @brief URLを使ったデータ転送に関連するクラスや関数をまとめた名前空間。
+ */
 namespace url_transfer {
 
 // CurlRequestクラスの実装
@@ -28,7 +32,7 @@ void CurlRequest::set_post_data(const std::string& post_data, const std::string&
 	// POSTメソッドを指定
 	curl_easy_setopt(easyhandle.get(), CURLOPT_POST, 1L);
 	// POSTデータを設定
-	curl_easy_setopt(easyhandle.get(), CURLOPT_POSTFIELDS, post_data.c_str());
+	curl_easy_setopt(easyhandle.get(), CURLOPT_COPYPOSTFIELDS, post_data.c_str());
 
 	// TODO: 将来的な改善：
 	// 内部コンテナにヘッダーを保持する場合、ここで既存の "Content-Type" を削除してから追加する。
@@ -93,7 +97,10 @@ void CurlRequest::perform() {
 	// レスポンスボディをバッファに書き込むための設定
 	response_body_buffer.clear(); // 前回の結果をクリア
 	curl_easy_setopt(easyhandle.get(), CURLOPT_WRITEFUNCTION, write_callback_static);
-	curl_easy_setopt(easyhandle.get(), CURLOPT_WRITEDATA, this); // コールバックにthisポインタを渡す
+
+	// コールバックにthisポインタを渡す
+	// ※ムーブされた際の this ポインタのズレを防ぐため、必ず perform 実行直前にセットすること
+	curl_easy_setopt(easyhandle.get(), CURLOPT_WRITEDATA, this);
 
 	// HTTPリクエストを実行
 	CURLcode res = curl_easy_perform(easyhandle.get());

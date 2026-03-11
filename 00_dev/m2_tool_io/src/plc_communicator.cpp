@@ -83,10 +83,10 @@ static void notify_gui_thread(const Notification& notification) {
 static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool on) {
 	return {
 		0x02, 0xFF, 0x00, 0x00, // サブヘッダ (応答要求)
-		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
+		static_cast<std::uint8_t>(addr & 0xFF), static_cast<std::uint8_t>((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
 		0x20, 0x4D, // デバイスコード (M)
 		0x01, 0x00, // 点数 (1点)
-		(std::uint8_t)((on) ? (0x10) : (0x00)) // データ (ON/OFF)
+		static_cast<std::uint8_t>((on) ? (0x10) : (0x00)) // データ (ON/OFF)
 	};
 }
 
@@ -98,7 +98,7 @@ static std::vector<std::uint8_t> make_write_M_command(std::uint16_t addr, bool o
 static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 	return {
 		0x00, 0xFF, 0x00, 0x00, // サブヘッダ (読出し要求)
-		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
+		static_cast<std::uint8_t>(addr & 0xFF), static_cast<std::uint8_t>((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
 		0x20, 0x4D, // デバイスコード (M)
 		0x01, 0x00	// 点数 (1点)
 	};
@@ -113,10 +113,10 @@ static std::vector<std::uint8_t> make_read_M_command(std::uint16_t addr) {
 static std::vector<std::uint8_t> make_write_D_command(std::uint16_t addr, std::uint16_t data) {
 	return {
 		0x03, 0xFF, 0x00, 0x00, // サブヘッダ (D書込み要求)
-		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
+		static_cast<std::uint8_t>(addr & 0xFF), static_cast<std::uint8_t>((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
 		0x20, 0x44, // デバイスコード (D)
 		0x01, 0x00, // 点数 (1点)
-		(std::uint8_t)(data & 0xFF), (std::uint8_t)((data >> 8) & 0xFF) // データ (リトルエンディアン)
+		static_cast<std::uint8_t>(data & 0xFF), static_cast<std::uint8_t>((data >> 8) & 0xFF) // データ (リトルエンディアン)
 	};
 }
 
@@ -128,7 +128,7 @@ static std::vector<std::uint8_t> make_write_D_command(std::uint16_t addr, std::u
 static std::vector<std::uint8_t> make_read_D_command(std::uint16_t addr) {
 	return {
 		0x01, 0xFF, 0x00, 0x00, // サブヘッダ (D読出し要求)
-		(std::uint8_t)(addr & 0xFF), (std::uint8_t)((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
+		static_cast<std::uint8_t>(addr & 0xFF), static_cast<std::uint8_t>((addr >> 8) & 0xFF), 0x00, 0x00, // アドレス
 		0x20, 0x44, // デバイスコード (D)
 		0x01, 0x00	// 点数 (1点)
 	};

@@ -5,6 +5,7 @@
 #include "process_runner.hpp"
 #include "utils/string_utils.hpp"
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 
 /**
@@ -24,7 +25,7 @@ ProcessRunner::ProcessRunner() = default;
  * オブジェクト破棄時にプロセスが残っていた場合、強制的に停止処理を行います。
  */
 ProcessRunner::~ProcessRunner() {
-	stop();
+	kill();
 }
 
 bool ProcessRunner::start(const std::string& command, std::function<void(int)> on_exit) {
@@ -55,13 +56,13 @@ bool ProcessRunner::start(const std::string& command, std::function<void(int)> o
 	// G_SPAWN_SEARCH_PATH:
 	//   PATH環境変数から実行ファイルを探します。
 	gboolean success = g_spawn_async(
-		nullptr,    // 作業ディレクトリ (nullptr = 現在のディレクトリを継承)
-		argv,       // 引数リスト
-		nullptr,    // 環境変数 (nullptr = 現在の環境を継承)
+		nullptr,	// 作業ディレクトリ (nullptr = 現在のディレクトリを継承)
+		argv,		// 引数リスト
+		nullptr,	// 環境変数 (nullptr = 現在の環境を継承)
 		static_cast<GSpawnFlags>(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH),
-		nullptr,    // 子プロセスセットアップ関数
-		nullptr,    // ユーザーデータ
-		&pid_,      // 生成されたPIDを受け取る
+		nullptr,	// 子プロセスセットアップ関数
+		nullptr,	// ユーザーデータ
+		&pid_,		// 生成されたPIDを受け取る
 		&error
 	);
 
@@ -71,6 +72,7 @@ bool ProcessRunner::start(const std::string& command, std::function<void(int)> o
 	if (!success) {
 		utils::assign_concat(error_message_, "[ProcessRunner] Spawn error: ", ((error && error->message) ? (error->message) : ("Unknown spawn error")));
 		g_error_free(error);
+		pid_ = 0;	// 状態をリセット
 		return false;
 	}
 
@@ -81,27 +83,41 @@ bool ProcessRunner::start(const std::string& command, std::function<void(int)> o
 	return true;
 }
 
-void ProcessRunner::stop() {
-	// 1. まず監視コールバックを解除します。
-	// これを行わないと、killした直後にコールバックが呼ばれ、
-	// 破棄中のオブジェクトにアクセスしてしまう可能性があります。
+void ProcessRunner::stop() noexcept {
+	if (pid_ > 0) {
+		// 終了要請のみを行う
+		::kill(pid_, SIGTERM);
+
+		// 【注意点】
+		// プロセスは非同期に終了するため、ここでは g_source_remove や g_spawn_close_pid を行いません。
+		// プロセスがSIGTERMを受け取って終了したタイミングで、GLibのメインループが
+		// 自動的に on_child_exited_static を呼び出し、そこで適切にリソースが回収されます。
+	}
+}
+
+void ProcessRunner::kill() noexcept {
+	// 1. GLibによるプロセスの終了監視をキャンセル（コールバックの発火を防ぐ）
 	if (watch_id_ > 0) {
 		g_source_remove(watch_id_);
 		watch_id_ = 0;
 	}
 
-	// 2. プロセスが生きていれば停止シグナルを送ります。
+	// 2. プロセスを強制終了させ、即座に回収する
 	if (pid_ > 0) {
-		// SIGTERM (終了要請) を送信
-		kill(pid_, SIGTERM);
+		::kill(pid_, SIGKILL);
 
-		// PIDハンドルを閉じます (waitpid相当の処理を行い、ゾンビプロセス化を防ぐ)
-		g_spawn_close_pid(pid_);
+		// ゾンビ化を防ぐため、安全なダミーコールバックを再登録してGLibに回収させる
+		// キャプチャが空（[]）なので、C言語の関数ポインタに自動変換されて渡される
+		waitpid(pid_, nullptr, 0);
+		g_child_watch_add(pid_, [](GPid pid, gint status, gpointer data) {
+			g_spawn_close_pid(pid);
+		}, nullptr);
+
 		pid_ = 0;
 	}
 }
 
-bool ProcessRunner::is_running() const {
+bool ProcessRunner::is_running() const noexcept {
 	return pid_ != 0;
 }
 

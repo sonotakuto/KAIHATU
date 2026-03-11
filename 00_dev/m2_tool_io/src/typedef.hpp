@@ -71,10 +71,10 @@ struct MstAddressTable {
 };
 
 /**
- * @struct StrageAreaTable
+ * @struct StorageAreaTable
  * @brief 工具保管領域の情報を保持するテーブルのデータ構造
  */
-struct StrageAreaTable {
+struct StorageAreaTable {
 	/// @brief 保管領域ID (工具保管領域識別用連番)
 	std::int32_t storage_area_id{};
 	/// @brief 基本工具ID (工具種別ごとの連番)
@@ -345,10 +345,10 @@ struct MstToolInfo {
 using MstAddressInfo = MstAddressTable;
 
 /**
- * @struct StrageAreaInfo
+ * @struct StorageAreaInfo
  * @brief 工具保管領域の情報を保持する構造体
  */
-struct StrageAreaInfo {
+struct StorageAreaInfo {
 	/// @brief 保管領域ID (工具保管領域識別用連番)
 	std::int32_t id{};
 	/// @brief 保管している工具の基本情報
@@ -375,7 +375,7 @@ struct UniqueToolInfo {
 	/// @brief ケース内個数
 	std::int32_t case_pack_num{};
 	/// @brief 保管領域の情報
-	std::optional<StrageAreaInfo> storage_area_info{};
+	std::optional<StorageAreaInfo> storage_area_info{};
 	/// @brief 保管状態 (補充前、保管中、取出)
 	StorageCondition storage_condition{StorageCondition::NOT_STORED};
 	/// @brief 再研磨回数 (工具の再研磨回数)
@@ -394,7 +394,7 @@ struct MstLineInfo {
 };
 
 /**
- * @struct MstLineInfo
+ * @struct MstProgramInfo
  * @brief プログラム割当一覧表のプログラム情報を保持する構造体
  */
 struct MstProgramInfo {

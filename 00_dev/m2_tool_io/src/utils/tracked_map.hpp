@@ -96,8 +96,8 @@ private:
 	 */
 	map_type get_updated_elements_internal() const {
 		map_type updated_elements;
-		for (const auto& key : updated_keys) {
-			auto it = map.find(key);
+		for (const set_key_type& key : updated_keys) {
+			const_iterator it = map.find(key);
 			if (it != map.end()) {	// mapに存在する場合のみ追加
 				// C++17 try_emplace にヒント(end())を渡す
 				// mapは昇順、updated_keysも昇順なので、常に末尾に追加される
@@ -280,7 +280,7 @@ public:
 	 * @return キーに対応する値、またはstd::nullopt。
 	 */
 	std::optional<mapped_type> try_at(const key_type& key) const {
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			return it->second;
 		} else {
@@ -298,7 +298,7 @@ public:
 	 * @return キーに対応する値、またはstd::nullopt。
 	 */
 	std::optional<mapped_type> try_at(const key_type& key, bool flag_erase_updated_keys) {
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return it->second;
@@ -320,7 +320,7 @@ public:
 	 */
 	template <typename U>
 	mapped_type at_or(const key_type& key, U&& default_value) const {
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			return it->second;
 		} else {
@@ -343,7 +343,7 @@ public:
 	 */
 	template <typename U>
 	mapped_type at_or(const key_type& key, U&& default_value, bool flag_erase_updated_keys) {
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return it->second;
@@ -372,7 +372,7 @@ public:
 	}
 
 	/**
-	 * @brief 全ての要素に対して関数を適用する (ゼロコピー・読み取り専用・const版)。
+	 * @brief 全ての要素に対して関数を適用する (ゼロコピー・読み取り専用・更新フラグ操作付き)。
 	 * @details
 	 * マップ内の全要素を走査し、コールバック関数を実行します。
 	 * コールバックには (const Key&, const Value&) が渡されます。
@@ -403,9 +403,9 @@ public:
 	 */
 	template <typename Func>
 	void for_each_updated(Func action) const {
-		for (const auto& key : updated_keys) {
-			if (auto it = map.find(key); it != map.end()) {
-				action(key, static_cast<const mapped_type&>(it->second));
+		for (const set_key_type& key : updated_keys) {
+			if (const_iterator it = map.find(key); it != map.end()) {
+				action(key, it->second);
 			}
 		}
 	}
@@ -423,9 +423,9 @@ public:
 	 */
 	template <typename Func>
 	void for_each_updated(Func action, bool flag_clear_updated_keys) {
-		for (const auto& key : updated_keys) {
-			if (auto it = map.find(key); it != map.end()) {
-				action(key, static_cast<const mapped_type&>(it->second));
+		for (const set_key_type& key : updated_keys) {
+			if (const_iterator it = map.find(key); it != map.end()) {
+				action(key, it->second);
 			}
 		}
 		if_true_clear_updated_keys(flag_clear_updated_keys);
@@ -530,29 +530,34 @@ public:
 	 * @tparam Modifier 関数オブジェクト。 bool(mapped_type&) または void(mapped_type&)
 	 * @param key キー
 	 * @param modifier 変更を行う関数。bool を返す場合は、変更があったときに true を返してください。
-	 * @return キーが見つかり、modifierが実行された場合は true。
+	 * @return 要素へのイテレータと、更新が行われたか(true)を示すペア。
 	 */
 	template <typename Modifier>
-	bool modify(const key_type& key, Modifier modifier) {
-		auto it = map.find(key);
+	std::pair<const_iterator, bool> modify(const key_type& key, Modifier modifier) {
+		iterator it = map.find(key);
 		if (it != map.end()) {
 			// ラムダ式の戻り値の型を取得
 			using ReturnType = std::invoke_result_t<Modifier, mapped_type&>;
+			bool updated = false;
 
 			if constexpr (std::is_same_v<ReturnType, bool>) {
 				// --- パターンA: boolを返す (利用者責任) ---
 				if (modifier(it->second)) {
 					updated_keys.insert(key);
-					return true;
+					updated = true;
 				}
 			} else {
 				// --- パターンB: voidを返す (常に更新扱い) ---
 				modifier(it->second);
 				updated_keys.insert(key);// 無条件で更新とみなす
-				return true;
+				updated = true;
 			}
+
+			// イテレータ(const変換) と 結果フラグ のペアを返す
+			return {it, updated};
 		}
-		return false;
+		// キーが見つからない場合
+		return {map.end(), false};
 	}
 
 	/**
@@ -561,15 +566,15 @@ public:
 	 * 挿入が成功した場合、そのキーを `updated_keys` に追加します。
 	 * @tparam P 挿入する値の型
 	 * @param[in] x 挿入する値 (std::pair)。左辺値ならコピー、右辺値ならムーブされます。
-	 * @return 挿入に成功した場合はtrue、キーが既に存在した場合はfalse。
+	 * @return 挿入された要素へのイテレータと、挿入が成功したか(true)を示すペア。
 	 */
 	template <class P>
-	bool insert(P&& x) {
-		auto result = map.insert(std::forward<P>(x));
+	std::pair<const_iterator, bool> insert(P&& x) {
+		std::pair<const_iterator, bool> result = map.insert(std::forward<P>(x));
 		if (result.second) {
 			updated_keys.insert(result.first->first); // 更新されたキーを保存
 		}
-		return result.second;
+		return result;
 	}
 
 	/**
@@ -579,13 +584,13 @@ public:
 	 * @tparam M 挿入/代入する値の型
 	 * @param[in] key キー
 	 * @param[in] x 値
-	 * @return 新規に挿入された場合はtrue、代入された場合はfalse。
+	 * @return 挿入または代入された要素へのイテレータと、挿入が成功したか(true)を示すペア。
 	 */
 	template <class M>
-	bool insert_or_assign(const key_type& key, M&& x) {
-		auto result = map.insert_or_assign(key, std::forward<M>(x));
-		updated_keys.insert(key); // キーが更新されたことを記録
-		return result.second;
+	std::pair<const_iterator, bool> insert_or_assign(const key_type& key, M&& x) {
+		std::pair<const_iterator, bool> result = map.insert_or_assign(key, std::forward<M>(x));
+		updated_keys.insert(result.first->first); // キーが更新されたことを記録
+		return result;
 	}
 
 	/**
@@ -595,7 +600,7 @@ public:
 	 */
 	template <class... Args>
 	std::pair<const_iterator, bool> emplace(Args&&... args) {
-		auto result = map.emplace(std::forward<Args>(args)...);
+		std::pair<const_iterator, bool> result = map.emplace(std::forward<Args>(args)...);
 		if (result.second) {
 			updated_keys.insert(result.first->first);
 		}
@@ -610,8 +615,8 @@ public:
 	 */
 	template <class... Args>
 	const_iterator emplace_hint(const_iterator hint, Args&&... args) {
-		auto old_size = map.size();
-		auto it = map.emplace_hint(hint, std::forward<Args>(args)...);
+		size_type old_size = map.size();
+		const_iterator it = map.emplace_hint(hint, std::forward<Args>(args)...);
 		if (map.size() > old_size) {
 			updated_keys.insert(it->first); // 新規挿入
 		}
@@ -626,7 +631,7 @@ public:
 	 */
 	template <class... Args>
 	std::pair<const_iterator, bool> try_emplace(const key_type& key, Args&&... args) {
-		auto result = map.try_emplace(key, std::forward<Args>(args)...);
+		std::pair<const_iterator, bool> result = map.try_emplace(key, std::forward<Args>(args)...);
 		if (result.second) {
 			updated_keys.insert(result.first->first);
 		}
@@ -641,7 +646,7 @@ public:
 	 */
 	template <class... Args>
 	std::pair<const_iterator, bool> try_emplace(key_type&& key, Args&&... args) {
-		auto result = map.try_emplace(std::move(key), std::forward<Args>(args)...);
+		std::pair<const_iterator, bool> result = map.try_emplace(std::move(key), std::forward<Args>(args)...);
 		if (result.second) {
 			updated_keys.insert(result.first->first);
 		}
@@ -657,8 +662,8 @@ public:
 	 */
 	template <class... Args>
 	const_iterator try_emplace(const_iterator hint, key_type&& key, Args&&... args) {
-		auto old_size = map.size();
-		auto it = map.try_emplace(hint, std::move(key), std::forward<Args>(args)...);
+		size_type old_size = map.size();
+		const_iterator it = map.try_emplace(hint, std::move(key), std::forward<Args>(args)...);
 		if (map.size() > old_size) {
 			updated_keys.insert(it->first);
 		}
@@ -669,12 +674,13 @@ public:
 	 * @brief 範囲内の要素をマップに挿入する。
 	 * @tparam Range 挿入する要素の範囲の型 (begin/endが定義されていること)
 	 * @param[in] range 挿入する要素の範囲
+	 * @return 挿入に成功した要素の数。
 	 */
 	template <typename Range>
 	size_type insert_range(Range&& range) {
 		size_type inserted_count = 0;
 		for (auto&& item : range) {
-			inserted_count += insert(std::forward<decltype(item)>(item));	// 既存の追跡付きinsertに委譲
+			inserted_count += insert(std::forward<decltype(item)>(item)).second;	// 既存の追跡付きinsertに委譲
 		}
 		return inserted_count;
 	}
@@ -715,7 +721,7 @@ public:
 	 * @return 削除された最後の要素の次の要素を指すイテレータ。
 	 */
 	const_iterator erase(const_iterator first, const_iterator last) {
-		for (auto it = first; it != last; ++it) {
+		for (const_iterator it = first; it != last; ++it) {
 			updated_keys.erase(it->first);
 		}
 		return map.erase(first, last);
@@ -910,8 +916,8 @@ private:
 	 */
 	map_type get_updated_elements_internal() const {
 		map_type updated_elements;
-		for (const auto& key : updated_keys) {
-			auto it = map.find(key);
+		for (const set_key_type& key : updated_keys) {
+			const_iterator it = map.find(key);
 			if (it != map.end()) {	// mapに存在する場合のみ追加
 				// C++17 try_emplace にヒント(end())を渡す
 				// mapは昇順、updated_keysも昇順なので、常に末尾に追加される
@@ -931,11 +937,11 @@ private:
 	 */
 	template <class P>
 	bool insert_internal(P&& x) {
-		auto result = map.insert(std::forward<P>(x));
-		if (result.second) {
-			updated_keys.insert(result.first->first); // 更新されたキーを保存
+		const auto [it, inserted] = map.insert(std::forward<P>(x));
+		if (inserted) {
+			updated_keys.insert(it->first); // 更新されたキーを保存
 		}
-		return result.second;
+		return inserted;
 	}
 
 public:
@@ -983,7 +989,7 @@ public:
 	void inspect_safely(Func f) const {
 		std::lock_guard<std::recursive_mutex> lock(mtx);
 		// ロック中に、内部の const map を引数としてラムダを実行
-		f(static_cast<const map_type&>(map));
+		f(map);
 	}
 
 	/**
@@ -1020,7 +1026,7 @@ public:
 	void operate_safely(Func f) {
 		std::lock_guard<std::recursive_mutex> lock(mtx);
 		// const参照(走査用) と non-constな自分自身(書き込み用) を渡す
-		f(static_cast<const map_type&>(map), *this);
+		f(std::as_const(map), *this);
 	}
 
 	// --- 更新待機 ---
@@ -1172,19 +1178,19 @@ public:
 	 */
 	std::pair<std::optional<value_type>, std::optional<value_type>> equal_range(const key_type& key) const {
 		std::lock_guard<std::recursive_mutex> lock(mtx);
-		auto range = map.equal_range(key);
+		const auto [it_lower, it_upper] = map.equal_range(key);
 
 		std::optional<value_type> first;
-		if (range.first != map.end()) {
-			first = *(range.first);
+		if (it_lower != map.end()) {
+			first = *it_lower;
 		}
 
 		std::optional<value_type> second;
-		if (range.second != map.end()) {
-			second = *(range.second);
+		if (it_upper != map.end()) {
+			second = *it_upper;
 		}
 
-		return {first, second};
+		return {std::make_optional(first), std::make_optional(second)};
 	}
 
 	/**
@@ -1194,9 +1200,9 @@ public:
 	 */
 	std::optional<value_type> lower_bound(const key_type& key) const {
 		std::lock_guard<std::recursive_mutex> lock(mtx);
-		auto it = map.lower_bound(key);
+		const_iterator it = map.lower_bound(key);
 		if (it != map.end()) {
-			return *it;
+			return std::make_optional(*it);
 		}
 		return std::nullopt;
 	}
@@ -1208,9 +1214,9 @@ public:
 	 */
 	std::optional<value_type> upper_bound(const key_type& key) const {
 		std::lock_guard<std::recursive_mutex> lock(mtx);
-		auto it = map.upper_bound(key);
+		const_iterator it = map.upper_bound(key);
 		if (it != map.end()) {
-			return *it;
+			return std::make_optional(*it);
 		}
 		return std::nullopt;
 	}
@@ -1256,7 +1262,7 @@ public:
 	 */
 	std::optional<mapped_type> try_at(const key_type& key) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			return std::make_optional(it->second);	// コピーを返す
 		} else {
@@ -1275,7 +1281,7 @@ public:
 	 */
 	std::optional<mapped_type> try_at(const key_type& key, bool flag_erase_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return std::make_optional(it->second);	// コピーを返す
@@ -1297,7 +1303,7 @@ public:
 	template <typename U>
 	mapped_type at_or(const key_type& key, U&& default_value) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			return it->second;
 		} else {
@@ -1320,7 +1326,7 @@ public:
 	template <typename U>
 	mapped_type at_or(const key_type& key, U&& default_value, bool flag_erase_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);	// ロックを取得
-		auto it = map.find(key);
+		const_iterator it = map.find(key);
 		if (it != map.end()) {
 			if_true_erase_updated_keys(key, flag_erase_updated_keys);
 			return it->second;
@@ -1352,7 +1358,7 @@ public:
 	}
 
 	/**
-	 * @brief 全ての要素に対して関数を適用する (ゼロコピー・読み取り専用・const版)。
+	 * @brief 全ての要素に対して関数を適用する (ゼロコピー・読み取り専用・更新フラグ操作付き)。
 	 * @details
 	 * マップ内の全要素を走査し、コールバック関数を実行します。
 	 * コールバックには (const Key&, const Value&) が渡されます。
@@ -1389,9 +1395,9 @@ public:
 	void for_each_updated(Func action, bool flag_wait_for_updates = false) const {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
 		if_true_wait_for_updates(lock, flag_wait_for_updates);
-		for (const auto& key : updated_keys) {
-			if (auto it = map.find(key); it != map.end()) {
-				action(key, static_cast<const mapped_type&>(it->second));
+		for (const set_key_type& key : updated_keys) {
+			if (const_iterator it = map.find(key); it != map.end()) {
+				action(key, it->second);
 			}
 		}
 	}
@@ -1412,9 +1418,9 @@ public:
 	void for_each_updated(Func action, bool flag_clear_updated_keys) {
 		std::unique_lock<std::recursive_mutex> lock(mtx);
 		if_true_wait_for_updates(lock, flag_clear_updated_keys);
-		for (const auto& key : updated_keys) {
-			if (auto it = map.find(key); it != map.end()) {
-				action(key, static_cast<const mapped_type&>(it->second));
+		for (const set_key_type& key : updated_keys) {
+			if (const_iterator it = map.find(key); it != map.end()) {
+				action(key, it->second);
 			}
 		}
 		if_true_clear_updated_keys(flag_clear_updated_keys);
@@ -1528,33 +1534,38 @@ public:
 	 * @tparam Modifier 関数オブジェクト。 bool(mapped_type&) または void(mapped_type&)
 	 * @param key キー
 	 * @param modifier 変更を行う関数。bool を返す場合は、変更があったときに true を返してください。
-	 * @return キーが見つかり、modifierが実行された場合は true。
+	 * @return { 見つかったか(bool), 更新されたか(bool) }
 	 */
 	template <typename Modifier>
-	bool modify(const key_type& key, Modifier modifier) {
+	std::pair<bool, bool> modify(const key_type& key, Modifier modifier) {
 		std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
 
-		auto it = map.find(key);
+		iterator it = map.find(key);
 		if (it != map.end()) {
 			// ラムダ式の戻り値の型を取得
 			using ReturnType = std::invoke_result_t<Modifier, mapped_type&>;
+			bool updated = false;
 
 			if constexpr (std::is_same_v<ReturnType, bool>) {
 				// --- パターンA: boolを返す (利用者責任) ---
 				if (modifier(it->second)) {
 					updated_keys.insert(key);
 					cv.notify_all();
-					return true;
+					updated =  true;
 				}
 			} else {
 				// --- パターンB: voidを返す (常に更新扱い) ---
 				modifier(it->second);
 				updated_keys.insert(key);	// 無条件で更新とみなす
 				cv.notify_all();
-				return true;
+				updated =  true;
 			}
+
+			// { 見つかった(true), 更新されたか(updated) }
+			return {true, updated};
 		}
-		return false;
+		// { 見つからない(false), 更新されていない(false) }
+		return {false, false};
 	}
 
 	/**
@@ -1589,16 +1600,15 @@ public:
 	 */
 	template <class M>
 	bool insert_or_assign(const key_type& key, M&& x) {
-		bool inserted = false;
-		std::pair<iterator, bool> result;
+		bool result = false;
 		{
 			std::lock_guard<std::recursive_mutex> lock(mtx);	// ロックを取得
-			result = map.insert_or_assign(key, std::forward<M>(x));
-			updated_keys.insert(key);  // 更新されたキーを保存
-			inserted = result.second;
+			const auto [it, inserted] = map.insert_or_assign(key, std::forward<M>(x));
+			updated_keys.insert(it->first);  // 更新されたキーを保存
+			result = inserted;
 		} // ロックを解放
 		cv.notify_all();	// 更新を待機しているスレッドに通知
-		return inserted;
+		return result;
 	}
 
 	/**
@@ -1608,20 +1618,19 @@ public:
 	 */
 	template <class... Args>
 	bool emplace(Args&&... args) {
-		std::pair<iterator, bool> result;
-		bool inserted = false;
+		bool result = false;
 		{
 			std::lock_guard<std::recursive_mutex> lock(mtx);
-			result = map.emplace(std::forward<Args>(args)...);
-			if (result.second) {
-				updated_keys.insert(result.first->first);
-				inserted = true;
+			const auto [it, inserted] = map.emplace(std::forward<Args>(args)...);
+			if (inserted) {
+				updated_keys.insert(it->first);
+				result = true;
 			}
 		}
-		if (inserted) {
+		if (result) {
 			cv.notify_all();
 		}
-		return inserted;
+		return result;
 	}
 
 	/**
@@ -1632,20 +1641,19 @@ public:
 	 */
 	template <class... Args>
 	bool try_emplace(const key_type& key, Args&&... args) {
-		std::pair<iterator, bool> result;
-		bool inserted = false;
+		bool result = false;
 		{
 			std::lock_guard<std::recursive_mutex> lock(mtx);
-			result = map.try_emplace(key, std::forward<Args>(args)...);
-			if (result.second) {
-				updated_keys.insert(result.first->first);
-				inserted = true;
+			const auto [it, inserted] = map.try_emplace(key, std::forward<Args>(args)...);
+			if (inserted) {
+				updated_keys.insert(it->first);
+				result = true;
 			}
 		}
-		if (inserted) {
+		if (result) {
 			cv.notify_all();
 		}
-		return inserted;
+		return result;
 	}
 
 	/**
@@ -1656,21 +1664,19 @@ public:
 	 */
 	template <class... Args>
 	bool try_emplace(key_type&& key, Args&&... args) {
-		std::pair<iterator, bool> result;
-		bool inserted = false;
+		bool result = false;
 		{
 			std::lock_guard<std::recursive_mutex> lock(mtx);
-			// key はムーブされる可能性があるため、result.first->first を使用
-			result = map.try_emplace(std::move(key), std::forward<Args>(args)...);
-			if (result.second) {
-				updated_keys.insert(result.first->first);
-				inserted = true;
+			const auto [it, inserted] = map.try_emplace(std::move(key), std::forward<Args>(args)...);
+			if (inserted) {
+				updated_keys.insert(it->first);
+				result = true;
 			}
 		}
-		if (inserted) {
+		if (result) {
 			cv.notify_all();
 		}
-		return inserted;
+		return result;
 	}
 
 	/**

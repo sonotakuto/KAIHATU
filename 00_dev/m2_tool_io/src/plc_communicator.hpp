@@ -60,7 +60,7 @@ struct WatchFlags {
 };
 
 /**
- * @struct WatchItem
+ * @struct WatchData
  * @brief PLCの状態監視リストの各項目を定義する構造体。
  * @details 立ち上がり/立ち下がりエッジを検出し、個別の通知を送信できる。
  */
@@ -71,7 +71,7 @@ struct WatchData {
 };
 
 /**
- * @struct Command
+ * @struct WatchCommand
  * @brief g_watchlist をどう操作するか格納する構造体
  */
 struct WatchCommand {
@@ -91,6 +91,10 @@ enum class NotificationType {
 	TASK_CLEARED			// タスクキューがクリアされた
 };
 
+/**
+ * @struct MonitorResult
+ * @brief PLCの監視項目の状態変化に関する通知の内容
+ */
 struct MonitorResult {
 	std::uint16_t	addr{};		// 監視対象
 	bool			status{};	// 監視対象の状態

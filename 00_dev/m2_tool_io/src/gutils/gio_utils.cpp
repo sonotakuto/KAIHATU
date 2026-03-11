@@ -6,7 +6,6 @@
 #include "utils/string_utils.hpp"
 #include <gio/gio.h>
 #include <vector>
-#include <iostream> // またはプロジェクトのログ機能
 
 /**
  * @namespace gutils
@@ -29,7 +28,7 @@ bool spawn_async_impl(char** argv_ptr, std::string* error_message) {
 		nullptr,
 		argv_ptr, // 既に char** なのでそのまま渡す
 		nullptr,
-		(GSpawnFlags)(G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL),
+		static_cast<GSpawnFlags>(G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL),
 		nullptr, nullptr, nullptr, &error
 	)) {
 		if (error_message) {
@@ -40,10 +39,29 @@ bool spawn_async_impl(char** argv_ptr, std::string* error_message) {
 	}
 	return true;
 }
+
+void dbus_call_ready_callback(GObject* source_object, GAsyncResult* res, gpointer /* user_data */) {
+	GError* error = nullptr;
+	// 呼び出し結果を取得
+	GVariant* result = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source_object), res, &error);
+
+	if (result) {
+		// 成功時は結果を破棄
+		g_variant_unref(result);
+	} else {
+		// 失敗時は警告ログを出力
+		if (error) {
+			LogManager::logError(utils::concat("[GIO] dbus_call_async delayed execution failed: ", error->message));
+			g_error_free(error);
+		} else {
+			LogManager::logError("[GIO] dbus_call_async delayed execution failed with an unknown error.");
+		}
+	}
+}
 } // namespace
 
 /**
- * @namespace gio
+ * @namespace gutils::gio
  * @brief GIO関連のユーティリティをまとめた名前空間。
  */
 namespace gio {
@@ -56,6 +74,14 @@ bool dbus_call_async(
 	std::string* error_message
 ) {
 	GError* error = nullptr;
+
+	if (bus_name == nullptr || object_path == nullptr || interface_name == nullptr || method_name == nullptr) {
+		if (error_message) {
+			utils::assign_concat(*error_message, "[GIO] Invalid argument: bus_name, object_path, interface_name, and method_name must not be null.");
+		}
+		return false;
+	}
+
 	GDBusConnection* connection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &error);
 
 	if (!connection) {
@@ -70,7 +96,8 @@ bool dbus_call_async(
 
 	g_dbus_connection_call(
 		connection, bus_name, object_path, interface_name, method_name,
-		nullptr, nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr, nullptr
+		nullptr, nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr,
+		dbus_call_ready_callback, nullptr
 	);
 
 	g_object_unref(connection);
@@ -80,6 +107,14 @@ bool dbus_call_async(
 
 bool dbus_service_exists(const char* bus_name, std::string* error_message) {
 	GError* error = nullptr;
+
+	if (bus_name == nullptr) {
+		if (error_message) {
+			utils::assign_concat(*error_message, "[GIO] Invalid argument: bus_name must not be null.");
+		}
+		return false;
+	}
+
 	GDBusConnection* connection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &error);
 
 	if (!connection) {
@@ -122,6 +157,9 @@ bool dbus_service_exists(const char* bus_name, std::string* error_message) {
 
 bool spawn_async(const std::vector<std::string>& argv, std::string* error_message) {
 	if (argv.empty()) {
+		if (error_message) {
+			utils::assign_concat(*error_message, "[GIO] Invalid argument: argv must not be empty.");
+		}
 		return false;
 	}
 
@@ -142,30 +180,30 @@ bool spawn_async(const std::vector<std::string>& argv, std::string* error_messag
 
 bool spawn_async(std::initializer_list<const char*> argv, std::string* error_message) {
 	if (argv.size() == 0) {
+		if (error_message) {
+			utils::assign_concat(*error_message, "[GIO] Invalid argument: argv must not be empty.");
+		}
 		return false;
 	}
 
-	// 文字列の実体を保持する領域
+	// 文字列の実体をコピー作成
 	std::vector<std::string> storage;
 	storage.reserve(argv.size());
+	for (const char* arg : argv) {
+		if (arg != nullptr) { // nullptr を安全に除外
+			storage.emplace_back(arg);
+		}
+	}
 
 	// ポインタ配列を作成
 	std::vector<char*> argv_exec;
-	argv_exec.reserve(argv.size() + 1);
+	argv_exec.reserve(storage.size() + 1);
 
 	// 構築とポインタ取得
-	for (const char* arg : argv) {
-		// 文字列をコピー生成
-		storage.emplace_back(arg);
-
-		// コピーした文字列の書き換え可能なバッファのアドレスを取得
-		// ※注意: storageへの追加が完了してからアドレスを取るか、
-		// reserveして再確保が起きないようにしないとポインタが無効になる可能性があります。
-		// ここでは emplace_back した直後の back() を参照していますが、
-		// 安全のため storage.reserve を先に行っています。
-		argv_exec.push_back(storage.back().data());
+	for (auto& s : storage) {
+		argv_exec.push_back(s.data());	// C++17: 非const string::data() は char*
 	}
-	argv_exec.push_back(nullptr);
+	argv_exec.push_back(nullptr);	// 番兵
 
 	return spawn_async_impl(argv_exec.data(), error_message);}
 

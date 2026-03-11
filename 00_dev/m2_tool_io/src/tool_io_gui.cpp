@@ -1839,7 +1839,7 @@ void MainWindow::force_close() {
 }
 
 void MainWindow::plc_on_notified(const plc::Notification& notification) {
-	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", (int)notification.type);
+	DEV_PRINT("GUIスレッド: PLCから通知を受け取りました。通知タイプ: {}\n", static_cast<int>(notification.type));
 	switch (notification.type) {
 	case plc::NotificationType::CONNECTION_LOST :
 		m_plc_connected = false;
@@ -2003,130 +2003,153 @@ void MainWindow::reset_header_buttons(bool update_ui) {
 	}, update_ui);
 }
 
-void MainWindow::update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui) {
+bool MainWindow::update_widget_state(sg::Widget* widget, const WidgetState& state, bool update_ui) {
 	// widget に対応する WidgetStateUpdater をその場で更新し、変更があった場合に更新を記録
 	bool changed = m_widget_states.modify(widget, [&](auto& updater) {
 		// その場の参照に対して merge を実行し、変更があったかどうかを返す
 		return updater.state.merge(state);
-	});
+	}).second;
 
 	// 変更があった場合、UIを更新
-	if (update_ui && changed) {
+	if (update_ui) {
 		refresh_ui(false);
 	}
+
+	return changed;
 }
 
-void MainWindow::update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui) {
+bool MainWindow::update_widget_state(sg::Widget* widget, WidgetState&& state, bool update_ui) {
 	// widget に対応する WidgetStateUpdater をその場で更新し、変更があった場合に更新を記録
 	bool changed = m_widget_states.modify(widget, [&](auto& updater) {
 		// その場の参照に対して merge を実行し、変更があったかどうかを返す
 		return updater.state.merge(std::move(state));
-	});
+	}).second;
 
 	// 変更があった場合、UIを更新
-	if (update_ui && changed) {
+	if (update_ui) {
 		refresh_ui(false);
 	}
+
+	return changed;
 }
 
-void MainWindow::update_widget_state(const std::vector<sg::Widget*>& widgets, const WidgetState& state, bool update_ui) {
+bool MainWindow::update_widget_state(const std::vector<sg::Widget*>& widgets, const WidgetState& state, bool update_ui) {
+	bool changed{false};
+
 	for (auto* widget : widgets) {
-		update_widget_state(widget, state, false);
+		changed |= update_widget_state(widget, state, false);
 	}
 
 	if (update_ui) {
 		refresh_ui(false);
 	}
+
+	return changed;
 }
 
-void MainWindow::update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui) {
+bool MainWindow::update_table_state(sgex::ListStoreViewInterface* table, const TableState& state, bool update_ui) {
 	// table に対応する TableState をその場で更新し、変更があった場合に更新を記録
 	bool changed = m_table_states.modify(table, [&](auto& current_state) {
 		// その場の参照に対して merge を実行し、変更があったかどうかを返す
 		return current_state.merge(state);
-	});
+	}).second;
 
 	// 変更があった場合、UIを更新
-	if (update_ui && changed) {
+	if (update_ui) {
 		refresh_ui(false);
 	}
+
+	return changed;
 }
 
-void MainWindow::update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui) {
+bool MainWindow::update_table_state(sgex::ListStoreViewInterface* table, TableState&& state, bool update_ui) {
 	// table に対応する TableState をその場で更新し、変更があった場合に更新を記録
 	bool changed = m_table_states.modify(table, [&](auto& current_state) {
 		// その場の参照に対して merge を実行し、変更があったかどうかを返す
 		return current_state.merge(std::move(state));
-	});
+	}).second;
 
 	// 変更があった場合、UIを更新
-	if (update_ui && changed) {
+	if (update_ui) {
 		refresh_ui(false);
 	}
+
+	return changed;
 }
 
-void MainWindow::update_table_state(const std::vector<sgex::ListStoreViewInterface*>& tables, const TableState& state, bool update_ui) {
+bool MainWindow::update_table_state(const std::vector<sgex::ListStoreViewInterface*>& tables, const TableState& state, bool update_ui) {
+	bool changed{false};
+
 	for (auto* table : tables) {
-		update_table_state(table, state, false);
+		changed |= update_table_state(table, state, false);
 	}
 
 	if (update_ui) {
 		refresh_ui(false);
 	}
+
+	return changed;
 }
 
 void MainWindow::refresh_ui(bool force_redraw_all) {
 	// --- ウィジェットの更新処理 ---
 
-	// 共通の更新ロジックをラムダ式で定義 (DRY原則)
-	auto apply_widget_update = [](const auto& key, const auto& state_updater) {
-		// セッター関数が登録されていれば呼び出す
-		if (state_updater.setter) {
-			// セッター関数を呼び出して、テキストと状態を更新
-			state_updater.setter(state_updater.state);
-		}
-	};
+	// 強制再描画、またはウィジェットに更新がある場合のみ実行
+	if (force_redraw_all || m_widget_states.is_updated()) {
+		// 共通の更新ロジックをラムダ式で定義 (DRY原則)
+		auto apply_widget_update = [](const auto& key, const auto& state_updater) {
+			// セッター関数が登録されていれば呼び出す
+			if (state_updater.setter) {
+				// セッター関数を呼び出して、テキストと状態を更新
+				state_updater.setter(state_updater.state);
+			}
+		};
 
-	if (force_redraw_all) {
-		// 全要素を走査 (ロック内/参照アクセス) + 履歴クリア
-		m_widget_states.for_each(apply_widget_update, true);
-	} else {
-		// 更新要素のみ走査 (ロック内/参照アクセス) + 履歴クリア
-		m_widget_states.for_each_updated(apply_widget_update, true);
+		if (force_redraw_all) {
+			// 全要素を走査 (ロック内/参照アクセス) + 履歴クリア
+			m_widget_states.for_each(apply_widget_update, true);
+		} else {
+			// 更新要素のみ走査 (ロック内/参照アクセス) + 履歴クリア
+			m_widget_states.for_each_updated(apply_widget_update, true);
+		}
 	}
 
 	// --- テーブルの更新処理 ---
 
-	// 共通の更新ロジックをラムダ式で定義
-	auto apply_table_update = [this](const auto& table, const auto& state) {
-		if (state.column_headers.has_value()) {
-			guint n_columns = table->get_n_columns();	// カラム数
-			guint n_headers = state.column_headers.value().size();	// ヘッダー数
-			for (guint i = 0; (i < n_headers && i < n_columns); i++) {
-				// get_display_text はメンバ関数と仮定して this-> で呼び出し
-				table->set_title(i, this->get_display_text(state.column_headers.value().at(i)).c_str());
+	// 強制再描画、またはテーブルに更新がある場合のみ実行
+	if (force_redraw_all || m_table_states.is_updated()) {
+		// 共通の更新ロジックをラムダ式で定義
+		auto apply_table_update = [this](const auto& table, const auto& state) {
+			if (state.column_headers.has_value()) {
+				guint n_columns = table->get_n_columns();	// カラム数
+				guint n_headers = state.column_headers.value().size();	// ヘッダー数
+				for (guint i = 0; (i < n_headers && i < n_columns); i++) {
+					// get_display_text はメンバ関数と仮定して this-> で呼び出し
+					table->set_title(i, this->get_display_text(state.column_headers.value().at(i)).c_str());
+				}
 			}
-		}
-		if (state.is_sensitive.has_value()) {
-			table->set_sensitive(state.is_sensitive.value());
-		}
-		if (state.is_visible.has_value()) {
-			table->set_visible(state.is_visible.value());
-		}
-		if (state.is_selectable.has_value()){
-			table->set_selection_mode(((state.is_selectable.value())
-				? (GtkSelectionMode::GTK_SELECTION_SINGLE)
-				: (GtkSelectionMode::GTK_SELECTION_NONE)
-			));
-		}
-	};
+			if (state.is_sensitive.has_value()) {
+				table->set_sensitive(state.is_sensitive.value());
+			}
+			if (state.is_visible.has_value()) {
+				table->set_visible(state.is_visible.value());
+			}
+			if (state.is_selectable.has_value()){
+				table->set_selection_mode(((state.is_selectable.value())
+					? (GtkSelectionMode::GTK_SELECTION_SINGLE)
+					: (GtkSelectionMode::GTK_SELECTION_NONE)
+				));
+			}
+		};
 
-	if (force_redraw_all) {
-		m_table_states.for_each(apply_table_update, true);
-	} else {
-		m_table_states.for_each_updated(apply_table_update, true);
+		if (force_redraw_all) {
+			m_table_states.for_each(apply_table_update, true);
+		} else {
+			m_table_states.for_each_updated(apply_table_update, true);
+		}
 	}
 
+	// --- その他の更新処理 ---
 	if (force_redraw_all) {
 		warningListstore.refresh(false);
 	}
@@ -2472,14 +2495,14 @@ void MainWindow::confirm_insert_count(int init_count, int max_count, std::functi
 		// 画面下部のボタン有効状態を再計算
 		// ダイアログ非表示後に実行されるよう、遅延実行に登録
 		gutils::idle_add_once([this]() {
-			this->update_retrieve_read_completed_buttons();
+			this->update_read_completed_buttons();
 		});
 	});
 
 	// 画面下部のボタン有効状態を再計算
 	// ダイアログ表示後に実行されるよう、遅延実行に登録
 	gutils::idle_add_once([this]() {
-		this->update_retrieve_read_completed_buttons();
+		this->update_read_completed_buttons();
 	});
 
 	// ダイアログを表示
@@ -3069,8 +3092,8 @@ void MainWindow::warningListDialog_on_response(gint response_id) {
 }
 
 void MainWindow::insertCountIncrementButton_on_clicked() {
-	// 最大値 >= 0 のとき、最大値を超えないようにチェック
-	if (m_confirmInsertCountDialog_max_count >= 0 && m_insertCountEntry_current_count < m_confirmInsertCountDialog_max_count) {
+	// 最大値 > 0 のとき、最大値を超えないようにチェック
+	if (m_confirmInsertCountDialog_max_count > 0 && m_insertCountEntry_current_count < m_confirmInsertCountDialog_max_count) {
 		insertCountEntry.set_text(std::to_string(++m_insertCountEntry_current_count).c_str());
 	}
 }
@@ -3316,7 +3339,7 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 	const MstToolInfo& mst_tool_info = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// FIXME: nullopt対応
 
 	// コンテナ搬出
-	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
+	m_operating_area = db::get_StorageAreaInfo_with_max_cases(mst_tool_info.id);
 	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 
 	// 追跡システムの開始
@@ -3489,13 +3512,15 @@ bool MainWindow::on_false_and_true_Button_retrieve_ready_for_reading() {
 
 	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 
+	StorageAreaInfo& operating_area = m_operating_area.value();	// BUG: nullopt対応
+
 	// 履歴データが空の場合に、コンテナ情報だけの履歴を作成
 	if (m_operated_records.empty()) {
 		m_operated_records.push_back(RecOperationTable{
 			.operation_class	= OperationClass::OUT,
 			.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),
 			.proc_time			= sg::now(),
-			.storage_area_id	= m_operating_area.value().id,	// BUG: nullopt対応
+			.storage_area_id	= operating_area.id,
 			.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
 			.line_id			= m_retrieving_list.value().line.id	// BUG: nullopt対応
 		});
@@ -3511,6 +3536,35 @@ bool MainWindow::on_false_and_true_Button_retrieve_ready_for_reading() {
 
 	db::save_history(m_operated_records);
 	tracker::g_recorder_client->stop_recording();
+
+	m_is_insert_operation = false;
+	m_operating_area.reset();
+	m_operated_records.clear();
+	m_plc_ready_for_action = false;
+	m_warning_closed_by_user = false;
+	m_ignore_all_warnings = false;
+	m_unscanned_count = 0;
+
+/*	TODO: 追加要件「工具の取り出し中、コンテナ内の工具が０になった際に、他のコンテナを呼び出すか質問して、工具を取り出せるようにしないといけない。」への対応_実装途中
+	if (!db::update_StorageAreaInfo(operating_area)) {
+
+	}
+
+	if (
+		operating_area.toolcase_stc_num <= 0 &&
+		// TODO: mst_tool.stc のチェック (db_clientに、update_MstToolInfo等を実装して使う)
+		!confirm_to_user(UiText{	// TODO: 確認メッセージに違和感があるので後で修正
+			"コンテナが空になっていたようですが、\n続けて同じ工具が入った他のコンテナから取り出しますか？",
+			"コンテナが からに なっていたようですが、\nつづけて おなじ こうぐが はいった ほかの コンテナから とりだしますか？"
+		})
+	) {
+		// m_retrieving_index.value() を操作せずに コンテナ搬出画面に戻ると、
+		// 同じ工具が入った別コンテナが検索・搬出される
+		set_app_state(AppState::RETRIEVE_CONTAINER_RETRIEVING);
+		return false;	// falseを返すことで、次へ進む動作が行われないようにする。
+	}
+*/
+
 	return true;
 }
 
@@ -3527,14 +3581,6 @@ void MainWindow::on_trueButton_retrieve_ready_for_reading() {
 	if (!on_false_and_true_Button_retrieve_ready_for_reading()) {
 		return;
 	}
-
-	m_is_insert_operation = false;
-	m_operating_area.reset();
-	m_operated_records.clear();
-	m_plc_ready_for_action = false;
-	m_warning_closed_by_user = false;
-	m_ignore_all_warnings = false;
-	m_unscanned_count = 0;
 
 	if (m_retrieving_index.has_value() && m_retrieving_index.value() + 1 < m_retrieving_tools.size()) {
 		// 次の工具の搬出処理へ
@@ -3815,7 +3861,8 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 		unique_info_opt.value().mst_tool_info.stc.has_value()
 	) {
 		auto& mst_tool_info = unique_info_opt.value().mst_tool_info;
-		storingToolListstore.update(0, mst_tool_info);
+		storingToolListstore.clear();
+		storingToolListstore.append(mst_tool_info);
 
 		// インサートの操作か判定
 		m_is_insert_operation = (mst_tool_info.category == TOOL_CATEGORY_INSERT);
@@ -3831,7 +3878,7 @@ void MainWindow::on_qrCodeEntry_store_waiting_for_tool_qr() {
 }
 
 void MainWindow::on_enter_store_container_retrieving() {
-	m_operating_area = db::get_StrageAreaInfo_with_min_cases(m_operating_tool.value().id);	// FIXME: nullopt対応
+	m_operating_area = db::get_StorageAreaInfo_with_min_cases(m_operating_tool.value().id);	// FIXME: nullopt対応
 	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
 	// FIXME: エラー対応
 	tracker::g_recorder_client->start_recording();

@@ -5,6 +5,10 @@
 #pragma once
 #include <utility>
 
+/**
+ * @namespace layout
+ * @brief ウィンドウやUI要素の配置・サイズを管理するための型と関数をまとめた名前空間。
+ */
 namespace layout {
 
 // ==========================================
@@ -214,10 +218,13 @@ enum class Gravity : int {
 // ==========================================
 
 /**
- * @class BasicRectangle
+ * @struct BasicRectangle
  * @brief 任意の Position 型と Size 型を使用できる汎用四角形クラス。
- * @tparam PosType 座標を表す型 (例: layout::Position, sgex::Position)
- * @tparam SizeType サイズを表す型 (例: layout::Size, sgex::Size)
+ * @details 座標計算は「エクスクルーシブ（排他）」仕様で行われます。
+ * @details 右端は pos.x + size.width、下端は pos.y + size.height となります。
+ * @note テンプレート引数 PosType は `.x` と `.y` を持ち、SizeType は `.width` と `.height` をパブリックメンバとして持っている必要があります。
+ * @tparam PosType 座標を表す型 (例: `layout::Position`や、その派生クラス)
+ * @tparam SizeType サイズを表す型 (例: `layout::Size`や、その派生クラス)
  */
 template <typename PosType = Position, typename SizeType = Size>
 struct BasicRectangle {
@@ -324,7 +331,7 @@ struct BasicRectangle {
 	 */
 	[[nodiscard]] constexpr PosType get_top_center() const noexcept {
 		return PosType(
-			pos.x + (size.width - 1) / 2,
+			pos.x + static_cast<int>(size.width) / 2,
 			pos.y
 		);
 	}
@@ -335,7 +342,7 @@ struct BasicRectangle {
 	 */
 	[[nodiscard]] constexpr PosType get_top_right() const noexcept {
 		return PosType(
-			pos.x + size.width - 1,
+			pos.x + static_cast<int>(size.width),
 			pos.y
 		);
 	}
@@ -347,7 +354,7 @@ struct BasicRectangle {
 	[[nodiscard]] constexpr PosType get_center_left() const noexcept {
 		return PosType(
 			pos.x,
-			pos.y + (size.height - 1) / 2
+			pos.y + static_cast<int>(size.height) / 2
 		);
 	}
 
@@ -357,8 +364,8 @@ struct BasicRectangle {
 	 */
 	[[nodiscard]] constexpr PosType get_center() const noexcept {
 		return PosType(
-			pos.x + (size.width - 1) / 2,
-			pos.y + (size.height - 1) / 2
+			pos.x + static_cast<int>(size.width) / 2,
+			pos.y + static_cast<int>(size.height) / 2
 		);
 	}
 
@@ -368,8 +375,8 @@ struct BasicRectangle {
 	 */
 	[[nodiscard]] constexpr PosType get_center_right() const noexcept {
 		return PosType(
-			pos.x + size.width - 1,
-			pos.y + (size.height - 1) / 2
+			pos.x + static_cast<int>(size.width),
+			pos.y + static_cast<int>(size.height) / 2
 		);
 	}
 
@@ -380,7 +387,7 @@ struct BasicRectangle {
 	[[nodiscard]] constexpr PosType get_bottom_left() const noexcept {
 		return PosType(
 			pos.x,
-			pos.y + size.height - 1
+			pos.y + static_cast<int>(size.height)
 		);
 	}
 
@@ -390,8 +397,8 @@ struct BasicRectangle {
 	 */
 	[[nodiscard]] constexpr PosType get_bottom_center() const noexcept {
 		return PosType(
-			pos.x + (size.width - 1) / 2,
-			pos.y + size.height - 1
+			pos.x + static_cast<int>(size.width) / 2,
+			pos.y + static_cast<int>(size.height)
 		);
 	}
 
@@ -401,8 +408,8 @@ struct BasicRectangle {
 	 */
 	[[nodiscard]] constexpr PosType get_bottom_right() const noexcept {
 		return PosType(
-			pos.x + size.width - 1,
-			pos.y + size.height - 1
+			pos.x + static_cast<int>(size.width),
+			pos.y + static_cast<int>(size.height)
 		);
 	}
 };
@@ -433,10 +440,10 @@ template <typename PosType, typename SizeType>
 	// --- X軸の補正 (Mask: 0x03) ---
 	switch (val & 0x03) {
 	case 1:		// Center (TopCenter, Center, BottomCenter)
-		pos.x -= (size.width - 1) / 2;
+		pos.x -= static_cast<int>(size.width) / 2;
 		break;
 	case 2:		// Right (TopRight, CenterRight, BottomRight)
-		pos.x -= (size.width - 1);
+		pos.x -= static_cast<int>(size.width);
 		break;
 	default:	// Left (TopLeft, CenterLeft, BottomLeft)
 		// そのまま (補正なし)
@@ -446,10 +453,10 @@ template <typename PosType, typename SizeType>
 	// --- Y軸の補正 (Mask: 0x0C) ---
 	switch (val & 0x0C) {
 	case 4:		// Center (CenterLeft, Center, CenterRight)
-		pos.y -= (size.height - 1) / 2;
+		pos.y -= static_cast<int>(size.height) / 2;
 		break;
 	case 8:		// Bottom (BottomLeft, BottomCenter, BottomRight)
-		pos.y -= (size.height - 1);
+		pos.y -= static_cast<int>(size.height);
 		break;
 	default:	// Top (TopLeft, TopCenter, TopRight)
 		// そのまま (補正なし)

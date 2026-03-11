@@ -7,6 +7,7 @@
 #include <glib.h>
 #include <string>
 #include <functional>
+#include "common.hpp"
 
 /**
  * @namespace gutils
@@ -48,17 +49,24 @@ public:
 	bool start(const std::string& command, std::function<void(int)> on_exit = nullptr);
 
 	/**
-	 * @brief 実行中のプロセスを停止します。
-	 * プロセスにSIGTERMシグナルを送信し、終了監視を解除します。
-	 * プロセスが実行されていない場合は何もしません。
+	 * @brief 実行中のプロセスに終了要請（SIGTERM）を送信します。
+	 * \n
+	 * プロセスの実際の回収は非同期で行われ、終了後に on_exit コールバックが呼ばれます。
 	 */
-	void stop();
+	void stop() noexcept;
+
+	/**
+	 * @brief 実行中のプロセスを強制終了（SIGKILL）させ、即座にリソースを回収します。
+	 * \n
+	 * この関数を呼んだ場合、on_exit コールバックは呼ばれません。
+	 */
+	void kill() noexcept;
 
 	/**
 	 * @brief プロセスが現在実行中かどうかを確認します。
 	 * @return 実行中の場合はtrue、停止している場合はfalse。
 	 */
-	bool is_running() const;
+	bool is_running() const noexcept;
 
 	/**
 	 * @brief start() が失敗した際のエラーメッセージを取得します。

@@ -13,6 +13,10 @@
  */
 namespace utils {
 
+/**
+ * @class Signal
+ * @brief シグナル通知クラス。複数のスレッド間でイベントの発生を通知するためのシンプルなクラスです。
+ */
 class Signal {
 private:
 	std::mutex mtx;

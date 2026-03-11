@@ -2,9 +2,9 @@
  * @file odbc.cpp
  * @brief odbc.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
-#include "odbc.hpp"
 #include <cstring>
 #include <iostream>
+#include "odbc.hpp"
 
 using namespace odbc;
 
@@ -18,7 +18,7 @@ std::optional<SQL_TIMESTAMP_STRUCT> odbc::to_sql_timestamp(const std::chrono::sy
 
 	if (localtime_r(&timet, &timeinfo) == nullptr) {
 		// 失敗することは稀ですが、エラーハンドリング
-		std::cerr << "localtime_r failed" << std::endl;
+		LogManager::logError("localtime_r failed");
 		return std::nullopt;
 	} else {
 		return SQL_TIMESTAMP_STRUCT{
@@ -58,17 +58,19 @@ std::optional<std::chrono::system_clock::time_point> odbc::to_time_point(const S
 
 // ODBCドライバから詳細なエラー情報を取得する
 std::string OdbcException::getOdbcError(SQLHANDLE handle, SQLSMALLINT handleType) {
-	SQLCHAR sqlState[6];
-	SQLINTEGER nativeError;
-	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
-	SQLSMALLINT textLength;
-	std::string errorMsg = "No specific error message available.";
+	SQLCHAR sqlState[6]{};
+	SQLINTEGER nativeError{};
+	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH]{};
+	SQLSMALLINT textLength{};
+	std::string errorMsg{"No specific error message available."};
 
 	// 診断レコードの1番目を取得する
 	if (SQLGetDiagRec(handleType, handle, 1, sqlState, &nativeError, message, sizeof(message), &textLength) == SQL_SUCCESS) {
-		errorMsg =	"SQLSTATE: " + std::string(reinterpret_cast<char*>(sqlState)) +
-					", Native Error: " + std::to_string(nativeError) +
-					", Message: " + std::string(reinterpret_cast<char*>(message));
+		utils::assign_concat(errorMsg,
+			"SQLSTATE: ", utils::make_strn_view(reinterpret_cast<char*>(sqlState), sizeof(sqlState)),
+			", Native Error: ", std::to_string(nativeError),
+			", Message: ", utils::make_strn_view(reinterpret_cast<char*>(message), static_cast<size_t>(textLength))
+		);
 	}
 	return errorMsg;
 }
@@ -81,7 +83,7 @@ OdbcException::OdbcException(const std::string& msg, SQLHANDLE handle, SQLSMALLI
 // OdbcConnection
 //============================================
 
-OdbcConnection::OdbcConnection(const std::string& dsn, const std::string& user, const std::string& pass) {
+OdbcConnection::OdbcConnection(std::string dsn, std::string user, std::string pass) {
 	SQLRETURN ret;
 
 	// 1. 環境ハンドルの割り当て
@@ -96,7 +98,15 @@ OdbcConnection::OdbcConnection(const std::string& dsn, const std::string& user, 
 
 	// 2. ODBCバージョンの設定
 	// unique_ptr.get() で生ポインタを取り出して渡す
-	SQLSetEnvAttr(getEnvHandle(), SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
+	ret = SQLSetEnvAttr(
+		getEnvHandle(),
+		SQL_ATTR_ODBC_VERSION,
+		reinterpret_cast<SQLPOINTER>(static_cast<std::intptr_t>(SQL_OV_ODBC3)),
+		0
+	);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to set ODBC version", getEnvHandle(), SQL_HANDLE_ENV);
+	}
 
 	// 3. 接続ハンドルの割り当て
 	SQLHDBC tmp_hdbc = SQL_NULL_HDBC;
@@ -108,14 +118,20 @@ OdbcConnection::OdbcConnection(const std::string& dsn, const std::string& user, 
 	}
 
 	// 4. 接続実行
-	ret = SQLConnect(getConnHandle(), (SQLCHAR*)dsn.c_str(), SQL_NTS, (SQLCHAR*)user.c_str(), SQL_NTS, (SQLCHAR*)pass.c_str(), SQL_NTS);
+	ret = SQLConnect(
+		getConnHandle(),
+		reinterpret_cast<SQLCHAR*>(dsn.data()), SQL_NTS,
+		reinterpret_cast<SQLCHAR*>(user.data()), SQL_NTS,
+		reinterpret_cast<SQLCHAR*>(pass.data()), SQL_NTS
+	);
 
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 		// 接続失敗時、hdbcのデストラクタが走るが、
 		// まだ接続されていないので SQLDisconnect はエラーになる(or 何もしない)。
 		// その後 SQLFreeHandle が呼ばれてメモリは解放される。安全。
 		throw OdbcException("Failed to connect to database", getConnHandle(), SQL_HANDLE_DBC);
-	}}
+	}
+}
 
 void OdbcConnection::beginTransaction() {
 	SQLRETURN ret = SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_OFF, SQL_IS_UINTEGER);
@@ -126,19 +142,27 @@ void OdbcConnection::beginTransaction() {
 
 void OdbcConnection::commit() {
 	SQLRETURN ret = SQLEndTran(SQL_HANDLE_DBC, getConnHandle(), SQL_COMMIT);
-	// オートコミットを有効に戻す
-	SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 		throw OdbcException("Failed to commit transaction", getConnHandle(), SQL_HANDLE_DBC);
+	}
+
+	// オートコミットを有効に戻す
+	ret = SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to re-enable autocommit after commit", getConnHandle(), SQL_HANDLE_DBC);
 	}
 }
 
 void OdbcConnection::rollback() {
 	SQLRETURN ret = SQLEndTran(SQL_HANDLE_DBC, getConnHandle(), SQL_ROLLBACK);
-	// オートコミットを有効に戻す
-	SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 		throw OdbcException("Failed to rollback transaction", getConnHandle(), SQL_HANDLE_DBC);
+	}
+
+	// オートコミットを有効に戻す
+	ret = SQLSetConnectAttr(getConnHandle(), SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, SQL_IS_UINTEGER);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to re-enable autocommit after commit", getConnHandle(), SQL_HANDLE_DBC);
 	}
 }
 
@@ -156,75 +180,23 @@ OdbcStatement::OdbcStatement(const OdbcConnection& conn) {
 	}
 }
 
-int OdbcStatement::execute(const std::string& sql) {
-	SQLRETURN ret = SQLExecDirect(getStmtHandle(), (SQLCHAR*)sql.c_str(), SQL_NTS);
+int OdbcStatement::execute(std::string sql) {
+	SQLRETURN ret = SQLExecDirect(getStmtHandle(), reinterpret_cast<SQLCHAR*>(sql.data()), SQL_NTS);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 		throw OdbcException("Failed to execute query", getStmtHandle(), SQL_HANDLE_STMT);
 	}
+	column_map_initialized = false;	// カラムマップは再初期化が必要
 	return getAffectedRowCount();
 }
 
 bool OdbcStatement::fetch() {
 	SQLRETURN ret = SQLFetch(getStmtHandle());
 
-	if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) {
-		return true;	// 次の行の取得に成功
-	}
-	if (ret == SQL_NO_DATA) {
-		return false;	// 結果セットの終端に到達
-	}
+	if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) { return true; }	// 次の行の取得に成功
+	if (ret == SQL_NO_DATA) { return false; }	// 結果セットの終端に到達
+
 	// 上記以外は予期せぬエラー
 	throw OdbcException("Failed to fetch row", getStmtHandle(), SQL_HANDLE_STMT);
-}
-
-// --- getData<T>のテンプレート特殊化実装群 ---
-
-template<> std::optional<std::string> OdbcStatement::getData<std::string>(int col) {
-	const int BUFFER_SIZE = 1024;
-	char buffer[BUFFER_SIZE];
-	SQLLEN indicator;
-	// 固定長バッファに文字列を読み込む
-	SQLRETURN ret = SQLGetData(getStmtHandle(), col, SQL_C_CHAR, buffer, BUFFER_SIZE, &indicator);
-	if (ret == SQL_NO_DATA || indicator == SQL_NULL_DATA) {
-		return std::nullopt;
-	}
-	// バッファサイズを超える巨大な文字列は切り捨てられる可能性がある
-	return std::string(buffer);
-}
-
-template<> std::optional<std::vector<char>> OdbcStatement::getData<std::vector<char>>(int col) {
-	std::vector<char> buffer;
-	SQLLEN indicator;
-	SQLRETURN ret;
-	const int CHUNK_SIZE = 4096;	// 一度に読み込むサイズ
-	char chunk[CHUNK_SIZE];
-
-	// まずデータがNULLでないかを確認するために、バッファ長0で呼び出す
-	ret = SQLGetData(getStmtHandle(), col, SQL_C_BINARY, chunk, 0, &indicator);
-	if (indicator == SQL_NULL_DATA) {
-		return std::nullopt;
-	}
-
-	// データがNULLでなければ、SQL_NO_DATAが返されるまでチャンク単位で全て読み出す
-	while ((ret = SQLGetData(getStmtHandle(), col, SQL_C_BINARY, chunk, CHUNK_SIZE, &indicator)) != SQL_NO_DATA) {
-		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-			return std::nullopt;	// 読み取り中にエラー
-		}
-		// indicatorには実際に読み取ったバイト数が入る
-		long bytesInChunk = (indicator > CHUNK_SIZE || indicator < 0) ? (CHUNK_SIZE) : (indicator);
-		buffer.insert(buffer.end(), chunk, chunk + bytesInChunk);
-	}
-	return buffer;
-}
-
-template<> std::optional<std::chrono::system_clock::time_point> OdbcStatement::getData<std::chrono::system_clock::time_point>(int col) {
-	SQL_TIMESTAMP_STRUCT ts;
-	SQLLEN indicator;
-	SQLGetData(getStmtHandle(), col, SQL_C_TYPE_TIMESTAMP, &ts, sizeof(ts), &indicator);	// ODBCのTIMESTAMP構造体で取得
-	if (indicator == SQL_NULL_DATA) {
-		return std::nullopt;
-	}
-	return to_time_point(ts);
 }
 
 void OdbcStatement::closeCursor() {
@@ -241,18 +213,37 @@ void OdbcStatement::closeCursor() {
 	}
 }
 
-std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
+std::vector<std::map<std::string, std::any>> OdbcStatement::fetchDynamic() {
+	SQLRETURN ret;
 	std::vector<std::map<std::string, std::any>> allRows;
 	// 1. 結果セットの列情報を取得 (列数、名前、型)
 	SQLSMALLINT columnCount = 0;
-	SQLNumResultCols(getStmtHandle(), &columnCount);
+	ret = SQLNumResultCols(getStmtHandle(), &columnCount);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to get number of result columns", getStmtHandle(), SQL_HANDLE_STMT);
+	}
 	std::vector<std::string> columnNames;
 	std::vector<SQLSMALLINT> columnTypes;
 	for (SQLUSMALLINT i = 1; i <= columnCount; i++) {
-		SQLCHAR columnName[256];
+		SQLSMALLINT nameLen = 0;
+
+		// まず名前の長さだけを取得する (バッファを 0 にして呼び出す)
+		ret = SQLDescribeCol(getStmtHandle(), i, NULL, 0, &nameLen, NULL, NULL, NULL, NULL);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to describe column for column map initialization", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+		if (nameLen == 0) {
+			nameLen = 255;
+		}
+
+		// 必要なサイズでバッファを確保 (+1 は終端文字用)
+		std::vector<SQLCHAR> nameBuffer(nameLen + 1);
 		SQLSMALLINT dataType;
-		SQLDescribeCol(getStmtHandle(), i, columnName, sizeof(columnName), NULL, &dataType, NULL, NULL, NULL);
-		columnNames.push_back(std::string(reinterpret_cast<char*>(columnName)));
+		ret = SQLDescribeCol(getStmtHandle(), i, nameBuffer.data(), nameBuffer.size(), &nameLen, &dataType, NULL, NULL, NULL);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to describe column", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+		columnNames.push_back(std::string(reinterpret_cast<char*>(nameBuffer.data())));
 		columnTypes.push_back(dataType);
 	}
 
@@ -308,7 +299,7 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 				break;
 			}
 			case SQL_BINARY: case SQL_VARBINARY: case SQL_LONGVARBINARY: {
-				auto data = this->getData<std::vector<char>>(i);
+				auto data = this->getData<std::vector<std::uint8_t>>(i);
 				if (data.has_value()) { value = data.value(); }
 				break;
 			}
@@ -327,393 +318,445 @@ std::vector<std::map<std::string, std::any>> OdbcStatement::fetchAll() {
 	return allRows;
 }
 
-// --- プリペアドステートメント関連 ---
+// === プリペアドステートメント関連 ===
 
-void OdbcStatement::prepare(const std::string& sql) {
-	// 1. ODBCドライバにSQL文をコンパイルさせる
-	SQLRETURN ret = SQLPrepare(getStmtHandle(), (SQLCHAR*)sql.c_str(), SQL_NTS);
+void OdbcStatement::prepare(std::string sql) {
+	// 1. まず古いSQLのバインド情報とC++のバッファを完全にクリアし、クリーンな状態にする
+	clearParams();
+
+	// 2. ODBCドライバにSQL文をコンパイルさせる
+	SQLRETURN ret = SQLPrepare(getStmtHandle(), reinterpret_cast<SQLCHAR*>(sql.data()), SQL_NTS);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
 		throw OdbcException("Failed to prepare statement", getStmtHandle(), SQL_HANDLE_STMT);
 	}
-	// 2. prepareが成功した場合のみ、古いバインド情報をクリアする
-	bound_params.clear();
-	param_indicators.clear();
-	bulk_param_buffers.clear();
-	bulk_param_indicators.clear();
-	bulk_param_strides.clear();
-	bulk_param_sql_types.clear();
-	paramset_size = 0;
+	column_map_initialized = false;	// カラムマップは再初期化が必要
 }
 
-void OdbcStatement::bind(int paramIndex, const std::optional<std::string>& opt_val) {
-	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? (opt_val.value().length()) : (SQL_NULL_DATA)));
-	bound_params.insert_or_assign(paramIndex, opt_val);
+void OdbcStatement::setBatchSize(size_t size) {
+	SQLRETURN ret;
+
+	if (size > ATTR_PARAMSET_SIZE_MAX_VALUE) {
+		throw std::invalid_argument("Batch size exceeds ODBC maximum limit of " + std::to_string(ATTR_PARAMSET_SIZE_MAX_VALUE));
+	}
+
+	// 【安全対策】配列のサイズを変更（再配置）する前に、
+	// ODBCドライバが古いポインタを参照しないよう確実に切断しておく
+	ret = SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAM_STATUS_PTR, NULL, 0);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to disconnect SQL_ATTR_PARAM_STATUS_PTR", getStmtHandle(), SQL_HANDLE_STMT);
+	}
+	ret = SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAMS_PROCESSED_PTR, NULL, 0);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to disconnect SQL_ATTR_PARAMS_PROCESSED_PTR", getStmtHandle(), SQL_HANDLE_STMT);
+	}
+
+	if (size > 1) {
+		// 1. メモリ確保しつつ以前のデータをクリア
+		param_status_array.assign(size, 0);
+		*params_processed = 0;
+
+		// 2. ODBCドライバに配列サイズと、内部変数のアドレスをまとめて通知する
+		ret = SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAMSET_SIZE, reinterpret_cast<SQLPOINTER>(static_cast<std::intptr_t>(size)), 0);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to set SQL_ATTR_PARAMSET_SIZE", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+		paramset_size = size;
+
+		ret = SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAM_STATUS_PTR, param_status_array.data(), 0);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to set SQL_ATTR_PARAM_STATUS_PTR", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+
+		ret = SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAMS_PROCESSED_PTR, params_processed.get(), 0);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to set SQL_ATTR_PARAMS_PROCESSED_PTR", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+	} else {
+		// 1以下（単一行処理）に戻す場合は、安全のためにポインタを解除する
+		ret = SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAMSET_SIZE, reinterpret_cast<SQLPOINTER>(static_cast<std::intptr_t>(1)), 0);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to reset SQL_ATTR_PARAMSET_SIZE", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+		paramset_size = 1;
+		// ポインタ類は冒頭で既に NULL に設定されているため、ODBCドライバには何もしない
+		param_status_array.clear();
+		*params_processed = 0;
+	}
 }
 
-void OdbcStatement::bind(int paramIndex, const std::optional<std::vector<char>>& opt_val) {
-	param_indicators.insert_or_assign(paramIndex, ((opt_val.has_value()) ? (opt_val.value().size()) : (SQL_NULL_DATA)));
-	bound_params.insert_or_assign(paramIndex, opt_val);
+// --- bindParamAsType (未定義型エスケープハッチ) ---
+
+void OdbcStatement::bindParamAsType(int paramIndex, const std::optional<std::string>& opt_val, SQLSMALLINT target_sql_type, SQLULEN column_size, SQLSMALLINT decimal_digits) {
+	checkSingleRowMode();
+	size_t length = ((opt_val.has_value()) ? (opt_val.value().length()) : (0));
+	if (length > static_cast<size_t>(std::numeric_limits<SQLLEN>::max())) {	// SQLLEN (符号付き) で表現できる最大値を超えていないかチェック
+		throw std::out_of_range("String length exceeds maximum allowed size for ODBC parameters");
+	}
+	if (column_size <= 0) {
+		column_size = std::max(1UL, length);
+	}
+	std::optional<std::vector<char>> opt_buffer;
+	if (opt_val.has_value()) {
+		const std::string& str = opt_val.value();
+		opt_buffer.emplace(str.begin(), str.end());
+		opt_buffer.value().push_back('\0');
+	}
+	bindSingleCore(
+		paramIndex,
+		opt_buffer,
+		static_cast<SQLLEN>((opt_val.has_value()) ? (length) : (SQL_NULL_DATA)),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_CHAR, target_sql_type, column_size, std::max(static_cast<SQLSMALLINT>(0), decimal_digits), static_cast<SQLLEN>((opt_val.has_value()) ? (length + 1) : (0))}
+	);
 }
 
-bool OdbcStatement::bind(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val) {
+void OdbcStatement::bindParamAsType(int paramIndex, const std::vector<std::string>& values, SQLSMALLINT target_sql_type, SQLULEN column_size, SQLSMALLINT decimal_digits) {
+	checkBatchSize(values.size());
+	if (values.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParamAsType(paramIndex, values[0], target_sql_type, column_size, decimal_digits);
+		return;
+	}
+
+	auto [flat_buffer, indicators, max_len] = buildStringFlatBuffer(values);
+	if (column_size <= 0) {
+		column_size = std::max<SQLULEN>(1UL, max_len - 1);
+	}
+	bindBatchCore(
+		paramIndex,
+		std::move(flat_buffer),
+		std::move(indicators),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_CHAR, target_sql_type, column_size, std::max(static_cast<SQLSMALLINT>(0), decimal_digits), static_cast<SQLLEN>(max_len)}
+	);
+}
+
+void OdbcStatement::bindParamAsType(int paramIndex, const std::vector<std::optional<std::string>>& opt_vals, SQLSMALLINT target_sql_type, SQLULEN column_size, SQLSMALLINT decimal_digits) {
+	checkBatchSize(opt_vals.size());
+	if (opt_vals.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParamAsType(paramIndex, opt_vals[0], target_sql_type, column_size, decimal_digits);
+		return;
+	}
+
+	auto [flat_buffer, indicators, max_len] = buildStringFlatBuffer(opt_vals);
+	if (column_size <= 0) {
+		column_size = std::max<SQLULEN>(1UL, max_len - 1);
+	}
+	bindBatchCore(
+		paramIndex,
+		std::move(flat_buffer),
+		std::move(indicators),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_CHAR, target_sql_type, column_size, std::max(static_cast<SQLSMALLINT>(0), decimal_digits), static_cast<SQLLEN>(max_len)}
+	);
+}
+
+// --- 文字列バインド ---
+
+void OdbcStatement::bindParam(int paramIndex, const char* value) {
+	checkSingleRowMode();
+	if (value == nullptr) {
+		throw std::invalid_argument("bindParam: value must not be nullptr. Use std::optional for database NULL.");
+	}
+	std::string str(value);
+	if (str.length() > static_cast<size_t>(std::numeric_limits<SQLLEN>::max())) {
+		throw std::out_of_range("String length exceeds maximum allowed size for ODBC parameters");
+	}
+	bindParam(paramIndex, str);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::optional<std::string>& opt_val) {
+	checkSingleRowMode();
+	size_t length = ((opt_val.has_value()) ? (opt_val.value().length()) : (0));
+	if (length > static_cast<size_t>(std::numeric_limits<SQLLEN>::max())) {	// SQLLEN (符号付き) で表現できる最大値を超えていないかチェック
+		throw std::out_of_range("String length exceeds maximum allowed size for ODBC parameters");
+	}
+	std::optional<std::vector<char>> opt_buffer;
+	if (opt_val.has_value()) {
+		const std::string& str = opt_val.value();
+		opt_buffer.emplace(str.begin(), str.end());
+		opt_buffer.value().push_back('\0');
+	}
+	bindSingleCore(
+		paramIndex,
+		opt_buffer,
+		static_cast<SQLLEN>((opt_val.has_value()) ? (length) : (SQL_NULL_DATA)),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, std::max(1UL, length), 0, static_cast<SQLLEN>((opt_val.has_value()) ? (length + 1) : (0))}
+	);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::vector<std::string>& values) {
+	checkBatchSize(values.size());
+	if (values.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParam(paramIndex, values[0]);
+		return;
+	}
+
+	auto [flat_buffer, indicators, max_len] = buildStringFlatBuffer(values);
+	bindBatchCore(
+		paramIndex,
+		std::move(flat_buffer),
+		std::move(indicators),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, std::max<SQLULEN>(1UL, max_len - 1), 0, static_cast<SQLLEN>(max_len)}
+	);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::vector<std::optional<std::string>>& opt_vals) {
+	checkBatchSize(opt_vals.size());
+	if (opt_vals.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParam(paramIndex, opt_vals[0]);
+		return;
+	}
+
+	auto [flat_buffer, indicators, max_len] = buildStringFlatBuffer(opt_vals);
+	bindBatchCore(
+		paramIndex,
+		std::move(flat_buffer),
+		std::move(indicators),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, std::max<SQLULEN>(1UL, max_len - 1), 0, static_cast<SQLLEN>(max_len)}
+	);
+}
+
+// --- 日時型バインド ---
+
+void OdbcStatement::bindParam(int paramIndex, const std::optional<SQL_TIMESTAMP_STRUCT>& opt_val, SQLSMALLINT precision) {
+	checkSingleRowMode();
+	bindSingleCore(
+		paramIndex,
+		opt_val,
+		static_cast<SQLLEN>((opt_val.has_value()) ? sizeof(SQL_TIMESTAMP_STRUCT) : SQL_NULL_DATA),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, ((precision > 0) ? (20UL + static_cast<SQLULEN>(precision)) : (19UL)), std::max(static_cast<SQLSMALLINT>(0), precision), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))}
+	);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::vector<SQL_TIMESTAMP_STRUCT>& values, SQLSMALLINT precision) {
+	checkBatchSize(values.size());
+	if (values.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParam(paramIndex, values[0], precision);
+		return;
+	}
+
+	bindBatchCore(
+		paramIndex,
+		values,
+		std::vector<SQLLEN>(values.size(), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, ((precision > 0) ? (20UL + static_cast<SQLULEN>(precision)) : (19UL)), std::max(static_cast<SQLSMALLINT>(0), precision), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))}
+	);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::vector<std::optional<SQL_TIMESTAMP_STRUCT>>& opt_vals, SQLSMALLINT precision) {
+	checkBatchSize(opt_vals.size());
+	if (opt_vals.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParam(paramIndex, opt_vals[0], precision);
+		return;
+	}
+
+	// 1. データ配列とインジケータ配列を作成
+	std::vector<SQL_TIMESTAMP_STRUCT> buffer(opt_vals.size());
+	std::vector<SQLLEN> indicators(opt_vals.size());
+	for (size_t i = 0; i < opt_vals.size(); i++) {
+		if (opt_vals[i].has_value()) {
+			buffer[i] = opt_vals[i].value();
+			// 固定長データの場合、インジケータは0で良いが、一応サイズをセットしておく
+			indicators[i] = static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT));
+		} else {
+			// buffer[i] はデフォルト値(0など)のまま
+			indicators[i] = SQL_NULL_DATA;
+		}
+	}
+	bindBatchCore(
+		paramIndex,
+		std::move(buffer),
+		std::move(indicators),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, ((precision > 0) ? (20UL + static_cast<SQLULEN>(precision)) : (19UL)), std::max(static_cast<SQLSMALLINT>(0), precision), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))}
+	);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::optional<std::chrono::system_clock::time_point>& opt_val, SQLSMALLINT precision) {
+	checkSingleRowMode();
+	std::optional<SQL_TIMESTAMP_STRUCT> ts_opt;
 	if (opt_val.has_value()) {
 		// 値がある場合のみ、C++のtime_pointをODBC用のTIMESTAMP構造体に変換して、変換後の構造体の実体とサイズをマップに格納
-		if (std::optional<SQL_TIMESTAMP_STRUCT> ts_opt = to_sql_timestamp(opt_val.value())) {
-			param_indicators.insert_or_assign(paramIndex, sizeof(SQL_TIMESTAMP_STRUCT));	// 長さ情報をここで保存
-			bound_params.insert_or_assign(paramIndex, std::move(ts_opt));
-		} else {
-			return false;
+		if (!(ts_opt = to_sql_timestamp(opt_val.value()))) {
+			throw std::invalid_argument("Failed to convert time_point to SQL_TIMESTAMP_STRUCT.");
 		}
-	} else {
-		param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA);	// 長さ情報をここで保存
-		// 空の optional<SQL_TIMESTAMP_STRUCT> を格納 (型情報を保持するため)
-		bound_params.insert_or_assign(paramIndex, std::optional<SQL_TIMESTAMP_STRUCT>());
 	}
-	return true;
+	// SQL_TIMESTAMP_STRUCT 版へ委譲
+	bindParam(paramIndex, ts_opt, precision);
 }
 
-void OdbcStatement::bind(int paramIndex, const std::optional<long double>& opt_val) {
-	std::cerr << "Warning: 'long double' is truncated to 'double' for ODBC binding." << std::endl;
-	if (opt_val.has_value()) {
-		bound_params.insert_or_assign(paramIndex, std::make_optional(static_cast<double>(opt_val.value())));
-	} else {
-		param_indicators.insert_or_assign(paramIndex, SQL_NULL_DATA);
-		bound_params.insert_or_assign(paramIndex, std::optional<double>());
-	}
-}
-
-void OdbcStatement::setParamsetSize(size_t size) {
-	paramset_size = size;
-	// SQL_ATTR_PARAMSET_SIZEを設定し、一括実行モードをドライバに通知する
-	SQLSetStmtAttr(getStmtHandle(), SQL_ATTR_PARAMSET_SIZE, (SQLPOINTER)paramset_size, 0);
-}
-
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::string>& values) {
-	// 1. 全ての文字列を格納できる最大の長さを特定（+1は終端文字用）
-	size_t max_len = 0;
-	for (const auto& value : values) {
-		if (value.length() > max_len) {
-			max_len = value.length();
-		}
-	}
-	max_len += 1;	// 終端文字('\0')のためのスペースを確保
-
-	// 2. 連続したメモリブロックを確保
-	std::vector<char> flat_buffer(values.size() * max_len, 0);
-	bulk_param_indicators[paramIndex].resize(values.size());
-
-	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < values.size(); i++) {
-		// strncpyは安全だが、ここではmemcpyの方がパフォーマンスが良い
-		memcpy(flat_buffer.data() + (i * max_len), values[i].c_str(), values[i].length());
-		bulk_param_indicators[paramIndex][i] = values[i].length();
+void OdbcStatement::bindParam(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values, SQLSMALLINT precision) {
+	checkBatchSize(values.size());
+	if (values.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParam(paramIndex, values[0], precision);
+		return;
 	}
 
-	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers.insert_or_assign(paramIndex, std::move(flat_buffer));
-	bulk_param_strides.insert_or_assign(paramIndex, std::move(max_len));
-	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_VARCHAR);
-}
-
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<std::string>>& opt_vals) {
-	// 1. 全ての文字列を格納できる最大の長さを特定（+1は終端文字用）
-	size_t max_len = 0;
-	for (const auto& opt_val : opt_vals) {
-		if (opt_val.has_value() && opt_val.value().length() > max_len) {
-			max_len = opt_val.value().length();
-		}
-	}
-	max_len += 1;	// 終端文字('\0')のためのスペースを確保
-
-	// 2. 連続したメモリブロックを確保
-	std::vector<char> flat_buffer(opt_vals.size() * max_len, 0);
-	bulk_param_indicators[paramIndex].resize(opt_vals.size());
-
-	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < opt_vals.size(); i++) {
-		if (opt_vals[i].has_value()) {
-			memcpy(flat_buffer.data() + (i * max_len), opt_vals[i].value().c_str(), opt_vals[i].value().length());
-			bulk_param_indicators[paramIndex][i] = opt_vals[i].value().length();
-		} else {
-			bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
-		}
-	}
-
-	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers.insert_or_assign(paramIndex, std::move(flat_buffer));
-	bulk_param_strides.insert_or_assign(paramIndex, std::move(max_len));
-	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_VARCHAR);
-}
-
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::vector<char>>& values) {
-	// 1. 全てのBLOBを格納できる最大の長さを特定
-	size_t max_len = 0;
-	for (const auto& value : values) {
-		if (value.size() > max_len) {
-			max_len = value.size();
-		}
-	}
-	if (max_len == 0) max_len = 1;
-
-	// 2. 連続したメモリブロックを確保
-	std::vector<char> flat_buffer(values.size() * max_len, 0);
-	bulk_param_indicators[paramIndex].resize(values.size());
-
-	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < values.size(); i++) {
-		if (!values[i].empty()) {
-			memcpy(flat_buffer.data() + (i * max_len), values[i].data(), values[i].size());
-		}
-		bulk_param_indicators[paramIndex][i] = values[i].size();
-	}
-
-	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers.insert_or_assign(paramIndex, std::move(flat_buffer));
-	bulk_param_strides.insert_or_assign(paramIndex, std::move(max_len));
-	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_LONGVARBINARY);
-}
-
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<std::vector<char>>>& opt_vals) {
-	// 1. 全てのBLOBを格納できる最大の長さを特定
-	size_t max_len = 0;
-	for (const auto& opt_val : opt_vals) {
-		if (opt_val.has_value() && opt_val.value().size() > max_len) {
-			max_len = opt_val.value().size();
-		}
-	}
-	if (max_len == 0) max_len = 1;
-
-	// 2. 連続したメモリブロックを確保
-	std::vector<char> flat_buffer(opt_vals.size() * max_len, 0);
-	bulk_param_indicators[paramIndex].resize(opt_vals.size());
-
-	// 3. 各文字列をメモリブロックの正しい位置にコピーする
-	for (size_t i = 0; i < opt_vals.size(); i++) {
-		if (opt_vals[i].has_value()) {
-			if (!opt_vals[i].value().empty()) {
-				memcpy(flat_buffer.data() + (i * max_len), opt_vals[i].value().data(), opt_vals[i].value().size());
-			}
-			bulk_param_indicators[paramIndex][i] = opt_vals[i].value().size();
-		} else {
-			bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
-		}
-	}
-
-	// 4. 構築した連続メモリブロックと、各部屋の大きさ（ストライド）を保存
-	bulk_param_buffers.insert_or_assign(paramIndex, std::move(flat_buffer));
-	bulk_param_strides.insert_or_assign(paramIndex, std::move(max_len));
-	bulk_param_sql_types.insert_or_assign(paramIndex, SQL_LONGVARBINARY);
-}
-
-bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::chrono::system_clock::time_point>& values) {
 	// time_pointのvectorを、TIMESTAMP_STRUCTのvectorに変換する
 	std::vector<SQL_TIMESTAMP_STRUCT> buffer(values.size());
-	bulk_param_indicators[paramIndex].resize(values.size());
 
 	for (size_t i = 0; i < values.size(); i++) {
 		if (auto ts_opt = to_sql_timestamp(values[i])) {
 			buffer[i] = ts_opt.value();
-			bulk_param_indicators[paramIndex][i] = sizeof(SQL_TIMESTAMP_STRUCT);
 		} else {
-			return false;
+			throw std::invalid_argument("Failed to convert time_point to SQL_TIMESTAMP_STRUCT at index " + std::to_string(i) + ".");
 		}
 	}
 
 	// 変換後のバッファを保存
-	bulk_param_buffers.insert_or_assign(paramIndex, std::move(buffer));
-	return true;
+	bindBatchCore(
+		paramIndex,
+		std::move(buffer),
+		std::vector<SQLLEN>(values.size(), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, ((precision > 0) ? (20UL + static_cast<SQLULEN>(precision)) : (19UL)), std::max(static_cast<SQLSMALLINT>(0), precision), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))}
+	);
 }
 
-bool OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<std::chrono::system_clock::time_point>>& opt_vals) {
-	std::vector<SQL_TIMESTAMP_STRUCT> buffer(opt_vals.size());
-	bulk_param_indicators[paramIndex].resize(opt_vals.size());
+void OdbcStatement::bindParam(int paramIndex, const std::vector<std::optional<std::chrono::system_clock::time_point>>& opt_vals, SQLSMALLINT precision) {
+	checkBatchSize(opt_vals.size());
+	if (opt_vals.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		bindParam(paramIndex, opt_vals[0], precision);
+		return;
+	}
 
+	// 1. データ配列とインジケータ配列を作成
+	std::vector<SQL_TIMESTAMP_STRUCT> buffer(opt_vals.size());
+	std::vector<SQLLEN> indicators(opt_vals.size());
 	for (size_t i = 0; i < opt_vals.size(); i++) {
 		if (opt_vals[i].has_value()) {
 			if (auto ts_opt = to_sql_timestamp(opt_vals[i].value())) {
 				buffer[i] = ts_opt.value();
-				bulk_param_indicators[paramIndex][i] = sizeof(SQL_TIMESTAMP_STRUCT);
+				// 固定長データの場合、インジケータは0で良いが、一応サイズをセットしておく
+				indicators[i] = sizeof(SQL_TIMESTAMP_STRUCT);
 			} else {
-				return false;
+				throw std::invalid_argument("Failed to convert time_point to SQL_TIMESTAMP_STRUCT at index " + std::to_string(i) + ".");
 			}
 		} else {
 			// buffer[i] はデフォルト値のまま
-			bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
+			indicators[i] = SQL_NULL_DATA;
 		}
 	}
 
 	// 変換後のバッファを保存
-	bulk_param_buffers.insert_or_assign(paramIndex, std::move(buffer));
-	return true;
+	bindBatchCore(
+		paramIndex,
+		std::move(buffer),
+		std::move(indicators),
+		ParamMetadata{SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, SQL_TIMESTAMP, ((precision > 0) ? (20UL + static_cast<SQLULEN>(precision)) : (19UL)), std::max(static_cast<SQLSMALLINT>(0), precision), static_cast<SQLLEN>(sizeof(SQL_TIMESTAMP_STRUCT))}
+	);
 }
 
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<long double>& values) {
-	bulk_param_indicators.insert_or_assign(paramIndex, std::vector<SQLLEN>(values.size(), 0));
-	bulk_param_buffers.insert_or_assign(paramIndex, std::vector<double>(values.begin(), values.end()));
+// --- long double (非推奨処理) ---
+
+void OdbcStatement::bindParam(int paramIndex, const std::optional<long double>& opt_val) {
+	LogManager::logError("Warning: 'long double' is truncated to 'double' for ODBC binding.");
+	checkSingleRowMode();
+	if (opt_val.has_value()) {
+		bindParam(paramIndex, std::make_optional(static_cast<double>(opt_val.value())));
+	} else {
+		bindParam(paramIndex, std::optional<double>());
+	}
 }
 
-void OdbcStatement::bindColumn(int paramIndex, const std::vector<std::optional<long double>>& opt_vals) {
-	// 1. データ配列とインジケータ配列を作成
-	std::vector<double> data_buffer(opt_vals.size());
-	bulk_param_indicators[paramIndex].resize(opt_vals.size());
+void OdbcStatement::bindParam(int paramIndex, const std::vector<long double>& values) {
+	LogManager::logError("Warning: 'long double' is truncated to 'double' for ODBC binding.");
+	checkBatchSize(values.size());
+	if (values.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		// double に明示的にキャストして、非推奨関数を回避して委譲する
+		bindParam(paramIndex, static_cast<double>(values[0]));
+		return;
+	}
+
+	std::vector<double> d_vals(values.size());
+	for (size_t i = 0; i < values.size(); i++) {
+		d_vals[i] = static_cast<double>(values[i]);
+	}
+	bindParam(paramIndex, d_vals);
+}
+
+void OdbcStatement::bindParam(int paramIndex, const std::vector<std::optional<long double>>& opt_vals) {
+	LogManager::logError("Warning: 'long double' is truncated to 'double' for ODBC binding.");
+	checkBatchSize(opt_vals.size());
+	if (opt_vals.size() == 1) {	// 要素数が 1 の場合は、単一行版に委譲
+		// double に明示的にキャストして、非推奨関数を回避して委譲する
+		if (opt_vals[0].has_value()) {
+			bindParam(paramIndex, std::make_optional(static_cast<double>(opt_vals[0].value())));
+		} else {
+			bindParam(paramIndex, std::optional<double>());
+		}
+		return;
+	}
+
+	std::vector<std::optional<double>> d_vals(opt_vals.size());
 	for (size_t i = 0; i < opt_vals.size(); i++) {
 		if (opt_vals[i].has_value()) {
-			data_buffer[i] = static_cast<double>(opt_vals[i].value());
-			// 固定長データの場合、インジケータは0で良い
-			bulk_param_indicators[paramIndex][i] = 0;
-		} else {
-			// data_buffer[i] はデフォルト値(0など)のまま
-			bulk_param_indicators[paramIndex][i] = SQL_NULL_DATA;
+			d_vals[i] = std::make_optional(static_cast<double>(opt_vals[i].value()));
 		}
 	}
-	// 2. 作成したデータ配列をバッファに保存
-	bulk_param_buffers.insert_or_assign(paramIndex, data_buffer);
+	bindParam(paramIndex, d_vals);
+}
+// === パラメータ解除・実行・バインド補助 実装 ===
+
+SQLRETURN OdbcStatement::resetParams() noexcept {
+	return SQLFreeStmt(getStmtHandle(), SQL_RESET_PARAMS);
 }
 
-/**
- * @brief (Helper) 単一行用の固定長パラメータをバインドします。
- */
-template<typename T>
-void OdbcStatement::bindFixedSizeParam(int index, const std::any& any_val, SQLLEN* indicator_ptr) {
-	// any_val は const std::any& なので、const std::optional<T>& でキャスト
-	const std::optional<T>& opt_val = std::any_cast<const std::optional<T>&>(any_val);
-
-	// SQLBindParameter は void* (SQLPOINTER) を要求するため、const_cast が必要です。
-	// このポインタ経由で値が変更されることはありません。
-	SQLPOINTER data_ptr = (opt_val.has_value()) ? (static_cast<SQLPOINTER>(const_cast<T*>(&opt_val.value()))) : (NULL);
-
-	// インジケータポインタは、値がNULLの場合(data_ptrがNULL)のみ使用されます。
-	SQLLEN* final_indicator_ptr = (opt_val.has_value()) ? NULL : indicator_ptr;
-
-	// ★ 型特性を使って C型 と SQL型 を取得
-	constexpr SQLSMALLINT c_type = OdbcTypeTraits<T>::c_type;
-	constexpr SQLSMALLINT sql_type = OdbcTypeTraits<T>::sql_type;
-	SQLULEN col_size = 0;
-	SQLSMALLINT decimal_digits = 0;
-
-	// 日時型の場合のみ、インジケータからサイズを取得
-	if constexpr (std::is_same_v<T, SQL_TIMESTAMP_STRUCT>) {
-		col_size = (opt_val.has_value()) ? *indicator_ptr : 0;
+void OdbcStatement::clearParams() {
+	// 1. まずODBCドライバへのパラメータバインドを解除する
+	SQLRETURN ret = resetParams();
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to reset parameters", getStmtHandle(), SQL_HANDLE_STMT);
 	}
 
-	SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, c_type, sql_type, col_size, decimal_digits, data_ptr, 0, final_indicator_ptr);
-}
-
-
-/**
- * @brief (Helper) 一括実行用の固定長パラメータをバインドします。
- */
-template<typename T>
-void OdbcStatement::bindFixedSizeColumn(int index, std::any& any_val, std::vector<SQLLEN>& indicators) {
-	// 元のコードのロジックに基づき、非constの std::vector<T>& でキャストします。
-	// (この関数内で vec の中身が変更されることはありません)
-	std::vector<T>& vec = std::any_cast<std::vector<T>&>(any_val);
-
-	SQLPOINTER data_ptr = (SQLPOINTER)vec.data();	// T* が返る
-
-	// ★ 型特性を使って C型 と SQL型 を取得
-	constexpr SQLSMALLINT c_type = OdbcTypeTraits<T>::c_type;
-	constexpr SQLSMALLINT sql_type = OdbcTypeTraits<T>::sql_type;
-	SQLULEN col_size = 0;
-
-
-	// 日時型の場合のみ、構造体のサイズを設定
-	if constexpr (std::is_same_v<T, SQL_TIMESTAMP_STRUCT>) {
-		col_size = sizeof(SQL_TIMESTAMP_STRUCT);
-	}
-
-	SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, c_type, sql_type, col_size, 0, data_ptr, 0, indicators.data());
+	// 2. resetParams が成功した場合のみ、古いバインド情報をクリアする
+	param_buffers.clear();
+	param_metadata.clear();
+	param_indicators.clear();
+	bulk_param_indicators.clear();
+	resetBatchSize();
 }
 
 int OdbcStatement::executePrepared() {
-	if (paramset_size > 0) {
-		// 一括実行モード: バインドはbind_columnで完了済み
-		// 実行直前に、保持しておいたバッファを使って全ての列をバインドする
-		for (auto const& [index, _] : bulk_param_buffers) {
-			// at() で std::any& (非const) を取得
-			std::any& any_val = bulk_param_buffers.at(index);
+	SQLRETURN ret;
 
-			// --- 固定長データ (ヘルパー関数) ---
-			if (any_val.type() == typeid(std::vector<signed char>)) {
-				bindFixedSizeColumn<signed char>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<unsigned char>)) {
-				bindFixedSizeColumn<unsigned char>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<short>)) {
-				bindFixedSizeColumn<short>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<unsigned short>)) {
-				bindFixedSizeColumn<unsigned short>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<int>)) {
-				bindFixedSizeColumn<int>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<unsigned int>)) {
-				bindFixedSizeColumn<unsigned int>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<long>)) {
-				bindFixedSizeColumn<long>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<unsigned long>)) {
-				bindFixedSizeColumn<unsigned long>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<long long>)) {
-				bindFixedSizeColumn<long long>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<unsigned long long>)) {
-				bindFixedSizeColumn<unsigned long long>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<float>)) {
-				bindFixedSizeColumn<float>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<double>)) {
-				bindFixedSizeColumn<double>(index, any_val, bulk_param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::vector<SQL_TIMESTAMP_STRUCT>)) {
-				bindFixedSizeColumn<SQL_TIMESTAMP_STRUCT>(index, any_val, bulk_param_indicators.at(index));
+	// 実行直前のポインタ評価用 RAII（いかなる例外発生時も確実にバインドを解除する）
+	struct ParamUnbinder {
+		std::function<void()> f;
+		~ParamUnbinder() { if(f) { f(); } }
+	} unbinder{[this](){ this->resetParams(); }};
 
-			// --- 可変長データ (特別扱い) ---
-			} else if (any_val.type() == typeid(std::vector<char>)) { // string または BLOB
-				auto& vec = std::any_cast<std::vector<char>&>(any_val);
-				size_t stride = bulk_param_strides.at(index);
-				SQLSMALLINT sql_type = bulk_param_sql_types.at(index);
-				SQLSMALLINT c_type = (sql_type == SQL_VARCHAR) ? SQL_C_CHAR : SQL_C_BINARY;
-				SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, c_type, sql_type, stride, 0, (SQLPOINTER)vec.data(), stride, bulk_param_indicators.at(index).data());
-			}
+	// 実行直前に、保持しておいたバッファを使って全ての列をバインドする
+	for (auto& [index, buffer_ptr] : param_buffers) {
+		const auto& meta = param_metadata.at(index);
+
+		// 実行直前に仮想関数経由でポインタを解決
+		SQLPOINTER data_ptr = buffer_ptr->getPointer();
+
+		// モードに応じてインジケータ配列のポインタを取得
+		SQLLEN* ind_ptr = nullptr;
+		if (paramset_size > 1) {
+			ind_ptr = bulk_param_indicators.at(index).data();
+		} else {
+			ind_ptr = &param_indicators.at(index);
 		}
-	} else {
-		// 単一行実行モード: 保持しているパラメータを一つずつ取り出し、SQLBindParameterで紐付ける
-		for (auto const& [index, any_val] : bound_params) {
-			// --- 固定長データ (ヘルパー関数) ---
-			if (any_val.type() == typeid(std::optional<signed char>)) {
-				bindFixedSizeParam<signed char>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<unsigned char>)) {
-				bindFixedSizeParam<unsigned char>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<short>)) {
-				bindFixedSizeParam<short>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<unsigned short>)) {
-				bindFixedSizeParam<unsigned short>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<int>)) {
-				bindFixedSizeParam<int>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<unsigned int>)) {
-				bindFixedSizeParam<unsigned int>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<long>)) {
-				bindFixedSizeParam<long>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<unsigned long>)) {
-				bindFixedSizeParam<unsigned long>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<long long>)) {
-				bindFixedSizeParam<long long>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<unsigned long long>)) {
-				bindFixedSizeParam<unsigned long long>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<float>)) {
-				bindFixedSizeParam<float>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<double>)) {
-				bindFixedSizeParam<double>(index, any_val, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<SQL_TIMESTAMP_STRUCT>)) {
-				bindFixedSizeParam<SQL_TIMESTAMP_STRUCT>(index, any_val, &param_indicators.at(index));
 
-			// --- 可変長データ (特別扱い) ---
-			} else if (any_val.type() == typeid(std::optional<std::string>)) {
-				const std::optional<std::string>& opt_val = std::any_cast<const std::optional<std::string>&>(any_val);
-				SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value()) ? ((SQLPOINTER)opt_val.value().c_str()) : (NULL)), 0, &param_indicators.at(index));
-			} else if (any_val.type() == typeid(std::optional<std::vector<char>>)) {
-				const std::optional<std::vector<char>>& opt_val = std::any_cast<const std::optional<std::vector<char>>&>(any_val);
-				SQLBindParameter(getStmtHandle(), index, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, ((opt_val.has_value()) ? (param_indicators.at(index)) : (0)), 0, ((opt_val.has_value() && !opt_val.value().empty()) ? ((SQLPOINTER)opt_val.value().data()) : (NULL)), 0, &param_indicators.at(index));
-			}
+		// バッファから得たポインタとメタ情報を使って、SQLBindParameter を呼び出す
+		ret = SQLBindParameter(
+			getStmtHandle(),
+			index,
+			meta.io_type,
+			meta.c_type,
+			meta.sql_type,
+			meta.col_size,
+			meta.decimal_digits,
+			data_ptr,
+			meta.buf_length,
+			ind_ptr
+		);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to bind parameter at execution", getStmtHandle(), SQL_HANDLE_STMT);
 		}
 	}
 
 	// SQLを実行
-	SQLRETURN ret = SQLExecute(getStmtHandle());
+	ret = SQLExecute(getStmtHandle());
+
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO && ret != SQL_NO_DATA) {
 		throw OdbcException("Failed to execute prepared statement", getStmtHandle(), SQL_HANDLE_STMT);
 	}
@@ -722,6 +765,65 @@ int OdbcStatement::executePrepared() {
 
 int OdbcStatement::getAffectedRowCount() {
 	SQLLEN rowCount = 0;
-	SQLRowCount(getStmtHandle(), &rowCount);
+	SQLRETURN ret = SQLRowCount(getStmtHandle(), &rowCount);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to get affected row count", getStmtHandle(), SQL_HANDLE_STMT);
+	}
 	return static_cast<int>(rowCount);
+}
+
+void OdbcStatement::initColumnMap() {
+	if (column_map_initialized) { return; }
+	SQLRETURN ret;
+
+	column_map_cache.clear();
+
+	// 1. まず結果セットの列数を取得する
+	SQLSMALLINT columnCount = 0;
+	ret = SQLNumResultCols(getStmtHandle(), &columnCount);
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+		throw OdbcException("Failed to get number of result columns", getStmtHandle(), SQL_HANDLE_STMT);
+	}
+
+	// 2. ループに入る前に、取得した列数分を予約する
+	if (columnCount > 0) {
+		column_map_cache.reserve(static_cast<size_t>(columnCount));
+	}
+
+	// 3. 列数分ループして、各列の名前を取得し、小文字に変換してキャッシュする
+	for (SQLUSMALLINT i = 1; i <= columnCount; i++) {
+		SQLSMALLINT nameLen = 0;
+		// まず名前の長さだけを取得する (バッファを 0 にして呼び出す)
+		ret = SQLDescribeCol(getStmtHandle(), i, NULL, 0, &nameLen, NULL, NULL, NULL, NULL);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to describe column for column map initialization", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+		if (nameLen == 0) {
+			nameLen = 255;
+		}
+
+		// 必要なサイズでバッファを確保 (+1 は終端文字用)
+		std::vector<SQLCHAR> nameBuffer(nameLen + 1);
+		ret = SQLDescribeCol(getStmtHandle(), i, nameBuffer.data(), nameBuffer.size(), &nameLen, NULL, NULL, NULL, NULL);
+		if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+			throw OdbcException("Failed to describe column for column map initialization", getStmtHandle(), SQL_HANDLE_STMT);
+		}
+
+		// データベースの違い（大文字小文字の揺れ）を吸収するため、全て小文字に変換してキャッシュ
+		std::string originalName = reinterpret_cast<char*>(nameBuffer.data());
+		std::string lowerName(originalName.size(), '\0');
+		std::transform(originalName.begin(), originalName.end(), lowerName.begin(),
+			[](unsigned char c) { return std::tolower(c); }
+		);
+
+		// すでに小文字化した名前が登録されているかチェック
+		if (column_map_cache.find(lowerName) != column_map_cache.end()) {
+			// 【注意】同じ名前の列がすでに存在する場合は、ODBCドライバによっては列名の大文字小文字を区別せずに返すことがあるため、警告を出力します。
+			LogManager::logError(utils::concat("[ODBC Warning] Duplicate column name (case-insensitive): ", originalName, " at index ", std::to_string(i)));
+			// 必要ならここで例外を投げても良いですが、警告にとどめるのが実用的です
+		}
+
+		column_map_cache.emplace(lowerName, i);
+	}
+	column_map_initialized = true;
 }

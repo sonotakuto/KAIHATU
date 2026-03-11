@@ -14,7 +14,10 @@
  */
 namespace db {
 
-inline constexpr int			RETRY_LIMIT	= 3;			// DB接続のリトライ回数
+
+inline constexpr int					RETRY_LIMIT	= 3;						// DB接続のリトライ回数
+inline constexpr std::chrono::seconds	RETRY_DELAY	= std::chrono::seconds(5);	// 接続リトライ時のディレイ
+
 inline constexpr const char*	ODBC_DSN	= "system";		// ODBCのDSN名
 
 // 開発環境と本番環境でユーザー名とパスワードを分ける
@@ -85,6 +88,55 @@ bool user_authenticate(const std::string& qr_string);
 bool authenticate_with_password(const std::string& input_password);
 
 /**
+ * @brief QRコード文字列を基にユーザー情報をデータベースから取得します。
+ * @param[in] qr_string 取得対象のQRコード文字列。
+ * @return ユーザー情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string);
+
+/**
+ * @brief QRコード文字列を基に、関連する全ての情報（基本情報、保管領域情報など）を結合して取得します。
+ * @param[in] qr_string 取得対象のQRコード文字列。
+ * @return 工具情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string);
+
+/**
+ * @brief 指定された基本工具IDを持つ工具が保管されている領域のうち、保管ケース数が最も少ない保管領域の情報を取得します。
+ * @param[in] basic_tool_id 検索対象の基本工具ID。
+ * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<StorageAreaInfo> get_StorageAreaInfo_with_min_cases(int basic_tool_id);
+
+/**
+ * @brief 指定された基本工具IDを持つ工具が保管されている領域のうち、保管ケース数が最も多い保管領域の情報を取得します。
+ * @param[in] basic_tool_id 検索対象の基本工具ID。
+ * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<StorageAreaInfo> get_StorageAreaInfo_with_max_cases(int basic_tool_id);
+
+/**
+ * @brief 既存の StorageAreaInfo オブジェクトの内容をDBから再取得して更新します。
+ * @param[in, out] area_info 更新対象の StorageAreaInfo オブジェクト。id フィールドを使用して特定されます。
+ * @return 更新に成功した場合は true、失敗した場合は false。
+ */
+bool update_StorageAreaInfo(StorageAreaInfo& area_info);
+
+/**
+ * @brief QRコード文字列を基に、ツーリングリスト全体の情報（それに含まれる全工具の情報を含む）を取得します。
+ * @param[in] qr_string 取得対象のQRコード文字列。
+ * @return ツーリングリストが見つかった場合はその構造体、見つからなければ std::nullopt。
+ */
+std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string);
+
+/**
+ * @brief 既存の ToolingListInfo オブジェクトの内容をDBから再取得して更新します。
+ * @param[in, out] list_info 更新対象の ToolingListInfo オブジェクト。program.id を使って検索されます。
+ * @return 更新に成功した場合は true、失敗した場合は false。
+ */
+bool update_ToolingListInfo(ToolingListInfo& list_info);
+
+/**
  * @brief 操作履歴のレコードをデータベースに保存します。
  * @param[in] record 保存する履歴データを含む RecOperationTable 構造体。
  * @return 保存に成功した場合はtrue、失敗した場合はfalse。
@@ -107,47 +159,5 @@ bool save_history(const std::vector<RecOperationTable>& records);
  * @return 全ての更新に成功した場合はtrue、失敗した場合はfalse。
  */
 bool increment_regrind_counts(const std::set<std::int64_t>& tool_ids);
-
-/**
- * @brief QRコード文字列を基にユーザー情報をデータベースから取得します。
- * @param[in] qr_string 取得対象のQRコード文字列。
- * @return ユーザー情報が見つかった場合はその構造体、見つからなければ std::nullopt。
- */
-std::optional<MstUserInfo> get_MstUserInfo(const std::string& qr_string);
-
-/**
- * @brief QRコード文字列を基に、関連する全ての情報（基本情報、保管領域情報など）を結合して取得します。
- * @param[in] qr_string 取得対象のQRコード文字列。
- * @return 工具情報が見つかった場合はその構造体、見つからなければ std::nullopt。
- */
-std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string);
-
-/**
- * @brief QRコード文字列を基に、ツーリングリスト全体の情報（それに含まれる全工具の情報を含む）を取得します。
- * @param[in] qr_string 取得対象のQRコード文字列。
- * @return ツーリングリストが見つかった場合はその構造体、見つからなければ std::nullopt。
- */
-std::optional<ToolingListInfo> get_ToolingListInfo(const std::string& qr_string);
-
-/**
- * @brief 既存の ToolingListInfo オブジェクトの内容をDBから再取得して更新します。
- * @param[in, out] list_info 更新対象の ToolingListInfo オブジェクト。program.id を使って検索されます。
- * @return 更新に成功した場合は true、失敗した場合は false。
- */
-bool update_ToolingListInfo(ToolingListInfo& list_info);
-
-/**
- * @brief 指定された基本工具IDを持つ工具が保管されている領域のうち、保管ケース数が最も少ない保管領域の情報を取得します。
- * @param[in] basic_tool_id 検索対象の基本工具ID。
- * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
- */
-std::optional<StrageAreaInfo> get_StrageAreaInfo_with_min_cases(int basic_tool_id);
-
-/**
- * @brief 指定された基本工具IDを持つ工具が保管されている領域のうち、保管ケース数が最も多い保管領域の情報を取得します。
- * @param[in] basic_tool_id 検索対象の基本工具ID。
- * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
- */
-std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_id);
 
 } // namespace db

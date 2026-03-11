@@ -16,7 +16,7 @@
 namespace utils {
 
 /**
- * @namespace detail
+ * @namespace utils::detail
  * @brief utils名前空間内の詳細実装を格納する名前空間
  */
 namespace detail {

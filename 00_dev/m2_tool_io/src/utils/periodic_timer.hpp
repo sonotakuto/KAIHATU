@@ -13,7 +13,7 @@
 namespace utils {
 
 /**
- * @namespace chrono
+ * @namespace utils::chrono
  * @brief 時間関連のユーティリティをまとめた名前空間
  */
 namespace chrono {
@@ -23,9 +23,6 @@ namespace chrono {
  */
 class PeriodicTimer {
 public:
-	using Clock = std::chrono::steady_clock;
-	using TimePoint = std::chrono::time_point<Clock>;
-
 	/**
 	 * @brief コンストラクタ。タイマーの基準時刻を現在時刻に初期化します。
 	 */
@@ -39,10 +36,10 @@ public:
 	 * @param[in] period 待機したい周期
 	 * @param[in] skip_on_overrun (オプション・デフォルト false) trueの場合、処理が周期を超えたら超過分をスキップする
 	 * @param[out] out_skipped_ticks (オプション) スキップした回数を格納するポインタ
-	 * @return 更新された次回の目標時刻 (TimePoint)
+	 * @return 更新された次回の目標時刻 (std::chrono::time_point<std::chrono::steady_clock>)
 	 */
 	template<typename Rep, typename Period>
-	TimePoint update_target_time(
+	std::chrono::time_point<std::chrono::steady_clock> update_target_time(
 		const std::chrono::duration<Rep, Period>& period,
 		bool skip_on_overrun = false,
 		size_t* out_skipped_ticks = nullptr
@@ -54,7 +51,7 @@ public:
 
 		if (skip_on_overrun) {
 			// --- スキップモードの時の処理 ---
-			const auto now = Clock::now();
+			const auto now = std::chrono::steady_clock::now();
 
 			// 現在時刻が、本来の次の目標時刻を既に過ぎているかチェック
 			if (now >= next_time_) {
@@ -95,18 +92,18 @@ public:
 	 * @details 長時間待機した後などに呼び出すことで、次の待機が即座に開始されるのを防ぎます。
 	 */
 	void reset() {
-		next_time_ = Clock::now();
+		next_time_ = std::chrono::steady_clock::now();
 	}
 
 	/**
 	 * @brief 現在保持している目標時刻を取得します。
 	 */
-	TimePoint get_current_target() const {
+	std::chrono::time_point<std::chrono::steady_clock> get_current_target() const {
 		return next_time_;
 	}
 
 private:
-	TimePoint next_time_;
+	std::chrono::time_point<std::chrono::steady_clock> next_time_;
 };
 
 } // namespace chrono

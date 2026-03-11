@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+#include "common.hpp"
 
 /**
  * @namespace gutils
@@ -14,13 +15,13 @@
 namespace gutils {
 
 /**
- * @namespace gio
+ * @namespace gutils::gio
  * @brief GIO関連のユーティリティをまとめた名前空間。
  */
 namespace gio {
 
 /**
- * @brief D-Bus上の指定されたメソッドを非同期(Fire-and-forget)で呼び出します。
+ * @brief D-Bus上の指定されたメソッドを非同期(Fire-and-forget)で呼び出します (引数を持たないメソッド専用)。
  * @param[in] bus_name バス名（サービス名）
  * @param[in] object_path オブジェクトパス
  * @param[in] interface_name インターフェース名

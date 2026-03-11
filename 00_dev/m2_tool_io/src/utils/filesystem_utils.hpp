@@ -13,7 +13,7 @@
 namespace utils {
 
 /**
- * @namespace filesystem
+ * @namespace utils::filesystem
  * @brief ファイルシステム関連のユーティリティ関数をまとめた名前空間
  */
 namespace filesystem {

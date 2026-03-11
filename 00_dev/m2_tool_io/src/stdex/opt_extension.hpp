@@ -13,6 +13,11 @@
  */
 namespace stdex {
 
+/**
+ * @namespace stdex::internal
+ * @brief opt_extension.hpp の実装の詳細をまとめた名前空間。
+ * この名前空間の関数は、直接使わないで下さい。
+ */
 namespace internal {
 
 // T型が operator!= を持っているか判定するメタ関数

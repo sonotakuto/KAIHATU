@@ -94,10 +94,10 @@
 	bool get_##property_name() const { \
 		gboolean value; \
 		g_object_get(G_OBJECT(this->object), #property_name, &value, NULL); \
-		return (bool)value; \
+		return static_cast<bool>(value); \
 	} \
 	void set_##property_name(bool value) { \
-		g_object_set(G_OBJECT(this->object), #property_name, (gboolean)value, NULL); \
+		g_object_set(G_OBJECT(this->object), #property_name, static_cast<gboolean>(value), NULL); \
 	}
 
 /**
@@ -125,10 +125,10 @@
 	bool get_##cpp_suffix() const { \
 		gboolean value; \
 		g_object_get(G_OBJECT(this->object), gtk_property_name, &value, NULL); \
-		return (bool)value; \
+		return static_cast<bool>(value); \
 	} \
 	void set_##cpp_suffix(bool value) { \
-		g_object_set(G_OBJECT(this->object), gtk_property_name, (gboolean)value, NULL); \
+		g_object_set(G_OBJECT(this->object), gtk_property_name, static_cast<gboolean>(value), NULL); \
 	}
 
 #ifdef SIMPLEGTK_GE_1_0_6
@@ -373,6 +373,10 @@ constexpr layout::Gravity to_layout_gravity(GdkGravity gravity) {
 	}
 }
 
+/**
+ * @struct Position
+ * @brief layout::Position を拡張し、GdkPoint との相互変換を可能にしたクラス。
+ */
 struct Position : public layout::Position {
 	using layout::Position::Position;	// 基底クラスのコンストラクタを継承
 
@@ -458,8 +462,8 @@ struct Rectangle : public layout::BasicRectangle<sgex::Position, sgex::Size> {
 };
 
 /**
- * @struct Size
- * @brief 2次元サイズを表す構造体。
+ * @struct PreferredSize
+ * @brief GtkWidget のサイズ要求を表す構造体。最小サイズと自然サイズの両方を保持します。
  */
 struct PreferredSize {
 	Size minimum_size{};
@@ -870,7 +874,7 @@ public:
 	void on_size_allocate(std::function<void(GtkAllocation*)> handler) {
 		on_size_allocate_handler = handler;
 		if (on_size_allocate_handler != nullptr) {
-			this->set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+			this->set_handler("size-allocate", (reinterpret_cast<GCallback>(on_size_allocate_static)), this);
 		}
 	}
 
@@ -909,7 +913,7 @@ private:
 	void set_use_size(bool use_size) {
 		this->use_size = use_size;
 		if (use_size) {
-			this->set_handler("size-allocate", ((GCallback) (on_size_allocate_static)), this);
+			this->set_handler("size-allocate", (reinterpret_cast<GCallback>(on_size_allocate_static)), this);
 		}
 	}
 
@@ -1180,12 +1184,20 @@ public:
 	using sg::ListStore::ListStore;	// 基底クラスのコンストラクタを継承
 	virtual ~ListStore() = default;
 
+	/**
+	 * @brief コンストラクタ。指定した列の型でGtkListStoreを初期化します。
+	 * @param[in] column_types 列の型を表すGTypeのベクター。例: { G_TYPE_STRING, G_TYPE_INT } など。
+	 */
+	ListStore(std::vector<GType> column_types) :
+		sg::ListStore(gtk_list_store_newv(column_types.size(), reinterpret_cast<GType*>(column_types.data())))
+	{}
+
 	// Gtkシグナルにthisポインタを登録しているため、ムーブ禁止。
 	// (移動すると登録済みのポインタが無効化し、コールバック時にクラッシュするため)
 	ListStore(ListStore&&) = delete;
 	ListStore& operator=(ListStore&&) = delete;
 
-	operator GtkTreeModel*() const { return GTK_TREE_MODEL((GtkListStore*)(*this)); }
+	operator GtkTreeModel*() const { return GTK_TREE_MODEL(static_cast<GtkListStore*>(*this)); }
 
 	// メソッド
 	DEFINE_METHOD_WITH_ARGS(tree_model, get_iter_first, gboolean, (GtkTreeIter  *iter), iter)
@@ -1205,7 +1217,7 @@ public:
 	 */
 	template<typename... Args>
 	void set(GtkTreeIter* iter, Args... args) {
-		gtk_list_store_set((GtkListStore*)(*this), iter, args..., -1);
+		gtk_list_store_set(static_cast<GtkListStore*>(*this), iter, args..., -1);
 	}
 
 	/**
@@ -1405,7 +1417,7 @@ protected:
 	 */
 	GtkListStore* get_gtk_store() const {
 		// 複雑なキャストはこの一箇所に集約
-		return (GtkListStore*)(m_list_store);
+		return static_cast<GtkListStore*>(m_list_store);
 	}
 
 	/**
@@ -1415,7 +1427,7 @@ protected:
 	 */
 	GtkTreeModel* get_gtk_model() const {
 		// 複雑なキャストはこの一箇所に集約
-		return (GtkTreeModel*)(m_list_store);
+		return static_cast<GtkTreeModel*>(m_list_store);
 	}
 
 	/**
@@ -1597,10 +1609,10 @@ public:
 	 * @param[in] row_setter T のデータをGtkListStoreの行に変換・設定する関数。
 	 */
 	ListStoreModelBase(
-		const std::vector<GType>& column_types,
+		std::vector<GType> column_types,
 		setter_function_type row_setter
 	) :
-		m_list_store(gtk_list_store_newv(column_types.size(), (GType*)column_types.data())),	// GTypeのリストに基づいて、GtkListStoreを生成
+		m_list_store(std::move(column_types)),	// GTypeのリストに基づいて、GtkListStoreを生成
 		m_row_setter(row_setter),
 		m_is_programmatically_changing(false)
 	{}
@@ -1688,7 +1700,7 @@ public:
 	 */
 	bool append(const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		append_internal(value);
@@ -1702,7 +1714,7 @@ public:
 	 */
 	bool append(value_type&& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)((size_type)(std::numeric_limits<int>::max()))) {
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		append_internal(std::move(value));
@@ -1717,7 +1729,7 @@ public:
 	bool append(const vector_type& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		size_type appended_size = size() + values.size();
-		if (appended_size > (size_type)(std::numeric_limits<int>::max())) {
+		if (appended_size > static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false;	// 失敗: 行数がintの最大値を超える
 		}
 
@@ -1739,7 +1751,7 @@ public:
 	bool append(vector_type&& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		size_type appended_size = size() + values.size();
-		if (appended_size > (size_type)(std::numeric_limits<int>::max())) {
+		if (appended_size > static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false;	// 失敗: 行数がintの最大値を超える
 		}
 
@@ -1764,7 +1776,7 @@ public:
 	 */
 	bool insert(size_type position, const value_type& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		return insert_internal(position, value);
@@ -1779,7 +1791,7 @@ public:
 	 */
 	bool insert(size_type position, value_type&& value) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) {
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		return insert_internal(position, std::move(value));
@@ -1796,7 +1808,7 @@ public:
 	bool insert(size_type position, const vector_type& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		size_type inserted_size = size() + values.size();
-		if (inserted_size > (size_type)(std::numeric_limits<int>::max())) {
+		if (inserted_size > static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false; // 失敗: 行数がintの最大値を超える
 		}
 		// 開始位置が有効範囲内([0, size()])にあるかチェック
@@ -1824,7 +1836,7 @@ public:
 	bool insert(size_type position, vector_type&& values) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 		size_type inserted_size = size() + values.size();
-		if (inserted_size > (size_type)(std::numeric_limits<int>::max())) {
+		if (inserted_size > static_cast<size_type>(std::numeric_limits<int>::max())) {
 			return false; // 失敗
 		}
 
@@ -3800,7 +3812,7 @@ public:
 	 */
 	bool append(const value_type& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 		m_master_data.push_back(value);
 		if (update_display) {
 			display_page(m_current_page_index);
@@ -3816,7 +3828,7 @@ public:
 	 */
 	bool append(value_type&& value, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 
 		// vector にムーブ
 		m_master_data.push_back(std::move(value));
@@ -3835,7 +3847,7 @@ public:
 	 */
 	bool append(const vector_type& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() + values.size() > static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 		m_master_data.insert(m_master_data.end(), values.begin(), values.end());
 		if (update_display) {
 			display_page(m_current_page_index);
@@ -3851,7 +3863,7 @@ public:
 	 */
 	bool append(vector_type&& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() + values.size() > static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 
 		// std::make_move_iterator を使って、vectorの要素を一括で移動させる
 		m_master_data.insert(
@@ -3879,7 +3891,7 @@ public:
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		size_type original_position = global_position;
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 
 		if (global_position > size()) { global_position = size(); }
 
@@ -3903,7 +3915,7 @@ public:
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
 		size_type original_position = global_position;
-		if (size() >= (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() >= static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 
 		if (global_position > size()) { global_position = size(); }
 
@@ -3927,7 +3939,7 @@ public:
 	bool insert(size_type global_position, const vector_type& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() + values.size() > static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 		bool position_was_valid = (global_position <= size());
 
 		if (global_position > size()) { global_position = size(); }
@@ -3951,7 +3963,7 @@ public:
 	bool insert(size_type global_position, vector_type&& values, bool update_display = true) {
 		utils::scoped_value_guard guard(m_is_programmatically_changing, true);
 
-		if (size() + values.size() > (size_type)(std::numeric_limits<int>::max())) { return false; }
+		if (size() + values.size() > static_cast<size_type>(std::numeric_limits<int>::max())) { return false; }
 		bool position_was_valid = (global_position <= size());
 
 		if (global_position > size()) { global_position = size(); }
