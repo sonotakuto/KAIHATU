@@ -1896,8 +1896,8 @@ void MainWindow::plc_on_notified(const plc::Notification& notification) {
 		warningDialog.show_all();
 	} else if (m_plc_maintaining || m_plc_has_error) {
 		update_widget_state(&warningLabel, WidgetState{.text = UiText{
-			"ステータスモニタでの操作により、\n画面がロックされました\n\n詳細はステータスモニタをご覧ください",
-			"ステータスモニタでの そうさにより、\nがめんが ロックされました\n\nしょうさいは ステータスモニタを ごらんください"
+			"メンテナンスディスプレイでの操作により、\n画面がロックされました\n\n詳細はメンテナンスディスプレイをご覧ください",
+			"メンテナンスディスプレイでの そうさにより、\nがめんが ロックされました\n\nしょうさいは メンテナンスディスプレイを ごらんください"
 		}}, true);
 		set_sensitive(false);
 		warningDialog.show_all();
