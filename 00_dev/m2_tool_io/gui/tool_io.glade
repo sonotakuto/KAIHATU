@@ -56,6 +56,10 @@ QRコードリーダーで よみとってから、こうぐを とりだして�
         <property name="can-focus">False</property>
         <property name="halign">center</property>
         <property name="valign">center</property>
+        <property name="margin-start">10</property>
+        <property name="margin-end">10</property>
+        <property name="margin-top">10</property>
+        <property name="margin-bottom">10</property>
         <property name="orientation">vertical</property>
         <property name="spacing">20</property>
         <child>
@@ -262,11 +266,11 @@ QRコードリーダーで よみとってから、こうぐを とりだして�
             <property name="spacing">10</property>
             <child>
               <object class="GtkLabel" id="messageLabel">
-                <property name="width-request">945</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">message message message message message
 message message message message message</property>
+                <property name="ellipsize">end</property>
                 <property name="xalign">0</property>
                 <style>
                   <class name="font-bold"/>
@@ -274,16 +278,17 @@ message message message message message</property>
                 </style>
               </object>
               <packing>
-                <property name="expand">False</property>
+                <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
               <object class="GtkStack" id="operationStack">
-                <property name="width-request">945</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
+                <property name="hhomogeneous">False</property>
+                <property name="vhomogeneous">False</property>
                 <child>
                   <object class="GtkBox">
                     <property name="visible">True</property>
@@ -316,7 +321,6 @@ message message message message message</property>
                         <property name="row-homogeneous">True</property>
                         <child>
                           <object class="GtkLabel" id="programLabel">
-                            <property name="width-request">210</property>
                             <property name="height-request">50</property>
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
@@ -331,7 +335,6 @@ message message message message message</property>
                         </child>
                         <child>
                           <object class="GtkLabel" id="lineLabel">
-                            <property name="width-request">210</property>
                             <property name="height-request">50</property>
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
@@ -552,14 +555,15 @@ message message message message message</property>
                     <property name="can-focus">False</property>
                     <property name="halign">end</property>
                     <property name="valign">end</property>
+                    <property name="spacing">5</property>
                     <child>
                       <object class="GtkLabel" id="containerLabel">
-                        <property name="width-request">195</property>
                         <property name="height-request">50</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">コンテナ番号：</property>
-                        <property name="xalign">0</property>
+                        <property name="justify">right</property>
+                        <property name="xalign">1</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -649,7 +653,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table3columns1st">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -786,7 +790,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table3columns2nd">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -923,7 +927,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table3columns3rd">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1074,7 +1078,7 @@ message message message message message</property>
                             <property name="label" translatable="yes">◀</property>
                             <property name="width-request">55</property>
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="focus-on-click">False</property>
                             <property name="receives-default">True</property>
                             <style>
@@ -1093,7 +1097,7 @@ message message message message message</property>
                             <property name="label" translatable="yes">▶</property>
                             <property name="width-request">55</property>
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="focus-on-click">False</property>
                             <property name="receives-default">True</property>
                             <style>
@@ -1176,7 +1180,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table2columns1st">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1313,7 +1317,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table2columns2nd">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1464,7 +1468,7 @@ message message message message message</property>
                             <property name="label" translatable="yes">◀</property>
                             <property name="width-request">55</property>
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="focus-on-click">False</property>
                             <property name="receives-default">True</property>
                             <style>
@@ -1483,7 +1487,7 @@ message message message message message</property>
                             <property name="label" translatable="yes">▶</property>
                             <property name="width-request">55</property>
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="focus-on-click">False</property>
                             <property name="receives-default">True</property>
                             <style>
@@ -1566,7 +1570,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table2types1st">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1710,7 +1714,7 @@ message message message message message</property>
                                 <property name="label" translatable="yes">◀</property>
                                 <property name="width-request">55</property>
                                 <property name="visible">True</property>
-                                <property name="can-focus">True</property>
+                                <property name="can-focus">False</property>
                                 <property name="focus-on-click">False</property>
                                 <property name="receives-default">True</property>
                                 <style>
@@ -1729,7 +1733,7 @@ message message message message message</property>
                                 <property name="label" translatable="yes">▶</property>
                                 <property name="width-request">55</property>
                                 <property name="visible">True</property>
-                                <property name="can-focus">True</property>
+                                <property name="can-focus">False</property>
                                 <property name="focus-on-click">False</property>
                                 <property name="receives-default">True</property>
                                 <style>
@@ -1808,7 +1812,7 @@ message message message message message</property>
                         <child>
                           <object class="GtkTreeView" id="table2types2nd">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
                             <property name="search-column">0</property>
                             <child internal-child="selection">
                               <object class="GtkTreeSelection"/>
@@ -1951,7 +1955,7 @@ message message message message message</property>
                                 <property name="label" translatable="yes">◀</property>
                                 <property name="width-request">55</property>
                                 <property name="visible">True</property>
-                                <property name="can-focus">True</property>
+                                <property name="can-focus">False</property>
                                 <property name="focus-on-click">False</property>
                                 <property name="receives-default">True</property>
                                 <style>
@@ -1970,7 +1974,7 @@ message message message message message</property>
                                 <property name="label" translatable="yes">▶</property>
                                 <property name="width-request">55</property>
                                 <property name="visible">True</property>
-                                <property name="can-focus">True</property>
+                                <property name="can-focus">False</property>
                                 <property name="focus-on-click">False</property>
                                 <property name="receives-default">True</property>
                                 <style>

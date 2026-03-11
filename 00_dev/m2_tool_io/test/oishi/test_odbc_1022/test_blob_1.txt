@@ -1,2 +1,0 @@
-test_blob_1.txt
-あああああ！

@@ -182,6 +182,10 @@ check: $(SOURCES)
 	@echo "Checking source files in $(ENV_MSG) mode..."
 	@$(foreach src, $(SOURCES), echo "Checking $(src)"; $(CXX) $(CXXFLAGS) $(CHECKFLAGS) $(SRC_DIR)/$(src) -o /dev/null; echo "";)
 
+# 'make docs' で、Doxygenドキュメントを生成する
+docs:
+	doxygen
+
 # 'make clean' で、現在のターゲットのファイルのみ削除
 clean:
 	rm -rf $(OBJECTS_DIR_INTERNAL) $(TARGET_PATH) $(DEBUG_TARGET_PATH)
