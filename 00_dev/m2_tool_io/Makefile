@@ -239,4 +239,4 @@ $(OBJECTS_DIR_INTERNAL)/%_debug.o: %.cpp $(HEADERS) $(MAKEFILE_LIST) $(FLAGS_FIL
 
 # 偽物のターゲット（Phony Target）を宣言
 # これにより、同名のファイルが存在してもコマンドが正しく実行される
-.PHONY: all main rebuild exec debug check clean clean_all print_env FORCE
+.PHONY: all main rebuild exec debug check docs clean clean_all print_env FORCE
