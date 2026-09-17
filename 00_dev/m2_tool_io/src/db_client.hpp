@@ -22,8 +22,8 @@ inline constexpr const char*	ODBC_DSN	= "system";		// ODBCのDSN名
 inline constexpr const char*	ODBC_USER	= "root";		// ODBCのユーザー名
 inline constexpr const char*	ODBC_PASS	= "gr4";		// ODBCのパスワード
 #else
-inline constexpr const char*	ODBC_USER	= "pi";			// ODBCのユーザー名
-inline constexpr const char*	ODBC_PASS	= "pipasswd";	// ODBCのパスワード
+inline constexpr const char*	ODBC_USER	= "root";			// ODBCのユーザー名
+inline constexpr const char*	ODBC_PASS	= "gr4";	// ODBCのパスワード
 #endif
 
 /**
@@ -149,5 +149,33 @@ std::optional<StrageAreaInfo> get_StrageAreaInfo_with_min_cases(int basic_tool_i
  * @return 条件に合致する保管領域情報が見つかった場合はその構造体、見つからなければ std::nullopt。
  */
 std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_id);
+
+// ============================================================
+// 棚卸し (RECONCILE) 機能用
+// ============================================================
+
+/**
+ * @brief 棚卸し対象として選択可能な保管領域 (コンテナ) の一覧を取得します。
+ * @details storage_area テーブルを mst_address, mst_tool と結合し、全件を取得します。
+ * @return 保管領域情報のリスト (0件の場合は空のvector)。取得処理自体に失敗した場合は std::nullopt。
+ */
+std::optional<std::vector<StrageAreaInfo>> get_StrageAreaInfoList_for_reconcile();
+
+/**
+ * @brief 指定した保管領域に「現在、保管中」の個別工具一覧を取得します。
+ * @details unique_tool テーブルを storage_area_id と storage_condition='保管中' で絞り込み、
+ * mst_tool と結合して取得します。棚卸しの「期待リスト」の元データとなります。
+ * @param[in] storage_area_id 対象の保管領域ID (StrageAreaInfo::id)。
+ * @return 個別工具情報のリスト (0件の場合は空のvector)。取得処理自体に失敗した場合は std::nullopt。
+ */
+std::optional<std::vector<UniqueToolInfo>> get_UniqueToolInfoList_by_StrageArea(std::int32_t storage_area_id);
+
+/**
+ * @brief 指定した保管領域の最終棚卸し日時 (storage_area.last_reconciliation_time) を更新します。
+ * @param[in] storage_area_id 対象の保管領域ID。
+ * @param[in] time 記録する日時 (通常は sg::now() の結果)。
+ * @return 更新に成功した場合は true、対象が存在しない場合やDBエラーの場合は false。
+ */
+bool update_last_reconciliation_time(std::int32_t storage_area_id, std::chrono::system_clock::time_point time);
 
 } // namespace db

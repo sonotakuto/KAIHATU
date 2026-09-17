@@ -15,6 +15,7 @@
 #include "parameters.hpp"
 #include "plc_communicator.hpp"
 #include "tracking_communicator.hpp"
+#include "reconcile/reconcile_checklist.hpp"
 
 /**
  * @namespace gui
@@ -1501,6 +1502,22 @@ private:
 	bool on_qrCodeEntry_reconcile_read_completed();
 
 	/**
+	 * @brief RECONCILE_READ_COMPLETED 状態の on_plc_notified の処理。
+	 * @details 扉の開閉状態を監視し、falseButton/trueButton の有効/無効を切り替える。
+	 * (RECONCILE_READY_FOR_READING でも同じ関数が呼ばれる想定 — 最初のスキャンで
+	 * READ_COMPLETED に遷移した後も同一の扉監視を継続するため。)
+	 * @param[in] notification PLCモニタースレッドからの通知。
+	 */
+	void on_plc_reconcile_read_completed(const plc::Notification& notification);
+
+	/**
+	 * @brief RECONCILE_READ_COMPLETED 状態の falseButton/trueButton 共通の事前処理。
+	 * @details コンテナの搬入指示と、棚卸し結果のDB保存を行う。
+	 * @return 処理が正常に完了した場合は true、扉が閉まっていない等で中断した場合は false。
+	 */
+	bool on_false_and_true_Button_reconcile_read_completed();
+
+	/**
 	 * @brief RECONCILE_READ_COMPLETED 状態の falseButton.on_clicked の処理
 	 * @details 棚卸し機能を終了する。
 	 */
@@ -1511,6 +1528,13 @@ private:
 	 * @details 棚卸し機能の最初の画面に戻る。
 	 */
 	void on_trueButton_reconcile_read_completed();
+
+	/**
+	 * @brief 棚卸し (RECONCILE_READ_COMPLETED) 画面の falseButton/trueButton の有効/無効状態を、
+	 * GUI側の条件とPLC側の扉状態から判定し更新するヘルパー関数。
+	 * @param[in] update_ui (オプション・デフォルト true) trueのとき、UIを更新する。
+	 */
+	void update_reconcile_read_completed_buttons(bool update_ui = true);
 
 	// TODO: 棚卸しモードの状態遷移関数をここに追加
 
@@ -1624,6 +1648,22 @@ private:
 
 	/// @brief [補充用] 再研磨工具のIDリスト。
 	std::set<std::int64_t> m_reground_tools;
+
+	// --- 操作中の状態保持用 (棚卸し専用) ---
+
+	/// @brief [棚卸し用] コンテナ選択画面移行前の表の状態を退避しておく vector (取り出しの m_retrieve_backup_table と同役割)。
+	std::vector<MainTableData> m_reconcile_backup_table;
+
+	/// @brief [棚卸し用] 現在棚卸し中の保管領域 (コンテナ) 情報。
+	std::optional<StrageAreaInfo> m_reconciling_area;
+
+	/**
+	 * @brief [棚卸し用] 期待工具リストと実読み取り結果の突合を行うチェックリスト。
+	 * @details 選択したコンテナごとに on_enter_reconcile_ready_for_reading() で再生成する。
+	 * DB/GUIに依存しない reconcile::Checklist (reconcile_checklist.hpp) に委譲することで、
+	 * 突合ロジック自体の見直しが必要な場合でも本ファイルを変更せずに済む。
+	 */
+	std::optional<reconcile::Checklist> m_reconcile_checklist;
 
 	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };

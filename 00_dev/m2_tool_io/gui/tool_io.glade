@@ -80,7 +80,7 @@ QRコードリーダーで よみとってから、こうぐを とりだして�
                     <property name="label" translatable="yes">YYYY / MM / DD   HH : MM</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="font-normal"/>
+                      <class name="font-bold"/>
                       <class name="font-size_20px"/>
                     </style>
                   </object>
@@ -379,7 +379,7 @@ message message message message message</property>
                           </packing>
                         </child>
                         <style>
-                          <class name="font-normal"/>
+                          <class name="font-bold"/>
                           <class name="font-size_25px"/>
                         </style>
                       </object>

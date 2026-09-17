@@ -1760,8 +1760,12 @@ MainWindow::MainWindow() :
 			{ {&messageLabel}, {.text = UiText{"コンテナが届きました\n扉を開けてコンテナを取り出してください", "コンテナが とどきました\nとびらを あけて コンテナを とりだしてください"}} }
 		},
 		// --- 状態の「振る舞い」を定義 ---
-		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieving(); },
-		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieving(notification); }
+		// NOTE: 修正前は誤って on_enter_reconcile_container_retrieving / on_plc_reconcile_container_retrieving
+		// (「搬出中」用の関数) が割り当てられていたため、「搬出完了後、扉が開くのを待つ」処理が
+		// 一度も実行されない不具合があった。RETRIEVE/STOREの対応する状態と同様に、
+		// 専用の _retrieved 関数を割り当てるよう修正。
+		.on_enter_state		= [](MainWindow* thiz){ thiz->on_enter_reconcile_container_retrieved(); },
+		.on_plc_notified	= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_container_retrieved(notification); }
 	});
 
 	// --- 状態：棚卸し - スキャン待ち ---
@@ -1809,8 +1813,9 @@ MainWindow::MainWindow() :
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_reconcile_read_completed(); },
 		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_reconcile_read_completed(); },
 		.on_falseButton_clicked		= [](MainWindow* thiz){ thiz->on_falseButton_reconcile_read_completed(); },
-		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_reconcile_read_completed(); }
-		// TODO: 扉の開閉に関するPLC連携処理を実装 (扉が閉められている時のみtrue/falseボタンを操作できるようにする)
+		.on_trueButton_clicked		= [](MainWindow* thiz){ thiz->on_trueButton_reconcile_read_completed(); },
+		// 扉の開閉に関するPLC連携処理: 扉が閉められている時のみtrue/falseボタンを操作できるようにする
+		.on_plc_notified			= [](MainWindow* thiz, const plc::Notification& notification){ thiz->on_plc_reconcile_read_completed(notification); }
 	});
 
 	// TODO: 他のすべての状態(RETRIEVE_WAITING_FOR_CONTAINERなど)もここに追加していく
@@ -4108,62 +4113,359 @@ void MainWindow::on_plc_store_ready_for_reading(const plc::Notification& notific
 // --- 棚卸し ---
 
 void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
+	// 変数を初期化 (取り出しの on_enter_retrieve_waiting_for_program_qr と同様のパターン)
+	m_reconciling_area.reset();
+	m_reconcile_backup_table.clear();
+	m_reconcile_checklist.reset();
+	m_operated_records.clear();
 
+	// DBから棚卸し対象のコンテナ(保管領域)一覧を取得
+	auto area_list_opt = db::get_StrageAreaInfoList_for_reconcile();
+
+	std::vector<MainTableData> vec;
+	if (area_list_opt.has_value()) {
+		vec.reserve(area_list_opt.value().size());
+		for (const StrageAreaInfo& area : area_list_opt.value()) {
+			vec.push_back(MainTableData{
+				.id = area.id,
+				.data_columns = {
+					area.mst_address_info.display_address,	// コンテナ番号 (画面表示住所)	// FIXME: フィールド名は実際のMstAddressTable定義に合わせて要確認
+					area.item.category,
+					area.item.maker,
+					area.item.name,
+					area.item.material,
+					((area.last_reconciliation_time.has_value())
+						? (fmt::format("{:%Y/%m/%d %H:%M}", area.last_reconciliation_time.value()))
+						: (std::string("未実施"))
+					)
+				},
+				.cell_state_0to4 = TableCellState::NORMAL,
+				.raw_data = area	// トリガー時に StrageAreaInfo を取り出すために保持
+			});
+		}
+	} else {
+		// BUG: エラー対応 (通信断など)。現状はログのみ残し、空テーブルのまま操作継続させる。
+		DEV_PRINT(stderr, "[Reconcile] 棚卸し対象コンテナ一覧の取得に失敗しました。\n");
+	}
+
+	liststore2columnsAll.set_master_data(std::move(vec));
+	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+
+	// 「搬出」ボタンは選択されるまで無効
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = false}, true);
 }
 
 void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt) {
+	if (!selected_index_opt.has_value()) {
+		return;
+	}
 
+	// 棚卸しは1回につき1コンテナのみ対象とするため、ラジオボタン的な単一選択とする。
+	// (取り出し画面の複数選択とは異なり、選択行以外は自動的に選択解除する)
+	liststore2columnsAll.modify_master_data([&selected_index_opt](std::vector<MainTableData>& master_data) {
+		for (size_t i = 0; i < master_data.size(); i++) {
+			if (i == selected_index_opt.value()) {
+				master_data[i].cell_state_0to4 = TableCellState::SELECTED;
+			} else if (master_data[i].cell_state_0to4 == TableCellState::SELECTED) {
+				master_data[i].cell_state_0to4 = TableCellState::NORMAL;
+			}
+		}
+	}, true);
+
+	// 選択された行がある場合にのみ「搬出」ボタンを有効化する
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = (liststore2columnsAll.find_first_index([](const MainTableData& item) {
+		return item.cell_state_0to4 == TableCellState::SELECTED;
+	}).has_value())}, true);
 }
 
 void MainWindow::on_enter_reconcile_container_retrieving() {
+	// 選択中の行から、棚卸し対象の保管領域情報を取り出す
+	auto selected_index_opt = liststore2columnsAll.find_first_index([](const MainTableData& item) {
+		return item.cell_state_0to4 == TableCellState::SELECTED;
+	});
 
+	if (!selected_index_opt.has_value()) {
+		// 基本的にここには来ないはず (trueButton は選択時のみ有効化されるため)
+		DEV_PRINT(stderr, "[Reconcile] コンテナが選択されていません。\n");	// BUG: 不正値対応
+		set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION);
+		return;
+	}
+
+	const MainTableData& selected_row = liststore2columnsAll.get_master_data().at(selected_index_opt.value());
+	StrageAreaInfo area = std::any_cast<StrageAreaInfo>(selected_row.raw_data);	// FIXME: any型不一致対応
+	m_reconciling_area = area;
+
+	// コンテナ搬出
+	plc::retrieve_container(std::stoi(area.mst_address_info.control_address), true);	// FIXME: nullopt/例外対応
+
+	// 映像記録を開始 (棚卸し中の証跡として保存)
+	// FIXME: エラー対応
+	tracker::g_recorder_client->start_recording();
+
+	// インサートの操作か判定
+	m_is_insert_operation = (area.item.category == TOOL_CATEGORY_INSERT);
 }
 
 void MainWindow::on_plc_reconcile_container_retrieving(const plc::Notification& notification) {
-
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
+		const plc::MonitorResult& result = notification.monitor_result.value();
+		if (result.addr == plc::M_DEVICE_RETRIEVE_COMPLETED && result.status) {
+			set_app_state(AppState::RECONCILE_CONTAINER_RETRIEVED);
+		} else {}	// BUG: エラー処理
+	}
 }
 
 void MainWindow::on_enter_reconcile_container_retrieved() {
-
+	// 扉が開かれる (M_DEVICE_READY_TO_STORE が OFF になる) のを監視する
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_READY_TO_STORE,
+		.flags = plc::WatchFlags{
+			.enable_fall_notification = true,
+			.fall_is_one_shot = true
+		}
+	});
 }
 
 void MainWindow::on_plc_reconcile_container_retrieved(const plc::Notification& notification) {
-
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
+		const plc::MonitorResult& result = notification.monitor_result.value();
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE && !result.status) {
+			set_app_state(AppState::RECONCILE_READY_FOR_READING);
+		} else {}	// BUG: エラー処理
+	}
 }
 
 void MainWindow::on_enter_reconcile_ready_for_reading() {
-	// TODO: DBからこのコンテナの在庫リストを取得し、テーブルに「未読」状態で表示
+	m_plc_ready_for_action = false;	// 最初のスキャンまでは false/trueButton は使わないが、状態としては初期化しておく
 
+	// DBからこのコンテナの「保管されているはず」の在庫リストを取得
+	auto expected_list_opt = m_reconciling_area.has_value()
+		? (db::get_UniqueToolInfoList_by_StrageArea(m_reconciling_area.value().id))
+		: (std::nullopt);
+
+	std::vector<std::int64_t> expected_ids;
+	std::vector<MainTableData> vec;
+
+	if (expected_list_opt.has_value()) {
+		expected_ids.reserve(expected_list_opt.value().size());
+		vec.reserve(expected_list_opt.value().size());
+
+		for (const UniqueToolInfo& unique_info : expected_list_opt.value()) {
+			expected_ids.push_back(unique_info.id);
+
+			vec.push_back(MainTableData{
+				.id = unique_info.id,
+				.data_columns = {
+					fmt::format("{:010d}", unique_info.id),	// 10桁0埋め
+					unique_info.mst_tool_info.category,
+					unique_info.mst_tool_info.maker,
+					unique_info.mst_tool_info.name,
+					unique_info.mst_tool_info.material,
+					to_string(((m_is_insert_operation)
+						? (unique_info.case_pack_num)
+						: (unique_info.regrind_count.value_or(0))	// FIXME: nullopt対応
+					))
+				},
+				.cell_state_0to4 = TableCellState::RECONCILE_UNREAD,
+				.raw_data = unique_info
+			});
+		}
+	} else {
+		// BUG: エラー対応 (通信断など)
+		DEV_PRINT(stderr, "[Reconcile] 在庫リストの取得に失敗しました。\n");
+	}
+
+	// 突合ロジックを新規構築 (コンテナごとに毎回作り直す)
+	m_reconcile_checklist.emplace(std::move(expected_ids));
+
+	liststore2columnsAll.set_master_data(std::move(vec));
+	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
 }
 
 void MainWindow::on_qrCodeEntry_reconcile_ready_for_reading() {
-	// TODO: スキャンされたQRを処理するロジック
-	// 1. QRから工具ID取得
-	// 2. テーブル内の該当工具を検索
-	// 3. 見つかれば「一致」状態に更新
-	// 4. 見つからなければ「不一致」として新規行を追加
-	// x. このとき、インサートの場合は個数確認ダイアログを表示
+	// 実際のスキャン処理は on_qrCodeEntry_reconcile_read_completed() に委譲し、
+	// 成功時 (=DBから工具情報を取得できた時) にのみ次の画面 (RECONCILE_READ_COMPLETED) へ遷移する。
+	if (on_qrCodeEntry_reconcile_read_completed()) {
+		set_app_state(AppState::RECONCILE_READ_COMPLETED);
+	}
 }
 
 void MainWindow::on_enter_reconcile_read_completed() {
+	m_plc_ready_for_action = false;	// 扉が閉まるのを待つため、最初は false
 
+	// 扉の開閉監視を開始する (これ以降 on_plc_reconcile_read_completed が継続的に呼ばれる)
+#ifdef STUB_PLC
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_READY_TO_STORE,
+		.flags = plc::WatchFlags{
+			.enable_rise_notification = true,
+			.rise_is_one_shot = true,
+		}
+	});
+#else
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_READY_TO_STORE,
+		.flags = plc::WatchFlags{
+			.enable_fall_notification = true,
+			.enable_rise_notification = true,
+			.fall_is_one_shot = false,
+			.rise_is_one_shot = false
+		}
+	});
+#endif
+
+	// 現時点の扉状態に応じてボタンの有効/無効を確定させておく
+	update_reconcile_read_completed_buttons(true);
+
+	qrCodeEntry.grab_focus();
 }
 
 bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
+	if (!m_reconcile_checklist.has_value()) {
+		// 基本的にここには来ないはず (READY_FOR_READING で必ず構築されるため)
+		DEV_PRINT(stderr, "[Reconcile] チェックリストが未初期化です。\n");	// BUG: 不正値対応
+		return false;
+	}
+
+	// 既存の「スキャン系エラー」をすべて消す
+	clear_scan_warnings(true);
+
+	std::optional<UniqueToolInfo> unique_info_opt = db::get_UniqueToolInfo(qrCodeEntry.get_text());
+	qrCodeEntry.set_text("");
+
+	if (!unique_info_opt.has_value()) {
+		add_warning(WarningType::TOOL_NOT_FOUND, true);
+		return false;
+	}
+
+	UniqueToolInfo& unique_info = unique_info_opt.value();
+
+	// 期待リストとの突合 (一致 / 不一致 判定)
+	const reconcile::MatchStatus status = m_reconcile_checklist.value().scan(unique_info.id);
+	const TableCellState cell_state = ((status == reconcile::MatchStatus::MATCHED)
+		? (TableCellState::RECONCILE_MATCH)
+		: (TableCellState::RECONCILE_MISMATCH)
+	);
+
+	// テーブル内に既に行があれば状態のみ更新、無ければ「想定外の工具」として新規追加
+	bool row_found = false;
+	liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data) {
+		auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& row) {
+			return row.id == unique_info.id;
+		});
+		if (it != data.end()) {
+			it->cell_state_0to4 = cell_state;
+			row_found = true;
+		}
+	}, true);
+
+	if (!row_found) {
+		liststore2columnsAll.append(MainTableData{
+			.id = unique_info.id,
+			.data_columns = {
+				fmt::format("{:010d}", unique_info.id),
+				unique_info.mst_tool_info.category,
+				unique_info.mst_tool_info.maker,
+				unique_info.mst_tool_info.name,
+				unique_info.mst_tool_info.material,
+				to_string(((m_is_insert_operation)
+					? (unique_info.case_pack_num)
+					: (unique_info.regrind_count.value_or(0))	// FIXME: nullopt対応
+				))
+			},
+			.cell_state_0to4 = TableCellState::RECONCILE_MISMATCH,
+			.raw_data = unique_info
+		});
+		update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+	}
+
+	// 履歴データとして記録 (1スキャン = 1レコード)
+	m_operated_records.push_back(RecOperationTable{
+		.operation_class	= OperationClass::INVENTORY,
+		.user_id			= ((g_logged_in_user_info.has_value()) ? (g_logged_in_user_info.value().id) : (0)),	// FIXME: nullopt対応
+		.proc_time			= sg::now(),
+		.storage_area_id	= m_reconciling_area.value().id,	// BUG: nullopt対応
+		.unique_tool_id		= unique_info.id,
+		.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
+		.track_result		= ((status == reconcile::MatchStatus::MISMATCH)
+			? (TrackResult::OVERRIDDEN)	// 想定外のスキャンだったことを記録上も残す
+			: (TrackResult::NORMAL)
+		)
+	});
+
+	return true;
+}
+
+void MainWindow::on_plc_reconcile_read_completed(const plc::Notification& notification) {
+	if (notification.type == plc::NotificationType::MONITOR && notification.monitor_result.has_value()) {	// BUG: nullopt対応
+		const plc::MonitorResult& result = notification.monitor_result.value();
+		if (result.addr == plc::M_DEVICE_READY_TO_STORE) {
+			m_plc_ready_for_action = result.status;
+			update_reconcile_read_completed_buttons();
+		} else {}	// BUG: エラー処理
+	}
+}
+
+void MainWindow::update_reconcile_read_completed_buttons(bool update_ui) {
+	// GUI側の条件 (警告ダイアログ等が表示中でないか)
+	bool gui_ready_for_action = !warningDialog.get_mapped() && !warningListDialog.get_mapped();
+
+	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action;
+
+	update_widget_state(&falseButton, WidgetState{.is_sensitive = all_systems_ready}, false);
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = all_systems_ready}, false);
+
+	if (update_ui) {
+		refresh_ui(false);
+	}
+}
+
+bool MainWindow::on_false_and_true_Button_reconcile_read_completed() {
+	// 未読み取り (見つかっていない工具) が残っている場合は、利用者に確認を取る
+	if (
+		m_reconcile_checklist.has_value() &&
+		!m_reconcile_checklist.value().is_fully_read() &&
+		!confirm_to_user(UiText{
+			"読み取っていない工具が残っていますが、\nコンテナを搬入してよろしいですか？",
+			"よみとっていない こうぐが のこっていますが、\nコンテナを はんにゅうして よろしいですか？"
+		})
+	) {
+		return false;
+	}
+
+	// コンテナの搬入指示 (扉が閉まっているか等のチェックも兼ねる)
+	if (!check_and_store_container()) {
+		return false;
+	}
+
+	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
+
+	// 棚卸し結果をDBに保存
+	if (m_reconciling_area.has_value()) {
+		db::save_history(m_operated_records);
+		db::update_last_reconciliation_time(m_reconciling_area.value().id, sg::now());
+	}
+	tracker::g_recorder_client->stop_recording();
+
 	return true;
 }
 
 void MainWindow::on_falseButton_reconcile_read_completed() {
-	// TODO: 棚卸し結果をDBに保存
+	if (!on_false_and_true_Button_reconcile_read_completed()) {
+		return;
+	}
 	set_mode(GuiMode::NONE);
 }
 
 void MainWindow::on_trueButton_reconcile_read_completed() {
-	// TODO: 棚卸し結果をDBに保存
-	set_app_state(AppState::RECONCILE);
+	if (!on_false_and_true_Button_reconcile_read_completed()) {
+		return;
+	}
+	// 次のコンテナの棚卸しへ (最初の画面=コンテナ選択画面 に戻る)
+	set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION);
 }
 
 } // namespace gui

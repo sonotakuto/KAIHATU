@@ -815,4 +815,187 @@ std::optional<StrageAreaInfo> get_StrageAreaInfo_with_max_cases(int basic_tool_i
 	return get_StrageAreaInfo_ordered_by_cases(basic_tool_id, "DESC");
 }
 
+// ============================================================
+// 棚卸し (RECONCILE) 機能用
+// ============================================================
+
+std::optional<std::vector<StrageAreaInfo>> get_StrageAreaInfoList_for_reconcile() {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt.has_value()) {
+		DEV_PRINT(stderr, "Error: Failed to create statement in get_StrageAreaInfoList_for_reconcile after multiple retries.\n");
+		return std::nullopt;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// storage_area テーブルを mst_address, mst_tool と結合し、全件を取得するSQL
+		// (get_StrageAreaInfo_ordered_by_cases と異なり、WHERE句・LIMIT句は付けない)
+		const std::string sql =
+			"SELECT "
+			"    sa.storage_area_id, sa.toolcase_stc_num, sa.last_reconciliation_time, "
+			"    ma.display_address, ma.control_address, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"FROM storage_area AS sa "
+			"JOIN mst_address AS ma ON sa.display_address = ma.display_address "
+			"JOIN mst_tool AS mt ON sa.basic_tool_id = mt.basic_tool_id "
+			"ORDER BY ma.display_address ASC;";
+
+		stmt.execute(sql);	// パラメータが無いため prepare/bind ではなく execute を直接使用
+
+		auto rows = stmt.fetchAll();
+
+		std::vector<StrageAreaInfo> result;
+		result.reserve(rows.size());
+
+		for (const auto& row : rows) {
+			result.push_back(StrageAreaInfo{
+				.id	= std::any_cast<std::int32_t>(row.at("storage_area_id")),
+
+				.item = MstToolInfo{
+					.id			= std::any_cast<std::int32_t>				(row.at("basic_tool_id")),
+					.name		= std::any_cast<std::string>				(row.at("tool_name")),
+					.maker		= std::any_cast<std::string>				(row.at("maker")),
+					.category	= std::any_cast<std::string>				(row.at("tool_category")),
+					.material	= std::any_cast<std::string>				(row.at("tool_material")),
+					.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+					.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
+				},
+
+				.toolcase_stc_num = stdex::any_cast_optional<std::int32_t>(row.at("toolcase_stc_num")),
+
+				.mst_address_info = MstAddressInfo{
+					.display_address	= std::any_cast<std::string>(row.at("display_address")),
+					.control_address	= std::any_cast<std::string>(row.at("control_address"))
+				},
+
+				.last_reconciliation_time = stdex::any_cast_optional<std::chrono::system_clock::time_point>(row.at("last_reconciliation_time"))
+			});
+		}
+
+		return result;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_StrageAreaInfoList_for_reconcile: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_StrageAreaInfoList_for_reconcile: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
+std::optional<std::vector<UniqueToolInfo>> get_UniqueToolInfoList_by_StrageArea(std::int32_t storage_area_id) {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt.has_value()) {
+		DEV_PRINT(stderr, "Error: Failed to create statement in get_UniqueToolInfoList_by_StrageArea after multiple retries.\n");
+		return std::nullopt;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		// unique_tool を storage_area_id と storage_condition='保管中' で絞り込み、mst_tool と結合するSQL。
+		// NOTE: storage_area_info (自分自身のコンテナ情報) はここでは詰めない。
+		//       呼び出し元 (tool_io_gui.cpp の on_enter_reconcile_ready_for_reading) は
+		//       既に m_reconciling_area としてコンテナ情報を保持しているため不要であり、
+		//       余計なJOINを避けてクエリを単純化している。
+		const std::string sql =
+			"SELECT "
+			"    ut.unique_tool_id, ut.unique_num, ut.case_pack_num, ut.storage_condition, ut.regrind_count, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"FROM unique_tool AS ut "
+			"JOIN mst_tool AS mt ON ut.basic_tool_id = mt.basic_tool_id "
+			"WHERE ut.storage_area_id = ? AND ut.storage_condition = ?;";
+
+		stmt.prepare(sql);
+		stmt.bind(1, storage_area_id);
+		stmt.bind(2, std::string(StorageCondition_STORED_STR));	// "保管中" の工具のみを対象とする
+		stmt.executePrepared();
+
+		auto rows = stmt.fetchAll();
+
+		std::vector<UniqueToolInfo> result;
+		result.reserve(rows.size());
+
+		for (const auto& row : rows) {
+			// enum を取得しておく (WHERE句で絞り込み済みなので基本的にSTOREDになるはずだが、念のため変換確認する)
+			std::optional<StorageCondition> storage_condition = from_db_string<StorageCondition>(std::any_cast<std::string>(row.at("storage_condition")));
+			if (!storage_condition.has_value()) {
+				DEV_PRINT(stderr, "DB Error in get_UniqueToolInfoList_by_StrageArea: Invalid storage_condition value.\n");
+				continue;	// この1件だけスキップし、他の行の処理は継続する
+			}
+
+			result.push_back(UniqueToolInfo{
+				.id = std::any_cast<std::int64_t>(row.at("unique_tool_id")),
+
+				.mst_tool_info = MstToolInfo{
+					.id			= std::any_cast<std::int32_t>				(row.at("basic_tool_id")),
+					.name		= std::any_cast<std::string>				(row.at("tool_name")),
+					.maker		= std::any_cast<std::string>				(row.at("maker")),
+					.category	= std::any_cast<std::string>				(row.at("tool_category")),
+					.material	= std::any_cast<std::string>				(row.at("tool_material")),
+					.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+					.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
+				},
+
+				.unique_num		= std::any_cast<std::int32_t>(row.at("unique_num")),
+				.case_pack_num	= std::any_cast<std::int32_t>(row.at("case_pack_num")),
+
+				.storage_area_info = std::nullopt,	// 上記NOTEの通り、意図的に未設定
+
+				.storage_condition	= storage_condition.value(),
+				.regrind_count		= stdex::any_cast_optional<std::int32_t>(row.at("regrind_count"))
+			});
+		}
+
+		return result;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in get_UniqueToolInfoList_by_StrageArea: {}\n", e.what());
+		return std::nullopt;
+	} catch (const std::bad_any_cast& e) {
+		DEV_PRINT(stderr, "DB Cast Error in get_UniqueToolInfoList_by_StrageArea: {}\n", e.what());
+		return std::nullopt;
+	}
+}
+
+bool update_last_reconciliation_time(std::int32_t storage_area_id, std::chrono::system_clock::time_point time) {
+	auto stmt_opt = create_statement_with_retry();
+	if (!stmt_opt.has_value()) {
+		DEV_PRINT(stderr, "Error: Failed to create statement for updating last_reconciliation_time.\n");
+		return false;
+	}
+	auto& stmt = stmt_opt.value();
+
+	try {
+		const std::string sql =
+			"UPDATE storage_area "
+			"SET last_reconciliation_time = ? "
+			"WHERE storage_area_id = ?;";
+
+		stmt.prepare(sql);
+
+		// bind(1, time) は time_point -> SQL_TIMESTAMP_STRUCT の変換に失敗するとfalseを返す (increment系と異なり戻り値を確認する)
+		if (!stmt.bind(1, time)) {
+			DEV_PRINT(stderr, "DB Error in update_last_reconciliation_time: Failed to convert time_point.\n");
+			return false;
+		}
+		stmt.bind(2, storage_area_id);
+
+		stmt.executePrepared();
+
+		// 対象の保管領域IDが存在しなかった場合、影響を受けた行数は0になる
+		const int affected = stmt.getAffectedRowCount();
+		if (affected <= 0) {
+			DEV_PRINT(stderr, "DB Error in update_last_reconciliation_time: No matching storage_area_id={}.\n", storage_area_id);
+			return false;
+		}
+
+		DEV_PRINT("[DB] update_last_reconciliation_time successful for storage_area_id={}.\n", storage_area_id);
+		return true;
+
+	} catch (const odbc::OdbcException& e) {
+		DEV_PRINT(stderr, "DB Error in update_last_reconciliation_time: {}\n", e.what());
+		return false;
+	}
+}
+
 } // namespace db
