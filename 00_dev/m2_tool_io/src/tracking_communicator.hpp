@@ -160,6 +160,13 @@ public:
 	ToolTrackerClient& operator=(ToolTrackerClient&&) = delete;
 
 	/**
+	* @brief 接続が確立するまで待機します。
+	* @param[in] timeout 最大待機時間。
+	* @return 接続できた場合 true、タイムアウトした場合 false。
+	*/
+	bool wait_until_connected(std::chrono::milliseconds timeout);
+
+	/**
 	 * @brief サーバーに接続し、リスナースレッドを起動します。
 	 * @return 成功した場合は true。
 	 */
@@ -232,7 +239,7 @@ public:
 #else
 	static constexpr const char*	BASE_URL		= "http://10.19.133.120:10000";	// 開発環境なら、デフォルトでダミーサーバに接続
 #endif
-	static constexpr const char*	CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
+	static constexpr const char*	CONTEXT_PATH	= "admin_main-0.0.1-SNAPSHOT"; // Tomcatなどのコンテキストパス
 	static constexpr const char*	USERNAME		= "yourUsername";
 	static constexpr const char*	PASSWORD		= "yourPassword";
 	static constexpr long			TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;

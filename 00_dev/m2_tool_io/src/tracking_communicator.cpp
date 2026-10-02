@@ -23,6 +23,15 @@ ToolTrackerClient::~ToolTrackerClient() {
 	stop();
 }
 
+bool ToolTrackerClient::wait_until_connected(std::chrono::milliseconds timeout) {
+	const auto deadline = std::chrono::steady_clock::now() + timeout;
+	while (std::chrono::steady_clock::now() < deadline) {
+		if (is_connected()) { return true; }
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+	return is_connected();
+}
+
 bool ToolTrackerClient::start() {
 	if (keep_listening) {
 		return true;

@@ -83,13 +83,13 @@ public:
 		/// 棚卸しモード
 		RECONCILE,	// 移行用
 		RECONCILE_WAITING_FOR_CONTAINER_SELECTION,	// コンテナ選択待ち
-		RECONCILE_CONFIRMING_SELECTION,				// 選択したコンテナの確認
+		RECONCILE_CONFIRMING_SELECTION,				// 選択したコンテナの確認(使わない)
 		RECONCILE_CONTAINER_RETRIEVING,				// コンテナ搬出待ち
 		RECONCILE_CONTAINER_RETRIEVED,				// コンテナ搬出完了
 		RECONCILE_READY_FOR_READING,				// 実際に棚卸しを行う(インサート以外) - 工具読み取り前
 		RECONCILE_READ_COMPLETED,					// 実際に棚卸しを行う(インサート以外) - 工具読み取り後
-		RECONCILE_INSERT_READY_FOR_READING,			// 実際に棚卸しを行う(インサート) - 工具読み取り前
-		RECONCILE_INSERT_READ_COMPLETED,			// 実際に棚卸しを行う(インサート) - 工具読み取り後
+		RECONCILE_INSERT_READY_FOR_READING,			// 実際に棚卸しを行う(インサート) - 工具読み取り前(使わない)
+		RECONCILE_INSERT_READ_COMPLETED,			// 実際に棚卸しを行う(インサート) - 工具読み取り後(使わない)
 	};
 
 	/**
@@ -756,6 +756,12 @@ private:
 	//==========================================================================================
 
 	// --- 複数場面共通のヘルパー関数 ---
+
+	// tool_io_gui.hpp  「取り出しモード用のヘルパー関数」の節に追加
+	/**
+	* @brief [取り出し用] 追跡システムに接続できなかった場合に、取り出しをキャンセルして確認画面へ戻す。
+	*/
+	void abort_retrieve_due_to_tracker();
 
 	/**
 	 * @brief 現在のテキストモードに応じて表示用の文字列を取得します。

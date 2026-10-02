@@ -3318,16 +3318,37 @@ void MainWindow::on_trueButton_retrieve_confirming_selection() {
 
 void MainWindow::on_enter_retrieve_container_retrieving() {
 	// 操作対象を取得
-	const MstToolInfo& mst_tool_info = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;	// FIXME: nullopt対応
+	const MstToolInfo& mst_tool_info = m_retrieving_tools.at(m_retrieving_index.value()).mst_tool_info;
 
-	// コンテナ搬出
-	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
-	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);	// FIXME: nullopt対応
-
-	// 追跡システムの開始
-	// FIXME: エラー対応
+	// --- 1. 追跡システムを最初に起動し、接続確認 ---
 	tracker::g_tool_tracker->start();
-	tracker::g_recorder_client->start_recording();
+	if (!tracker::g_tool_tracker->wait_until_connected(
+			std::chrono::seconds(tracker::COMMON_TIMEOUT_SECONDS))) {
+		DEV_PRINT(stderr, "追跡システムに接続できないため、取り出しをキャンセルします\n");
+		tracker::g_tool_tracker->stop();
+		abort_retrieve_due_to_tracker();   // 下記
+		return;
+	}
+
+	if (!tracker::g_recorder_client->start_recording().has_value()) {
+		tracker::g_tool_tracker->stop();
+		abort_retrieve_due_to_tracker();
+		return;
+	}
+
+	// --- 2. 保管領域の特定 (失敗時もPLCを動かさない) ---
+	m_operating_area = db::get_StrageAreaInfo_with_max_cases(mst_tool_info.id);
+	if (!m_operating_area.has_value()) {
+		tracker::g_tool_tracker->stop();
+		abort_retrieve_due_to_tracker();   // 文言だけ別にしても良い
+		return;
+	}
+
+
+	// --- 3. ここで初めてPLCへ搬出要求 ---
+	plc::retrieve_container(std::stoi(m_operating_area.value().mst_address_info.control_address), true);
+
+	// 録画は従来どおり(失敗しても続行するかは要件次第。下記参照)
 
 	// インサートの操作か判定
 	m_is_insert_operation = (mst_tool_info.category == TOOL_CATEGORY_INSERT);
@@ -3358,6 +3379,13 @@ void MainWindow::on_enter_retrieve_container_retrieving() {
 	}
 	liststore2columnsAll.set_master_data(std::move(vec));
 	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+}
+
+void MainWindow::abort_retrieve_due_to_tracker() {
+	m_operating_area.reset();
+	on_falseButton_retrieve_confirming_selection();   // 退避表を戻して SELECTING_TOOLS へ
+	messageLabel.add_css_class(CSS_BGCOLOR_WARNING);
+	update_widget_state(&messageLabel, WidgetState{ .text = UiText{"追跡システムに接続できないため\n取り出しを開始できません", "..."} }, true);
 }
 
 void MainWindow::on_plc_retrieve_container_retrieving(const plc::Notification& notification) {
