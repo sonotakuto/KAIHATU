@@ -237,9 +237,9 @@ public:
 	static constexpr const char*	BASE_URL		= "http://10.19.106.160:8080";	// C103
 	//static constexpr const char*	BASE_URL		= "http://10.19.133.117:10000";	// dummy
 #else
-	static constexpr const char*	BASE_URL		= "http://10.19.133.120:10000";	// 開発環境なら、デフォルトでダミーサーバに接続
+	static constexpr const char*	BASE_URL		= "http://10.19.133.120:8080";	// 開発環境なら、デフォルトでダミーサーバに接続
 #endif
-	static constexpr const char*	CONTEXT_PATH	= "admin_main-0.0.1-SNAPSHOT"; // Tomcatなどのコンテキストパス
+	static constexpr const char*	CONTEXT_PATH	= "/helloWeb-1.0"; // Tomcatなどのコンテキストパス
 	static constexpr const char*	USERNAME		= "yourUsername";
 	static constexpr const char*	PASSWORD		= "yourPassword";
 	static constexpr long			TIMEOUT_SECONDS	= COMMON_TIMEOUT_SECONDS;

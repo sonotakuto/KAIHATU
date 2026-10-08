@@ -1773,6 +1773,7 @@ MainWindow::MainWindow() :
 		// --- UIの「見た目」を定義 ---
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"コンテナ内の工具をすべてQRコードリーダーで読み取ってください", "コンテナないの こうぐを すべて QRコードリーダーで よみとってください"}} },
+			{ {&qrCodeEntry}, {.can_focus = true, .is_sensitive = true, .is_editable = true} },
 			{ {&falseButton}, {.text = UiText{"終了", "しゅうりょう"}, .is_sensitive = false} },
 			{ {&trueButton}, {.text = UiText{"続ける", "つづける"}, .is_sensitive = false} }
 		},
@@ -2496,6 +2497,10 @@ void MainWindow::update_read_completed_buttons(bool update_ui) {
 	case AppState::RETRIEVE_READY_FOR_READING :
 	case AppState::RETRIEVE_READ_COMPLETED :
 		update_retrieve_read_completed_buttons(update_ui);
+		break;
+	case AppState::RECONCILE_READY_FOR_READING :
+	case AppState::RECONCILE_READ_COMPLETED :
+		update_reconcile_read_completed_buttons(update_ui);
 		break;
 	default :
 		DEV_PRINT(stderr, "Info: update_read_completed_buttons() は現在の状態では無効です (AppState={})\n", static_cast<int>(m_app_state));
