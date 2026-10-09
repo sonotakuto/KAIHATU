@@ -178,4 +178,14 @@ std::optional<std::vector<UniqueToolInfo>> get_UniqueToolInfoList_by_StrageArea(
  */
 bool update_last_reconciliation_time(std::int32_t storage_area_id, std::chrono::system_clock::time_point time);
 
+/**
+ * @brief 棚卸しで未読だった個別工具を、コンテナから無くなったものとして数字だけ更新します。
+ * @details unique_tool.case_pack_num を 0 に、storage_area.toolcase_stc_num を1、
+ * mst_tool.stc を case_pack_num 分だけ減らします。storage_condition 等は変更しません。
+ * 全件を1トランザクションで処理し、case_pack_num が既に0の工具は何もしません(冪等)。
+ * @param[in] unique_tool_ids 未読だった個別工具IDのリスト。
+ * @return 全件成功なら true。
+ */
+bool apply_unread_reconcile(const std::vector<std::int64_t>& unique_tool_ids);
+
 } // namespace db

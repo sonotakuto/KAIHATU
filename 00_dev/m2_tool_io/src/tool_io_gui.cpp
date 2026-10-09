@@ -1708,7 +1708,7 @@ MainWindow::MainWindow() :
 		.widget_states = {
 			{ {&messageLabel}, {.text = UiText{"棚卸しを行うコンテナを選択してください", "たなおろしを おこなう コンテナを\nせんたく してください"}} },
 			{ {&qrCodeEntry}, {.can_focus = false, .is_sensitive = false, .is_editable = false} },
-			{ {&falseButton}, {.text = UiText{"", ""}, .is_sensitive = false} },
+			{ {&falseButton}, {.text = UiText{"終了", "しゅうりょう"}, .is_sensitive = true} },
 			{ {&trueButton}, {.text = UiText{"搬出", "はんしゅつ"}, .is_sensitive = false} }
 		},
 		.table_states = {
@@ -1729,8 +1729,10 @@ MainWindow::MainWindow() :
 		.operationStackPageName	= "reconcileOperationPage",
 		.tableStackPageName		= "table2columns",
 		// --- 状態の「振る舞い」を定義 ---
+		.on_prepare_state = [](MainWindow* thiz){ thiz->reset_header_buttons(false); },
 		.on_enter_state					= [](MainWindow* thiz){ thiz->on_enter_reconcile_waiting_for_container_selection(); },
 		.on_mainTableSelection_changed	= [](MainWindow* thiz, std::optional<size_t> selected_index_opt){ thiz->on_mainTableSelection_reconcile_waiting_for_container_selection(selected_index_opt); },
+		.on_falseButton_clicked = [](MainWindow* thiz){ thiz->set_mode(GuiMode::NONE); },
 		.on_trueButton_clicked			= [](MainWindow* thiz){ thiz->set_app_state(AppState::RECONCILE_CONTAINER_RETRIEVING); }
 	});
 
@@ -1799,7 +1801,10 @@ MainWindow::MainWindow() :
 			}, false);
 		},
 		.on_enter_state				= [](MainWindow* thiz){ thiz->on_enter_reconcile_ready_for_reading(); },
-		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_reconcile_ready_for_reading(); }
+		.on_qrCodeEntry_activate	= [](MainWindow* thiz){ thiz->on_qrCodeEntry_reconcile_ready_for_reading(); },
+		.on_falseButton_clicked = [](MainWindow* thiz){ thiz->on_falseButton_reconcile_read_completed(); },
+		.on_trueButton_clicked  = [](MainWindow* thiz){ thiz->on_trueButton_reconcile_read_completed(); },
+		.on_plc_notified        = [](MainWindow* thiz, const plc::Notification& n){ thiz->on_plc_reconcile_read_completed(n); }
 	});
 
 	// --- 状態：棚卸し - 工具読み取り後 ---
@@ -4231,10 +4236,6 @@ void MainWindow::on_enter_reconcile_container_retrieving() {
 	// コンテナ搬出
 	plc::retrieve_container(std::stoi(area.mst_address_info.control_address), true);	// FIXME: nullopt/例外対応
 
-	// 映像記録を開始 (棚卸し中の証跡として保存)
-	// FIXME: エラー対応
-	tracker::g_recorder_client->start_recording();
-
 	// インサートの操作か判定
 	m_is_insert_operation = (area.item.category == TOOL_CATEGORY_INSERT);
 }
@@ -4316,6 +4317,34 @@ void MainWindow::on_enter_reconcile_ready_for_reading() {
 
 	qrCodeEntry.set_text("");
 	qrCodeEntry.grab_focus();
+
+	start_reconcile_door_watch();
+	update_reconcile_read_completed_buttons(true);	// 扉が閉まるまで押せない
+
+	if (m_reconcile_checklist.has_value() && m_reconcile_checklist->expected_count() == 0) {
+		update_widget_state(&messageLabel, WidgetState{.text = UiText{
+			"このコンテナに登録された工具はありません\n扉を閉めて「続ける」か「終了」を押してください",
+			"このコンテナに とうろくされた こうぐは ありません\nとびらを しめて「つづける」か「しゅうりょう」を おしてください"
+		}}, true);
+	}
+}
+
+void MainWindow::start_reconcile_door_watch() {
+	m_plc_ready_for_action = false;	// 扉が閉まるのを待つため最初は false
+#ifdef STUB_PLC
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_READY_TO_STORE,
+		.flags = plc::WatchFlags{ .enable_rise_notification = true, .rise_is_one_shot = true }
+	});
+#else
+	plc::g_command_queue.push(plc::WatchCommand{
+		.addr = plc::M_DEVICE_READY_TO_STORE,
+		.flags = plc::WatchFlags{
+			.enable_fall_notification = true, .enable_rise_notification = true,
+			.fall_is_one_shot = false, .rise_is_one_shot = false
+		}
+	});
+#endif
 }
 
 void MainWindow::on_qrCodeEntry_reconcile_ready_for_reading() {
@@ -4422,7 +4451,7 @@ bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
 		.proc_time			= sg::now(),
 		.storage_area_id	= m_reconciling_area.value().id,	// BUG: nullopt対応
 		.unique_tool_id		= unique_info.id,
-		.video_path			= tracker::g_recorder_client->get_current_filename().value_or("0"),
+		.video_path			= "0",   // 棚卸しは録画しない (DBの既定値)
 		.track_result		= ((status == reconcile::MatchStatus::MISMATCH)
 			? (TrackResult::OVERRIDDEN)	// 想定外のスキャンだったことを記録上も残す
 			: (TrackResult::NORMAL)
@@ -4457,7 +4486,6 @@ void MainWindow::update_reconcile_read_completed_buttons(bool update_ui) {
 }
 
 bool MainWindow::on_false_and_true_Button_reconcile_read_completed() {
-	// 未読み取り (見つかっていない工具) が残っている場合は、利用者に確認を取る
 	if (
 		m_reconcile_checklist.has_value() &&
 		!m_reconcile_checklist.value().is_fully_read() &&
@@ -4469,19 +4497,50 @@ bool MainWindow::on_false_and_true_Button_reconcile_read_completed() {
 		return false;
 	}
 
-	// コンテナの搬入指示 (扉が閉まっているか等のチェックも兼ねる)
 	if (!check_and_store_container()) {
 		return false;
 	}
 
 	messageLabel.remove_css_class(CSS_BGCOLOR_WARNING);
 
-	// 棚卸し結果をDBに保存
 	if (m_reconciling_area.has_value()) {
+		const std::int32_t user_id = g_logged_in_user_info.has_value() ? g_logged_in_user_info->id : 0;
+
+		// 1. 未読の工具も INVENTORY として履歴に追加 (tool_num は NULL なのでトリガーは在庫を動かさない)
+		std::vector<std::int64_t> unread;
+		if (m_reconcile_checklist.has_value()) {
+			unread = m_reconcile_checklist->unread_ids();
+		}
+		for (std::int64_t id : unread) {
+			m_operated_records.push_back(RecOperationTable{
+				.operation_class = OperationClass::INVENTORY,
+				.user_id         = user_id,
+				.proc_time       = sg::now(),
+				.storage_area_id = m_reconciling_area->id,
+				.unique_tool_id  = id,
+				.video_path      = "0",
+				.track_result    = TrackResult::OVERRIDDEN
+			});
+		}
+
+		// 2. 1件も記録が無ければ、コンテナ情報だけの記録を作る
+		if (m_operated_records.empty()) {
+			m_operated_records.push_back(RecOperationTable{
+				.operation_class = OperationClass::INVENTORY,
+				.user_id         = user_id,
+				.proc_time       = sg::now(),
+				.storage_area_id = m_reconciling_area->id,
+				.video_path      = "0"
+			});
+		}
+
+		// 3. 保存は1回だけ
 		db::save_history(m_operated_records);
-		db::update_last_reconciliation_time(m_reconciling_area.value().id, sg::now());
+
+		// 4. 未読分の数字更新
+		bool ok = db::apply_unread_reconcile(unread);
+		DEV_PRINT("apply_unread_reconcile: unread={} ok={}\n", unread.size(), ok);
 	}
-	tracker::g_recorder_client->stop_recording();
 
 	return true;
 }
