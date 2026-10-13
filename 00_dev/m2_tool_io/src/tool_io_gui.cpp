@@ -3,6 +3,7 @@
  * @brief tool_io_gui.hppで宣言されたクラスのメンバ関数の実装ファイル。
  */
 #include <stdlib.h>
+#include <ctime>
 #include "utils/utility.hpp"
 #include "utils/container_utils.hpp"
 #include "utils/filesystem_utils.hpp"
@@ -28,6 +29,13 @@ bool is_local_display() {
 	// X11の仕様上、先頭が ':' ならローカルソケット（例: ":0.0"）
 	// ホスト名やIPがある場合は外部（例: "192.168.x.x:0.0", "host.docker.internal:0.0"）
 	return display_env[0] == ':';
+}
+
+/// 年月を delta ヶ月ずらす (範囲 2000/1 〜 2100/12 に丸める)
+static void shift_year_month(int& year, int& month, int delta) {
+	int total = std::clamp(year * 12 + (month - 1) + delta, 2000 * 12, 2100 * 12 + 11);
+	year  = total / 12;
+	month = total % 12 + 1;
 }
 
 //==========================================================================================
@@ -259,6 +267,7 @@ MainWindow::MainWindow() :
 	passwordEntryDialog(glade, "passwordEntryDialog", true),
 	warningDialog(glade, "warningDialog"),
 	warningListDialog(glade, "warningListDialog"),
+	reconcileFilterDialog(glade, "reconcileFilterDialog"),
 	// インサート枚数確認ダイアログ内
 	confirmInsertCountLabel(glade, "confirmInsertCountLabel"),
 	insertCountIncrementButton(glade, "insertCountIncrementButton"),
@@ -325,6 +334,7 @@ MainWindow::MainWindow() :
 		}
 	),
 	reconcilePeriodFilterSwitch(glade, "reconcilePeriodFilterSwitch"),
+	reconcilePeriodFilterBox(glade, "reconcilePeriodFilterBox"),
 	reconcileFilterStartYearMonthLabel(glade, "reconcileFilterStartYearMonthLabel"),
 	reconcileFilterStartYearIncrementButton(glade, "reconcileFilterStartYearIncrementButton"),
 	reconcileFilterStartYearEntry(glade, "reconcileFilterStartYearEntry"),
@@ -500,6 +510,28 @@ MainWindow::MainWindow() :
 			(std::getenv("DISPLAY") ? std::getenv("DISPLAY") : "null")
 		);
 	}
+
+	// 分類コンボボックスの中身 (固定)
+	{
+		std::vector<std::string> categories{"すべて", "ドリル", "インサート", "タップ", "リーマー", "エンドミル"};
+		reconcileToolTypeFilterComboBoxListstore.set_model_data(std::move(categories));
+	}
+
+	filterButton.on_clicked([this]() { this->filterButton_on_clicked(); });
+	reconcileFilterEnterButton.on_clicked([this]() { this->reconcileFilterDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
+	reconcilePeriodFilterSwitch.on_state_set([this](bool state) {
+		this->m_reconcile_filter_edit.period_enabled = state;
+		this->reconcilePeriodFilterBox.set_sensitive(state);
+		return false;	// false を返すとGTK標準のスイッチ切替が続行される
+	});
+	reconcileFilterStartYearIncrementButton.on_clicked([this]() { this->filter_step(FilterField::START_YEAR, +1); });
+	reconcileFilterStartYearDecrementButton.on_clicked([this]() { this->filter_step(FilterField::START_YEAR, -1); });
+	reconcileFilterStartMonthIncrementButton.on_clicked([this]() { this->filter_step(FilterField::START_MONTH, +1); });
+	reconcileFilterStartMonthDecrementButton.on_clicked([this]() { this->filter_step(FilterField::START_MONTH, -1); });
+	reconcileFilterEndYearIncrementButton.on_clicked([this]() { this->filter_step(FilterField::END_YEAR, +1); });
+	reconcileFilterEndYearDecrementButton.on_clicked([this]() { this->filter_step(FilterField::END_YEAR, -1); });
+	reconcileFilterEndMonthIncrementButton.on_clicked([this]() { this->filter_step(FilterField::END_MONTH, +1); });
+	reconcileFilterEndMonthDecrementButton.on_clicked([this]() { this->filter_step(FilterField::END_MONTH, -1); });
 
 	//==========================================================================================
 	// ウィジェットの状態を保持するマップの構築 [INIT_MAP_WIDGET_STATES]
@@ -4151,46 +4183,22 @@ void MainWindow::on_plc_store_ready_for_reading(const plc::Notification& notific
 // --- 棚卸し ---
 
 void MainWindow::on_enter_reconcile_waiting_for_container_selection() {
-	// 変数を初期化 (取り出しの on_enter_retrieve_waiting_for_program_qr と同様のパターン)
 	m_reconciling_area.reset();
 	m_reconcile_backup_table.clear();
 	m_reconcile_checklist.reset();
 	m_operated_records.clear();
 
-	// DBから棚卸し対象のコンテナ(保管領域)一覧を取得
+	// DBから全件取得 (絞り込みはメモリ上で行う)
 	auto area_list_opt = db::get_StrageAreaInfoList_for_reconcile();
-
-	std::vector<MainTableData> vec;
 	if (area_list_opt.has_value()) {
-		vec.reserve(area_list_opt.value().size());
-		for (const StrageAreaInfo& area : area_list_opt.value()) {
-			vec.push_back(MainTableData{
-				.id = area.id,
-				.data_columns = {
-					area.mst_address_info.display_address,	// コンテナ番号 (画面表示住所)	// FIXME: フィールド名は実際のMstAddressTable定義に合わせて要確認
-					area.item.category,
-					area.item.maker,
-					area.item.name,
-					area.item.material,
-					((area.last_reconciliation_time.has_value())
-						? (fmt::format("{:%Y/%m/%d %H:%M}", area.last_reconciliation_time.value()))
-						: (std::string("未実施"))
-					)
-				},
-				.cell_state_0to4 = TableCellState::NORMAL,
-				.raw_data = area	// トリガー時に StrageAreaInfo を取り出すために保持
-			});
-		}
+		m_reconcile_all_areas = std::move(area_list_opt.value());
 	} else {
-		// BUG: エラー対応 (通信断など)。現状はログのみ残し、空テーブルのまま操作継続させる。
+		// BUG: エラー対応 (通信断など)。空表のまま継続
+		m_reconcile_all_areas.clear();
 		DEV_PRINT(stderr, "[Reconcile] 棚卸し対象コンテナ一覧の取得に失敗しました。\n");
 	}
 
-	liststore2columnsAll.set_master_data(std::move(vec));
-	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
-
-	// 「搬出」ボタンは選択されるまで無効
-	update_widget_state(&trueButton, WidgetState{.is_sensitive = false}, true);
+	rebuild_reconcile_container_table();	// 保持している条件を適用
 }
 
 void MainWindow::on_mainTableSelection_reconcile_waiting_for_container_selection(std::optional<size_t> selected_index_opt) {
@@ -4279,6 +4287,8 @@ void MainWindow::on_enter_reconcile_ready_for_reading() {
 
 	std::vector<std::int64_t> expected_ids;
 	std::vector<MainTableData> vec;
+
+	for (auto id : expected_ids) DEV_PRINT("expected id={}\n", id);	// デバッグ用
 
 	if (expected_list_opt.has_value()) {
 		expected_ids.reserve(expected_list_opt.value().size());
@@ -4537,6 +4547,8 @@ bool MainWindow::on_false_and_true_Button_reconcile_read_completed() {
 		// 3. 保存は1回だけ
 		db::save_history(m_operated_records);
 
+		for (auto id : unread) DEV_PRINT("unread id={}\n", id); // デバッグ用
+
 		// 4. 未読分の数字更新
 		bool ok = db::apply_unread_reconcile(unread);
 		DEV_PRINT("apply_unread_reconcile: unread={} ok={}\n", unread.size(), ok);
@@ -4558,6 +4570,127 @@ void MainWindow::on_trueButton_reconcile_read_completed() {
 	}
 	// 次のコンテナの棚卸しへ (最初の画面=コンテナ選択画面 に戻る)
 	set_app_state(AppState::RECONCILE_WAITING_FOR_CONTAINER_SELECTION);
+}
+
+void MainWindow::reset_reconcile_filter() {
+	std::time_t t = std::chrono::system_clock::to_time_t(sg::now());
+	std::tm tm{};
+	localtime_r(&t, &tm);
+
+	m_reconcile_filter = ReconcileFilter{};	// 分類=すべて, 期間=OFF
+	m_reconcile_filter.end_year    = tm.tm_year + 1900;
+	m_reconcile_filter.end_month   = tm.tm_mon + 1;
+	m_reconcile_filter.start_year  = m_reconcile_filter.end_year - 1;	// 既定は過去1年
+	m_reconcile_filter.start_month = m_reconcile_filter.end_month;
+}
+
+void MainWindow::filter_step(FilterField field, int delta) {
+	auto& e = m_reconcile_filter_edit;
+	switch (field) {
+	case FilterField::START_YEAR:  e.start_year = std::clamp(e.start_year + delta, 2000, 2100); break;
+	case FilterField::END_YEAR:    e.end_year   = std::clamp(e.end_year   + delta, 2000, 2100); break;
+	case FilterField::START_MONTH: shift_year_month(e.start_year, e.start_month, delta); break;
+	case FilterField::END_MONTH:   shift_year_month(e.end_year,   e.end_month,   delta); break;
+	}
+	update_filter_dialog_widgets();
+}
+
+void MainWindow::update_filter_dialog_widgets() {
+	const auto& e = m_reconcile_filter_edit;
+	reconcileFilterStartYearEntry.set_text(std::to_string(e.start_year).c_str());
+	reconcileFilterStartMonthEntry.set_text(std::to_string(e.start_month).c_str());
+	reconcileFilterEndYearEntry.set_text(std::to_string(e.end_year).c_str());
+	reconcileFilterEndMonthEntry.set_text(std::to_string(e.end_month).c_str());
+	reconcilePeriodFilterBox.set_sensitive(e.period_enabled);
+}
+
+void MainWindow::filterButton_on_clicked() {
+	// 編集用コピーを作り、キャンセル(×で閉じる)なら破棄できるようにする
+	m_reconcile_filter_edit = m_reconcile_filter;
+
+	// 分類コンボボックスを現在の条件に合わせる
+	size_t idx = 0;	// 0 = すべて
+	if (m_reconcile_filter_edit.category.has_value()) {
+		auto found = reconcileToolTypeFilterComboBoxListstore.find_first_index([&](const std::string& s) {
+			return s == m_reconcile_filter_edit.category.value();
+		});
+		idx = found.value_or(0);
+	}
+	reconcileToolTypeFilterComboBoxListstore.set_active_index(idx);
+
+	reconcilePeriodFilterSwitch.set_active(m_reconcile_filter_edit.period_enabled);
+	update_filter_dialog_widgets();
+
+	if (reconcileFilterDialog.run(this) == GtkResponseType::GTK_RESPONSE_OK) {
+		auto sel = reconcileToolTypeFilterComboBoxListstore.get_active_index();
+		m_reconcile_filter_edit.category = ((sel.has_value() && sel.value() > 0)
+			? (std::make_optional(reconcileToolTypeFilterComboBoxListstore.at(sel.value())))
+			: (std::nullopt)
+		);
+		m_reconcile_filter_edit.period_enabled = reconcilePeriodFilterSwitch.get_active();
+
+		// 開始 > 終了 の場合は入れ替える
+		auto& e = m_reconcile_filter_edit;
+		if (e.start_year * 12 + e.start_month > e.end_year * 12 + e.end_month) {
+			std::swap(e.start_year, e.end_year);
+			std::swap(e.start_month, e.end_month);
+		}
+
+		m_reconcile_filter = m_reconcile_filter_edit;
+		rebuild_reconcile_container_table();
+	}
+	reconcileFilterDialog.hide();
+}
+
+void MainWindow::rebuild_reconcile_container_table() {
+	const ReconcileFilter& f = m_reconcile_filter;
+
+	auto in_period = [&f](const std::optional<std::chrono::system_clock::time_point>& t) {
+		if (!t.has_value()) { return true; }	// 未実施は常に含める
+		std::time_t tt = std::chrono::system_clock::to_time_t(t.value());
+		std::tm tm{};
+		localtime_r(&tt, &tm);
+		const int ym = (tm.tm_year + 1900) * 12 + tm.tm_mon;
+		return ym >= f.start_year * 12 + (f.start_month - 1)
+			&& ym <= f.end_year   * 12 + (f.end_month   - 1);
+	};
+
+	std::vector<MainTableData> vec;
+	vec.reserve(m_reconcile_all_areas.size());
+	for (const StrageAreaInfo& area : m_reconcile_all_areas) {
+		if (f.category.has_value() && area.item.category != f.category.value()) { continue; }
+		if (f.period_enabled && !in_period(area.last_reconciliation_time)) { continue; }
+
+		vec.push_back(MainTableData{
+			.id = area.id,
+			.data_columns = {
+				area.mst_address_info.display_address,
+				area.item.category,
+				area.item.maker,
+				area.item.name,
+				area.item.material,
+				((area.last_reconciliation_time.has_value())
+					? (fmt::format("{:%Y/%m/%d %H:%M}", area.last_reconciliation_time.value()))
+					: (std::string("未実施"))
+				)
+			},
+			.cell_state_0to4 = TableCellState::NORMAL,
+			.raw_data = area
+		});
+	}
+
+	const bool empty_result = vec.empty();
+	liststore2columnsAll.set_master_data(std::move(vec));
+	update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
+
+	// 0件のときだけ案内を変える
+	update_widget_state(&messageLabel, WidgetState{.text = ((empty_result)
+		? (UiText{"該当するコンテナがありません\n絞り込み条件を変更してください", "がいとうする コンテナが ありません\nしぼりこみじょうけんを へんこう してください"})
+		: (UiText{"棚卸しを行うコンテナを選択してください", "たなおろしを おこなう コンテナを\nせんたく してください"})
+	)}, false);
+
+	// 表が作り直されて選択が消えるので「搬出」は無効に戻す
+	update_widget_state(&trueButton, WidgetState{.is_sensitive = false}, true);
 }
 
 } // namespace gui

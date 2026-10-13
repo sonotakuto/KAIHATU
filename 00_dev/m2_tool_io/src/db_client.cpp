@@ -1007,17 +1007,23 @@ bool apply_unread_reconcile(const std::vector<std::int64_t>& unique_tool_ids) {
     catch (const odbc::OdbcException& e) { DEV_PRINT(stderr, "DB Error: {}\n", e.what()); return false; }
 
     try {
-        // 参照元の case_pack_num を使うので、必ず unique_tool を最後に更新する
-        const std::string sql_stc =
-            "UPDATE mst_tool mt JOIN unique_tool ut ON ut.basic_tool_id = mt.basic_tool_id "
-            "SET mt.stc = GREATEST(mt.stc - ut.case_pack_num, 0) "
-            "WHERE ut.unique_tool_id = ? AND ut.case_pack_num > 0 AND mt.stc IS NOT NULL;";
-        const std::string sql_case =
-            "UPDATE storage_area sa JOIN unique_tool ut ON ut.storage_area_id = sa.storage_area_id "
-            "SET sa.toolcase_stc_num = GREATEST(sa.toolcase_stc_num - 1, 0) "
-            "WHERE ut.unique_tool_id = ? AND ut.case_pack_num > 0 AND sa.toolcase_stc_num IS NOT NULL;";
-        const std::string sql_pack =
-            "UPDATE unique_tool SET case_pack_num = 0 WHERE unique_tool_id = ?;";
+		// mst_tool.stc: 個数分減らす(0個のケースなら0減るだけ)
+		const std::string sql_stc =
+			"UPDATE mst_tool mt JOIN unique_tool ut ON ut.basic_tool_id = mt.basic_tool_id "
+			"SET mt.stc = GREATEST(mt.stc - ut.case_pack_num, 0) "
+			"WHERE ut.unique_tool_id = ? AND ut.storage_condition = '保管中' AND mt.stc IS NOT NULL;";
+
+		// コンテナのケース数: 保管中のケースを1つ減らす
+		// (case_pack_num > 0 ではなく storage_condition で判定。個数0のケースも数に含まれているため)
+		const std::string sql_case =
+			"UPDATE storage_area sa JOIN unique_tool ut ON ut.storage_area_id = sa.storage_area_id "
+			"SET sa.toolcase_stc_num = GREATEST(sa.toolcase_stc_num - 1, 0) "
+			"WHERE ut.unique_tool_id = ? AND ut.storage_condition = '保管中' AND sa.toolcase_stc_num IS NOT NULL;";
+
+		// 最後に取り出し完了と同じ状態にする
+		const std::string sql_pack =
+			"UPDATE unique_tool SET storage_condition = '取出', case_pack_num = 0, storage_area_id = NULL "
+			"WHERE unique_tool_id = ? AND storage_condition = '保管中';";
 
         for (const std::string* sql : {&sql_stc, &sql_case, &sql_pack}) {
             auto stmt_opt = create_statement_with_retry();

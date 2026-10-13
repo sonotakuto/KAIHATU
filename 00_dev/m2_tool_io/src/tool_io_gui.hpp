@@ -175,6 +175,36 @@ public:
 		TableCellState cell_state = TableCellState::NORMAL;
 	};
 
+		/**
+	 * @struct ReconcileFilter
+	 * @brief 棚卸しコンテナ一覧の絞り込み条件を保持する構造体。
+	 */
+	struct ReconcileFilter {
+		/// @brief 絞り込む工具分類 (std::nullopt の場合は「すべて」)
+		std::optional<std::string> category{};
+		/// @brief 最終棚卸し日時での絞り込みを行うか (true: 行う, false: 行わない)
+		bool period_enabled = false;
+		/// @brief 期間の開始年
+		int start_year = 2000;
+		/// @brief 期間の開始月 (1～12)
+		int start_month = 1;
+		/// @brief 期間の終了年
+		int end_year = 2100;
+		/// @brief 期間の終了月 (1～12)
+		int end_month = 12;
+	};
+
+	/**
+	 * @enum FilterField
+	 * @brief 棚卸し絞り込みダイアログで▲▼ボタンの操作対象となる入力項目を定義する列挙型。
+	 */
+	enum class FilterField {
+		START_YEAR,		// 開始年
+		START_MONTH,	// 開始月
+		END_YEAR,		// 終了年
+		END_MONTH		// 終了月
+	};
+
 	/**
 	 * @struct UiText
 	 * @brief UI要素の かな/漢字 両方のテキストを定義する構造体。
@@ -713,6 +743,8 @@ public:
 	sgex::ComboBoxListStoreModel<std::string> reconcileToolTypeFilterComboBoxListstore;	// TODO: 型は自由に変更してください
 	/// @brief 期間フィルタON/OFFスイッチ (ID: reconcilePeriodFilterSwitch)
 	sgex::Switch reconcilePeriodFilterSwitch;
+	/// @brief 期間指定の年月入力部をまとめたボックス (ID: reconcilePeriodFilterBox)
+	sgex::Box reconcilePeriodFilterBox;
 	/// @brief 期間指定用 「開始年月」ラベル (ID: reconcileFilterStartYearMonthLabel)
 	sgex::Label reconcileFilterStartYearMonthLabel;
 	/// @brief 期間指定用 開始年増加ボタン (ID: reconcileFilterStartYearIncrementButton)
@@ -1095,6 +1127,32 @@ private:
 	*/
 	void start_reconcile_door_watch();
 
+	/**
+	 * @brief [棚卸し用] 絞り込み条件を初期状態にリセットします。
+	 * @details 分類は「すべて」、期間指定はOFF、期間は「現在月から過去1年」になります。
+	 * ログアウト時 (reset_variables) に呼び出されます。
+	 */
+	void reset_reconcile_filter();
+
+	/**
+	 * @brief [棚卸し用] 絞り込み条件に基づいて、コンテナ選択表を作り直します。
+	 * @details m_reconcile_all_areas を m_reconcile_filter で絞り込み、表にセットします。
+	 * 表の選択状態は失われるため、「搬出」ボタンは無効に戻します。
+	 */
+	void rebuild_reconcile_container_table();
+
+	/**
+	 * @brief [棚卸し用] 絞り込みダイアログの年月入力欄とボックスの状態を、編集中の条件に合わせて更新します。
+	 */
+	void update_filter_dialog_widgets();
+
+	/**
+	 * @brief [棚卸し用] 絞り込みダイアログの年月の▲▼ボタンの処理。
+	 * @param[in] field 操作対象の入力項目。
+	 * @param[in] delta 加減する値 (+1 または -1)。月の場合は年を跨いで繰り上がり/繰り下がりします。
+	 */
+	void filter_step(FilterField field, int delta);
+
 	//==========================================================================================
 	// プライベートメンバ関数 (イベントハンドラ) [PRIVATE_EVENT_HANDLERS]
 	//==========================================================================================
@@ -1244,6 +1302,12 @@ private:
 	 * @details 警告ダイアログを閉じ、警告を無視して処理を続行する。
 	 */
 	void warningListSuppressButton_on_clicked();
+
+	/**
+	 * @brief filterButton の "clicked" シグナルに対応するハンドラ。
+	 * @details 絞り込みダイアログを表示し、「決定」が押された場合に条件を確定して表を作り直す。
+	 */
+	void filterButton_on_clicked();
 
 	//==========================================================================================
 	// プライベートメンバ関数 (状態毎の関数) [PRIVATE_STATE_METHODS]
@@ -1677,6 +1741,15 @@ private:
 	 * 突合ロジック自体の見直しが必要な場合でも本ファイルを変更せずに済む。
 	 */
 	std::optional<reconcile::Checklist> m_reconcile_checklist;
+
+	/// @brief [棚卸し用] DBから取得した全コンテナ (保管領域) の情報。絞り込みはこの全件に対してメモリ上で行う。
+	std::vector<StrageAreaInfo> m_reconcile_all_areas;
+
+	/// @brief [棚卸し用] 確定済みの絞り込み条件。ログアウトまで保持される。
+	ReconcileFilter m_reconcile_filter{};
+
+	/// @brief [棚卸し用] 絞り込みダイアログで編集中の条件。キャンセル時は m_reconcile_filter に反映されない。
+	ReconcileFilter m_reconcile_filter_edit{};
 
 	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };
