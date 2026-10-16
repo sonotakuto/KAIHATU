@@ -737,10 +737,14 @@ public:
 	sgex::Label reconcilePeriodFilterLabel;
 	/// @brief 「決定」ボタン (ID: reconcileFilterEnterButton)
 	sgex::Button reconcileFilterEnterButton;
-	/// @brief 工具分類選択コンボボックス (ID: reconcileToolTypeFilterComboBox)
-	sgex::ComboBox reconcileToolTypeFilterComboBox;
-	/// @brief 工具分類選択コンボボックスのリストストア
-	sgex::ComboBoxListStoreModel<std::string> reconcileToolTypeFilterComboBoxListstore;	// TODO: 型は自由に変更してください
+	/// @brief [棚卸し絞り込み] 分類選択トグルボタン (index 0=すべて, 1=ドリル, 2=インサート, 3=タップ, 4=リーマー, 5=エンドミル)
+	std::array<sgex::ToggleButton*, 6> reconcileCategoryButtons;
+	sgex::ToggleButton reconcileCategoryAllButton;
+	sgex::ToggleButton reconcileCategoryDrillButton;
+	sgex::ToggleButton reconcileCategoryInsertButton;
+	sgex::ToggleButton reconcileCategoryTapButton;
+	sgex::ToggleButton reconcileCategoryReamerButton;
+	sgex::ToggleButton reconcileCategoryEndmillButton;
 	/// @brief 期間フィルタON/OFFスイッチ (ID: reconcilePeriodFilterSwitch)
 	sgex::Switch reconcilePeriodFilterSwitch;
 	/// @brief 期間指定の年月入力部をまとめたボックス (ID: reconcilePeriodFilterBox)
@@ -1153,6 +1157,18 @@ private:
 	 */
 	void filter_step(FilterField field, int delta);
 
+
+	/**
+	* @brief [棚卸し用] 分類トグルボタンを排他的に選択状態にします。
+	* @param[in] index 選択する分類のインデックス (0=すべて)。
+	*/
+	void select_filter_category(size_t index);
+
+	/**
+	* @brief [棚卸し用] 現在選択されている分類トグルボタンのインデックスを取得します。
+	* @return 選択中のインデックス。何も選択されていなければ 0。
+	*/
+	size_t get_filter_category_index() const;
 	//==========================================================================================
 	// プライベートメンバ関数 (イベントハンドラ) [PRIVATE_EVENT_HANDLERS]
 	//==========================================================================================

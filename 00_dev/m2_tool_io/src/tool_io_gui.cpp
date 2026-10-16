@@ -31,11 +31,37 @@ bool is_local_display() {
 	return display_env[0] == ':';
 }
 
-/// 年月を delta ヶ月ずらす (範囲 2000/1 〜 2100/12 に丸める)
-static void shift_year_month(int& year, int& month, int delta) {
-	int total = std::clamp(year * 12 + (month - 1) + delta, 2000 * 12, 2100 * 12 + 11);
+/// 年月を delta ヶ月ずらし、[min_ym, max_ym] (年*12+月-1 形式) の範囲に丸める
+static void shift_year_month(int& year, int& month, int delta, int min_ym, int max_ym) {
+	int total = std::clamp(year * 12 + (month - 1) + delta, min_ym, max_ym);
 	year  = total / 12;
 	month = total % 12 + 1;
+}
+
+/// 現在の年月を (年*12+月-1) 形式で取得する
+static int current_year_month_index() {
+	std::time_t t = std::chrono::system_clock::to_time_t(sg::now());
+	std::tm tm{};
+	localtime_r(&t, &tm);
+	return (tm.tm_year + 1900) * 12 + tm.tm_mon;
+}
+
+static const std::array<const char*, 6> FILTER_CATEGORIES = {
+	nullptr, "ドリル", "インサート", "タップ", "リーマー", "エンドミル"	// nullptr = すべて
+};
+
+void MainWindow::select_filter_category(size_t index) {
+	utils::scoped_value_guard guard(m_is_programmatically_changing_toggle, true);
+	for (size_t i = 0; i < reconcileCategoryButtons.size(); i++) {
+		reconcileCategoryButtons[i]->set_active(i == index);
+	}
+}
+
+size_t MainWindow::get_filter_category_index() const {
+	for (size_t i = 0; i < reconcileCategoryButtons.size(); i++) {
+		if (reconcileCategoryButtons[i]->get_active()) { return i; }
+	}
+	return 0;
 }
 
 //==========================================================================================
@@ -321,18 +347,14 @@ MainWindow::MainWindow() :
 	warningListSuppressButton(glade, "warningListSuppressButton"),
 	// 棚卸し絞り込みダイアログ内
 	reconcileToolTypeFilterLabel(glade, "reconcileToolTypeFilterLabel"),
+	reconcileCategoryAllButton(glade, "reconcileCategoryAllButton"),
+	reconcileCategoryDrillButton(glade, "reconcileCategoryDrillButton"),
+	reconcileCategoryInsertButton(glade, "reconcileCategoryInsertButton"),
+	reconcileCategoryTapButton(glade, "reconcileCategoryTapButton"),
+	reconcileCategoryReamerButton(glade, "reconcileCategoryReamerButton"),
+	reconcileCategoryEndmillButton(glade, "reconcileCategoryEndmillButton"),
 	reconcilePeriodFilterLabel(glade, "reconcilePeriodFilterLabel"),
 	reconcileFilterEnterButton(glade, "reconcileFilterEnterButton"),
-	reconcileToolTypeFilterComboBox(glade, "reconcileToolTypeFilterComboBox"),
-	reconcileToolTypeFilterComboBoxListstore(
-		reconcileToolTypeFilterComboBox,
-		{ G_TYPE_STRING },
-		[](sgex::ListStore& store, GtkTreeIter* iter, const std::string& row) {
-			store.set(iter,
-				0, row.c_str()
-			);
-		}
-	),
 	reconcilePeriodFilterSwitch(glade, "reconcilePeriodFilterSwitch"),
 	reconcilePeriodFilterBox(glade, "reconcilePeriodFilterBox"),
 	reconcileFilterStartYearMonthLabel(glade, "reconcileFilterStartYearMonthLabel"),
@@ -511,10 +533,16 @@ MainWindow::MainWindow() :
 		);
 	}
 
-	// 分類コンボボックスの中身 (固定)
-	{
-		std::vector<std::string> categories{"すべて", "ドリル", "インサート", "タップ", "リーマー", "エンドミル"};
-		reconcileToolTypeFilterComboBoxListstore.set_model_data(std::move(categories));
+	// 分類選択ボタンの配列とイベントハンドラの登録
+	reconcileCategoryButtons = {
+		&reconcileCategoryAllButton, &reconcileCategoryDrillButton, &reconcileCategoryInsertButton,
+		&reconcileCategoryTapButton, &reconcileCategoryReamerButton, &reconcileCategoryEndmillButton
+	};
+	for (size_t i = 0; i < reconcileCategoryButtons.size(); i++) {
+		reconcileCategoryButtons[i]->on_toggled([this, i]() {
+			if (this->m_is_programmatically_changing_toggle) { return; }
+			this->select_filter_category(i);	// 押されたものを選択、他を解除 (再押しで解除されても維持)
+		});
 	}
 
 	filterButton.on_clicked([this]() { this->filterButton_on_clicked(); });
@@ -532,7 +560,6 @@ MainWindow::MainWindow() :
 	reconcileFilterEndYearDecrementButton.on_clicked([this]() { this->filter_step(FilterField::END_YEAR, -1); });
 	reconcileFilterEndMonthIncrementButton.on_clicked([this]() { this->filter_step(FilterField::END_MONTH, +1); });
 	reconcileFilterEndMonthDecrementButton.on_clicked([this]() { this->filter_step(FilterField::END_MONTH, -1); });
-
 	//==========================================================================================
 	// ウィジェットの状態を保持するマップの構築 [INIT_MAP_WIDGET_STATES]
 	//==========================================================================================
@@ -2003,6 +2030,8 @@ void MainWindow::reset_variables() {
 	m_reground_tools.clear();
 
 	// --- 操作中の状態保持用 (棚卸し専用) ---
+	m_reconcile_all_areas.clear();
+	reset_reconcile_filter();
 
 	// --- 各エントリーを空に ---
 	userIdEntry.set_text("");
@@ -4580,17 +4609,31 @@ void MainWindow::reset_reconcile_filter() {
 	m_reconcile_filter = ReconcileFilter{};	// 分類=すべて, 期間=OFF
 	m_reconcile_filter.end_year    = tm.tm_year + 1900;
 	m_reconcile_filter.end_month   = tm.tm_mon + 1;
-	m_reconcile_filter.start_year  = m_reconcile_filter.end_year - 1;	// 既定は過去1年
+	m_reconcile_filter.start_year  = m_reconcile_filter.end_year;
 	m_reconcile_filter.start_month = m_reconcile_filter.end_month;
 }
 
 void MainWindow::filter_step(FilterField field, int delta) {
 	auto& e = m_reconcile_filter_edit;
+
+	const int kMin = 2000 * 12;						// 下限: 2000/1
+	const int now_ym = current_year_month_index();	// 上限: 現在年月
+	const int start_ym = e.start_year * 12 + (e.start_month - 1);
+	const int end_ym   = e.end_year   * 12 + (e.end_month   - 1);
+
 	switch (field) {
-	case FilterField::START_YEAR:  e.start_year = std::clamp(e.start_year + delta, 2000, 2100); break;
-	case FilterField::END_YEAR:    e.end_year   = std::clamp(e.end_year   + delta, 2000, 2100); break;
-	case FilterField::START_MONTH: shift_year_month(e.start_year, e.start_month, delta); break;
-	case FilterField::END_MONTH:   shift_year_month(e.end_year,   e.end_month,   delta); break;
+	case FilterField::START_YEAR:
+		shift_year_month(e.start_year, e.start_month, delta * 12, kMin, end_ym);
+		break;
+	case FilterField::START_MONTH:
+		shift_year_month(e.start_year, e.start_month, delta, kMin, end_ym);
+		break;
+	case FilterField::END_YEAR:
+		shift_year_month(e.end_year, e.end_month, delta * 12, start_ym, now_ym);
+		break;
+	case FilterField::END_MONTH:
+		shift_year_month(e.end_year, e.end_month, delta, start_ym, now_ym);
+		break;
 	}
 	update_filter_dialog_widgets();
 }
@@ -4605,41 +4648,40 @@ void MainWindow::update_filter_dialog_widgets() {
 }
 
 void MainWindow::filterButton_on_clicked() {
-	// 編集用コピーを作り、キャンセル(×で閉じる)なら破棄できるようにする
-	m_reconcile_filter_edit = m_reconcile_filter;
+    // 編集用コピーを作り、キャンセル(×で閉じる)なら破棄できるようにする
+    m_reconcile_filter_edit = m_reconcile_filter;
 
-	// 分類コンボボックスを現在の条件に合わせる
-	size_t idx = 0;	// 0 = すべて
-	if (m_reconcile_filter_edit.category.has_value()) {
-		auto found = reconcileToolTypeFilterComboBoxListstore.find_first_index([&](const std::string& s) {
-			return s == m_reconcile_filter_edit.category.value();
-		});
-		idx = found.value_or(0);
-	}
-	reconcileToolTypeFilterComboBoxListstore.set_active_index(idx);
+    // 分類ボタンの状態を現在の条件に合わせる
+    size_t idx = 0;	// 0 = すべて
+    if (m_reconcile_filter_edit.category.has_value()) {
+        for (size_t i = 1; i < FILTER_CATEGORIES.size(); i++) {
+            if (m_reconcile_filter_edit.category.value() == FILTER_CATEGORIES[i]) { idx = i; break; }
+        }
+    }
+    select_filter_category(idx);
 
-	reconcilePeriodFilterSwitch.set_active(m_reconcile_filter_edit.period_enabled);
-	update_filter_dialog_widgets();
+    reconcilePeriodFilterSwitch.set_active(m_reconcile_filter_edit.period_enabled);
+    update_filter_dialog_widgets();
 
-	if (reconcileFilterDialog.run(this) == GtkResponseType::GTK_RESPONSE_OK) {
-		auto sel = reconcileToolTypeFilterComboBoxListstore.get_active_index();
-		m_reconcile_filter_edit.category = ((sel.has_value() && sel.value() > 0)
-			? (std::make_optional(reconcileToolTypeFilterComboBoxListstore.at(sel.value())))
-			: (std::nullopt)
-		);
-		m_reconcile_filter_edit.period_enabled = reconcilePeriodFilterSwitch.get_active();
+    if (reconcileFilterDialog.run(this) == GtkResponseType::GTK_RESPONSE_OK) {
+        size_t sel = get_filter_category_index();
+        m_reconcile_filter_edit.category = ((sel > 0)
+            ? (std::make_optional(std::string(FILTER_CATEGORIES[sel])))
+            : (std::nullopt)
+        );
+        m_reconcile_filter_edit.period_enabled = reconcilePeriodFilterSwitch.get_active();
 
-		// 開始 > 終了 の場合は入れ替える
-		auto& e = m_reconcile_filter_edit;
-		if (e.start_year * 12 + e.start_month > e.end_year * 12 + e.end_month) {
-			std::swap(e.start_year, e.end_year);
-			std::swap(e.start_month, e.end_month);
-		}
+        // 開始 > 終了 の場合は入れ替える
+        auto& e = m_reconcile_filter_edit;
+        if (e.start_year * 12 + e.start_month > e.end_year * 12 + e.end_month) {
+            std::swap(e.start_year, e.end_year);
+            std::swap(e.start_month, e.end_month);
+        }
 
-		m_reconcile_filter = m_reconcile_filter_edit;
-		rebuild_reconcile_container_table();
-	}
-	reconcileFilterDialog.hide();
+        m_reconcile_filter = m_reconcile_filter_edit;
+        rebuild_reconcile_container_table();
+    }
+    reconcileFilterDialog.hide();
 }
 
 void MainWindow::rebuild_reconcile_container_table() {
