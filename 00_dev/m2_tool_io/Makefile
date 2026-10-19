@@ -105,7 +105,7 @@ endif
 
 # コンパイル対象のソースファイル（.cpp）をスペース区切りで列挙
 # 例: SOURCES = main.cpp utils.cpp
-SOURCES = gutils/gio_utils.cpp gutils/gmain_utils.cpp gutils/process_runner.cpp odbc/odbc.cpp url_transfer/url_transfer.cpp utils/filesystem_utils.cpp utils/signal.cpp db_client.cpp keyboard_utils.cpp plc_communicator.cpp tool_io_gui.cpp tool_io_main.cpp tracking_communicator.cpp reconcile/reconcile_checklist.cpp
+SOURCES = gutils/gio_utils.cpp gutils/gmain_utils.cpp gutils/process_runner.cpp odbc/odbc.cpp url_transfer/url_transfer.cpp utils/filesystem_utils.cpp utils/signal.cpp db_client.cpp keyboard_utils.cpp plc_communicator.cpp tool_io_gui.cpp tool_io_main.cpp tracking_communicator.cpp reconcile/reconcile_checklist.cpp atp3011/atp3011.cpp speech/speech_announcer.cpp
 
 # 「このヘッダを変更したら、全てのファイルを再コンパイルしたい」というヘッダ（.h, .hpp）をスペース区切りで列挙
 # これを指定すると、ヘッダーファイルの変更時にもソースが再コンパイルされる

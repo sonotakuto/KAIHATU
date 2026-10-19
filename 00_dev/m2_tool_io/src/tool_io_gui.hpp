@@ -16,6 +16,7 @@
 #include "plc_communicator.hpp"
 #include "tracking_communicator.hpp"
 #include "reconcile/reconcile_checklist.hpp"
+#include "speech/speech_announcer.hpp"
 
 /**
  * @namespace gui
@@ -1766,6 +1767,10 @@ private:
 
 	/// @brief [棚卸し用] 絞り込みダイアログで編集中の条件。キャンセル時は m_reconcile_filter に反映されない。
 	ReconcileFilter m_reconcile_filter_edit{};
+
+	// --- 音声読み上げ ---
+	/// @brief 工具選択時の読み上げ (ATP3011)
+	speech::SpeechAnnouncer m_speech;
 
 	// --- ブランチで末尾に追加するための仕切り ---	// TODO: 最後にこの行を削除
 };

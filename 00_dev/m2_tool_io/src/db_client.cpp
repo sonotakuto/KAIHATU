@@ -94,7 +94,8 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 						.maker		= std::any_cast<std::string>				(row.at("maker")),
 						.category	= std::any_cast<std::string>				(row.at("tool_category")),
 						.material	= std::any_cast<std::string>				(row.at("tool_material")),
-						.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+						.stc		= std::any_cast<std::optional<std::int32_t>>	(row.at("stc")),
+						.speech_symbol = stdex::any_cast_optional<std::string>(row.at("speech_symbol")).value_or(""),
 						.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 					}
 				});
@@ -131,7 +132,7 @@ static std::optional<ToolingListInfo> query_and_populate_tooling_list(
 			"    pal.program_id, pal.program_name, "
 			"    ml.line_id, ml.line_name, "
 			"    ta.tool_assignment_id, ta.tool_num, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.speech_symbol, mt.is_frozen "
 			"FROM mst_program AS pal "
 			"LEFT JOIN mst_line AS ml ON pal.line_id = ml.line_id "
 			"LEFT JOIN mst_tool_assignment AS ta ON pal.program_id = ta.program_id "
@@ -186,7 +187,7 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 			"SELECT "
 			"    sa.storage_area_id, sa.toolcase_stc_num, sa.last_reconciliation_time, "
 			"    ma.display_address, ma.control_address, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.speech_symbol, mt.is_frozen "
 			"FROM storage_area AS sa "
 			"JOIN mst_address AS ma ON sa.display_address = ma.display_address "
 			"JOIN mst_tool AS mt ON sa.basic_tool_id = mt.basic_tool_id "
@@ -218,6 +219,7 @@ static std::optional<StrageAreaInfo> get_StrageAreaInfo_ordered_by_cases(std::in
 				.category	= std::any_cast<std::string>				(row.at("tool_category")),
 				.material	= std::any_cast<std::string>				(row.at("tool_material")),
 				.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+				.speech_symbol = stdex::any_cast_optional<std::string>(row.at("speech_symbol")).value_or(""),
 				.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 			},
 
@@ -694,7 +696,7 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 		const std::string sql =
 			"SELECT "
 			"    ut.unique_tool_id, ut.unique_num, ut.case_pack_num, ut.storage_condition, ut.regrind_count, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen, "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.speech_symbol, mt.is_frozen, "
 			"    sa.storage_area_id, sa.toolcase_stc_num, "
 			"    ma.display_address, ma.control_address "
 			"FROM unique_tool AS ut "
@@ -730,6 +732,7 @@ std::optional<UniqueToolInfo> get_UniqueToolInfo(const std::string& qr_string) {
 			.category	= std::any_cast<std::string>				(row.at("tool_category")),
 			.material	= std::any_cast<std::string>				(row.at("tool_material")),
 			.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+			.speech_symbol = stdex::any_cast_optional<std::string>(row.at("speech_symbol")).value_or(""),
 			.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 		};
 
@@ -834,7 +837,7 @@ std::optional<std::vector<StrageAreaInfo>> get_StrageAreaInfoList_for_reconcile(
 			"SELECT "
 			"    sa.storage_area_id, sa.toolcase_stc_num, sa.last_reconciliation_time, "
 			"    ma.display_address, ma.control_address, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.speech_symbol, mt.is_frozen "
 			"FROM storage_area AS sa "
 			"JOIN mst_address AS ma ON sa.display_address = ma.display_address "
 			"JOIN mst_tool AS mt ON sa.basic_tool_id = mt.basic_tool_id "
@@ -858,6 +861,7 @@ std::optional<std::vector<StrageAreaInfo>> get_StrageAreaInfoList_for_reconcile(
 					.category	= std::any_cast<std::string>				(row.at("tool_category")),
 					.material	= std::any_cast<std::string>				(row.at("tool_material")),
 					.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+					.speech_symbol = stdex::any_cast_optional<std::string>(row.at("speech_symbol")).value_or(""),
 					.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 				},
 
@@ -900,7 +904,7 @@ std::optional<std::vector<UniqueToolInfo>> get_UniqueToolInfoList_by_StrageArea(
 		const std::string sql =
 			"SELECT "
 			"    ut.unique_tool_id, ut.unique_num, ut.case_pack_num, ut.storage_condition, ut.regrind_count, "
-			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.is_frozen "
+			"    mt.basic_tool_id, mt.tool_name, mt.maker, mt.tool_category, mt.tool_material, mt.stc, mt.speech_symbol, mt.is_frozen "
 			"FROM unique_tool AS ut "
 			"JOIN mst_tool AS mt ON ut.basic_tool_id = mt.basic_tool_id "
 			"WHERE ut.storage_area_id = ? AND ut.storage_condition = ?;";
@@ -933,6 +937,7 @@ std::optional<std::vector<UniqueToolInfo>> get_UniqueToolInfoList_by_StrageArea(
 					.category	= std::any_cast<std::string>				(row.at("tool_category")),
 					.material	= std::any_cast<std::string>				(row.at("tool_material")),
 					.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
+					.speech_symbol = stdex::any_cast_optional<std::string>(row.at("speech_symbol")).value_or(""),
 					.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 				},
 

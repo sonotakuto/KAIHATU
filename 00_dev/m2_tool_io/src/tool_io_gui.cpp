@@ -2943,6 +2943,7 @@ bool MainWindow::on_timeout() {
 }
 
 bool MainWindow::on_delete_event(GtkWidget* self, GdkEvent* event) {
+	m_speech.cancel();
 	// ウィンドウが閉じられようとしているときの処理
 	DEV_PRINT("ウィンドウが閉じられました\n");
 
@@ -3307,22 +3308,34 @@ void MainWindow::on_enter_retrieve_selecting_tools() {
 }
 
 void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<size_t> selected_index_opt) {
-	// 選択されていて、かつ無効化されていない行の場合
 	if (selected_index_opt.has_value()) {
-		// 状態をトグルして描画を更新
-		liststore2columnsAll.modify_master_data([&selected_index_opt](std::vector<MainTableData>& master_data){
+		std::string speech_text;
+		bool toggled_off = false;
+
+		liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& master_data){
 			auto& selected_item = master_data.at(selected_index_opt.value());
 
 			DEV_PRINT("mainTableSelection_on_changed: Line {} is selected\n", selected_index_opt.value());
 
 			if (selected_item.cell_state_0to4 != TableCellState::FADED) {
-				// 状態をトグルする
-				selected_item.cell_state_0to4 = ((selected_item.cell_state_0to4 == TableCellState::SELECTED)
-					? (TableCellState::NORMAL)
-					: (TableCellState::SELECTED)
-				);
+				if (selected_item.cell_state_0to4 == TableCellState::SELECTED) {
+					selected_item.cell_state_0to4 = TableCellState::NORMAL;
+					toggled_off = true;
+				} else {
+					selected_item.cell_state_0to4 = TableCellState::SELECTED;
+					// 選択された工具の読み上げ文字列を取得
+					if (const auto* info = std::any_cast<ToolAssignmentInfo>(&selected_item.raw_data)) {
+						speech_text = info->mst_tool_info.speech_symbol.value_or("");
+					}
+				}
 			}
 		}, true);
+
+		if (!speech_text.empty()) {
+			m_speech.say(std::move(speech_text));
+		} else if (toggled_off) {
+			m_speech.cancel();
+		}
 	}
 
 	// 選択された工具がある場合にのみ「確定」ボタンを有効化する
@@ -3332,6 +3345,7 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 }
 
 void MainWindow::on_falseButton_retrieve_selecting_tools() {
+	m_speech.cancel();
 	liststore2columnsAll.modify_master_data(
 		// ラムダ式にマスターデータへの参照(master_data)が渡される
 		[](std::vector<MainTableData>& master_data) {
@@ -3353,6 +3367,7 @@ void MainWindow::on_falseButton_retrieve_selecting_tools() {
 }
 
 void MainWindow::on_enter_retrieve_confirming_selection() {
+	m_speech.cancel();
 	// 選択状態の行を抽出
 	auto vec = liststore2columnsAll.find_values([](const MainTableData& row) {
 		return row.cell_state_0to4 == TableCellState::SELECTED;
@@ -4362,8 +4377,8 @@ void MainWindow::on_enter_reconcile_ready_for_reading() {
 
 	if (m_reconcile_checklist.has_value() && m_reconcile_checklist->expected_count() == 0) {
 		update_widget_state(&messageLabel, WidgetState{.text = UiText{
-			"このコンテナに登録された工具はありません\n扉を閉めて「続ける」か「終了」を押してください",
-			"このコンテナに とうろくされた こうぐは ありません\nとびらを しめて「つづける」か「しゅうりょう」を おしてください"
+			"工具を全てスキャンできたら\n工具とコンテナを戻して扉を閉めてください",
+			"こうぐを すべてスキャンできたら\nこうぐと コンテナを もどして とびらを しめてください"
 		}}, true);
 	}
 }

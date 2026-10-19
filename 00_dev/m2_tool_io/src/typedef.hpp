@@ -334,6 +334,8 @@ struct MstToolInfo {
 	std::string material{};
 	/// @brief 在庫数 (現在工具棚に保管されている個数)
 	std::optional<std::int32_t> stc{};
+	/// @brief 音声シンボル (工具の音声認識用)
+	std::optional<std::string> speech_symbol{};
 	/// @brief 凍結フラグ (true: 凍結、false: 通常)
 	bool is_frozen{};
 };
