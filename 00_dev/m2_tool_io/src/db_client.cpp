@@ -94,7 +94,7 @@ static std::optional<ToolingListInfo> populate_tooling_list_from_rows(
 						.maker		= std::any_cast<std::string>				(row.at("maker")),
 						.category	= std::any_cast<std::string>				(row.at("tool_category")),
 						.material	= std::any_cast<std::string>				(row.at("tool_material")),
-						.stc		= std::any_cast<std::optional<std::int32_t>>	(row.at("stc")),
+						.stc		= stdex::any_cast_optional<std::int32_t>	(row.at("stc")),
 						.speech_symbol = stdex::any_cast_optional<std::string>(row.at("speech_symbol")).value_or(""),
 						.is_frozen	= static_cast<bool>(std::any_cast<std::int8_t>(row.at("is_frozen")))
 					}
@@ -1048,6 +1048,47 @@ bool apply_unread_reconcile(const std::vector<std::int64_t>& unique_tool_ids) {
         try { db_session->connection->rollback(); } catch (...) {}
         return false;
     }
+}
+
+bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& counts) {
+	if (counts.empty()) { return true; }
+	if (!db_session || !db_session->connection) { return false; }
+
+	try { db_session->connection->beginTransaction(); }
+	catch (const odbc::OdbcException& e) { DEV_PRINT(stderr, "DB Error: {}\n", e.what()); return false; }
+
+	try {
+		// 注意: stc の更新は、case_pack_num を書き換える前 (旧値が必要) に行うこと
+		const std::string sql_stc =
+			"UPDATE mst_tool mt JOIN unique_tool ut ON ut.basic_tool_id = mt.basic_tool_id "
+			"SET mt.stc = GREATEST(mt.stc - (ut.case_pack_num - ?), 0) "
+			"WHERE ut.unique_tool_id = ? AND ut.storage_condition = '保管中' "
+			"AND ut.case_pack_num > ? AND mt.stc IS NOT NULL;";
+
+		const std::string sql_pack =
+			"UPDATE unique_tool SET case_pack_num = ? "
+			"WHERE unique_tool_id = ? AND storage_condition = '保管中' AND case_pack_num > ?;";
+
+		// 1本目: stc (?=実枚数, id, 実枚数) / 2本目: case_pack_num (実枚数, id, 実枚数)
+		for (const std::string* sql : {&sql_stc, &sql_pack}) {
+			auto stmt_opt = create_statement_with_retry();
+			if (!stmt_opt.has_value()) { db_session->connection->rollback(); return false; }
+			auto& stmt = stmt_opt.value();
+			stmt.prepare(*sql);
+			for (const auto& [id, count] : counts) {
+				stmt.bind(1, count);
+				stmt.bind(2, id);
+				stmt.bind(3, count);
+				stmt.executePrepared();
+			}
+		}
+		db_session->connection->commit();
+		return true;
+	} catch (const std::exception& e) {
+		DEV_PRINT(stderr, "DB Error in apply_reconcile_counts, rolling back: {}\n", e.what());
+		try { db_session->connection->rollback(); } catch (...) {}
+		return false;
+	}
 }
 
 } // namespace db

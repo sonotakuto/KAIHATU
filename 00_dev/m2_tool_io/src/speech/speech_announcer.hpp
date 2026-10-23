@@ -10,9 +10,9 @@
 #include <thread>
 #include "atp3011/atp3011.hpp"
 
-#if !defined(PRODUCTION) && !defined(STUB_SPEECH)
-#define STUB_SPEECH	// 開発環境の場合は読み上げをスタブ化
-#endif
+//#if !defined(PRODUCTION) && !defined(STUB_SPEECH)
+//#define STUB_SPEECH	// 開発環境の場合は読み上げをスタブ化
+//#endif
 
 namespace speech {
 

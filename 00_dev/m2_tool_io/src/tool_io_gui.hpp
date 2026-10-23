@@ -1768,6 +1768,9 @@ private:
 	/// @brief [棚卸し用] 絞り込みダイアログで編集中の条件。キャンセル時は m_reconcile_filter に反映されない。
 	ReconcileFilter m_reconcile_filter_edit{};
 
+	/// @brief [棚卸し用] インサートで入力された「実際の残り枚数」 (unique_tool_id -> 枚数)。
+	std::map<std::int64_t, int> m_reconcile_actual_counts;
+
 	// --- 音声読み上げ ---
 	/// @brief 工具選択時の読み上げ (ATP3011)
 	speech::SpeechAnnouncer m_speech;

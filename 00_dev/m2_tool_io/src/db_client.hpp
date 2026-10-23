@@ -188,4 +188,14 @@ bool update_last_reconciliation_time(std::int32_t storage_area_id, std::chrono::
  */
 bool apply_unread_reconcile(const std::vector<std::int64_t>& unique_tool_ids);
 
+/**
+ * @brief 棚卸しで入力された個別工具ごとの実枚数をDBに反映します。
+ * @details 保管中かつ case_pack_num > 実枚数 の工具のみ、
+ * mst_tool.stc を差分だけ減らし、unique_tool.case_pack_num を実枚数に更新します。
+ * 全件を1トランザクションで処理します (差分が無い工具は何もしないので冪等)。
+ * @param[in] counts {個別工具ID, 実枚数} のリスト。
+ * @return 全件成功なら true。
+ */
+bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& counts);
+
 } // namespace db

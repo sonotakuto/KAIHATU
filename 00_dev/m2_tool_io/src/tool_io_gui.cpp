@@ -2544,14 +2544,14 @@ void MainWindow::confirm_insert_count(int init_count, int max_count, std::functi
 		// 画面下部のボタン有効状態を再計算
 		// ダイアログ非表示後に実行されるよう、遅延実行に登録
 		gutils::idle_add_once([this]() {
-			this->update_retrieve_read_completed_buttons();
+			this->update_read_completed_buttons();
 		});
 	});
 
 	// 画面下部のボタン有効状態を再計算
 	// ダイアログ表示後に実行されるよう、遅延実行に登録
 	gutils::idle_add_once([this]() {
-		this->update_retrieve_read_completed_buttons();
+		this->update_read_completed_buttons();
 	});
 
 	// ダイアログを表示
@@ -4323,6 +4323,7 @@ void MainWindow::on_plc_reconcile_container_retrieved(const plc::Notification& n
 
 void MainWindow::on_enter_reconcile_ready_for_reading() {
 	m_plc_ready_for_action = false;	// 最初のスキャンまでは false/trueButton は使わないが、状態としては初期化しておく
+	m_reconcile_actual_counts.clear();
 
 	// DBからこのコンテナの「保管されているはず」の在庫リストを取得
 	auto expected_list_opt = m_reconciling_area.has_value()
@@ -4440,6 +4441,7 @@ void MainWindow::on_enter_reconcile_read_completed() {
 }
 
 bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
+	if (confirmInsertCountDialog.get_mapped()) { return false; }
 	if (!m_reconcile_checklist.has_value()) {
 		// 基本的にここには来ないはず (READY_FOR_READING で必ず構築されるため)
 		DEV_PRINT(stderr, "[Reconcile] チェックリストが未初期化です。\n");	// BUG: 不正値対応
@@ -4498,6 +4500,29 @@ bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
 		update_and_handle_pagination_2columns(PaginationAction::UPDATE_UI_ONLY, true);
 	}
 
+		// インサートは、実際に残っている枚数を入力してもらう (再スキャンで再入力も可能)
+	if (m_is_insert_operation && status == reconcile::MatchStatus::MATCHED) {
+		const std::int64_t id = unique_info.id;
+		const int expected = unique_info.case_pack_num;
+		const int max_count = std::max(expected, 1);
+
+		auto prev = m_reconcile_actual_counts.find(id);
+		const int init_count = std::clamp(((prev != m_reconcile_actual_counts.end()) ? (prev->second) : (expected)), 1, max_count);
+
+		update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
+			fmt::format("実際に残っている枚数を\n入力して下さい\n(最大 {} 個)", max_count),
+			fmt::format("じっさいに のこっている まいすうを\nにゅうりょく してください\n(最大 {} こ)", max_count)
+		}}, true);
+
+		confirm_insert_count(init_count, max_count, [this, id](int count) {
+			m_reconcile_actual_counts[id] = count;
+			liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data) {
+				auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& row) { return row.id == id; });
+				if (it != data.end()) { it->data_columns[5] = std::to_string(count); }
+			}, true);
+		});
+	}
+
 	// 履歴データとして記録 (1スキャン = 1レコード)
 	m_operated_records.push_back(RecOperationTable{
 		.operation_class	= OperationClass::INVENTORY,
@@ -4527,7 +4552,8 @@ void MainWindow::on_plc_reconcile_read_completed(const plc::Notification& notifi
 
 void MainWindow::update_reconcile_read_completed_buttons(bool update_ui) {
 	// GUI側の条件 (警告ダイアログ等が表示中でないか)
-	bool gui_ready_for_action = !warningDialog.get_mapped() && !warningListDialog.get_mapped();
+	bool gui_ready_for_action = !warningDialog.get_mapped() && !warningListDialog.get_mapped()
+		&& !confirmInsertCountDialog.get_mapped();
 
 	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action;
 
@@ -4595,6 +4621,12 @@ bool MainWindow::on_false_and_true_Button_reconcile_read_completed() {
 
 		// 4. 未読分の数字更新
 		bool ok = db::apply_unread_reconcile(unread);
+
+		// 5. インサートの実枚数を反映
+		std::vector<std::pair<std::int64_t, int>> counts(m_reconcile_actual_counts.begin(), m_reconcile_actual_counts.end());
+		bool ok_counts = db::apply_reconcile_counts(counts);
+		DEV_PRINT("apply_reconcile_counts: {} 件 ok={}\n", counts.size(), ok_counts);
+		m_reconcile_actual_counts.clear();
 		DEV_PRINT("apply_unread_reconcile: unread={} ok={}\n", unread.size(), ok);
 	}
 

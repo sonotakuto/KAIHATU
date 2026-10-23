@@ -61,14 +61,14 @@ void SpeechAnnouncer::run() {
 			pending_.reset();
 		}
 
-#ifdef STUB_SPEECH
-		DEV_PRINT("[Speech(STUB)] {}\n", text);
-#else
+//#ifdef STUB_SPEECH
+//		DEV_PRINT("[Speech(STUB)] {}\n", text);
+//#else
 		const auto result = speaker_.speak(text);
 		if (result == atp3011::Atp3011Speaker::Result::Failed) {
 			DEV_PRINT(stderr, "[Speech] 読み上げに失敗しました: {}\n", text);
 		}
-#endif
+//#endif
 	}
 }
 
