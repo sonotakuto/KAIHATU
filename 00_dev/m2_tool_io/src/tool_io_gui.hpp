@@ -635,6 +635,8 @@ public:
 
 	/// @brief インサート枚数確認ダイアログ (ID: confirmInsertCountDialog)
 	sgex::Dialog confirmInsertCountDialog;
+	/// @brief 棚卸しインサート枚数確認ダイアログ (ID: reconcileInsertCountDialog)
+	sgex::Dialog reconcileInsertCountDialog;
 	/// @brief 再研磨確認ダイアログ (ID: confirmRegroundDialog)
 	sgex::Dialog confirmRegroundDialog;
 	/// @brief 確認ダイアログ (ID: confirmationDialog)
@@ -652,8 +654,19 @@ public:
 	/// @brief 棚卸し絞り込みダイアログ (ID: reconcileFilterDialog)
 	sgex::Dialog reconcileFilterDialog;
 
-	// --- インサート枚数確認ダイアログ内のウィジェット ---
+	// --- 	棚卸しインサート枚数確認ダイアログ内のウィジェット ---
+	/// @brief ダイアログのメインメッセージラベル (ID: reconcileInsertCountLabel)
+	sgex::Label reconcileInsertCountLabel;
+	/// @brief 枚数を増やすボタン (ID: reconcileInsertCountIncrementButton)
+	sgex::Button reconcileInsertCountIncrementButton;
+	/// @brief 枚数を減らすボタン (ID: reconcileInsertCountDecrementButton)
+	sgex::Button reconcileInsertCountDecrementButton;
+	/// @brief 枚数を入力するエントリ (ID: reconcileInsertCountEntry)
+	sgex::Entry reconcileInsertCountEntry;
+	/// @brief 個数自動検出ボタン (ID: reconcileInsertCountDetectButton)
+	sgex::Button reconcileInsertCountOkButton;
 
+	// --- インサート枚数確認ダイアログ内のウィジェット ---
 	/// @brief ダイアログのメインメッセージラベル (ID: confirmInsertCountLabel)
 	sgex::Label confirmInsertCountLabel;
 	/// @brief 枚数を増やすボタン (ID: incrementButton)
@@ -1630,6 +1643,24 @@ private:
 	 */
 	void update_reconcile_read_completed_buttons(bool update_ui = true);
 
+
+	/**
+	 * @brief [棚卸し用] インサート個数入力ダイアログ (自動検出なし) を表示します。
+	 * @param[in] init_count 初期値。
+	 * @param[in] max_count 最大値。
+	 * @param[in] callback 確定時に呼ばれるコールバック。
+	 */
+	void confirm_reconcile_insert_count(int init_count, int max_count, std::function<void(int)> callback);
+
+	/**
+	 * @brief 棚卸しインサート枚数確認ダイアログの増加ボタンがクリックされたときの処理。
+	 */
+	void reconcileInsertCountIncrementButton_on_clicked();
+	/**
+	 * @brief 棚卸しインサート枚数確認ダイアログの減少ボタンがクリックされたときの処理。
+	 */
+	void reconcileInsertCountDecrementButton_on_clicked();
+
 	// TODO: 棚卸しモードの状態遷移関数をここに追加
 
 	//==========================================================================================
@@ -1770,6 +1801,12 @@ private:
 
 	/// @brief [棚卸し用] インサートで入力された「実際の残り枚数」 (unique_tool_id -> 枚数)。
 	std::map<std::int64_t, int> m_reconcile_actual_counts;
+
+	/// @brief [棚卸し用] 個数入力ダイアログの現在値と最大値。
+	int m_reconcile_insert_current_count = 1;
+
+	/// @brief [棚卸し用] 個数入力ダイアログの最大値。0未満の時は最大値無し。
+	int m_reconcile_insert_max_count = 1;
 
 	// --- 音声読み上げ ---
 	/// @brief 工具選択時の読み上げ (ATP3011)

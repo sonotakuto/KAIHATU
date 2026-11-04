@@ -2228,8 +2228,7 @@ message message message message message</property>
                 <property name="margin-start">50</property>
                 <property name="margin-end">50</property>
                 <property name="label" translatable="yes">使用するインサートの枚数を
-入力してください
-(最大 n 個)</property>
+入力してください</property>
                 <property name="justify">center</property>
                 <style>
                   <class name="font-bold"/>
@@ -2402,6 +2401,238 @@ message message message message message</property>
             </child>
             <child>
               <object class="GtkButton" id="insertCountOkButton">
+                <property name="label" translatable="yes">OK</property>
+                <property name="width-request">200</property>
+                <property name="height-request">60</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="focus-on-click">False</property>
+                <property name="receives-default">True</property>
+                <property name="halign">center</property>
+                <style>
+                  <class name="button"/>
+                  <class name="trueButton"/>
+                  <class name="border-normal"/>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="pack-type">end</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="background-color_normal"/>
+    </style>
+  </object>
+  <object class="GtkDialog" id="reconcileInsertCountDialog">
+    <property name="width-request">850</property>
+    <property name="height-request">575</property>
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">インサート個数を入力</property>
+    <property name="resizable">False</property>
+    <property name="window-position">center-on-parent</property>
+    <property name="type-hint">utility</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <property name="transient-for">mainWindow</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can-focus">False</property>
+        <property name="valign">center</property>
+        <property name="orientation">vertical</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="layout-style">center</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="margin-top">50</property>
+            <property name="margin-bottom">50</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">50</property>
+            <child>
+              <object class="GtkLabel" id="reconcileInsertCountLabel">
+                <property name="height-request">135</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">center</property>
+                <property name="margin-start">50</property>
+                <property name="margin-end">50</property>
+                <property name="label" translatable="yes">使用するインサートの枚数を
+入力してください</property>
+                <property name="justify">center</property>
+                <style>
+                  <class name="font-bold"/>
+                  <class name="font-size_30px"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="spacing">30</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="width-request">310</property>
+                        <property name="height-request">50</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
+                        <property name="label" translatable="yes">インサート枚数 ： </property>
+                        <property name="xalign">1</property>
+                        <style>
+                          <class name="font-size_30px"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkButton" id="reconcileInsertCountIncrementButton">
+                            <property name="label" translatable="yes">▲</property>
+                            <property name="width-request">65</property>
+                            <property name="height-request">65</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="focus-on-click">False</property>
+                            <property name="receives-default">True</property>
+                            <property name="halign">center</property>
+                            <property name="relief">none</property>
+                            <style>
+                              <class name="font-size_40px"/>
+                              <class name="padding_0px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkEntry" id="reconcileInsertCountEntry">
+                            <property name="width-request">170</property>
+                            <property name="height-request">50</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <property name="editable">False</property>
+                            <property name="text" translatable="yes">1</property>
+                            <property name="xalign">0.5</property>
+                            <property name="input-purpose">digits</property>
+                            <style>
+                              <class name="font-size_30px"/>
+                              <class name="entry"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="reconcileInsertCountDecrementButton">
+                            <property name="label" translatable="yes">▼</property>
+                            <property name="width-request">65</property>
+                            <property name="height-request">65</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="focus-on-click">False</property>
+                            <property name="receives-default">True</property>
+                            <property name="halign">center</property>
+                            <property name="relief">none</property>
+                            <style>
+                              <class name="font-size_40px"/>
+                              <class name="padding_0px"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">2</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <style>
+                      <class name="font-normal"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <style>
+                  <class name="font-normal"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="reconcileInsertCountOkButton">
                 <property name="label" translatable="yes">OK</property>
                 <property name="width-request">200</property>
                 <property name="height-request">60</property>

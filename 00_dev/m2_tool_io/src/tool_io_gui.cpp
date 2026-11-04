@@ -286,6 +286,7 @@ MainWindow::MainWindow() :
 	trueButton(glade, "trueButton"),
 	// ダイアログの親
 	confirmInsertCountDialog(glade, "confirmInsertCountDialog"),
+	reconcileInsertCountDialog(glade, "reconcileInsertCountDialog"),
 	confirmRegroundDialog(glade, "confirmRegroundDialog"),
 	confirmationDialog(glade, "confirmationDialog"),
 	messageDialog(glade, "messageDialog"),
@@ -301,6 +302,11 @@ MainWindow::MainWindow() :
 	insertCountEntry(glade, "insertCountEntry"),
 	insertCountDetectButton(glade, "insertCountDetectButton"),
 	insertCountOkButton(glade, "insertCountOkButton"),
+	reconcileInsertCountLabel(glade, "reconcileInsertCountLabel"),
+	reconcileInsertCountIncrementButton(glade, "reconcileInsertCountIncrementButton"),
+	reconcileInsertCountDecrementButton(glade, "reconcileInsertCountDecrementButton"),
+	reconcileInsertCountEntry(glade, "reconcileInsertCountEntry"),
+	reconcileInsertCountOkButton(glade, "reconcileInsertCountOkButton"),
 	// 再研磨確認ダイアログ内
 	confirmRegroundLabel(glade, "confirmRegroundLabel"),
 	notRegroundButton(glade, "notRegroundButton"),
@@ -394,6 +400,7 @@ MainWindow::MainWindow() :
 
 	// ダイアログは破棄せず、非表示にするだけ
 	confirmInsertCountDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
+	reconcileInsertCountDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 	confirmRegroundDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 	confirmationDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
 	messageDialog.setDefaultCloseOperation(sgex::Window::CloseOperation::HIDE);
@@ -501,6 +508,9 @@ MainWindow::MainWindow() :
 	falseButton.on_clicked([this]() { this->falseButton_on_clicked(); });
 	trueButton.on_clicked([this]() { this->trueButton_on_clicked(); });
 	confirmInsertCountDialog.on_show([this]() { this->confirmInsertCountDialog_on_show(); });
+	reconcileInsertCountIncrementButton.on_clicked([this]() { this->reconcileInsertCountIncrementButton_on_clicked(); });
+	reconcileInsertCountDecrementButton.on_clicked([this]() { this->reconcileInsertCountDecrementButton_on_clicked(); });
+	reconcileInsertCountOkButton.on_clicked([this]() { this->reconcileInsertCountDialog.response(GtkResponseType::GTK_RESPONSE_OK); });
 	passwordEntryDialog.on_show([this]() { this->passwordEntryDialog_on_show(); });
 	warningListDialog.on_response([this](gint response_id) { this->clear_warnings(); });
 	insertCountIncrementButton.on_clicked([this]() { this->insertCountIncrementButton_on_clicked(); });
@@ -4441,7 +4451,7 @@ void MainWindow::on_enter_reconcile_read_completed() {
 }
 
 bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
-	if (confirmInsertCountDialog.get_mapped()) { return false; }
+	if (reconcileInsertCountDialog.get_mapped()) { return false; }
 	if (!m_reconcile_checklist.has_value()) {
 		// 基本的にここには来ないはず (READY_FOR_READING で必ず構築されるため)
 		DEV_PRINT(stderr, "[Reconcile] チェックリストが未初期化です。\n");	// BUG: 不正値対応
@@ -4509,12 +4519,12 @@ bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
 		auto prev = m_reconcile_actual_counts.find(id);
 		const int init_count = std::clamp(((prev != m_reconcile_actual_counts.end()) ? (prev->second) : (expected)), 1, max_count);
 
-		update_widget_state(&confirmInsertCountLabel, WidgetState{.text = UiText{
+		update_widget_state(&reconcileInsertCountLabel, WidgetState{.text = UiText{
 			fmt::format("実際に残っている枚数を\n入力して下さい\n(最大 {} 個)", max_count),
 			fmt::format("じっさいに のこっている まいすうを\nにゅうりょく してください\n(最大 {} こ)", max_count)
 		}}, true);
 
-		confirm_insert_count(init_count, max_count, [this, id](int count) {
+		confirm_reconcile_insert_count(init_count, max_count, [this, id](int count) {
 			m_reconcile_actual_counts[id] = count;
 			liststore2columnsAll.modify_master_data([&](std::vector<MainTableData>& data) {
 				auto it = std::find_if(data.begin(), data.end(), [&](const MainTableData& row) { return row.id == id; });
@@ -4553,7 +4563,7 @@ void MainWindow::on_plc_reconcile_read_completed(const plc::Notification& notifi
 void MainWindow::update_reconcile_read_completed_buttons(bool update_ui) {
 	// GUI側の条件 (警告ダイアログ等が表示中でないか)
 	bool gui_ready_for_action = !warningDialog.get_mapped() && !warningListDialog.get_mapped()
-		&& !confirmInsertCountDialog.get_mapped();
+		&& !reconcileInsertCountDialog.get_mapped();
 
 	bool all_systems_ready = gui_ready_for_action && m_plc_ready_for_action;
 
@@ -4780,6 +4790,40 @@ void MainWindow::rebuild_reconcile_container_table() {
 
 	// 表が作り直されて選択が消えるので「搬出」は無効に戻す
 	update_widget_state(&trueButton, WidgetState{.is_sensitive = false}, true);
+}
+
+void MainWindow::confirm_reconcile_insert_count(int init_count, int max_count, std::function<void(int)> callback) {
+	m_reconcile_insert_current_count = init_count;
+	m_reconcile_insert_max_count = max_count;
+	reconcileInsertCountEntry.set_text(std::to_string(init_count).c_str());
+
+	reconcileInsertCountDialog.on_response([this, callback = std::move(callback)](gint) mutable {
+		this->reconcileInsertCountDialog.hide();
+		this->reconcileInsertCountEntry.set_text("");
+
+		if (callback) {
+			callback(m_reconcile_insert_current_count);
+			callback = nullptr;
+		}
+
+		// ダイアログ非表示後にボタン状態を再計算
+		gutils::idle_add_once([this]() { this->update_reconcile_read_completed_buttons(); });
+	});
+
+	gutils::idle_add_once([this]() { this->update_reconcile_read_completed_buttons(); });
+	reconcileInsertCountDialog.show_all();
+}
+
+void MainWindow::reconcileInsertCountIncrementButton_on_clicked() {
+	if (m_reconcile_insert_current_count < m_reconcile_insert_max_count) {
+		reconcileInsertCountEntry.set_text(std::to_string(++m_reconcile_insert_current_count).c_str());
+	}
+}
+
+void MainWindow::reconcileInsertCountDecrementButton_on_clicked() {
+	if (m_reconcile_insert_current_count > 1) {
+		reconcileInsertCountEntry.set_text(std::to_string(--m_reconcile_insert_current_count).c_str());
+	}
 }
 
 } // namespace gui
