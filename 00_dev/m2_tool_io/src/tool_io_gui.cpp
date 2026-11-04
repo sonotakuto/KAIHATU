@@ -4501,10 +4501,10 @@ bool MainWindow::on_qrCodeEntry_reconcile_read_completed() {
 	}
 
 		// インサートは、実際に残っている枚数を入力してもらう (再スキャンで再入力も可能)
-	if (m_is_insert_operation && status == reconcile::MatchStatus::MATCHED) {
+	if (m_is_insert_operation) {
 		const std::int64_t id = unique_info.id;
 		const int expected = unique_info.case_pack_num;
-		const int max_count = std::max(expected, 1);
+		const int max_count = INSERT_COUNT_MAX_RECONCILE;
 
 		auto prev = m_reconcile_actual_counts.find(id);
 		const int init_count = std::clamp(((prev != m_reconcile_actual_counts.end()) ? (prev->second) : (expected)), 1, max_count);
@@ -4624,7 +4624,7 @@ bool MainWindow::on_false_and_true_Button_reconcile_read_completed() {
 
 		// 5. インサートの実枚数を反映
 		std::vector<std::pair<std::int64_t, int>> counts(m_reconcile_actual_counts.begin(), m_reconcile_actual_counts.end());
-		bool ok_counts = db::apply_reconcile_counts(counts);
+		bool ok_counts = db::apply_reconcile_counts(counts, m_reconciling_area->id);
 		DEV_PRINT("apply_reconcile_counts: {} 件 ok={}\n", counts.size(), ok_counts);
 		m_reconcile_actual_counts.clear();
 		DEV_PRINT("apply_unread_reconcile: unread={} ok={}\n", unread.size(), ok);

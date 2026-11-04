@@ -198,4 +198,14 @@ bool apply_unread_reconcile(const std::vector<std::int64_t>& unique_tool_ids);
  */
 bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& counts);
 
+/**
+ * @brief 棚卸しで入力された個別工具ごとの実枚数をDBに反映します。
+ * @details 入力値で unique_tool.case_pack_num を上書きし、mst_tool.stc を差分だけ加減算します。
+ * 保管中でない工具、または別コンテナの工具は、指定コンテナの保管中に更新し、
+ * 各コンテナの toolcase_stc_num も補正します。全件を1トランザクションで処理します。
+ * @param[in] counts {個別工具ID, 実枚数} のリスト。
+ * @param[in] storage_area_id 棚卸し中のコンテナ (保管領域) ID。
+ * @return 全件成功なら true。
+ */
+bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& counts, std::int32_t storage_area_id);
 } // namespace db

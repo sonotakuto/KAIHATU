@@ -34,11 +34,11 @@ SpeechAnnouncer::~SpeechAnnouncer() {
 
 void SpeechAnnouncer::say(std::string text) {
 	if (text.empty()) { return; }
+	speaker_.requestStop();	// 先に中断要求 (旧読み上げを止める)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		pending_ = std::move(text);
 	}
-	speaker_.requestStop();	// 読み上げ中のものがあれば中断 (次の speak() 開始時にクリアされる)
 	cv_.notify_one();
 }
 

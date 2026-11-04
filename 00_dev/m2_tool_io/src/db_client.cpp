@@ -1050,7 +1050,7 @@ bool apply_unread_reconcile(const std::vector<std::int64_t>& unique_tool_ids) {
     }
 }
 
-bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& counts) {
+bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& counts, std::int32_t storage_area_id) {
 	if (counts.empty()) { return true; }
 	if (!db_session || !db_session->connection) { return false; }
 
@@ -1058,28 +1058,60 @@ bool apply_reconcile_counts(const std::vector<std::pair<std::int64_t, int>>& cou
 	catch (const odbc::OdbcException& e) { DEV_PRINT(stderr, "DB Error: {}\n", e.what()); return false; }
 
 	try {
-		// 注意: stc の更新は、case_pack_num を書き換える前 (旧値が必要) に行うこと
+		// 1. stc: 保管中なら (入力 - 旧個数)、保管中でなければ 入力 をそのまま加算
+		//    (保管中でない工具の case_pack_num は 0 のはずだが、念のため状態で分岐する)
 		const std::string sql_stc =
 			"UPDATE mst_tool mt JOIN unique_tool ut ON ut.basic_tool_id = mt.basic_tool_id "
-			"SET mt.stc = GREATEST(mt.stc - (ut.case_pack_num - ?), 0) "
+			"SET mt.stc = GREATEST(mt.stc + (? - IF(ut.storage_condition = '保管中', ut.case_pack_num, 0)), 0) "
+			"WHERE ut.unique_tool_id = ? AND mt.stc IS NOT NULL;";
+
+		// 2. 旧コンテナのケース数: 別コンテナで保管中だった場合のみ -1
+		const std::string sql_old_case =
+			"UPDATE storage_area sa JOIN unique_tool ut ON ut.storage_area_id = sa.storage_area_id "
+			"SET sa.toolcase_stc_num = GREATEST(sa.toolcase_stc_num - 1, 0) "
 			"WHERE ut.unique_tool_id = ? AND ut.storage_condition = '保管中' "
-			"AND ut.case_pack_num > ? AND mt.stc IS NOT NULL;";
+			"AND ut.storage_area_id <> ? AND sa.toolcase_stc_num IS NOT NULL;";
 
+		// 3. 新コンテナのケース数: 保管中でない、または別コンテナだった場合のみ +1
+		const std::string sql_new_case =
+			"UPDATE storage_area sa JOIN unique_tool ut ON ut.unique_tool_id = ? "
+			"SET sa.toolcase_stc_num = sa.toolcase_stc_num + 1 "
+			"WHERE sa.storage_area_id = ? AND sa.toolcase_stc_num IS NOT NULL "
+			"AND (ut.storage_condition <> '保管中' OR ut.storage_area_id IS NULL OR ut.storage_area_id <> ?);";
+
+		// 4. unique_tool: 入力値で上書きし、棚卸しコンテナの保管中にする
 		const std::string sql_pack =
-			"UPDATE unique_tool SET case_pack_num = ? "
-			"WHERE unique_tool_id = ? AND storage_condition = '保管中' AND case_pack_num > ?;";
+			"UPDATE unique_tool SET case_pack_num = ?, storage_condition = '保管中', storage_area_id = ? "
+			"WHERE unique_tool_id = ?;";
 
-		// 1本目: stc (?=実枚数, id, 実枚数) / 2本目: case_pack_num (実枚数, id, 実枚数)
-		for (const std::string* sql : {&sql_stc, &sql_pack}) {
-			auto stmt_opt = create_statement_with_retry();
-			if (!stmt_opt.has_value()) { db_session->connection->rollback(); return false; }
-			auto& stmt = stmt_opt.value();
-			stmt.prepare(*sql);
-			for (const auto& [id, count] : counts) {
-				stmt.bind(1, count);
-				stmt.bind(2, id);
-				stmt.bind(3, count);
-				stmt.executePrepared();
+		for (const auto& [id, count] : counts) {
+			{
+				auto s = create_statement_with_retry();
+				if (!s.has_value()) { db_session->connection->rollback(); return false; }
+				s->prepare(sql_stc);
+				s->bind(1, count); s->bind(2, id);
+				s->executePrepared();
+			}
+			{
+				auto s = create_statement_with_retry();
+				if (!s.has_value()) { db_session->connection->rollback(); return false; }
+				s->prepare(sql_old_case);
+				s->bind(1, id); s->bind(2, storage_area_id);
+				s->executePrepared();
+			}
+			{
+				auto s = create_statement_with_retry();
+				if (!s.has_value()) { db_session->connection->rollback(); return false; }
+				s->prepare(sql_new_case);
+				s->bind(1, id); s->bind(2, storage_area_id); s->bind(3, storage_area_id);
+				s->executePrepared();
+			}
+			{
+				auto s = create_statement_with_retry();
+				if (!s.has_value()) { db_session->connection->rollback(); return false; }
+				s->prepare(sql_pack);
+				s->bind(1, count); s->bind(2, storage_area_id); s->bind(3, id);
+				s->executePrepared();
 			}
 		}
 		db_session->connection->commit();

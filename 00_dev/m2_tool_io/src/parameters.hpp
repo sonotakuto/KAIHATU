@@ -25,3 +25,5 @@ inline constexpr GdkRGBA TABLE_BGCOLOR_FADED				= {0.69, 0.77, 0.87, 1.0};	// �
 inline constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MATCH		= {0.00, 0.88, 0.00, 1.0};	// テーブルの棚卸し一致行背景色
 inline constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_MISMATCH	= {1.00, 0.65, 0.00, 1.0};	// テーブルの棚卸し不一致行背景色
 inline constexpr GdkRGBA TABLE_BGCOLOR_RECONCILE_UNREAD	= {0.69, 0.77, 0.87, 1.0};	// テーブルの棚卸し未読行背景色
+
+inline constexpr int	INSERT_COUNT_MAX_RECONCILE = 99;	// 棚卸しでのインサート個数入力の上限
