@@ -17,6 +17,7 @@
 #include "tracking_communicator.hpp"
 #include "reconcile/reconcile_checklist.hpp"
 #include "speech/speech_announcer.hpp"
+#include "atp3011/atp3011.hpp"
 
 /**
  * @namespace gui

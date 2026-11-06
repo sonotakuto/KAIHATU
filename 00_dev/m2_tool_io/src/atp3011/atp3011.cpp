@@ -89,10 +89,6 @@ void waitAndClear(pid_t& pid) noexcept
 }
 
 // fork して指定コマンドへ置き換える。
-//   keepFd  : targetFd（STDIN/STDOUT）へ複製して使うパイプ端
-//   closeFd : 子で不要なパイプ端
-// 戻り値: 親では子のPID（失敗時 -1）。子はexec成功で戻らず、失敗時は _exit する。
-// argv は fork 前に親で組み立て、子では確保処理をしない（マルチスレッド環境での安全性のため）。
 pid_t spawnPipedChild(int keepFd, int closeFd, int targetFd,
                       const std::vector<std::string>& args)
 {
@@ -277,7 +273,6 @@ bool SerialPort::configure()
         return false;
     }
 
-    // 端末の行編集や文字変換などを無効にし、データをそのまま送受信する設定にする。
     cfmakeraw(&tty);
 
     if (cfsetispeed(&tty, B9600) != 0 ||
@@ -287,7 +282,6 @@ bool SerialPort::configure()
     }
 
     tty.c_cflag &= ~(PARENB | CSTOPB | CSIZE);
-    // 8ビットデータ、受信有効、モデム制御線を使わない設定にする。
     tty.c_cflag |= CS8 | CREAD | CLOCAL;
 
 #ifdef CRTSCTS
@@ -295,9 +289,7 @@ bool SerialPort::configure()
 #endif
 
     tty.c_iflag &= ~(IXON | IXOFF | IXANY);
-    // read()で最低受信バイト数を待たない設定にする。
     tty.c_cc[VMIN] = 0;
-    // termios側の読み取りタイムアウトは設定せず、poll()で受信待ちを制御する。
     tty.c_cc[VTIME] = 0;
 
     if (tcsetattr(fd_.get(), TCSANOW, &tty) != 0) {
@@ -329,7 +321,6 @@ bool SerialPort::sendText(const std::string& text)
         sent += static_cast<size_t>(n);
     }
 
-    // UARTの送信キューに残っているデータが送信されるまで待つ。
     tcdrain(fd_.get());
     return true;
 }
@@ -349,7 +340,6 @@ SerialPort::PollResult SerialPort::pollReadable(int timeoutMs) const
     if (pfd.revents & POLLIN)
         return PollResult::Readable;
 
-    // POLLERR/POLLHUP/POLLNVALのみ：無限ループ(ビジーループ)にならないようエラー扱いにする。
     errno = EIO;
     return PollResult::Error;
 }
@@ -465,7 +455,6 @@ bool AudioStream::start()
         return false;
     }
 
-    // fds[0]が読み取り側、fds[1]が書き込み側。録音データの受け渡しに使う。
     int fds[2];
 
     if (pipe(fds) != 0) {
@@ -478,7 +467,6 @@ bool AudioStream::start()
     const std::string rate = std::to_string(config_.sampleRate);
     const std::string ch   = std::to_string(config_.channels);
 
-    // 録音側：音声データをパイプへ送る
     recorder_ = spawnPipedChild(
         writeEnd.get(), readEnd.get(), STDOUT_FILENO,
         {"arecord",
@@ -490,10 +478,9 @@ bool AudioStream::start()
 
     if (recorder_ < 0) {
         std::cerr << "fork arecord failed\n";
-        return false;  // パイプ両端はScopedFdが閉じる
+        return false;
     }
 
-    // 再生側：パイプから音声データを受け取る
     player_ = spawnPipedChild(
         readEnd.get(), writeEnd.get(), STDIN_FILENO,
         {"aplay",
@@ -559,28 +546,23 @@ Atp3011Speaker::Result Atp3011Speaker::speak(const std::string& text)
 
     stop_.store(false);
 
-    // Ctrl+Cや終了シグナルを受けたら停止フラグを立てる（関数を抜けると元に戻る）
     std::optional<SignalStopGuard> signalGuard;
     if (config_.installSignalHandlers)
         signalGuard.emplace();
 
-    // 1. GPIO設定
     SysfsGpio gpio(config_.gpioNumber, config_.gpioBasePath);
     if (!gpio.setupOutputHigh())
         return Result::Failed;
 
-    // 破棄順序: serial(close) -> audio(stop)  ※元コードの後片付け順と同じ
     AudioStream audio(config_.audio);
     SerialPort  serial;
 
-    // 2. UART設定
     if (!serial.open(config_.uartDevice))
         return Result::Failed;
 
     if (!serial.configure())
         return Result::Failed;
 
-    // 3. 通信確認：「?」を送信し、UARTの相手から応答があるかを確認する。
     std::cout << "Sending '?'\n";
 
     if (!serial.sendText("?"))
@@ -591,25 +573,20 @@ Atp3011Speaker::Result Atp3011Speaker::speak(const std::string& text)
 
     serial.flushInput();
 
-    // 4. 録音・再生を開始
     if (!audio.start())
         return Result::Failed;
 
-    // 音声デバイスが起動する時間を少し確保
     std::this_thread::sleep_for(
         std::chrono::milliseconds(config_.audioStartupDelayMs));
 
-    // 5. 指定文字列を送信（従来どおり末尾にCRを付ける）
     std::cout << "Speaking: " << text << "\n";
 
     if (!serial.sendText(text + "\r"))
         return Result::Failed;
 
-    // UARTを閉じず、読み上げ完了の応答を待つ
     const bool completed = serial.waitForResponse(
         [this] { return stopRequested(); }, config_.responsePollMs);
 
-    // UARTを閉じ、録音・再生プロセスを終了
     serial.close();
     audio.stop();
 
@@ -620,6 +597,89 @@ Atp3011Speaker::Result Atp3011Speaker::speak(const std::string& text)
 
     std::cout << "Stopped before completion.\n";
     return Result::Incomplete;
+}
+
+// ===========================================================================
+// SpeechFormatter
+// ===========================================================================
+std::string SpeechFormatter::toAlphaTag(const std::string& text)
+{
+    if (text.empty()) return "";
+    return "<ALPHA VAL=" + text + ">";
+}
+
+std::string SpeechFormatter::toNumkTag(const std::string& numberStr, const std::string& counter)
+{
+    if (numberStr.empty()) return "";
+    if (counter.empty()) {
+        return "<NUMK VAL=" + numberStr + ">";
+    }
+    return "<NUMK VAL=" + numberStr + " COUNTER=" + counter + ">";
+}
+
+std::string SpeechFormatter::toNumTag(const std::string& numberStr)
+{
+    if (numberStr.empty()) return "";
+    return "<NUM VAL=" + numberStr + ">";
+}
+
+std::string SpeechFormatter::formatForAtp3011(const std::string& input)
+{
+    std::string result;
+    std::string currentToken;
+
+    enum class CharGroup { None, Number, LowerAlpha, UpperAlpha };
+    CharGroup currentGroup = CharGroup::None;
+
+    auto flushToken = [&](CharGroup group, const std::string& token) {
+        if (token.empty()) return;
+        if (group == CharGroup::Number) {
+            result += toNumkTag(token);
+        } else if (group == CharGroup::UpperAlpha) {
+            result += toAlphaTag(token);
+        } else {
+            result += token;
+        }
+    };
+
+    for (size_t i = 0; i < input.length(); ++i) {
+        char c = input[i];
+
+        CharGroup nextGroup = CharGroup::None;
+        if (c >= '0' && c <= '9') {
+            nextGroup = CharGroup::Number;
+        } else if (c >= 'a' && c <= 'z') {
+            nextGroup = CharGroup::LowerAlpha;
+        } else if (c >= 'A' && c <= 'Z') {
+            nextGroup = CharGroup::UpperAlpha;
+        } else {
+            if (currentGroup == CharGroup::UpperAlpha && (c == '-' || c == '.')) {
+                nextGroup = CharGroup::UpperAlpha;
+            } else {
+                nextGroup = CharGroup::None;
+            }
+        }
+
+        if (nextGroup != currentGroup) {
+            flushToken(currentGroup, currentToken);
+            currentToken.clear();
+            currentGroup = nextGroup;
+        }
+
+        if (currentGroup != CharGroup::None) {
+            currentToken += c;
+        } else {
+            result += c;
+        }
+    }
+
+    flushToken(currentGroup, currentToken);
+
+    if (!result.empty() && result.back() != '.' && result.back() != '?' && result.back() != '!') {
+        result += ".";
+    }
+
+    return result;
 }
 
 } // namespace atp3011

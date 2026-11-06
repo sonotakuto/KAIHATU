@@ -3342,7 +3342,8 @@ void MainWindow::on_mainTableSelection_retrieve_selecting_tools(std::optional<si
 		}, true);
 
 		if (!speech_text.empty()) {
-			m_speech.say(std::move(speech_text));
+			string message = atp3011::SpeechFormatter::formatForAtp3011(speech_text);
+			m_speech.say(std::move(message));
 		} else if (toggled_off) {
 			m_speech.cancel();
 		}

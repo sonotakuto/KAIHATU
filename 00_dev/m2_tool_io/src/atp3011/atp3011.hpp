@@ -1,15 +1,14 @@
 /*
  * ATP3011 読み上げライブラリ（ヘッダ）
  *
- * atp3011_test_5_commented.cpp をクラス化したもの。
- *
- * クラス一覧（単一責任）
+ * クラス一覧（単一責任の原則に基づく分離）
  *   ScopedFd            : ファイル記述子のRAIIラッパ（close漏れ防止）
  *   SignalStopGuard     : SIGINT/SIGTERMで停止フラグを立てる（デストラクタで元の設定に復元）
  *   SysfsGpio           : sysfs GPIOの export / direction / value 設定
  *   SerialPort          : UARTの open / 9600bps 8N1設定 / 送信 / 応答監視
  *   AudioStream         : arecord -> パイプ -> aplay の起動・停止（デストラクタで必ず回収）
  *   Atp3011Speaker      : 上記を組み合わせた読み上げ処理全体の統括
+ *   SpeechFormatter     : データシート仕様に基づくテキスト自動分類・タグ付与機能
  *
  * 要件: C++17 / Linux(POSIX)
  */
@@ -41,15 +40,22 @@ struct Config {
     std::string gpioBasePath         = "/sys/class/gpio";
     std::string uartDevice           = "/dev/ttyUL0";
     int         probeTimeoutMs       = 1000;  // '?' 送信後の応答確認時間
-    int         audioStartupDelayMs  = 100;   // 音声デバイス起動待ち
+    int         audioStartupDelayMs  = 1000;   // 音声デバイス起動待ち
     int         responsePollMs       = 100;   // 読み上げ完了待ちのpoll周期
     bool        installSignalHandlers = true; // SIGINT/SIGTERMを本ライブラリで扱うか
     AudioConfig audio;
 };
 
-// ---------------------------------------------------------------------------
-// ScopedFd : ファイル記述子のRAII（コピー不可・ムーブ可）
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// ScopedFd
+// ===========================================================================
+/**
+ * @class ScopedFd
+ * @brief ファイル記述子（File Descriptor）の寿命を管理するRAIIラッパクラス。
+ *
+ * デストラクタで自動的に ::close() を呼び出すことで、ファイル記述子のリークを防止します。
+ * コピーは禁止されていますが、ムーブによる所有権の移転が可能です。
+ */
 class ScopedFd {
 public:
     ScopedFd() noexcept = default;
@@ -74,12 +80,16 @@ private:
     int fd_ = -1;
 };
 
-// ---------------------------------------------------------------------------
-// SignalStopGuard : 停止シグナル受信フラグ（元の stop_requested / handle_signal）
-//   生成時にフラグをクリアしてハンドラを登録し、破棄時に元のハンドラへ戻す。
-//   フラグはプロセス共通（シグナルハンドラの性質上）なので、同時に複数の
-//   インスタンスを有効にしないこと。
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// SignalStopGuard
+// ===========================================================================
+/**
+ * @class SignalStopGuard
+ * @brief SIGINT (Ctrl+C) や SIGTERM などの終了シグナルを安全に捕捉・管理するクラス。
+ *
+ * インスタンス生成時にシグナルハンドラを登録し、破棄時に元のハンドラ設定へと自動復元します。
+ * プロセス共通の停止フラグを制御するため、同時に複数のインスタンスを有効にしないよう注意してください。
+ */
 class SignalStopGuard {
 public:
     SignalStopGuard();
@@ -88,6 +98,7 @@ public:
     SignalStopGuard(const SignalStopGuard&)            = delete;
     SignalStopGuard& operator=(const SignalStopGuard&) = delete;
 
+    /// @brief シグナルが要求されたかどうかを返す（スレッドセーフ）
     static bool requested() noexcept;
 
 private:
@@ -98,17 +109,23 @@ private:
     bool             installed_ = false;
 };
 
-// ---------------------------------------------------------------------------
-// SysfsGpio : sysfs GPIO制御（元の write_sysfs / setup_gpio）
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// SysfsGpio
+// ===========================================================================
+/**
+ * @class SysfsGpio
+ * @brief Linuxの sysfs (/sys/class/gpio) インターフェースを通じてGPIO制御を行うクラス。
+ *
+ * 指定されたGPIO番号の export、方向設定（out）、およびHIGH（1）出力の設定を安全に行います。
+ */
 class SysfsGpio {
 public:
     SysfsGpio(int number, std::string basePath);
 
-    // 出力に設定し、HIGH(1)にする。未exportならexportしてから設定する。
+    /// @brief GPIOを出力モードに設定し、HIGH(1)にする（未exportなら自動exportを実行）
     bool setupOutputHigh();
 
-    // sysfsファイルへ文字列を書き込む共通関数。
+    /// @brief sysfsの指定パスへ文字列を書き込む共通ヘルパー関数
     static bool writeFile(const std::string& path, const std::string& value);
 
 private:
@@ -118,16 +135,22 @@ private:
     std::string basePath_;
 };
 
-// ---------------------------------------------------------------------------
-// SerialPort : UART制御（元の configure_serial / send_text /
-//              check_uart_response / wait_for_speech_end）
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// SerialPort
+// ===========================================================================
+/**
+ * @class SerialPort
+ * @brief UARTシリアル通信を制御するクラス。
+ *
+ * POSIXターミナル制御（termios）を用いた生データモード（9600bps, 8N1）の設定、
+ * テキスト送信（tcdrain）、および `poll()` を活用したタイムアウト付き受信監視を行います。
+ */
 class SerialPort {
 public:
     using StopPredicate = std::function<bool()>;
 
     SerialPort() = default;
-    ~SerialPort() = default;  // ScopedFdが閉じる
+    ~SerialPort() = default;  // ScopedFdによって安全にクローズされる
 
     SerialPort(const SerialPort&)            = delete;
     SerialPort& operator=(const SerialPort&) = delete;
@@ -136,10 +159,11 @@ public:
     void close() noexcept;
     bool isOpen() const noexcept { return fd_.valid(); }
 
-    bool configure();                       // 9600 bps, 8N1
-    bool sendText(const std::string& text); // 最後まで送信し、tcdrainする
-    bool checkResponse(int timeoutMs);      // 指定時間だけ受信を確認・表示
-    // 何らかの応答を受信するまで待機。stopが真を返したら false で抜ける。
+    bool configure();                       // 9600 bps, 8N1設定
+    bool sendText(const std::string& text); // 文字列を最後まで送信し tcdrain を実行
+    bool checkResponse(int timeoutMs);      // 指定時間だけ応答の有無を確認・表示
+
+    /// @brief 何らかの応答を受信するまで待機する（stop述語が真を返した場合は中断）
     bool waitForResponse(const StopPredicate& stop, int pollMs);
     void flushInput() noexcept;             // tcflush(TCIFLUSH)
 
@@ -150,10 +174,16 @@ private:
     ScopedFd fd_;
 };
 
-// ---------------------------------------------------------------------------
-// AudioStream : arecord | aplay（元の start_audio_stream / stop_audio_stream）
-//   デストラクタで未停止の子プロセスを必ず終了・回収する（ゾンビ防止）。
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// AudioStream
+// ===========================================================================
+/**
+ * @class AudioStream
+ * @brief `arecord`（録音）と `aplay`（再生）をパイプで直結して実行するバックグラウンド音声ストリーム管理クラス。
+ *
+ * デストラクタで未停止の子プロセスに対して自動的に `SIGTERM` を送信し、
+ * `waitpid` で確実に回収することでゾンビプロセスの発生を防止します。
+ */
 class AudioStream {
 public:
     explicit AudioStream(AudioConfig config = AudioConfig{});
@@ -172,9 +202,15 @@ private:
     pid_t       player_   = -1;
 };
 
-// ---------------------------------------------------------------------------
-// Atp3011Speaker : 読み上げ処理全体（元の main の処理フロー）
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Atp3011Speaker
+// ===========================================================================
+/**
+ * @class Atp3011Speaker
+ * @brief GPIO初期化、UART通信、音声ストリームを統合し、音声合成LSI（ATP3011）の読み上げ処理全体を統括するクラス。
+ *
+ * 指定された文字列の送信から完了応答の待機までの一連のシーケンスをブロッキングで実行します。
+ */
 class Atp3011Speaker {
 public:
     enum class Result {
@@ -188,10 +224,10 @@ public:
     Atp3011Speaker(const Atp3011Speaker&)            = delete;
     Atp3011Speaker& operator=(const Atp3011Speaker&) = delete;
 
-    // textを読み上げる。ブロッキング。1インスタンスにつき同時実行は1つまで。
+    /// @brief 指定テキストを読み上げる（ブロッキング処理。1インスタンスにつき同時実行は1つまで）
     Result speak(const std::string& text);
 
-    // 他スレッドから停止を要求する（スレッドセーフ）。speak()開始時にクリアされる。
+    /// @brief 他スレッドから安全に読み上げ停止を要求する（スレッドセーフ）
     void requestStop() noexcept { stop_.store(true); }
 
 private:
@@ -199,6 +235,48 @@ private:
 
     Config           config_;
     std::atomic<bool> stop_{false};
+};
+
+// ===========================================================================
+// SpeechFormatter
+// ===========================================================================
+/**
+ * @class SpeechFormatter
+ * @brief ATP3011データシート（14章）の仕様に基づくテキスト自動分類・タグ付与クラス。
+ *
+ * 入力された任意の文字列から「数値」「小文字ローマ字」「大文字を含む英字（型番など）」を
+ * 自動的に認識・分離し、ATP3011に最適なタグ（<NUMK>, <ALPHA>）を付与した音声記号列を生成します。
+ */
+class SpeechFormatter {
+public:
+    // 静的ユーティリティクラスのためインスタンス化を禁止
+    SpeechFormatter() = delete;
+    ~SpeechFormatter() = delete;
+
+    SpeechFormatter(const SpeechFormatter&)            = delete;
+    SpeechFormatter& operator=(const SpeechFormatter&) = delete;
+    SpeechFormatter(SpeechFormatter&&)                 = delete;
+    SpeechFormatter& operator=(SpeechFormatter&&)      = delete;
+
+    /**
+     * @brief 英数字文字列を ATP3011 の英数読みタグに変換する
+     */
+    static std::string toAlphaTag(const std::string& text);
+
+    /**
+     * @brief 数値を ATP3011 の桁読みタグに変換する（助数詞オプション対応）
+     */
+    static std::string toNumkTag(const std::string& numberStr, const std::string& counter = "");
+
+    /**
+     * @brief 数値を ATP3011 の棒読みタグに変換する
+     */
+    static std::string toNumTag(const std::string& numberStr);
+
+    /**
+     * @brief 入力文字列を解析し、「数字」「小文字ローマ字」「大文字英数」のグループに自動分解・変換する
+     */
+    static std::string formatForAtp3011(const std::string& input);
 };
 
 } // namespace atp3011
