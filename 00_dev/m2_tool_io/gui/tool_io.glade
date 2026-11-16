@@ -46,7 +46,7 @@ QRコードリーダーで よみとってから、こうぐを とりだして�
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">工具入出庫システム</property>
     <property name="resizable">False</property>
-    <property name="window-position">center-always</property>
+    <property name="window-position">none</property>
     <property name="hide-titlebar-when-maximized">True</property>
     <property name="decorated">False</property>
     <property name="gravity">center</property>
